@@ -50,24 +50,29 @@ python network_sketcher.py
 
 # SAMPLE
 ## Input ppt file (rough sketch)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/0ef66092-0995-47fa-8849-e1f640a35ab4)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/87e792ec-f0d6-47f9-96ad-1dfda4de5228)
+
 [Sample-rough-sketch.pptx](https://github.com/cisco-open/network-sketcher/files/12298813/Sample-rough-sketch.pptx)
 
 ## Output
 ### Device table(Excel)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/2c657c04-329a-4049-8181-399051aba91c)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/f806bbe0-9a53-4030-aca1-f4df7a616a34)
+
 [DEVICE.Sample.figure5.xlsx](https://github.com/cisco-open/network-sketcher/files/12298814/DEVICE.Sample.figure5.xlsx)
 
 ### L1 figure(PPT)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/69fdbac5-8482-4486-ab47-c1bd01cc11e2)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/4bc62cdd-ca32-4bc0-a70a-ceaa24faf9e8)
+
 [L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298815/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
 
 ### L2 figure(PPT)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/fd98050b-30f4-4544-9cac-62f848b82833)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/0fd450b2-02df-42cc-9750-b9e43cf35525)
+
 [L2_DIAGRAM.PerArea_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298817/L2_DIAGRAM.PerArea_Sample.figure5.pptx)
 
 ### L3 figure(PPT)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/bc63ec4e-fb46-4f05-b28c-8395adf6aaaa)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/78519067-f42c-4f3f-ac1d-602f769adddd)
+
 [L3_DIAGRAM.PerArea_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298818/L3_DIAGRAM.PerArea_Sample.figure5.pptx)
 
 ### Master file(Excel)
