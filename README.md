@@ -5,7 +5,7 @@
 Network Sketcher that helps make network design and configuration management faster, more accurate, and easier.
 Simply create a rough sketch first, and the system will automatically generate L1L2L3 network diagrams and management tables.
 Since the network components are consolidated in one master file, updating the management table (device file) automatically updates all related network diagrams and management tables as well.
-![image](https://github.com/yuhsukeogawa/network-sketcher/assets/13013736/3e106a72-ad5d-4e58-b7a6-e783a6dcafc5)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/d41f2496-9f15-42fa-bb2e-5732df43f231)
 
 
 # DEMO
@@ -40,31 +40,31 @@ pip install -r requirements.txt
 # Usage
  
 ```bash
-git clone https://github.com/yuhsukeogawa/network-sketcher/
+git clone https://github.com/cisco-open/network-sketcher/
 cd network-sketcher
 python network_sketcher.py
 ```
 
 # SAMPLE
 ## Input ppt file (rough sketch)
-![image](https://github.com/yuhsukeogawa/network-sketcher/assets/13013736/43f4af0c-8414-4aea-921b-f06e88e9bbdd)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/0ef66092-0995-47fa-8849-e1f640a35ab4)
 [Sample-rough-sketch.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158449/Sample-rough-sketch.pptx)
 
 ## Output
 ### Device table(Excel)
-![image](https://github.com/yuhsukeogawa/network-sketcher/assets/13013736/72614b8f-0519-4e2f-942f-bed2c10c1cde)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/2c657c04-329a-4049-8181-399051aba91c)
 [[DEVICE]Sample figure5.xlsx](https://github.com/yuhsukeogawa/network-sketcher/files/12158439/DEVICE.Sample.figure5.xlsx)
 
 ### L1 figure(PPT)
-![image](https://github.com/yuhsukeogawa/network-sketcher/assets/13013736/7908f403-0347-4a08-adeb-1157ed2e5b1a)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/69fdbac5-8482-4486-ab47-c1bd01cc11e2)
 [[L1_DIAGRAM]AllAreasTag_Sample figure5.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158436/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
 
 ### L2 figure(PPT)
-![image](https://github.com/yuhsukeogawa/network-sketcher/assets/13013736/dc67d7a5-dc55-4544-a0ac-7baf7b4ce04d)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/fd98050b-30f4-4544-9cac-62f848b82833)
 [[L2_DIAGRAM]PerArea_Sample figure5.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158437/L2_DIAGRAM.PerArea_Sample.figure5.pptx)
 
 ### L3 figure(PPT)
-![image](https://github.com/yuhsukeogawa/network-sketcher/assets/13013736/ead89f2b-879b-4c24-a850-84fded20dbb9)
+![image](https://github.com/cisco-open/network-sketcher/assets/13013736/bc63ec4e-fb46-4f05-b28c-8395adf6aaaa)
 [[L3_DIAGRAM]PerArea_Sample figure5.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158438/L3_DIAGRAM.PerArea_Sample.figure5.pptx)
 
 ### Master file(Excel)
