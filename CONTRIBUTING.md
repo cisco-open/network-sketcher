@@ -14,7 +14,7 @@ any real-time space e.g., Slack, Discord, etc.
 ## Reporting Issues
 
 Before reporting a new issue, please ensure that the issue was not already reported or fixed by searching through our
-[issues list](https://github.com/yuhsukeogawa/network-sketcher/issues).
+[issues list](https://github.com/cisco-open/network-sketcher/issues).
 
 When creating a new issue, please be sure to include a **title and clear description**, as much relevant information as
 possible, and, if possible, a test case.
