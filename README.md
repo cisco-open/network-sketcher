@@ -72,8 +72,8 @@ python network_sketcher.py
 # User Guide
 | Lang  | Link |
 | ------------- | ------------- |
-| English  | [Link](https://github.com/yuhsukeogawa/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
-| 日本語  | [Link](https://github.com/yuhsukeogawa/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
+| English  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
+| 日本語  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
  
 # Note
 * How to make the exe file for Windows using pyinstaller
