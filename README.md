@@ -48,27 +48,27 @@ python network_sketcher.py
 # SAMPLE
 ## Input ppt file (rough sketch)
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/0ef66092-0995-47fa-8849-e1f640a35ab4)
-[Sample-rough-sketch.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158449/Sample-rough-sketch.pptx)
+[Sample-rough-sketch.pptx](https://github.com/cisco-open/network-sketcher/files/12298813/Sample-rough-sketch.pptx)
 
 ## Output
 ### Device table(Excel)
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/2c657c04-329a-4049-8181-399051aba91c)
-[[DEVICE]Sample figure5.xlsx](https://github.com/yuhsukeogawa/network-sketcher/files/12158439/DEVICE.Sample.figure5.xlsx)
+[DEVICE.Sample.figure5.xlsx](https://github.com/cisco-open/network-sketcher/files/12298814/DEVICE.Sample.figure5.xlsx)
 
 ### L1 figure(PPT)
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/69fdbac5-8482-4486-ab47-c1bd01cc11e2)
-[[L1_DIAGRAM]AllAreasTag_Sample figure5.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158436/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
+[L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298815/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
 
 ### L2 figure(PPT)
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/fd98050b-30f4-4544-9cac-62f848b82833)
-[[L2_DIAGRAM]PerArea_Sample figure5.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158437/L2_DIAGRAM.PerArea_Sample.figure5.pptx)
+[L2_DIAGRAM.PerArea_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298817/L2_DIAGRAM.PerArea_Sample.figure5.pptx)
 
 ### L3 figure(PPT)
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/bc63ec4e-fb46-4f05-b28c-8395adf6aaaa)
-[[L3_DIAGRAM]PerArea_Sample figure5.pptx](https://github.com/yuhsukeogawa/network-sketcher/files/12158438/L3_DIAGRAM.PerArea_Sample.figure5.pptx)
+[L3_DIAGRAM.PerArea_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298818/L3_DIAGRAM.PerArea_Sample.figure5.pptx)
 
 ### Master file(Excel)
-[[MASTER]Sample figure5.xlsx](https://github.com/yuhsukeogawa/network-sketcher/files/12158535/MASTER.Sample.figure5.xlsx)
+[MASTER.Sample.figure5.xlsx](https://github.com/cisco-open/network-sketcher/files/12298821/MASTER.Sample.figure5.xlsx)
 
 
 # User Guide
