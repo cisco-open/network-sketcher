@@ -10,7 +10,9 @@ Since the network components are consolidated in one master file, updating the m
 
 
 # DEMO
-https://github.com/cisco-open/network-sketcher/assets/13013736/56015621-93ef-4df5-8816-e79488df7f53
+https://github.com/cisco-open/network-sketcher/assets/13013736/fef044f3-117c-400c-b623-c1a4370fe720
+
+
 
 
 
