@@ -14,7 +14,8 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/fef044f3-117c-400
 
 
 
-
+# Latest Windows exe file made by Pyinstaller
+[Download Ver 2.0.0](https://github.com/cisco-open/network-sketcher/releases/download/Latest/network_sketcher.exe)
 
 # Requirement
  
