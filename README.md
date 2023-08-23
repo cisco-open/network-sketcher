@@ -10,7 +10,9 @@ Since the network components are consolidated in one master file, updating the m
 
 
 # DEMO
-https://github.com/cisco-open/network-sketcher/assets/13013736/fef044f3-117c-400c-b623-c1a4370fe720
+https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
+
+
 
 
 # Latest Windows exe file made by Pyinstaller
