@@ -14,14 +14,6 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 
 
-
-# Latest Windows exe file made by Pyinstaller
-| Download | Version | Hash |
-| ------------- | ------------- | ------------- |
-| [network_sketcher.exe](https://github.com/cisco-open/network-sketcher/releases/download/Latest/network_sketcher.exe)  | 2.0.0 | [SHA512](https://github.com/cisco-open/network-sketcher/releases/download/Latest/network_skecher_Ver2.0.0-sha512.txt) |
-
-
-
 # Requirement
  
 __Currently, the OS that this tool runs on is Windows only. Linux and MAC OS cannot be used because file paths are not compatible now.__
