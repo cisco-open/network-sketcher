@@ -128,9 +128,11 @@ class  ns_l3_table_from_master():
         master_L3_table_tuple = {}
         L3_table_array = []
 
-        egt_maker_width_array = ['25', '25', '30', '20', '60']
-        L3_table_array.append([1, ['<RANGE>', '1', '1', '1', '1', '1', '<END>']])
-        L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '<END>']])
+        egt_maker_width_array = ['25', '25', '30', '20', '60', '30', '30']
+        L3_table_array.append([1, ['<RANGE>', '1', '1', '1', '1', '1', '1', '1', '<END>']])
+        L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name', '[VPN] L3 Port Name', '<END>']])
+
+
 
         start_row = 3
         start_column = 2
@@ -289,19 +291,18 @@ class ns_l3_table_from_master_l3_sheet():
         L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name', '[VPN] L3 Port Name', '<END>']])
 
 
-
         max_row_num = 0
         for tmp_master_L3_array in master_L3_array:
             if tmp_master_L3_array[0] != 1 and tmp_master_L3_array[0] != 2:
 
-                tmp_master_L3_array[1].extend(['<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>'])
+                tmp_master_L3_array[1].extend(['<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>','<EMPTY>'])
                 tmp_master_L3_array[1].insert(0, '')
-                del tmp_master_L3_array[1][6:]
+                del tmp_master_L3_array[1][8:]
                 tmp_master_L3_array[1].append('<END>')
                 max_row_num = tmp_master_L3_array[0]
 
                 #insert '>>' or <EMPTY> to column when greater than 7
-                for i in range(4,6):
+                for i in range(4,8):
                     if tmp_master_L3_array[1][i] != '<EMPTY>' and tmp_master_L3_array[1][i] !=  '':
                         tmp_master_L3_array[1][i] = '>>' + str(tmp_master_L3_array[1][i])
                     elif tmp_master_L3_array[1][i] == '':
