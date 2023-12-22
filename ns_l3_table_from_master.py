@@ -23,6 +23,7 @@ import math
 import openpyxl
 import ns_def ,ns_ddx_figure
 
+
 class  ns_l3_table_from_master():
     def __init__(self):
         '''
