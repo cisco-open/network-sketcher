@@ -506,16 +506,26 @@ class ns_front_run():
         self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=50, pady=2, ipadx=15)
 
 
-        ### run 11-4 for dev , Create Device file
+        ### run 11-4 for dev , Export to the Device file
         self.sub2_0_label_2 = tk.Label(self.sub2_1, text='', font=("", 6))
         self.sub2_0_label_2 .grid(row=7, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_5 = tk.LabelFrame(self.sub2_1, text='Export to the Device file', font=("", 14), height=1, background="#DFC9EF")
-        self.sub2_5.grid(row=8, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_5.grid(row=8, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=2)
 
         push_array = []
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
-        self.sub2_5_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=5, ipadx=15, ipady=5)
+        self.sub2_5_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=2, ipadx=15)
+
+        ### run xx-xx for dev , Create VPN diagram
+        self.sub2_6 = tk.LabelFrame(self.sub2_1, text='Create the VPN diagram file', font=("", 14), height=1, background="#FFF2CC")
+        self.sub2_6.grid(row=8, column=1, columnspan=7, sticky='W', padx=5, pady=2, ipadx=5, ipady=2)
+
+        self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_3', push_array))
+        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
+
+        self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_4', push_array))
+        self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
 
 
     def click_action_sub(self, click_value, push_array):
