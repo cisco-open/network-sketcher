@@ -47,8 +47,8 @@ def l2_device_table_sync_with_l3_master(self):
         original_master_l2_table_array[index_l2] = tmp_original_master_l2_table_array
 
     for index_l3,tmp_original_master_l3_table_array in enumerate(original_master_l3_table_array):
-        tmp_original_master_l3_table_array[1].extend(['','','','','','','',''])
-        del tmp_original_master_l3_table_array[1][5:]
+        tmp_original_master_l3_table_array[1].extend(['','','','','','','','','',''])
+        del tmp_original_master_l3_table_array[1][7:]
         original_master_l3_table_array[index_l3] = tmp_original_master_l3_table_array
 
     ### remove Master L3 sheet
@@ -70,8 +70,8 @@ def l2_device_table_sync_with_l3_master(self):
     del recreate_master_l3_table_array[:2]
 
     for index_l3,tmp_recreate_master_l3_table_array in enumerate(recreate_master_l3_table_array):
-        tmp_recreate_master_l3_table_array[1].extend(['','','','','','','',''])
-        del tmp_recreate_master_l3_table_array[1][5:]
+        tmp_recreate_master_l3_table_array[1].extend(['','','','','','','','','',''])
+        del tmp_recreate_master_l3_table_array[1][7:]
         recreate_master_l3_table_array[index_l3] = tmp_recreate_master_l3_table_array
 
     ### update original L3 Master values to recreate L3 Master
@@ -84,17 +84,19 @@ def l2_device_table_sync_with_l3_master(self):
             if tmp_recreate_master_l3_table_array[1][1] == tmp_original_master_l3_table_array[1][1] and tmp_recreate_master_l3_table_array[1][2] == tmp_original_master_l3_table_array[1][2]:
                 recreate_master_l3_table_array[index_l3_2][1][3] = tmp_original_master_l3_table_array[1][3]
                 recreate_master_l3_table_array[index_l3_2][1][4] = tmp_original_master_l3_table_array[1][4]
+                recreate_master_l3_table_array[index_l3_2][1][5] = tmp_original_master_l3_table_array[1][5]
+                recreate_master_l3_table_array[index_l3_2][1][6] = tmp_original_master_l3_table_array[1][6]
 
     ### make array for sort
     sort_master_l3_table_array = []
     for tmp_recreate_master_l3_table_array in recreate_master_l3_table_array:
         sort_master_l3_table_array.append(tmp_recreate_master_l3_table_array[1])
 
-    sort_master_l3_table_array = sorted(sort_master_l3_table_array, reverse=False, key=lambda x: (x[0], x[1], x[3], x[6], x[5], x[4]))  # sort l3 table
+    sort_master_l3_table_array = sorted(sort_master_l3_table_array, reverse=False, key=lambda x: (x[0], x[1], x[3], x[8], x[7], x[4]))  # sort l3 table
 
     last_master_l3_table_array = []
     last_master_l3_table_array.append([1, ['<<L3_TABLE>>']])
-    last_master_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)']])
+    last_master_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name', '[VPN] L3 Port Name']])
     for index_l3_3,tmp_sort_master_l3_table_array in enumerate(sort_master_l3_table_array):
         del tmp_sort_master_l3_table_array[-2:]
         last_master_l3_table_array.append([index_l3_3 + 3 ,tmp_sort_master_l3_table_array])
@@ -205,8 +207,8 @@ def l2_device_port_name_sync_with_l3_master(self):
         master_l2_table_array[index_l2] = tmp_master_l2_table_array
 
     for index_l3,tmp_master_l3_table_array in enumerate(master_l3_table_array):
-        tmp_master_l3_table_array[1].extend(['','','','','','','',''])
-        del tmp_master_l3_table_array[1][5:]
+        tmp_master_l3_table_array[1].extend(['','','','','','','','','','',])
+        del tmp_master_l3_table_array[1][7:]
         master_l3_table_array[index_l3] = tmp_master_l3_table_array
 
     #convert to tuple
@@ -231,7 +233,7 @@ def l2_device_port_name_sync_with_l3_master(self):
                     break
 
     print('--- overwrite_master_l2_table_tuple ,overwrite_master_l3_table_tuple---')
-    #print(overwrite_l2_tuple,overwrite_l3_tuple)
+    #print(overwrite_master_l2_table_tuple,overwrite_master_l3_table_tuple)
 
     ### write master l2/l3
     master_excel_meta = overwrite_master_l2_table_tuple
