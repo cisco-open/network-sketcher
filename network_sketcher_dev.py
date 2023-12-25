@@ -743,8 +743,11 @@ class ns_front_run():
             ns_def.messagebox_file_open(self.output_ppt_file)
 
         if click_value == '2-4-3':  # select create from master
-            self.click_value = '2-4-3'
-            self.output_ppt_file = self.outFileTxt_2_3.get()
+            if self.click_value == 'VPN-1-1':
+                self.output_ppt_file = self.outFileTxt_2_3.get().replace('[L1_DIAGRAM]AllAreas_','[VPNs_on_L1]')
+            else:
+                self.click_value = '2-4-3'
+                self.output_ppt_file = self.outFileTxt_2_3.get()
 
             # check : file is being opened
             if ns_def.check_file_open(self.outFileTxt_2_3.get()) == True:
@@ -763,7 +766,12 @@ class ns_front_run():
             ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
 
             # view complete
-            ns_def.messagebox_file_open(self.output_ppt_file)
+            if self.click_value != 'VPN-1-1':
+                ns_def.messagebox_file_open(self.output_ppt_file)
+
+            # return value of self.click_value for re-run 2-4-3 after VPN-1-1'
+            self.click_value = ''
+
 
         if click_value == '2-4-4':  # select create from master
             self.click_value = '2-4-4'

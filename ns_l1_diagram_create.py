@@ -261,11 +261,11 @@ class  ns_l1_diagram_create():
             ns_def.remove_excel_sheet(ppt_meta_file, tmp_ws_name)
 
         ''' for Entire NW buttom'''
-        if self.click_value == '2-4-3' or self.click_value == '2-4-4':
+        if self.click_value == '2-4-3' or self.click_value == '2-4-4' or 'VPN-1-1':
             # copy Master_Data sheet to _tmp_
             ns_def.copy_excel_sheet(ws_name, ppt_meta_file, tmp_ws_name)
 
-            if self.click_value == '2-4-3':
+            if self.click_value == '2-4-3' or 'VPN-1-1':
                 #### clear <<POSITION_TAG>>
                 clear_section_tuple = self.position_tag_tuple
                 clear_section_tuple[1, 1] = '<<POSITION_TAG>>'
