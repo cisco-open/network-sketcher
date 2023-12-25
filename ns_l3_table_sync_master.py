@@ -45,14 +45,6 @@ class  ns_l3_table_sync_master():
             tkinter.messagebox.showwarning(title="L3 Table not in [L3_TABLE] file", message="Please check L3 Table sheet in [L3_TABLE] file.")
             return
 
-        #backup L3 Table Excel file
-        '''excel_maseter_file_backup = self.inFileTxt_L3_2_2_backup
-        if os.path.isfile(excel_maseter_file_backup) == True:
-            os.remove(excel_maseter_file_backup)
-            shutil.copy(excel_maseter_file, excel_maseter_file_backup)
-        else:
-            shutil.copy(excel_maseter_file, excel_maseter_file_backup)'''
-
         #get L3 Table Excel file
         l3_table_array = []
         l3_table_array = ns_def.convert_excel_to_array(l3_table_ws_name, l3_table_file, 3)
@@ -80,7 +72,7 @@ class  ns_l3_table_sync_master():
 
         for tmp_new_l3_table_array in new_l3_table_array:
             tmp_new_l3_table_array[1].extend(['','','','','','','',''])
-            del tmp_new_l3_table_array[1][5:]
+            del tmp_new_l3_table_array[1][7:]
             # add if id for sort
             if_value = ns_def.get_if_value(tmp_new_l3_table_array[1][2])
             tmp_new_l3_table_array[1].extend([if_value])
@@ -111,14 +103,14 @@ class  ns_l3_table_sync_master():
 
         #sort sorted_new_l3_table_array
         #print(sorted_new_l3_table_array)
-        sorted_new_l3_table_array = sorted(sorted_new_l3_table_array , reverse=False, key=lambda x: (x[0], x[1], x[3], x[6], x[5], x[4]))  # sort l3 table
+        sorted_new_l3_table_array = sorted(sorted_new_l3_table_array , reverse=False, key=lambda x: (x[0], x[1], x[3], x[8], x[7], x[4]))  # sort l3 table
 
         tmp_row_num = 3
         last_l3_table_array = []
         last_l3_table_array.append([1, ['<<L3_TABLE>>']])
-        last_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)']])
+        last_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)','[VPN] Target Device Name','[VPN] L3 Port Name']])
         for tmp_sorted_new_l3_table_array in sorted_new_l3_table_array:
-            del tmp_sorted_new_l3_table_array[5:]
+            del tmp_sorted_new_l3_table_array[7:]
             last_l3_table_array.append([tmp_row_num,tmp_sorted_new_l3_table_array])
             tmp_row_num += 1
 
