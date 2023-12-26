@@ -750,12 +750,12 @@ class ns_front_run():
                 self.output_ppt_file = self.outFileTxt_2_3.get()
 
             # check : file is being opened
-            if ns_def.check_file_open(self.outFileTxt_2_3.get()) == True:
+            if ns_def.check_file_open(self.output_ppt_file) == True:
                 return ()
 
             # remove exist ppt file
-            if os.path.isfile(self.outFileTxt_2_3.get()) == True:
-                os.remove(self.outFileTxt_2_3.get())
+            if os.path.isfile(self.output_ppt_file) == True:
+                os.remove(self.output_ppt_file)
 
             # check : file is being opened
             if ns_def.check_file_open(self.inFileTxt_2_1.get()) == True:
