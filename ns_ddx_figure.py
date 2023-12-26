@@ -2880,9 +2880,13 @@ class extended():
 
     def add_line(self,line_type,inche_from_connect_x,inche_from_connect_y,inche_to_connect_x,inche_to_connect_y):
         from pptx.oxml import parse_xml
-        self.shape = self.slide.shapes
-        self.shape = self.shape.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
 
+        self.shape = self.slide.shapes
+        if line_type == 'VPN':
+            #self.shape = self.shape.add_connector(MSO_CONNECTOR.CURVE, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
+            self.shape = self.shape.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
+        else:
+            self.shape = self.shape.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
 
         '''change style of line'''
         #defalut , l2 material
@@ -2916,6 +2920,17 @@ class extended():
         if line_type == 'L3_INSTANCE':
             shape_line.color.rgb = RGBColor(96, 74, 123)
             shape_line.width = Pt(0.7)
+
+        if line_type == 'VPN':
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            line_elem = self.shape.line._get_or_add_ln()
+            line_elem.append(parse_xml("""
+                    <a:headEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+            line_elem.append(parse_xml("""
+                    <a:tailEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
 
 
     def l2_device_materials(self,action_type,input_device_name,write_left_top_array,wp_list_array):
