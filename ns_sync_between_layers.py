@@ -96,7 +96,7 @@ def l2_device_table_sync_with_l3_master(self):
 
     last_master_l3_table_array = []
     last_master_l3_table_array.append([1, ['<<L3_TABLE>>']])
-    last_master_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name', '[VPN] L3 Port Name']])
+    last_master_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name (Comma Separated)', '[VPN] Target L3 Port Name (Comma Separated)']])
     for index_l3_3,tmp_sort_master_l3_table_array in enumerate(sort_master_l3_table_array):
         del tmp_sort_master_l3_table_array[-2:]
         last_master_l3_table_array.append([index_l3_3 + 3 ,tmp_sort_master_l3_table_array])
