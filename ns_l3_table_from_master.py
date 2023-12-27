@@ -128,9 +128,9 @@ class  ns_l3_table_from_master():
         master_L3_table_tuple = {}
         L3_table_array = []
 
-        egt_maker_width_array = ['25', '25', '30', '20', '60', '30', '30']
+        egt_maker_width_array = ['25', '25', '30', '20', '60', '50', '50']
         L3_table_array.append([1, ['<RANGE>', '1', '1', '1', '1', '1', '1', '1', '<END>']])
-        L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name', '[VPN] L3 Port Name', '<END>']])
+        L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name (Comma Separated)', '[VPN] Target L3 Port Name (Comma Separated)', '<END>']])
 
 
 
@@ -286,9 +286,9 @@ class ns_l3_table_from_master_l3_sheet():
 
         L3_table_array = []
 
-        egt_maker_width_array = ['25', '25', '30', '20', '60', '30', '30']
+        egt_maker_width_array = ['25', '25', '30', '20', '60', '50', '50']
         L3_table_array.append([1, ['<RANGE>', '1', '1', '1', '1', '1', '1', '1', '<END>']])
-        L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name', '[VPN] L3 Port Name', '<END>']])
+        L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name (Comma Separated)', '[VPN] Target L3 Port Name (Comma Separated)', '<END>']])
 
 
         max_row_num = 0

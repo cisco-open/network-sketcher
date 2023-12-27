@@ -33,10 +33,6 @@ class  ns_write_vpns_on_l1():
         ### update self.l3_table_array for Comma Separated
         self.update_l3_table_array = []
 
-        '''
-        dummy_5 6 の前後の空白を消す作業から開始　2023/12/27
-        '''
-
         for tmp_l3_table_array in self.l3_table_array:
             if tmp_l3_table_array[0] != 1 and tmp_l3_table_array[0] != 2:
                 if len(tmp_l3_table_array[1]) == 7 and tmp_l3_table_array[1][5] != '' and tmp_l3_table_array[1][6] != '':
@@ -45,9 +41,9 @@ class  ns_write_vpns_on_l1():
                     if len(dummy_5) >= 2 and len(dummy_5) == len(dummy_6):
                         print(dummy_5, dummy_6)
                         for i,name in enumerate(dummy_5):
-                            self.update_l3_table_array.append([tmp_l3_table_array[0], [tmp_l3_table_array[1][0], tmp_l3_table_array[1][1], tmp_l3_table_array[1][2], tmp_l3_table_array[1][3], tmp_l3_table_array[1][4], dummy_5[i], dummy_6[i]]])
+                            self.update_l3_table_array.append([tmp_l3_table_array[0], [tmp_l3_table_array[1][0], tmp_l3_table_array[1][1], tmp_l3_table_array[1][2], tmp_l3_table_array[1][3], tmp_l3_table_array[1][4], str(dummy_5[i]).strip(' '), str(dummy_6[i]).strip(' ')]])
                     else:
-                        self.update_l3_table_array.append(tmp_l3_table_array)
+                        self.update_l3_table_array.append([tmp_l3_table_array[0], [tmp_l3_table_array[1][0], tmp_l3_table_array[1][1], tmp_l3_table_array[1][2], tmp_l3_table_array[1][3], tmp_l3_table_array[1][4], str(tmp_l3_table_array[1][5]).strip(' '), str(tmp_l3_table_array[1][6]).strip(' ')]])
                 else:
                     self.update_l3_table_array.append(tmp_l3_table_array)
             else:
@@ -58,9 +54,9 @@ class  ns_write_vpns_on_l1():
 
         ### make a vpn table ###
         self.l3_vpn_table_array = []
-        for tmp_l3_table_array  in self.l3_table_array:
+        for tmp_l3_table_array  in self.update_l3_table_array:
             if tmp_l3_table_array[0] != 1 and tmp_l3_table_array[0] != 2:
-                tmp_tmp_l3_vpn_table_array = self.l3_table_array
+                tmp_tmp_l3_vpn_table_array = self.update_l3_table_array
                 if len(tmp_l3_table_array[1]) == 7 and tmp_l3_table_array[1][5] != '' and tmp_l3_table_array[1][6] != '':
                     ### check target vpn exists ###
                     for tmp_tmp_tmp_l3_vpn_table_array in tmp_tmp_l3_vpn_table_array:

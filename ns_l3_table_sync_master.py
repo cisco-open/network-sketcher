@@ -108,7 +108,7 @@ class  ns_l3_table_sync_master():
         tmp_row_num = 3
         last_l3_table_array = []
         last_l3_table_array.append([1, ['<<L3_TABLE>>']])
-        last_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)','[VPN] Target Device Name','[VPN] L3 Port Name']])
+        last_l3_table_array.append([2, ['Area', 'Device Name', 'L3 IF Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)','[VPN] Target Device Name (Comma Separated)','[VPN] Target L3 Port Name (Comma Separated)']])
         for tmp_sorted_new_l3_table_array in sorted_new_l3_table_array:
             del tmp_sorted_new_l3_table_array[7:]
             last_l3_table_array.append([tmp_row_num,tmp_sorted_new_l3_table_array])
