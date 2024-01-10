@@ -766,8 +766,7 @@ class ns_front_run():
             ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
 
             # view complete
-            if self.click_value != 'VPN-1-1':
-                ns_def.messagebox_file_open(self.output_ppt_file)
+            ns_def.messagebox_file_open(self.output_ppt_file)
 
             # return value of self.click_value for re-run 2-4-3 after VPN-1-1'
             self.click_value = ''
