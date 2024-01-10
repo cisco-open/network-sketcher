@@ -559,8 +559,6 @@ class ns_front_run():
             ### Write VPNs on L1 ###
             ns_vpn_diagram_create.ns_write_vpns_on_l1.__init__(self)
 
-
-
         if click_value == 'self.self.sub2_6_button_2':  # Click "VPN only"
             print('--- Click "VPN only ---')
 
