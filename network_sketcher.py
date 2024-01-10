@@ -77,7 +77,7 @@ class ns_front_run():
         self.main1_1.dnd_bind("<<Drop>>", self.drop_main1_1 ,self.entry_name_main1_1)
 
         ### Help
-        Help_1_label_1 = tk.Label(tab_x2, text="Version 2.0.0", background="#FFFFFF")
+        Help_1_label_1 = tk.Label(tab_x2, text="Version 2.1.0(Beta)", background="#FFFFFF")
         Help_1_label_1.grid(row=0, column=0, sticky='W', padx=5, pady=2)
 
         Help_1 = tk.LabelFrame(tab_x2, text="    Online User Guide     ", font=("", 14), height=1, background="#FFFFFF")
@@ -525,10 +525,10 @@ class ns_front_run():
         self.sub2_6.grid(row=8, column=1, columnspan=7, sticky='W', padx=5, pady=2, ipadx=5, ipady=2)
 
         self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
-        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=2, ipadx=15)
 
-        self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
-        self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
+        #self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
+        #self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
 
 
     def click_action_sub(self, click_value, push_array):
