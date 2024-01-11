@@ -21,7 +21,16 @@ import sys, os, shutil , unicodedata,subprocess,datetime,random,shutil
 import openpyxl
 import math ,ipaddress
 from pptx import *
+import platform
 
+
+def return_os_slash():
+    slash_type = '\\'+'\\'
+    os_type = platform.platform()
+    print(os_type)
+    if 'macOS'.casefold() in os_type.casefold() or 'Linux'.casefold() in os_type.casefold():
+        slash_type = '/'
+    return (slash_type)
 
 def get_backup_filename(full_filepath):
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
@@ -32,7 +41,7 @@ def get_backup_filename(full_filepath):
     iDir = os.path.abspath(os.path.dirname(full_filepath))
     basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
     basename_ext = os.path.splitext(os.path.basename(full_filepath))[1]
-    backup_full_filepath = iDir + '\\' + basename_without_ext + '_' +yyyymmddhhss + basename_ext
+    backup_full_filepath = iDir + return_os_slash() + basename_without_ext + '_' +yyyymmddhhss + basename_ext
 
     shutil.copyfile(full_filepath, backup_full_filepath)
     print('### Backup Master file ###  ', backup_full_filepath)
