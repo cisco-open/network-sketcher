@@ -245,9 +245,9 @@ class ns_front_run():
             #input for dev parameter
             basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
             self.outFileTxt_1_1.delete(0, tkinter.END)
-            self.outFileTxt_1_1.insert(tk.END, iDir + '\\[L1_DIAGRAM]AllAreasTag_' + basename_without_ext + '.pptx')
+            self.outFileTxt_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext + '.pptx')
             self.outFileTxt_1_2.delete(0, tkinter.END)
-            self.outFileTxt_1_2.insert(tk.END, iDir + '\\[MASTER]' + basename_without_ext + '.xlsx')
+            self.outFileTxt_1_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
 
 
             self.inFileTxt_2_1.delete(0, tkinter.END)
@@ -255,15 +255,15 @@ class ns_front_run():
             self.inFileTxt_1_1.delete(0, tkinter.END)
             self.inFileTxt_1_1.insert(tk.END,self.main1_1_entry_1.get())
             self.inFileTxt_L2_1_1.delete(0, tkinter.END)
-            self.inFileTxt_L2_1_1.insert(tk.END, iDir + '\\[MASTER]' + basename_without_ext + '.xlsx')
+            self.inFileTxt_L2_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
             self.inFileTxt_L3_1_1.delete(0, tkinter.END)
-            self.inFileTxt_L3_1_1.insert(tk.END, iDir + '\\[MASTER]' + basename_without_ext + '.xlsx')
+            self.inFileTxt_L3_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
 
 
             self.inFileTxt_11_1.delete(0, tkinter.END)
             self.inFileTxt_11_1.insert(tk.END, self.full_filepath)
             self.outFileTxt_11_2.delete(0, tkinter.END)
-            self.outFileTxt_11_2.insert(tk.END, iDir + '\\[DEVICE]' + basename_without_ext + '.xlsx')
+            self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
 
             ### run 1-4 in network_sketcher_dev ,  create l1 master file and sheet
             if self.click_value_2nd != 'self.sub1_1_button_3':
@@ -351,7 +351,7 @@ class ns_front_run():
                 self.inFileTxt_92_2.delete(0, tkinter.END)
                 self.inFileTxt_92_2.insert(tk.END, full_filepath_master)
                 self.inFileTxt_92_2_2.delete(0, tkinter.END)
-                self.inFileTxt_92_2_2.insert(tk.END, iDir + '\\' + basename_without_ext + '_backup' + '.xlsx')
+                self.inFileTxt_92_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext + '_backup' + '.xlsx')
 
                 ###check Master file open
                 ns_def.check_file_open(full_filepath_master)
@@ -443,13 +443,13 @@ class ns_front_run():
         iDir = os.path.abspath(os.path.dirname(local_fullpath))
 
         self.outFileTxt_2_1.delete(0, tkinter.END)
-        self.outFileTxt_2_1.insert(tk.END, iDir + '\\[L1_DIAGRAM]PerArea_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+        self.outFileTxt_2_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]PerArea_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
         self.outFileTxt_2_2.delete(0, tkinter.END)
-        self.outFileTxt_2_2.insert(tk.END, iDir + '\\[L1_DIAGRAM]PerAreaTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+        self.outFileTxt_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]PerAreaTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
         self.outFileTxt_2_3.delete(0, tkinter.END)
-        self.outFileTxt_2_3.insert(tk.END, iDir + '\\[L1_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+        self.outFileTxt_2_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
         self.outFileTxt_2_4.delete(0, tkinter.END)
-        self.outFileTxt_2_4.insert(tk.END, iDir + '\\[L1_DIAGRAM]AllAreasTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+        self.outFileTxt_2_4.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
         self.inFileTxt_2_1.delete(0, tkinter.END)
         self.inFileTxt_2_1.insert(tk.END, local_fullpath)
         self.inFileTxt_L2_3_1.delete(0, tkinter.END)
@@ -459,7 +459,7 @@ class ns_front_run():
         self.inFileTxt_11_1.delete(0, tkinter.END)
         self.inFileTxt_11_1.insert(tk.END, local_fullpath)
         self.outFileTxt_11_2.delete(0, tkinter.END)
-        self.outFileTxt_11_2.insert(tk.END, iDir + '\\[DEVICE]' + basename_without_ext + '.xlsx')
+        self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
         self.inFileTxt_L2_1_1.delete(0, tkinter.END)
         self.inFileTxt_L2_1_1.insert(tk.END, local_fullpath)
         self.outFileTxt_L2_1_4_1.delete(0, tkinter.END)
@@ -673,37 +673,37 @@ class ns_front_run():
                 self.inFileTxt_12_2.insert(tk.END, full_filepath_master)
 
                 self.inFileTxt_12_2_2.delete(0, tkinter.END)
-                self.inFileTxt_12_2_2.insert(tk.END, iDir + '\\' + basename_without_ext + '_backup' + '.xlsx')
+                self.inFileTxt_12_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext + '_backup' + '.xlsx')
 
                 # make ppt diagram backup path
                 self.inFileTxt_12_2_3.delete(0, tkinter.END)
-                self.inFileTxt_12_2_3.insert(tk.END, iDir + '\\' + '[L1_DIAGRAM]AllAreasTag_' + str(basename_without_ext).replace('[MASTER]', '') + '_backup' + '.pptx')
+                self.inFileTxt_12_2_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + str(basename_without_ext).replace('[MASTER]', '') + '_backup' + '.pptx')
 
                 # SET ppt diagram file path
                 self.outFileTxt_12_3_1.delete(0, tkinter.END)
-                self.outFileTxt_12_3_1.insert(tk.END, iDir + '\\[L1_DIAGRAM]AllAreasTag_' + str(basename_without_ext).replace('[MASTER]', '') + '.pptx')
+                self.outFileTxt_12_3_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + str(basename_without_ext).replace('[MASTER]', '') + '.pptx')
 
                 # SET Device file path
                 self.outFileTxt_11_2.delete(0, tkinter.END)
-                self.outFileTxt_11_2.insert(tk.END, iDir + '\\[DEVICE]' + basename_without_ext_device + '.xlsx')
+                self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext_device + '.xlsx')
 
                 # SET L2 path
                 self.inFileTxt_L2_2_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_2_1.insert(tk.END, full_filepath_device)
                 self.inFileTxt_L2_2_2.delete(0, tkinter.END)
                 self.inFileTxt_L2_2_2.insert(tk.END, full_filepath_master)
-                self.inFileTxt_L2_2_2_backup = iDir + '\\' + os.path.splitext(os.path.basename(self.inFileTxt_L2_2_2.get()))[0] + '_backup' + '.xlsx'
+                self.inFileTxt_L2_2_2_backup = iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L2_2_2.get()))[0] + '_backup' + '.xlsx'
                 self.inFileTxt_L2_2_2_2.delete(0, tkinter.END)
-                self.inFileTxt_L2_2_2_2.insert(tk.END, iDir + '\\' + os.path.splitext(os.path.basename(self.inFileTxt_L2_2_2.get()))[0] + '_backup' + '.xlsx')
+                self.inFileTxt_L2_2_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L2_2_2.get()))[0] + '_backup' + '.xlsx')
 
                 # SET L3 path
                 self.inFileTxt_L3_2_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_2_1.insert(tk.END, full_filepath_device)
                 self.inFileTxt_L3_2_2.delete(0, tkinter.END)
                 self.inFileTxt_L3_2_2.insert(tk.END, full_filepath_master)
-                self.inFileTxt_L3_2_2_backup = iDir + '\\' + os.path.splitext(os.path.basename(self.inFileTxt_L3_2_2.get()))[0] + '_backup' + '.xlsx'
+                self.inFileTxt_L3_2_2_backup = iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L3_2_2.get()))[0] + '_backup' + '.xlsx'
                 self.inFileTxt_L3_2_2_2.delete(0, tkinter.END)
-                self.inFileTxt_L3_2_2_2.insert(tk.END, iDir + '\\' + os.path.splitext(os.path.basename(self.inFileTxt_L3_2_2.get()))[0] + '_backup' + '.xlsx')
+                self.inFileTxt_L3_2_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L3_2_2.get()))[0] + '_backup' + '.xlsx')
                 self.inFileTxt_L3_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_1_1.insert(tk.END, full_filepath_master)
                 self.inFileTxt_L2_1_1.delete(0, tkinter.END)
@@ -758,7 +758,6 @@ class ns_front_run():
                 self.text_sub3_1.set('[ERROR] Please input the Master file')
                 self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#FBE5D6")
                 self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
-
 
 if __name__ == '__main__':
     ns_front_run()
