@@ -44,6 +44,11 @@ Mac OS requires the following additional installation.
 ```bash
 brew install tcl-tk
 ```
+
+Linux requires the following additional installation.
+```bash
+sudo apt-get install python3-tk
+```
  
 # Usage
  
