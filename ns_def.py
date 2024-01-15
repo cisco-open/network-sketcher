@@ -66,7 +66,7 @@ def check_file_type(full_filepath):
                         if shp.adjustments[0] == 0.99445 or shp.adjustments[0] == 0.50445:  #check IF tag
                             count_check_tag += 1
                             if count_check_tag >= 2:
-                                return (['ERROR','Please input a PPT file that does not contain IF tags.'])
+                                return (['ERROR','Please enter a PPT file that does not contain IF tags'])
 
                     except Exception as e:
                         print('++ exception ++ ns_def.check_file_type')
@@ -74,7 +74,7 @@ def check_file_type(full_filepath):
         return_type_array = ['PPT_SKECH','PPT_SKECH']
 
     elif full_filepath.endswith('.xlsx'):
-        return_type_array = ['ERROR', 'Please input a EXCEL file corresponding to NS']
+        return_type_array = ['ERROR', 'Please enter a EXCEL file compatible with NS']
         input_excel = openpyxl.load_workbook(full_filepath)
 
         # check ws name
@@ -84,8 +84,17 @@ def check_file_type(full_filepath):
                 return_type_array = ['EXCEL_MASTER', ws_list]
             elif sheet_name == 'L1 Table':
                 return_type_array = ['EXCEL_DEVICE', ws_list]
+
+    elif full_filepath.endswith('.yaml'):
+        return_type_array = ['ERROR', 'Please enter a backup file of CML']
+
+        with open(str(full_filepath), 'r') as yml:
+            config = yaml.safe_load(yml)
+            print(config)
+
+
     else:
-        return_type_array = ['ERROR', 'Unknown file type']
+        return_type_array = ['ERROR', 'Please enter a file compatible with NS']
 
     return return_type_array
 
