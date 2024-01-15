@@ -32,6 +32,7 @@ pip install openpyxl
 pip install python-pptx
 pip install ipaddress
 pip install numpy
+pip install pyyaml
 ```
 or
 ```bash

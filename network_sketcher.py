@@ -57,7 +57,7 @@ class ns_front_run():
         self.main1_1_label_1 .grid(row=1, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.text = tk.StringVar()
-        self.text.set("              drag and drop here (*.pptx;*.xlsx)")
+        self.text.set("              drag and drop here (*.pptx;*.xlsx;*.yaml)")
         self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
         self.main1_1_label_4.grid(row=4, column=1, columnspan=3, sticky='W', padx=5, pady=2)
 
@@ -100,7 +100,7 @@ class ns_front_run():
     def drop_main1_1(self, event):
         if event:
             event.data = event.data.replace('{', '').replace('}', '')
-            if event.data.endswith('.pptx') or event.data.endswith('.xlsx'):
+            if event.data.endswith('.pptx') or event.data.endswith('.xlsx') or event.data.endswith('.yaml'):
                 exec(self.entry_name_main1_1 + '.delete(0, tkinter.END)')
                 exec(self.entry_name_main1_1 + '.insert(tk.END, event.data)')
                 self.filename = os.path.basename(event.data)
@@ -108,14 +108,14 @@ class ns_front_run():
                 self.text.set(self.filename)
                 self.click_action_main1_1('self.main1_1_button_2')
             else:
-                self.text.set('[ERROR] ' + 'Please input a file corresponding to NS')
+                self.text.set('[ERROR] ' + 'Please input a file compatible with NS')
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#FBE5D6")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
 
     def click_action_main1_1(self,click_value):
         if click_value == 'self.main1_1_button_1': # select browse
-            fTyp = [("", "*.pptx;*.xlsx")]
+            fTyp = [("", "*.pptx;*.xlsx;*.yaml")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
             self.filename = os.path.basename(self.full_filepath)
@@ -150,7 +150,7 @@ class ns_front_run():
                 ns_front_run.sub_excel_device_1(self, file_type_array)
 
             else:
-                self.text.set('[ERROR] Please input a file corresponding to NS')
+                self.text.set('[ERROR] Please enter a file compatible with NS')
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#FBE5D6")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
