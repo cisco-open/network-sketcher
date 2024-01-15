@@ -23,6 +23,7 @@ __Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and 
 * python-pptx
 * ipaddress
 * numpy
+* pyyaml
  
 # Installation
  

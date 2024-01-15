@@ -400,12 +400,17 @@ class  ns_l3_diagram_create():
             self.active_ppt.slide_width = Inches(10.0)
             self.active_ppt.slide_height = Inches(5.0)
 
+            ### adjust to large size , ver 2.1
+            if self.slide_width > 56.0:
+                self.slide_width = 56.0
+            if self.slide_hight > 56.0:
+                self.slide_hight = 56.0
+
             #input from get_size
             if self.active_ppt.slide_width < Inches(self.slide_width):
                 self.active_ppt.slide_width = Inches(self.slide_width)
             if self.active_ppt.slide_height < Inches(self.slide_hight):
                 self.active_ppt.slide_height = Inches(self.slide_hight)
-
 
             self.title_only_slide_layout = self.active_ppt.slide_layouts[5]
             self.slide = self.active_ppt.slides.add_slide(self.title_only_slide_layout)
