@@ -19,7 +19,7 @@ limitations under the License.
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os, shutil , unicodedata,subprocess,datetime,random,shutil
 import openpyxl
-import math ,ipaddress
+import math ,ipaddress ,yaml
 from pptx import *
 import platform
 
@@ -90,8 +90,10 @@ def check_file_type(full_filepath):
 
         with open(str(full_filepath), 'r') as yml:
             config = yaml.safe_load(yml)
-            print(config)
 
+        for tmp_config in config:
+            if tmp_config == 'lab':
+                return_type_array = ['YAML_CML', config]
 
     else:
         return_type_array = ['ERROR', 'Please enter a file compatible with NS']

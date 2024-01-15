@@ -92,7 +92,6 @@ class ns_front_run():
         Help_1_1 = tk.Label(tab_x2, font=("", 10), text="Copyright 2023 Cisco Systems, Inc. and its affiliates  \n  SPDX-License-Identifier: Apache-2.0", background='#FFFFFF')
         Help_1_1.grid(column=0, row=3)
 
-
         # main loop
         self.root.mainloop()
 
@@ -148,6 +147,13 @@ class ns_front_run():
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
                 ns_front_run.sub_excel_device_1(self, file_type_array)
+
+            elif file_type_array[0] == 'YAML_CML':
+                #print(file_type_array)
+                self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
+                self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+                network_sketcher_dev.ns_front_run.click_action(self,'1-4b')
 
             else:
                 self.text.set('[ERROR] Please enter a file compatible with NS')
