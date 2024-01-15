@@ -293,7 +293,6 @@ class ns_front_run():
             self.click_value = 'L3-1-2'
             network_sketcher_dev.ns_front_run.click_action(self,'L3-1-2')
 
-
             # remove exist L3/ file
             if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
                 os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]'))

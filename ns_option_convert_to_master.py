@@ -142,7 +142,7 @@ class  ns_option_convert_to_master_yaml():
         path_strings = []
 
         ### read the yaml file
-        with open(str(self.inFileTxt_1b_1.get()), 'r') as yml:
+        with open(str(self.full_filepath), 'r') as yml:
             config = yaml.safe_load(yml)
             #print(config)
 
@@ -251,7 +251,7 @@ class  ns_overwrite_line_to_master_yaml():
         device_array = []
 
         ### read the yaml file
-        with open(str(self.inFileTxt_1b_1.get()), 'r') as yml:
+        with open(str(self.full_filepath), 'r') as yml:
             config = yaml.safe_load(yml)
             #print(config)
 
@@ -320,7 +320,7 @@ class  ns_overwrite_line_to_master_yaml():
                         tmp_used_array.append(tmp_new_line_array[4])
                         #print(tmp_used_array)
                         break
-                print(tmp_master_line_array)
+                #print(tmp_master_line_array)
                 new_master_line_array.append(tmp_master_line_array)
 
 
