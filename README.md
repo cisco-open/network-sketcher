@@ -16,7 +16,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 # Requirement
  
-__Currently, the OS that this tool runs on is Windows only. Linux and MAC OS cannot be used because file paths are not compatible now.__
+__Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and Linux.__
  
 * tkinterdnd2
 * openpyxl
@@ -40,12 +40,12 @@ or
 pip install -r requirements.txt
 ```
 
-Mac OS requires the following additional installation.
+* Mac OS requires the following additional installation.
 ```bash
 brew install tcl-tk
 ```
 
-Linux requires the following additional installation.
+* Linux requires the following additional installation.
 ```bash
 sudo apt-get install python3-tk
 ```
