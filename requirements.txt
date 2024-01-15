@@ -3,4 +3,5 @@ numpy>=1.24.2
 openpyxl>=3.0.9
 python-pptx>=0.6.21
 tkinterdnd2>=0.3.0
+tkinterdnd2-universal>=1.7.3
 pyyaml>=5.4.0

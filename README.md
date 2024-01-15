@@ -28,6 +28,7 @@ __Currently, the OS that this tool runs on is Windows only. Linux and MAC OS can
  
 ```bash
 pip install tkinterdnd2
+pip install tkinterdnd2-universal
 pip install openpyxl
 pip install python-pptx
 pip install ipaddress
@@ -37,6 +38,11 @@ pip install pyyaml
 or
 ```bash
 pip install -r requirements.txt
+```
+
+Mac OS requires the following additional installation.
+```bash
+brew install tcl-tk
 ```
  
 # Usage
