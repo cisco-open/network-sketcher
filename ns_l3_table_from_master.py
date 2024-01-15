@@ -35,7 +35,7 @@ class  ns_l3_table_from_master():
         ws_name_l3 = 'Master_Data_L3'
         tmp_ws_name = '_tmp_'
         excel_maseter_file = self.inFileTxt_L3_1_1.get()
-        write_excel_file = self.outFileTxt_11_2.get().replace('[MASTER]', '')
+        #write_excel_file = self.outFileTxt_11_2.get().replace('[MASTER]', '')
 
         #convert from master to array and convert to tuple
         self.position_folder_array = ns_def.convert_master_to_array(ws_name, excel_maseter_file,'<<POSITION_FOLDER>>')
