@@ -14,7 +14,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 
 # Release note
-[ver2.1.0](https://github.com/cisco-open/network-sketcher/User_Guide/Release%20note/release%20note%20ver2.1.0.md)
+[ver2.1.0](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Release%20note/release%20note%20ver2.1.0.md)
 
 # Requirement
  
