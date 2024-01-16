@@ -49,3 +49,12 @@ The English version uses machine translation
 [5-3. Changing names other than area name, device name, and virtual interface name](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-3.%20Changing%20names%20other%20than%20area%20name%2C%20device%20name%2C%20and%20virtual%20interface%20name.pdf)
 
 [5-3-1. Change of Physical Interface Name](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-3-1.%20Change%20of%20Physical%20Interface%20Name.pdf)
+
+## 6. VPN Diagram Generation/Configuration
+6-1. Generation of VPN Diagram *ver2.1.0
+
+6-2. VPN setting *ver2.1.0
+
+
+## 7. その他
+7-1. Convert CML configuration file (yaml) to Network Sketcher master file *ver2.1.0
