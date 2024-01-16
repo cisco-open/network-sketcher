@@ -13,7 +13,7 @@ Since the network components are consolidated in one master file, updating the m
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 
-# Release note , latest version 2.1.0(2024/1/16)
+# Release note
 [ver2.1.0](https://github.com/cisco-open/network-sketcher/User_Guide/Release%20note/release%20note%20ver2.1.0.md)
 
 # Requirement
