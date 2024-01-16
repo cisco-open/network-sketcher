@@ -32,7 +32,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher")
+        self.root.title("Network Sketcher  ver 2.1.0")
         self.root.geometry("490x200+100+100")
 
         
@@ -57,7 +57,7 @@ class ns_front_run():
         self.main1_1_label_1 .grid(row=1, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.text = tk.StringVar()
-        self.text.set("              drag and drop here (*.pptx;*.xlsx)")
+        self.text.set("              drag and drop here (*.pptx;*.xlsx;*.yaml)")
         self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
         self.main1_1_label_4.grid(row=4, column=1, columnspan=3, sticky='W', padx=5, pady=2)
 
@@ -77,8 +77,8 @@ class ns_front_run():
         self.main1_1.dnd_bind("<<Drop>>", self.drop_main1_1 ,self.entry_name_main1_1)
 
         ### Help
-        Help_1_label_1 = tk.Label(tab_x2, text="Version 2.1.0(Beta)", background="#FFFFFF")
-        Help_1_label_1.grid(row=0, column=0, sticky='W', padx=5, pady=2)
+        #Help_1_label_1 = tk.Label(tab_x2, text="Version 2.1.0", background="#FFFFFF")
+        #Help_1_label_1.grid(row=0, column=0, sticky='W', padx=5, pady=2)
 
         Help_1 = tk.LabelFrame(tab_x2, text="    Online User Guide     ", font=("", 14), height=1, background="#FFFFFF")
         Help_1.grid(row=1, column=0, columnspan=3, sticky='W', padx=5, pady=5, ipadx=10, ipady=5)
@@ -92,7 +92,6 @@ class ns_front_run():
         Help_1_1 = tk.Label(tab_x2, font=("", 10), text="Copyright 2023 Cisco Systems, Inc. and its affiliates  \n  SPDX-License-Identifier: Apache-2.0", background='#FFFFFF')
         Help_1_1.grid(column=0, row=3)
 
-
         # main loop
         self.root.mainloop()
 
@@ -100,7 +99,7 @@ class ns_front_run():
     def drop_main1_1(self, event):
         if event:
             event.data = event.data.replace('{', '').replace('}', '')
-            if event.data.endswith('.pptx') or event.data.endswith('.xlsx'):
+            if event.data.endswith('.pptx') or event.data.endswith('.xlsx') or event.data.endswith('.yaml'):
                 exec(self.entry_name_main1_1 + '.delete(0, tkinter.END)')
                 exec(self.entry_name_main1_1 + '.insert(tk.END, event.data)')
                 self.filename = os.path.basename(event.data)
@@ -108,14 +107,14 @@ class ns_front_run():
                 self.text.set(self.filename)
                 self.click_action_main1_1('self.main1_1_button_2')
             else:
-                self.text.set('[ERROR] ' + 'Please input a file corresponding to NS')
+                self.text.set('[ERROR] ' + 'Please input a file compatible with NS')
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#FBE5D6")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
 
     def click_action_main1_1(self,click_value):
         if click_value == 'self.main1_1_button_1': # select browse
-            fTyp = [("", "*.pptx;*.xlsx")]
+            fTyp = [("", "*.pptx;*.xlsx;*.yaml")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
             self.filename = os.path.basename(self.full_filepath)
@@ -138,19 +137,26 @@ class ns_front_run():
                 ns_front_run.sub_ppt_sketch_1(self,file_type_array)
 
             elif file_type_array[0] == 'EXCEL_MASTER':
-                print(file_type_array)
+                #print(file_type_array)
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
                 ns_front_run.sub_excel_master_1(self, file_type_array)
 
             elif file_type_array[0] == 'EXCEL_DEVICE':
-                print(file_type_array)
+                #print(file_type_array)
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
                 ns_front_run.sub_excel_device_1(self, file_type_array)
 
+            elif file_type_array[0] == 'YAML_CML':
+                #print(file_type_array)
+                self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
+                self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+                network_sketcher_dev.ns_front_run.click_action(self,'1-4b')
+
             else:
-                self.text.set('[ERROR] Please input a file corresponding to NS')
+                self.text.set('[ERROR] Please enter a file compatible with NS')
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#FBE5D6")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
@@ -171,7 +177,7 @@ class ns_front_run():
         self.sub1_1 = tk.Toplevel()
         self.sub1_1.title('Sketch Panel')
         self.root.update_idletasks()
-        print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
+        #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
         geo =  str(self.root.winfo_width()) + 'x' + str(self.root.winfo_height()) + '+' + str(self.root.winfo_x()) + '+' + str(self.root.winfo_y() + self.root.winfo_height() + 30)
         self.sub1_1.geometry(geo)
 
@@ -286,7 +292,6 @@ class ns_front_run():
             ### run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
             self.click_value = 'L3-1-2'
             network_sketcher_dev.ns_front_run.click_action(self,'L3-1-2')
-
 
             # remove exist L3/ file
             if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
@@ -406,7 +411,7 @@ class ns_front_run():
         self.sub2_1 = tk.Toplevel()
         self.sub2_1.title('Master Panel')
         self.root.update_idletasks()
-        print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
+        #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
         geo =  str(self.root.winfo_width() + 100) + 'x' + str(self.root.winfo_height() + 140) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
         self.sub2_1.geometry(geo)
 
@@ -575,7 +580,7 @@ class ns_front_run():
         self.sub3_1 = tk.Toplevel()
         self.sub3_1.title('Device Panel')
         self.root.update_idletasks()
-        print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
+        #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
         geo =  str(self.root.winfo_width() - 180) + 'x' + str(self.root.winfo_height()) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y() + self.root.winfo_height() + 30)
         self.sub3_1.geometry(geo)
 

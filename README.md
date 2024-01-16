@@ -13,29 +13,44 @@ Since the network components are consolidated in one master file, updating the m
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 
+# Release note , latest version 2.1.0(2024/1/16)
+[ver2.1.0](https://github.com/cisco-open/network-sketcher/User_Guide/Release%20note/release%20note%20ver2.1.0.md)
 
 # Requirement
  
-__Currently, the OS that this tool runs on is Windows only. Linux and MAC OS cannot be used because file paths are not compatible now.__
+__Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and Linux.__
  
 * tkinterdnd2
 * openpyxl
 * python-pptx
 * ipaddress
 * numpy
+* pyyaml
  
 # Installation
- 
+ * Required
 ```bash
 pip install tkinterdnd2
+pip install tkinterdnd2-universal
 pip install openpyxl
 pip install python-pptx
 pip install ipaddress
 pip install numpy
+pip install pyyaml
 ```
 or
 ```bash
 pip install -r requirements.txt
+```
+
+* Mac OS requires the following additional installation.
+```bash
+brew install tcl-tk
+```
+
+* Linux requires the following additional installation.
+```bash
+sudo apt-get install python3-tk
 ```
  
 # Usage

@@ -19,7 +19,7 @@ limitations under the License.
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os, shutil , unicodedata,subprocess,datetime,random,shutil
 import openpyxl
-import math ,ipaddress
+import math ,ipaddress ,yaml
 from pptx import *
 import platform
 
@@ -27,7 +27,7 @@ import platform
 def return_os_slash():
     slash_type = '\\'+'\\'
     os_type = platform.platform()
-    print(os_type)
+    #print(os_type)
     if 'macOS'.casefold() in os_type.casefold() or 'Linux'.casefold() in os_type.casefold():
         slash_type = '/'
     return (slash_type)
@@ -66,7 +66,7 @@ def check_file_type(full_filepath):
                         if shp.adjustments[0] == 0.99445 or shp.adjustments[0] == 0.50445:  #check IF tag
                             count_check_tag += 1
                             if count_check_tag >= 2:
-                                return (['ERROR','Please input a PPT file that does not contain IF tags.'])
+                                return (['ERROR','Please enter a PPT file that does not contain IF tags'])
 
                     except Exception as e:
                         print('++ exception ++ ns_def.check_file_type')
@@ -74,7 +74,7 @@ def check_file_type(full_filepath):
         return_type_array = ['PPT_SKECH','PPT_SKECH']
 
     elif full_filepath.endswith('.xlsx'):
-        return_type_array = ['ERROR', 'Please input a EXCEL file corresponding to NS']
+        return_type_array = ['ERROR', 'Please enter a EXCEL file compatible with NS']
         input_excel = openpyxl.load_workbook(full_filepath)
 
         # check ws name
@@ -84,8 +84,19 @@ def check_file_type(full_filepath):
                 return_type_array = ['EXCEL_MASTER', ws_list]
             elif sheet_name == 'L1 Table':
                 return_type_array = ['EXCEL_DEVICE', ws_list]
+
+    elif full_filepath.endswith('.yaml'):
+        return_type_array = ['ERROR', 'Please enter a backup file of CML']
+
+        with open(str(full_filepath), 'r') as yml:
+            config = yaml.safe_load(yml)
+
+        for tmp_config in config:
+            if tmp_config == 'lab':
+                return_type_array = ['YAML_CML', config]
+
     else:
-        return_type_array = ['ERROR', 'Unknown file type']
+        return_type_array = ['ERROR', 'Please enter a file compatible with NS']
 
     return return_type_array
 
@@ -162,7 +173,7 @@ def write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section
         elif wb.active.cell(row_count, 1).value == None:
             empty_count += 1
 
-        if empty_count > 100:
+        if empty_count > 10000:
             flag_section = True
             print('---ERROR and STOP---  can not find ---> %s  ' % section_write_to)
             exit()
@@ -218,7 +229,7 @@ def overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, sec
         elif wb.active.cell(row_count, 1).value == None:
             empty_count += 1
 
-        if empty_count > 100:
+        if empty_count > 10000:
             flag_section = True
             print('---ERROR and STOP---  can not find ---> %s  ' % section_write_to)
             exit()
@@ -291,6 +302,9 @@ def return_shape_tuple(current_shape_array ,start_row):
 
 ### return width size of each folder ###
 def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_shape_tuple,min_tag_inches):
+    #add parameter at ver2.1 for large size
+    folder_width_ratio = 0.5  # add at ver 2.1 for large size
+
     master_width_size_folder = []
     master_width_size_y_grid = []
     master_hight_size_y_grid = []
@@ -349,7 +363,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
                                         break
                         current_level +=1
                         #print(current_level,tmp_width,tmp_hight,tmp_count_shape)
-                        current_level_inches_width = min_tag_inches * 4 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver1.1 chage ,  min_tag_inches * 2 ->4
+                        current_level_inches_width = min_tag_inches * 12 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver2.2 chage ,  min_tag_inches * 2 ->12
                         #print('----current_level_inches_hight ----  ',master_folder_tuple[tmp_master_folder_tuple],master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3],current_level,current_max_hight)
                         tmp_hight += current_max_hight
                         if current_max_width < current_level_inches_width:
@@ -357,7 +371,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
 
                     tmp_hight += 1.0 # add up down buffer for a hight in a folder
                     #print(master_folder_tuple[tmp_master_folder_tuple],current_max_width,tmp_hight)
-                    tmp_folder_size.append([master_folder_tuple[tmp_master_folder_tuple],current_max_width,tmp_hight])
+                    tmp_folder_size.append([master_folder_tuple[tmp_master_folder_tuple],current_max_width * folder_width_ratio,tmp_hight]) # add folder_width_ratio at ver 2.1 for large size
                 master_width_size_folder.append([folder_num,tmp_folder_size])
                 #print([folder_num,tmp_folder_size])
                 master_folder_size.append([folder_num,tmp_folder_size])
@@ -1320,8 +1334,8 @@ class  get_l2_broadcast_domains():
 
             marged_l2_broadcast_group_array.append(tmp_marged_l2_broadcast_group_array)
 
-        print('### marged_l2_broadcast_group_array ###')
-        print(get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array))
+        print('--- marged_l2_broadcast_group_array ---')
+        #print(get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array))
         marged_l2_broadcast_group_array = get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array)
 
         '''make target_l2_broadcast_group_array'''
