@@ -684,8 +684,15 @@ class ns_front_run():
             if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
                 os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]'))
 
-            #view complete
-            tkinter.messagebox.showinfo('info', 'successfully completed')
+            ##view complete
+            #tkinter.messagebox.showinfo('info', 'successfully completed')
+
+            ### open master panel
+            file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
+            self.full_filepath = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx'
+            self.filename = os.path.basename(self.full_filepath)
+            import network_sketcher
+            network_sketcher.ns_front_run.sub_excel_master_1(self, file_type_array)
 
         if click_value == '2-1': # select browse
             fTyp = [("", ".xlsx")]

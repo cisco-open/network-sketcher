@@ -27,7 +27,7 @@ import platform
 def return_os_slash():
     slash_type = '\\'+'\\'
     os_type = platform.platform()
-    print(os_type)
+    #print(os_type)
     if 'macOS'.casefold() in os_type.casefold() or 'Linux'.casefold() in os_type.casefold():
         slash_type = '/'
     return (slash_type)
@@ -1334,8 +1334,8 @@ class  get_l2_broadcast_domains():
 
             marged_l2_broadcast_group_array.append(tmp_marged_l2_broadcast_group_array)
 
-        print('### marged_l2_broadcast_group_array ###')
-        print(get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array))
+        print('--- marged_l2_broadcast_group_array ---')
+        #print(get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array))
         marged_l2_broadcast_group_array = get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array)
 
         '''make target_l2_broadcast_group_array'''

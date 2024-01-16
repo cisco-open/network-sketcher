@@ -26,7 +26,7 @@ __Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and 
 * pyyaml
  
 # Installation
- 
+ * Common
 ```bash
 pip install tkinterdnd2
 pip install tkinterdnd2-universal
