@@ -1676,8 +1676,8 @@ class  ns_l1_master_create():
         '''
         ppt_min_width = 8  #  inches
         ppt_min_hight = 3    #  inches
-        ppt_max_width = 56  #  inches
-        ppt_max_hight = 56   #  inches
+        ppt_max_width = 5600  #  inches  , change 56->5600 at ver 2.1 for large size
+        ppt_max_hight = 5600   #  inches  , change 56->5600 at ver 2.1 for large size
 
         self.root_left = 0.28
         self.root_top  = 1.42

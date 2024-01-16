@@ -173,7 +173,7 @@ def write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section
         elif wb.active.cell(row_count, 1).value == None:
             empty_count += 1
 
-        if empty_count > 100:
+        if empty_count > 10000:
             flag_section = True
             print('---ERROR and STOP---  can not find ---> %s  ' % section_write_to)
             exit()
@@ -229,7 +229,7 @@ def overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, sec
         elif wb.active.cell(row_count, 1).value == None:
             empty_count += 1
 
-        if empty_count > 100:
+        if empty_count > 10000:
             flag_section = True
             print('---ERROR and STOP---  can not find ---> %s  ' % section_write_to)
             exit()
@@ -302,6 +302,9 @@ def return_shape_tuple(current_shape_array ,start_row):
 
 ### return width size of each folder ###
 def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_shape_tuple,min_tag_inches):
+    #add parameter at ver2.1 for large size
+    folder_width_ratio = 0.5  # add at ver 2.1 for large size
+
     master_width_size_folder = []
     master_width_size_y_grid = []
     master_hight_size_y_grid = []
@@ -360,7 +363,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
                                         break
                         current_level +=1
                         #print(current_level,tmp_width,tmp_hight,tmp_count_shape)
-                        current_level_inches_width = min_tag_inches * 4 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver1.1 chage ,  min_tag_inches * 2 ->4
+                        current_level_inches_width = min_tag_inches * 12 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver2.2 chage ,  min_tag_inches * 2 ->12
                         #print('----current_level_inches_hight ----  ',master_folder_tuple[tmp_master_folder_tuple],master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3],current_level,current_max_hight)
                         tmp_hight += current_max_hight
                         if current_max_width < current_level_inches_width:
@@ -368,7 +371,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
 
                     tmp_hight += 1.0 # add up down buffer for a hight in a folder
                     #print(master_folder_tuple[tmp_master_folder_tuple],current_max_width,tmp_hight)
-                    tmp_folder_size.append([master_folder_tuple[tmp_master_folder_tuple],current_max_width,tmp_hight])
+                    tmp_folder_size.append([master_folder_tuple[tmp_master_folder_tuple],current_max_width * folder_width_ratio,tmp_hight]) # add folder_width_ratio at ver 2.1 for large size
                 master_width_size_folder.append([folder_num,tmp_folder_size])
                 #print([folder_num,tmp_folder_size])
                 master_folder_size.append([folder_num,tmp_folder_size])
