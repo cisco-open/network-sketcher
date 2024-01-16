@@ -51,10 +51,10 @@ The English version uses machine translation
 [5-3-1. Change of Physical Interface Name](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-3-1.%20Change%20of%20Physical%20Interface%20Name.pdf)
 
 ## 6. VPN Diagram Generation/Configuration
-6-1. Generation of VPN Diagram *ver2.1.0
+[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md) *ver2.1.0
 
-6-2. VPN setting *ver2.1.0
+[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md) *ver2.1.0
 
 
 ## 7. その他
-7-1. Convert CML configuration file (yaml) to Network Sketcher master file *ver2.1.0
+[7-1. Convert CML configuration file (yaml) to Network Sketcher master file](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md) *ver2.1.0
