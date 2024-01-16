@@ -22,6 +22,7 @@ from openpyxl.styles import Font, Border, Side, PatternFill
 import tkinter as tk ,tkinter.ttk as ttk, tkinter.filedialog, tkinter.messagebox
 from tkinter import *
 import subprocess
+import ns_def
 
 '''
  common variables
@@ -1310,7 +1311,7 @@ class qui_tree_run():
             self.entry1_1.delete(0, tkinter.END)
             self.entry1_1.insert(tk.END,filename)
             self.entry1_2.delete(0, tkinter.END)
-            self.entry1_2.insert(tk.END, iDir + '\\temp_output.xlsx')
+            self.entry1_2.insert(tk.END, iDir + ns_def.return_os_slash() + 'temp_output.xlsx')
 
         elif click_value == '1-2':
             fTyp = [("", "*")]
@@ -1712,7 +1713,7 @@ class qui_tree_run():
                 messagebox.showerror('error', 'Diff Log is not found in Diff Tab. \n Please confirm  it again.')
             else:
                 self.entry5_3.delete(0, tkinter.END)
-                self.entry5_3.insert(tk.END, dirname+ '\\Change_procedure_[' + self.diff_worksheet_name + '].pptx')
+                self.entry5_3.insert(tk.END, dirname+ ns_def.return_os_slash() + 'Change_procedure_[' + self.diff_worksheet_name + '].pptx')
                 tkinter.messagebox.showinfo('Set Diff values', '[Filename]\n   '+ basename + '\n\n[Worksheet name]\n   '+self.diff_worksheet_name+'\n\n[DIFF LOG]\n    OK')
                 self.flag_set_diff = True
 

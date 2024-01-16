@@ -72,8 +72,6 @@ class  ns_write_vpns_on_l1():
         self.shape = Presentation(self.output_ppt_file)
 
         ### get GREEN color's shape list from self.position_style_shape_array
-        #print('--- self.position_style_shape_array ---')
-        #print(self.position_style_shape_array)
         green_color_shape_list = []
         for tmp_position_style_shape_array in self.position_style_shape_array:
             if tmp_position_style_shape_array[0] != 1 and tmp_position_style_shape_array[1][4] == 'GREEN':
