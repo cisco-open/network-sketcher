@@ -20,12 +20,15 @@ import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from tkinterdnd2 import *
 import sys, os, subprocess ,webbrowser
 import ns_def,network_sketcher_dev,ns_sync_between_layers
+import ns_vpn_diagram_create
+
 
 class ns_front_run():
     '''
     Main Panel
     '''
     def __init__(self):
+        self.click_value = ''
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
@@ -515,7 +518,19 @@ class ns_front_run():
 
         push_array = []
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
-        self.sub2_5_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=5, ipadx=15, ipady=5)
+
+        self.sub2_5_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=2, ipadx=15)
+
+        ### run xx-xx for dev , Create VPN diagram
+        self.sub2_6 = tk.LabelFrame(self.sub2_1, text='Create the VPN diagram file', font=("", 14), height=1, background="#FFF2CC")
+        self.sub2_6.grid(row=8, column=1, columnspan=7, sticky='W', padx=5, pady=2, ipadx=5, ipady=2)
+
+        self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
+        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
+
+        self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
+        self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
+
 
 
     def click_action_sub(self, click_value, push_array):
@@ -536,6 +551,18 @@ class ns_front_run():
 
             if self.click_value_2nd != 'self.sub1_1_button_1' and self.click_value_2nd != 'self.sub3_1_button_3':
                 ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]',''))
+
+        if click_value == 'self.self.sub2_6_button_1':  # Click "VPNs on L1"
+            print('--- Click "VPNs on L1" ---')
+            ### create L1 Table with [VPNs_on_L1]]
+            self.click_value = 'VPN-1-1'
+            network_sketcher_dev.ns_front_run.click_action(self, '2-4-3')
+
+            ### Write VPNs on L1 ###
+            ns_vpn_diagram_create.ns_write_vpns_on_l1.__init__(self)
+
+        if click_value == 'self.self.sub2_6_button_2':  # Click "VPN only"
+            print('--- Click "VPN only ---')
 
     '''
     Device Panel

@@ -155,6 +155,10 @@ class  ns_ddx_figure_run():
         self.root_folder[2] = float(self.input_ppt_mata_excel.active.cell(temp_row+1, 7).value) * float(self.input_ppt_mata_excel.active.cell(temp_row+1, 3).value)
         self.root_folder[3] = float(self.input_ppt_mata_excel.active.cell(temp_row+1, 8).value) * float(self.input_ppt_mata_excel.active.cell(temp_row+1, 4).value)
 
+        ### change ppt title , add ver 2.1 ###
+        if self.click_value == 'VPN-1-1':
+            self.shape.title.text = '[VPNs on L1] All Areas'
+
         # style size,outline
         self.shape = self.shape.add_shape(MSO_SHAPE.RECTANGLE, Inches(self.root_folder[0]), Inches(self.root_folder[1]), Inches(self.root_folder[2]), Inches(self.root_folder[3]))
         #style fill
@@ -2880,9 +2884,13 @@ class extended():
 
     def add_line(self,line_type,inche_from_connect_x,inche_from_connect_y,inche_to_connect_x,inche_to_connect_y):
         from pptx.oxml import parse_xml
-        self.shape = self.slide.shapes
-        self.shape = self.shape.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
 
+        self.shape = self.slide.shapes
+        if line_type == 'VPN_curve':
+            #self.shape = self.shape.add_connector(MSO_CONNECTOR.CURVE, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
+            self.shape = self.shape.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
+        else:
+            self.shape = self.shape.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(inche_from_connect_x), Inches(inche_from_connect_y), Inches(inche_to_connect_x), Inches(inche_to_connect_y))
 
         '''change style of line'''
         #defalut , l2 material
@@ -2916,6 +2924,30 @@ class extended():
         if line_type == 'L3_INSTANCE':
             shape_line.color.rgb = RGBColor(96, 74, 123)
             shape_line.width = Pt(0.7)
+
+        if line_type == 'VPN':
+            self.shape.shadow.inherit = True
+            shape_line.color.brightness = 0.3
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            line_elem = self.shape.line._get_or_add_ln()
+            line_elem.append(parse_xml("""
+                    <a:headEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+            line_elem.append(parse_xml("""
+                    <a:tailEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+
+        if line_type == 'VPN_curve':
+            self.shape.shadow.inherit = True
+            shape_line.color.brightness = 0.3
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            shape_line.dash_style = MSO_LINE.SQUARE_DOT
+            line_elem = self.shape.line._get_or_add_ln()
+            line_elem.append(parse_xml("""
+                    <a:headEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
 
 
     def l2_device_materials(self,action_type,input_device_name,write_left_top_array,wp_list_array):
