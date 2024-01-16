@@ -19,7 +19,7 @@
 
 [2-4. デバイスファイルのエクスポート（解説付き）](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-4.%20%E3%83%87%E3%83%90%E3%82%A4%E3%82%B9%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88.pdf)
 
-[2-5. VPN構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-5.VPN%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.md) *ver2.1.0
+[2-5. VPN構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-5.%20VPN%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.md)*ver2.1.0
 
 
 ## 3. L1構成 設定
