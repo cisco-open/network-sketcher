@@ -56,10 +56,10 @@
 
 [5-3-1. 物理インタフェース名の変更](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/5-3-1.%20%E7%89%A9%E7%90%86%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%95%E3%82%A7%E3%83%BC%E3%82%B9%E5%90%8D%E3%81%AE%E5%A4%89%E6%9B%B4.pdf)
 
-## 4. VPN構成 設定
+## 6. VPN構成 設定
 
 [6-1. VPN設定](https://github.com/cisco-opennetwork-sketcher/blob/main/User_Guide/Japanese/4-1.%20L2%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%88%E8%A8%AD%E5%AE%9A.pdf) *ver2.1.0
 
-## 6. 参考情報
+## 7. 参考情報
 
 ブロードキャストドメイン構成の条件　*TBD
