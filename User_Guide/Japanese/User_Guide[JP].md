@@ -55,10 +55,15 @@
 [5-3-1. 物理インタフェース名の変更](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/5-3-1.%20%E7%89%A9%E7%90%86%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%95%E3%82%A7%E3%83%BC%E3%82%B9%E5%90%8D%E3%81%AE%E5%A4%89%E6%9B%B4.pdf)
 
 ## 6. VPN構成 生成・設定
-[6-1. VPN構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-1.%20VPN%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.md)*ver2.1.0
+[6-1. VPN構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-1.%20VPN%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.md) *ver2.1.0
 
 [6-2. VPN設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-2.VPN%E8%A8%AD%E5%AE%9A.md) *ver2.1.0
 
-## 7. 参考情報
+
+## 7. その他
+[7-1. CMLのバックアップファイル(yaml)のマスタファイル変換]*ver2.1.0
+
+
+## 参考情報
 
 ブロードキャストドメイン構成の条件　*TBD
