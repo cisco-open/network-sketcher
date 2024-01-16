@@ -65,8 +65,8 @@ class  ns_l1_master_create():
             self.excel_file_path = self.outFileTxt_1a_2.get()
         elif self.click_value == '1-4b':
             self.input_sketch_ppt = Presentation("./_tmp_tmp_tmp_.pptx")
-            self.output_diagram_path = self.outFileTxt_1b_1.get()
-            self.excel_file_path = self.outFileTxt_1b_2.get()
+            #self.output_diagram_path = self.outFileTxt_1b_1.get()
+            #self.excel_file_path = self.outFileTxt_1b_2.get()
         else:
             self.input_sketch_ppt = Presentation(self.inFileTxt_1_1.get())
             self.output_diagram_path = self.outFileTxt_1_1.get()
@@ -1676,8 +1676,8 @@ class  ns_l1_master_create():
         '''
         ppt_min_width = 8  #  inches
         ppt_min_hight = 3    #  inches
-        ppt_max_width = 56  #  inches
-        ppt_max_hight = 56   #  inches
+        ppt_max_width = 5600  #  inches  , change 56->5600 at ver 2.1 for large size
+        ppt_max_hight = 5600   #  inches  , change 56->5600 at ver 2.1 for large size
 
         self.root_left = 0.28
         self.root_top  = 1.42

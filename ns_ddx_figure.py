@@ -2943,7 +2943,7 @@ class extended():
             shape_line.color.brightness = 0.3
             shape_line.color.rgb = RGBColor(255, 0, 0)
             shape_line.width = Pt(4.0)
-            shape_line.dash_style = MSO_LINE.SQUARE_DOT
+            #shape_line.dash_style = MSO_LINE.SQUARE_DOT
             line_elem = self.shape.line._get_or_add_ln()
             line_elem.append(parse_xml("""
                     <a:headEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
