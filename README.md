@@ -7,14 +7,8 @@ Simply create a rough sketch first, and the system will automatically generate L
 Since the network components are consolidated in one master file, updating the management table (device file) automatically updates all related network diagrams and management tables as well.
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/240ddee0-823d-472f-87d4-8ae7eb1fff7d)
 
-
-
 # DEMO
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
-
-
-# Release note
-[ver2.1.0](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Release%20note/release%20note%20ver2.1.0.md)
 
 # Requirement
  
