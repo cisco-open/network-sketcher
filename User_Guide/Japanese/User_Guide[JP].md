@@ -28,7 +28,7 @@
 
 ## 4. L2/L3構成 設定
 
-[4-1. L2セグメント設定](https://github.com/cisco-opennetwork-sketcher/blob/main/User_Guide/Japanese/4-1.%20L2%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%88%E8%A8%AD%E5%AE%9A.pdf)
+[4-1. L2セグメント設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/4-1.%20L2%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%88%E8%A8%AD%E5%AE%9A.pdf)
 
 [4-2. ポートチャネル設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/4-2.%20%E3%83%9D%E3%83%BC%E3%83%88%E3%83%81%E3%83%A3%E3%83%8D%E3%83%AB%E8%A8%AD%E5%AE%9A.pdf)
 
