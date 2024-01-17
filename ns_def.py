@@ -49,10 +49,11 @@ def get_backup_filename(full_filepath):
     return (backup_full_filepath)
 
 def messagebox_file_open(full_filepath):
-    filename = os.path.basename(full_filepath)
-    ret = tkinter.messagebox.askyesno('Complete', 'Would you like to open the created file?\n\n' + filename)
-    if ret == True:
-        subprocess.Popen(full_filepath, shell=True)
+    if return_os_slash() == '\\\\': # add ver 2.1.1 for bug fix on Mac OS
+        filename = os.path.basename(full_filepath)
+        ret = tkinter.messagebox.askyesno('Complete', 'Would you like to open the created file?\n\n' + filename)
+        if ret == True:
+            subprocess.Popen(full_filepath, shell=True)
 
 def check_file_type(full_filepath):
     count_check_tag = 0
