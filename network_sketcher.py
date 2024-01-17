@@ -744,14 +744,16 @@ class ns_front_run():
                 ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
                 filename = os.path.basename(full_filepath_device)
-                ret = tkinter.messagebox.askyesno('Complete', 'Would you like to re-export and open the Device file?\n\n' + filename)
+                ret = tkinter.messagebox.askyesno('Complete', 'Would you like to re-export the Device file?\n\n' + filename)
                 if ret == True:
                     ### check file open
                     if ns_def.check_file_open(full_filepath_device) == False:
                         self.click_value_2nd = 'self.sub3_1_button_3'
                         self.click_action_sub('self.self.sub2_5_button_3', push_array)
                         self.click_value_2nd = ''
-                        subprocess.Popen(full_filepath_device, shell=True)
+                        if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
+                            print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
+                            subprocess.Popen(full_filepath_device, shell=True)
 
                 ### open master panel
                 file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
