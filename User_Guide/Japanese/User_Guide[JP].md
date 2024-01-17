@@ -65,6 +65,6 @@
 
 
 ## 参考情報
-A-1. 最大用紙サイズを超えたPPTの図形をExcelへ貼り付ける手順
+[A-1. 最大用紙サイズを超えたPPTの図形をExcelへ貼り付ける手順](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/A-1.%20%E6%9C%80%E5%A4%A7%E7%94%A8%E7%B4%99%E3%82%B5%E3%82%A4%E3%82%BA%E3%82%92%E8%B6%85%E3%81%88%E3%81%9FPPT%E3%81%AE%E5%9B%B3%E5%BD%A2%E3%82%92Excel%E3%81%B8%E8%B2%BC%E3%82%8A%E4%BB%98%E3%81%91%E3%82%8B%E6%89%8B%E9%A0%86.md)
 
 A-2. ブロードキャストドメイン構成の条件　*TBD
