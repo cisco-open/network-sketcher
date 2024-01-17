@@ -58,3 +58,6 @@ The English version uses machine translation
 
 ## 7. Others
 [7-1. Convert CML configuration file (yaml) to Network Sketcher master file](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md) *ver2.1.0
+
+## Appendix
+A-1. Procedure for pasting PPT figures that exceed the maximum paper size into Excel
