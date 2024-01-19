@@ -334,7 +334,7 @@ class  ns_l3_config_to_master_yaml():
         # parameter
         l3_table_ws_name = 'Master_Data_L3'
         l3_table_file = self.full_filepath
-        target_node_definition_ios = ['iosv','csr1000v','iosvl2','asav']
+        target_node_definition_ios = ['iosv','csr1000v','iosvl2','cat8000v']
         target_node_definition_asa = ['asav']
         target_node_definition_iosxr = ['iosxrv9000']
 
