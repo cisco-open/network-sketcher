@@ -60,7 +60,7 @@ class  ns_l3_diagram_create():
         #print(self.result_get_l2_broadcast_domains[4])
         self.marged_l2_broadcast_group_array = self.result_get_l2_broadcast_domains[4]
         print('--- self.target_l2_broadcast_group_array ---')
-        print(self.target_l2_broadcast_group_array)
+        #print(self.target_l2_broadcast_group_array)
 
         self.l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
         #print('--- self.l3_table_array  ---')
@@ -171,7 +171,7 @@ class  ns_l3_diagram_create():
 
 
     def l3_area_create(self, target_folder_name, action_type,offset_x ,offset_y):
-        print('### l3_area_create ###  ',target_folder_name,action_type,offset_x ,offset_y)
+        print('--- l3_area_create ---  ',target_folder_name,action_type,offset_x ,offset_y)
         self.used_l3segment_array = []
         ### get l3segment in the target folder
         target_all_device_array = []
@@ -804,7 +804,7 @@ class  ns_l3_diagram_create():
                 left_offset = start_l3_seg_inche_x - self.left_margin
 
         #print('## end_l3_seg_inche_x ', end_l3_seg_inche_x)
-        print('--- l3segment_line_array ---   [start_l3_seg_inche_x,end_l3_seg_inche_x],tmp_l3segment_y_array, return_get_l3_segment_num[1]')
+        print('--- l3segment_line_array ---')
         #print(l3segment_line_array)
 
 
@@ -1092,7 +1092,7 @@ class  ns_l3_diagram_create():
         '''
         write folder line and outline 
         '''
-        print('--- self.area_position_array ---  # shape_left, shape_top, shape_width, shape_hight, shape_text')
+        print('--- self.area_position_array ---')
         #print(self.area_position_array)
 
         ### write folder

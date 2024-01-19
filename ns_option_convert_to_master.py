@@ -25,6 +25,7 @@ import math
 import ns_def
 import openpyxl
 import yaml
+from ciscoconfparse import CiscoConfParse
 
 class  ns_option_convert_to_master_svg():
     def __init__(self):
@@ -326,4 +327,108 @@ class  ns_overwrite_line_to_master_yaml():
 
         converted_tuple = ns_def.convert_array_to_tuple(new_master_line_array)
         ns_def.overwrite_excel_meta(converted_tuple, self.excel_file_path, 'Master_Data', '<<POSITION_LINE>>', 0,0)
+
+
+class  ns_l3_config_to_master_yaml():
+    def __init__(self):
+        # parameter
+        l3_table_ws_name = 'Master_Data_L3'
+        l3_table_file = self.full_filepath
+        target_node_definition_ios = ['iosv','csr1000v','iosvl2','asav']
+        target_node_definition_asa = ['asav']
+        target_node_definition_iosxr = ['iosxrv9000']
+
+        #get L3 Table Excel file
+        l3_table_array = []
+        l3_table_array = ns_def.convert_excel_to_array(l3_table_ws_name, l3_table_file, 3)
+        print('--- l3_table_array ---')
+        #print(l3_table_array)
+
+        '''get L3 ipaddress from yaml'''
+        ### read the yaml file
+        with open(str(self.yaml_full_filepath), 'r') as yml:
+            config = yaml.safe_load(yml)
+        # print(config)
+
+        config_array = []
+        last_int_array = []
+        overwrite_l3_table_array = []
+
+        print('--- [label, node_definition, id, configuration] ---')
+        for tmp_config in config['nodes']:
+            config_array.append([tmp_config['label'], tmp_config['node_definition'], tmp_config['id'], tmp_config['configuration']])
+            # print(tmp_config['configuration'])
+            if tmp_config['node_definition'] in target_node_definition_ios or tmp_config['node_definition'] in target_node_definition_asa or tmp_config['node_definition'] in target_node_definition_iosxr:
+                '''
+                CiscoConfParse
+                '''
+                CONFIG = tmp_config['configuration']
+
+                if tmp_config['node_definition'] in target_node_definition_ios:
+                    parse = CiscoConfParse(CONFIG.splitlines(), syntax='ios', factory=True)
+                elif tmp_config['node_definition'] in target_node_definition_asa:
+                    parse = CiscoConfParse(CONFIG.splitlines(), syntax='asa', factory=True)
+                elif tmp_config['node_definition'] in target_node_definition_iosxr:
+                    parse = CiscoConfParse(CONFIG.splitlines(), syntax='iosxr', factory=True)
+
+
+                int_array = [[tmp_config['label'], tmp_config['node_definition'], tmp_config['id']]]
+                dummy_array = []
+
+                for tmp_parse in parse.find_objects('^interface\s'):
+                    int_char = list(str(tmp_parse.interface_object))
+                    int_char_2 = str(tmp_parse.interface_object)
+
+                    for i, tmp_char in enumerate(str(tmp_parse.interface_object)):
+                        if re.fullmatch('[0-9]+', tmp_char):
+                            # print(str(i),tmp_char)
+                            int_char.insert(i, ' ')
+                            int_char_2 = str("".join(int_char))
+                            break
+
+                    if str(tmp_parse.ipv4_addr) != '':
+                        dummy_array.append([int_char_2, tmp_parse.ipv4_addr + '/' + str(tmp_parse.ipv4_masklength)])
+
+                int_array.append(dummy_array)
+                #print(int_array)
+                last_int_array.append(int_array)
+
+        for tmp_l3_table_array in l3_table_array:
+            #print(tmp_l3_table_array[1])
+            for tmp_last_int_array in last_int_array:
+                if tmp_l3_table_array[1][1] == tmp_last_int_array[0][0]:
+                    #print(tmp_last_int_array[0][0] , tmp_l3_table_array[1][1])
+                    if tmp_last_int_array[0][0] == tmp_l3_table_array[1][1]:
+                        flag_l3_exist = False
+                        for tmp_tmp_last_int_array in tmp_last_int_array[1]:
+                            if tmp_tmp_last_int_array[0] == tmp_l3_table_array[1][2]:
+                                #print('--- L3 address match ---   ' + str(tmp_last_int_array) , str(tmp_l3_table_array))
+                                if len(tmp_l3_table_array[1]) == 3:
+                                    tmp_l3_table_array[1].append('')
+                                tmp_l3_table_array[1].append(tmp_tmp_last_int_array[1])
+                                overwrite_l3_table_array.append(tmp_l3_table_array)
+                                flag_l3_exist = True
+                        if flag_l3_exist == False:
+                            overwrite_l3_table_array.append(tmp_l3_table_array)
+
+        print('--- overwrite_l3_table_array ---')
+        #print(overwrite_l3_table_array)
+
+
+        # write to master file
+        last_overwrite_l3_table_tuple = {}
+        last_overwrite_l3_table_tuple = ns_def.convert_array_to_tuple(overwrite_l3_table_array)
+        print('--- last_overwrite_l3_table_tuple ---')
+        #print(last_overwrite_l3_table_tuple)
+
+        master_excel_meta = last_overwrite_l3_table_tuple
+        excel_file_path = self.full_filepath
+        worksheet_name = l3_table_ws_name
+        section_write_to = '<<L3_TABLE>>'
+        offset_row = 2
+        offset_column = 0
+        ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+
+
 

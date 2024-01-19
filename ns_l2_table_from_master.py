@@ -313,7 +313,7 @@ class  ns_l2_table_from_master():
             #l2_master_data_array.append([tmp_row , [current_area_name, current_device_name, tmp_l2_table_array[1][2], tmp_l2_table_array[1][3], tmp_l2_table_array[1][4], tmp_l2_table_array[1][5]]])
             l2_master_data_array.append([tmp_row , [current_area_name, current_device_name, '', tmp_l2_table_array[1][3], '', tmp_l2_table_array[1][5]]])
             tmp_row += 1
-        print('#### l2_master_data_array ####')
+        print('--- l2_master_data_array ---')
         #print(l2_master_data_array)
 
         l2_master_data_tuple = {}

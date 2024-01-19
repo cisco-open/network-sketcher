@@ -28,7 +28,6 @@ class  ns_l3_table_from_master():
         '''
         make L3 Table excel file
         '''
-        print('### ns_l3_table_from_master() ###')
         #parameter
         ws_name = 'Master_Data'
         ws_name_l2 = 'Master_Data_L2'
@@ -248,7 +247,7 @@ class  ns_l3_table_from_master():
                 tmp_L3_table_array[1][1] = now_shape_name
 
                 excel_L3_table_array.append(([tmp_L3_table_array[0] + tmp_offset_row,tmp_L3_table_array[1]]))
-        print('#### excel_L3_table_array ####')
+        print('--- excel_L3_table_array ---')
         #print(excel_L3_table_array)
         L3_master_data_tuple = {}
         L3_master_data_tuple = ns_def.convert_array_to_tuple(excel_L3_table_array)
