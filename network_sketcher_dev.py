@@ -636,6 +636,7 @@ class ns_front_run():
         if click_value == '1-4b':  # select convert to master data file from YAML
             # check file open
             print(self.full_filepath)
+            self.yaml_full_filepath = self.full_filepath
 
             self.click_value = '1-4b'
 
@@ -693,6 +694,10 @@ class ns_front_run():
             self.filename = os.path.basename(self.full_filepath)
             import network_sketcher
             network_sketcher.ns_front_run.sub_excel_master_1(self, file_type_array)
+
+            '''add L3 config in yaml to Master file'''
+            ns_option_convert_to_master.ns_l3_config_to_master_yaml.__init__(self)
+
 
         if click_value == '2-1': # select browse
             fTyp = [("", ".xlsx")]
