@@ -25,7 +25,7 @@ import ns_vpn_diagram_create
 
 class ns_front_run():
     '''
-    Main Panel
+    Main Panel 2
     '''
     def __init__(self):
         self.click_value = ''
