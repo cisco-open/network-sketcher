@@ -13,8 +13,9 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 - __Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and Linux.__
 
 # Limitations
-- IPv4 only. IPv6 is not support.
+- IPv4 only. IPv6 is not supported.
 - Importing CML yaml files is only supported in L1 and L3(IP addresses of physical interfaces of ios, asa, iosxr, and csr1k).
+- VPN diagrams are only supported for Layer 1 and not reflected in Layer 2 and Layer 3 diagrams.
  
 # Installation
  * Required
