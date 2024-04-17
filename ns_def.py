@@ -23,6 +23,62 @@ import math ,ipaddress ,yaml
 from pptx import *
 import platform
 
+def get_l3_segments(self):
+    '''get values of Master Data'''
+    # parameter
+    ws_l3_name = 'Master_Data_L3'
+    excel_maseter_file = self.inFileTxt_L3_3_1.get()
+
+    self.result_get_l2_broadcast_domains = get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
+    print('--- get_l3_segments ---')
+    #print('--- self.target_l2_broadcast_group_array ---')
+    #print(self.target_l2_broadcast_group_array)
+
+    self.l3_table_array = convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
+    #print('--- self.l3_table_array ---')
+    #print(self.l3_table_array)
+
+    updated_l3_table_array = []
+    for index, tmp_l3_table_array in enumerate(self.l3_table_array):
+        str(tmp_l3_table_array).replace(' ', '')
+        if index >= 2:
+            if len(tmp_l3_table_array[1]) == 5:
+                if ',' in str(tmp_l3_table_array[1][4]):
+                    #print('--- tmp_l3_table_array ', str(tmp_l3_table_array))
+                    tmp_tmp_l3_table_array = str(tmp_l3_table_array[1][4]).split(',')
+                    for tmp_add_array in tmp_tmp_l3_table_array:
+                        tmp_tmp_tmp_l3_table_array = tmp_l3_table_array
+                        tmp_tmp_tmp_l3_table_array[1][4] = tmp_add_array
+                        #print('--- tmp_tmp_tmp_l3_table_array ', tmp_tmp_tmp_l3_table_array)
+                        updated_l3_table_array.append([tmp_tmp_tmp_l3_table_array[1][0], tmp_tmp_tmp_l3_table_array[1][1], tmp_tmp_tmp_l3_table_array[1][2], tmp_tmp_tmp_l3_table_array[1][3], tmp_tmp_tmp_l3_table_array[1][4]])
+                else:
+                    updated_l3_table_array.append(tmp_l3_table_array[1])
+
+            elif len(tmp_l3_table_array[1]) == 4:
+                updated_l3_table_array.append([tmp_l3_table_array[1][0], tmp_l3_table_array[1][1], tmp_l3_table_array[1][2], tmp_l3_table_array[1][3], ''])
+
+            elif len(tmp_l3_table_array[1]) == 3:
+                updated_l3_table_array.append([tmp_l3_table_array[1][0], tmp_l3_table_array[1][1], tmp_l3_table_array[1][2], '', ''])
+
+    #print('--- updated_l3_table_array ---')
+    #print(updated_l3_table_array)
+
+    '''get segment with target area'''
+    l3_segment_group_array = []
+
+    for tmp_target_l2_broadcast_group_array in self.target_l2_broadcast_group_array:
+        tmp_l3_segment_group_array = []
+        for tmp_tmp_target_l2_broadcast_group_array in tmp_target_l2_broadcast_group_array[1]:
+            for tmp_updated_l3_table_array in updated_l3_table_array:
+                if tmp_tmp_target_l2_broadcast_group_array[0] == tmp_updated_l3_table_array[1] and tmp_tmp_target_l2_broadcast_group_array[1] == tmp_updated_l3_table_array[2]:
+                    tmp_l3_segment_group_array.append(tmp_updated_l3_table_array)
+        if tmp_l3_segment_group_array != []:
+            l3_segment_group_array.append(tmp_l3_segment_group_array)
+
+    #print('--- l3_segment_group_array ---')
+    #print(l3_segment_group_array)
+
+    return l3_segment_group_array
 
 def return_os_slash():
     slash_type = '\\'+'\\'
@@ -438,7 +494,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
 def get_root_folder_tuple(self,master_folder_size_array,tmp_folder_name):
     self.root_left = 0.28
     self.root_top = 1.42
-    self.root_width = math.ceil(master_folder_size_array[0] * 10) / 10
+    self.root_width = math.ceil(master_folder_size_array[0] * 12) / 10  #ver2.2.0 change,  10 -> 12
     self.root_hight = math.ceil(master_folder_size_array[3] * 12) / 10  #ver1.1 change,  10 -> 12
     ppt_min_width = 6  # inches 13.4
     ppt_min_hight = 4  # inches 7.5
