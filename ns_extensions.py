@@ -113,7 +113,6 @@ class  auto_ip_addressing():
 
         outside_ip_address_list = []
         inside_ip_address_list = []
-        current_ip_address_list = []
         full_ip_address_list = []
         for index, tmp_l3_table_array in enumerate(self.l3_table_array):
             if index >= 2:
@@ -125,15 +124,17 @@ class  auto_ip_addressing():
                         # print(tmp_l3_table_array[1][4])
                         first_octet = int(str(tmp_l3_table_array[1][4]).split('.')[0])
                         second_octet = int(str(tmp_l3_table_array[1][4]).split('.')[1])
+                        third_octet = int(str(tmp_l3_table_array[1][4]).split('.')[2])
 
-                        outside_ip_address_list.append(str(first_octet) + '.' + str(second_octet) + '.0.0')
+                        outside_ip_address_list.append(str(first_octet) + '.' + str(second_octet)+ '.' + str(third_octet) + '.0')
                 else:
                     if len(tmp_l3_table_array[1]) == 5 and ',' not in str(tmp_l3_table_array[1][4]):
                         # print(tmp_l3_table_array[1][4])
                         first_octet = int(str(tmp_l3_table_array[1][4]).split('.')[0])
                         second_octet = int(str(tmp_l3_table_array[1][4]).split('.')[1])
+                        third_octet = int(str(tmp_l3_table_array[1][4]).split('.')[2])
 
-                        inside_ip_address_list.append(str(first_octet) + '.' + str(second_octet) + '.0.0')
+                        inside_ip_address_list.append(str(first_octet) + '.' + str(second_octet) + '.' + str(third_octet) + '.0')
 
         if flag_no_ipaddress == True:
             current_ip_address_list = outside_ip_address_list
@@ -215,6 +216,8 @@ class  auto_ip_addressing():
             if flag_found_use_network == True:
                 break
 
+        if flag_no_ipaddress == False:
+            use_network = str(most_common_word) + str('/24')
         #print(use_network)
 
         # set the value to GUI entry
@@ -254,9 +257,28 @@ class  auto_ip_addressing():
 
         '''calc ip address'''
         ip_assigned_l3_segment_group_array = []
+        ip_address_exists_array = []
+        ip_address_exists_array_sub = []
+
         for tmp_l3_segment_group_array in l3_segment_group_array:
-            if tmp_l3_segment_group_array[0][0] == target_area_name:
-                #print(tmp_l3_segment_group_array)
+            flag_way_point_exists = False
+            for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
+                if tmp_tmp_l3_segment_group_array[0] == 'N/A':
+                    flag_way_point_exists = True
+
+            if (tmp_l3_segment_group_array[0][0] == target_area_name and flag_way_point_exists == False) or (target_area_name == 'N/A' and flag_way_point_exists == True):
+                #check to ip address exists
+                flag_ip_address_exists = False
+
+                for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
+                    if tmp_tmp_l3_segment_group_array[4] != '':
+                        ip_address_exists = tmp_tmp_l3_segment_group_array[4]
+                        ip_address_exists_array.append(tmp_tmp_l3_segment_group_array)
+                        ip_address_exists_array_sub.append(tmp_tmp_l3_segment_group_array[4])
+                        ip_address_exists_subnet = ip_address_exists.split('/')
+                        flag_ip_address_exists = True
+
+                #calc ip address subnet
                 required_ip_num = len(tmp_l3_segment_group_array) + int(self.sub3_4_2_entry_1.get())
                 # Add 2 for network address and broadcast address
                 required_ip_num += 2
@@ -272,6 +294,11 @@ class  auto_ip_addressing():
                 #print(f"Required subnet mask in CIDR notation: {cidr_notation}")
                 start_ip = str(self.sub3_4_3_entry_1.get()).split('/')[0]
 
+                if flag_ip_address_exists == True:
+                    network_exists = ipaddress.ip_network(ip_address_exists, strict=False)
+                    start_ip = network_exists.network_address
+                    cidr_notation = str('/') + str(ip_address_exists_subnet[1])
+
                 '''check overlap'''
                 # Check if a specific IP range overlaps with any of the unique networks
                 #print(str(start_ip) + str(cidr_notation))
@@ -280,7 +307,7 @@ class  auto_ip_addressing():
                 while True:
                     # Check for overlaps
                     overlap = any(specific_range.overlaps(network) for network in unique_networks)
-                    if not overlap:
+                    if not overlap or flag_ip_address_exists == True:
                         break
 
                     # Calculate the broadcast address of the initial subnet
@@ -290,20 +317,42 @@ class  auto_ip_addressing():
                     # Create the next subnet based on the calculated network address
                     next_subnet = ipaddress.IPv4Network(f'{next_subnet_network_address}{str(cidr_notation)}')
                     specific_range = next_subnet
-                print(f'specific_range: {specific_range}')
+                #print(f'specific_range: {specific_range}')
                 # Get all available hosts in the subnet
                 subnet = ipaddress.IPv4Network(specific_range)
                 available_hosts = list(subnet.hosts())
 
-                # Assign each host IP address from the subnet
+                ''' Descending order '''
+                if str(self.combo3_4_4_1.get()) == "Descending order":
+                    available_hosts = sorted(available_hosts, reverse=True)
+
+                ''' Assign each host IP address from the subnet'''
                 #for index, host in enumerate(available_hosts, start=1):
                 #    print(f"Host {index}: {host}")
 
                 ip_assign_num = 0
                 pre_ip_assigned_l3_segment_group_array = []
+                #print(ip_address_exists_array)
+
+
                 for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
-                    pre_ip_assigned_l3_segment_group_array.append([tmp_tmp_l3_segment_group_array[0],tmp_tmp_l3_segment_group_array[1],tmp_tmp_l3_segment_group_array[2],tmp_tmp_l3_segment_group_array[3],str(available_hosts[ip_assign_num]) + str(cidr_notation)])
-                    ip_assign_num += 1
+                    if str(self.combo3_4_6_1.get()) == "Reassign within the same subnet":
+                        #print("Reassign within the same subnet")
+                        pre_ip_assigned_l3_segment_group_array.append([tmp_tmp_l3_segment_group_array[0],tmp_tmp_l3_segment_group_array[1],tmp_tmp_l3_segment_group_array[2],tmp_tmp_l3_segment_group_array[3],str(available_hosts[ip_assign_num]) + str(cidr_notation)])
+                        ip_assign_num += 1
+                    elif str(self.combo3_4_6_1.get()) == "Keep existing IP address":
+                        #print("Keep existing IP address")
+                        while True:
+                            if tmp_tmp_l3_segment_group_array in ip_address_exists_array:
+                                pre_ip_assigned_l3_segment_group_array.append(tmp_tmp_l3_segment_group_array)
+                                ip_assign_num += 1
+                                break
+                            elif str(available_hosts[ip_assign_num]) + str(cidr_notation) in ip_address_exists_array_sub:
+                                ip_assign_num += 1
+                            else:
+                                pre_ip_assigned_l3_segment_group_array.append([tmp_tmp_l3_segment_group_array[0], tmp_tmp_l3_segment_group_array[1], tmp_tmp_l3_segment_group_array[2], tmp_tmp_l3_segment_group_array[3], str(available_hosts[ip_assign_num]) + str(cidr_notation)])
+                                ip_assign_num += 1
+                                break
 
                 ip_assigned_l3_segment_group_array.append(pre_ip_assigned_l3_segment_group_array)
                 #print(f"pre_ip_assigned_l3_segment_group_array: {pre_ip_assigned_l3_segment_group_array}")
@@ -311,7 +360,7 @@ class  auto_ip_addressing():
                 unique_networks.add(subnet)
 
         print('--- ip_assigned_l3_segment_group_array ---')
-        print(ip_assigned_l3_segment_group_array)
+        #print(ip_assigned_l3_segment_group_array)
 
         '''
         Update to the Master file
@@ -321,10 +370,9 @@ class  auto_ip_addressing():
         self.l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
 
         updated_l3_table_array = []
-
         for tmp_l3_table_array in self.l3_table_array:
-            print(tmp_l3_table_array)
-            if tmp_l3_table_array[1][0] != target_area_name:
+            #print(tmp_l3_table_array)
+            if tmp_l3_table_array[1][0] != target_area_name and (tmp_l3_table_array[0] == 1 or tmp_l3_table_array[0] == 2):
                 updated_l3_table_array.append(tmp_l3_table_array)
             else:
                 flag_l3_if_match = False
@@ -340,10 +388,8 @@ class  auto_ip_addressing():
                 if flag_l3_if_match == False:
                     updated_l3_table_array.append(tmp_l3_table_array)
 
-
-
         print('--- updated_l3_table_array ---')
-        print(updated_l3_table_array)
+        #print(updated_l3_table_array)
 
         '''
         write the Master file
