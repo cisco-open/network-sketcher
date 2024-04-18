@@ -20,6 +20,7 @@ import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from tkinterdnd2 import *
 import sys, os, subprocess ,webbrowser
 import ns_def,network_sketcher_dev,ns_sync_between_layers
+import ns_extensions
 import ns_vpn_diagram_create
 
 
@@ -32,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.1.2")
+        self.root.title("Network Sketcher  ver 2.2.0")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -411,7 +412,7 @@ class ns_front_run():
         self.sub2_1.title('Master Panel')
         self.root.update_idletasks()
         #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
-        geo =  str(self.root.winfo_width() + 100) + 'x' + str(self.root.winfo_height() + 140) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
+        geo =  str(self.root.winfo_width() + 130) + 'x' + str(self.root.winfo_height() + 150) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
         self.sub2_1.geometry(geo)
 
         self.sub2_0_label_1 = tk.Label(self.sub2_1, text=local_filename, font=("", 12), background="#FFFFFF")
@@ -482,7 +483,10 @@ class ns_front_run():
         self.outFileTxt_L3_1_2.insert(tk.END, local_fullpath)
 
         ### run 2-4-x for dev , Create L1 diagram
-        self.sub2_2 = tk.LabelFrame(self.sub2_1, text='Create the L1 Diagram file', font=("", 14), height=1, background="#FBE5D6")
+        self.sub2_2x = tk.LabelFrame(self.sub2_1, text='Create Diagram files', font=("", 14), height=1, background="#FBE5D6")
+        self.sub2_2x.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+
+        self.sub2_2 = tk.LabelFrame(self.sub2_2x, text='Layer1 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_2.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_2_button_3 = tk.Button(self.sub2_2, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-3'))
@@ -496,7 +500,7 @@ class ns_front_run():
 
 
         ### run L2-3-x for dev , Create L2 diagram
-        self.sub2_3 = tk.LabelFrame(self.sub2_1, text='Create the L2 Diagram file', font=("", 14), height=1, background="#FBE5D6")
+        self.sub2_3 = tk.LabelFrame(self.sub2_2x, text='Layer2 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_3.grid(row=4, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-2'))
@@ -506,16 +510,25 @@ class ns_front_run():
 
 
         ### run L3-3-x for dev , Create L3 diagram
-        self.sub2_4 = tk.LabelFrame(self.sub2_1, text='Create the L3 Diagram file', font=("", 14), height=1, background="#FBE5D6")
+        self.sub2_4 = tk.LabelFrame(self.sub2_2x, text='Layer3 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_4.grid(row=4, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-3-2'))
-        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=50, pady=2, ipadx=15)
+        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=10, pady=2, ipadx=15)
 
+        ### run xx-xx for dev , Create VPN diagram
+        self.sub2_6 = tk.LabelFrame(self.sub2_2x, text='VPN Diagram', font=("", 14), height=1, background="#FEF6F0")
+        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=5, pady=2, ipadx=5, ipady=2)
+
+        self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
+        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=10, pady=2, ipadx=15)
+
+        #self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
+        #self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
 
         ### run 11-4 for dev , Export to the Device file
-        self.sub2_0_label_2 = tk.Label(self.sub2_1, text='', font=("", 6))
-        self.sub2_0_label_2 .grid(row=7, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_0_label_2 = tk.Label(self.sub2_1, text='', font=("", 1))
+        self.sub2_0_label_2 .grid(row=7, column=0, columnspan=7, sticky='W', padx=0, pady=0, ipadx=0, ipady=0)
 
         self.sub2_5 = tk.LabelFrame(self.sub2_1, text='Export to the Device file', font=("", 14), height=1, background="#DFC9EF")
         self.sub2_5.grid(row=8, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=2)
@@ -524,18 +537,132 @@ class ns_front_run():
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
         self.sub2_5_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=2, ipadx=15)
 
-        ### run xx-xx for dev , Create VPN diagram
-        self.sub2_6 = tk.LabelFrame(self.sub2_1, text='Create the VPN diagram file', font=("", 14), height=1, background="#FFF2CC")
-        self.sub2_6.grid(row=8, column=1, columnspan=7, sticky='W', padx=5, pady=2, ipadx=5, ipady=2)
+        '''
+        Extensions
+        '''
+        self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
+        self.sub3_3.grid(row=8, column=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
-        self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
-        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=2, ipadx=15)
+        self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
+        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=5, pady=2, ipadx=15)
 
-        #self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
-        #self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
+    def sub_master_extention_1(self):
+        local_filename = self.filename
+        local_fullpath = self.full_filepath
+        push_array = [self.filename,self.full_filepath]
 
+        self.sub3_4 = tk.Toplevel()
+        self.sub3_4.title('Auto IP Addressing')
+        self.root.update_idletasks()
+        #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
+        geo =  str(self.root.winfo_width() + 95) + 'x' + str(self.root.winfo_height() + 250) + '+' + str(self.root.winfo_x() + self.root.winfo_width() - 250) + '+' + str(self.root.winfo_y() )
+        self.sub3_4.geometry(geo)
 
-    def click_action_sub(self, click_value, push_array):
+        self.sub3_4_0 = tk.Label(self.sub3_4, text=local_filename, font=("", 12), background="#FFFFFF")
+        self.sub3_4_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=5)
+
+        # 1.Select Area
+        self.sub3_4_1 = tk.LabelFrame(self.sub3_4, text='Auto IP Addressing', font=("", 16), height=1, background="#C2E2EC")
+        self.sub3_4_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
+
+        self.sub3_4_1_1 = tk.Label(self.sub3_4_1, text='- Select Area (Required)', font=("", 16), background="#E8F4F8")
+        self.sub3_4_1_1 .grid(row=0, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        option3_4_1_1 = ns_extensions.auto_ip_addressing.get_folder_list(self)
+        global variable3_4_1_1
+        variable3_4_1_1 = tk.StringVar()
+        self.combo3_4_1_1 = ttk.Combobox(self.sub3_4_1 , values=option3_4_1_1, textvariable=variable3_4_1_1, font=("", 12), state='readonly')
+        self.combo3_4_1_1.set("<Select Area>")
+        self.combo3_4_1_1.option_add("*TCombobox*Listbox.Font", 12)
+        self.combo3_4_1_1.grid(row=0, column=1, sticky='WE', padx=5, pady=15, ipady=2, ipadx=15)
+        self.combo3_4_1_1.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.combo3_4_1_1.get()))
+
+        # IP Address Range Settings
+        self.sub3_4_x = tk.LabelFrame(self.sub3_4_1, text='Range Settings(Option)', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_4_x.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+
+        self.sub3_4_3 = tk.Label(self.sub3_4_x, text='- Starting point of IP address network (CIDR):', font=("", 12), background="#E8F4F8")
+        self.sub3_4_3 .grid(row=0, column=0, columnspan=3, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+        self.sub3_4_3_entry_1 = tk.Entry(self.sub3_4_x, font=("",12))
+        self.sub3_4_3_entry_1.grid(row=0, column=8, sticky="WE", padx=5, pady=0, ipadx=5)
+
+        self.sub3_4_3_entry_1.insert(0, '')
+        self.sub3_4_3_entry_1['justify'] = tkinter.CENTER
+
+        self.sub3_4_2 = tk.Label(self.sub3_4_x, text='- Number of free IP addresses in each segment:', font=("", 12), background="#E8F4F8")
+        self.sub3_4_2 .grid(row=1, column=0, columnspan=12, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+        self.sub3_4_2_entry_1 = tk.Entry(self.sub3_4_x, font=("",12))
+        self.sub3_4_2_entry_1.grid(row=1, column=8, sticky="WE", padx=5, pady=0, ipadx=5)
+        self.sub3_4_2_entry_1.insert(0,'2')
+        self.sub3_4_2_entry_1['justify'] = tkinter.CENTER
+
+        # IP address numbering rules
+        self.sub3_4_4 = tk.LabelFrame(self.sub3_4_1, text='Numbering rules(Option)', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_4_4.grid(row=3, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        self.sub3_4_4_1 = tk.Label(self.sub3_4_4, text='- Ascending or descending order:', font=("", 12), background="#E8F4F8")
+        self.sub3_4_4_1 .grid(row=0, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        option3_4_4_1 = ["Ascending order", "Descending order"]
+        global variable3_4_4_1
+        variable3_4_4_1 = tk.StringVar()
+        self.combo3_4_4_1 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_1, textvariable=variable3_4_4_1, font=("", 12), state='readonly')
+        self.combo3_4_4_1.current(0)
+        self.combo3_4_4_1.option_add("*TCombobox*Listbox.Font", 12)
+        self.combo3_4_4_1.grid(row=0, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.combo3_4_4_1.bind("<<ComboboxSelected>>")
+
+        self.sub3_4_4_2 = tk.Label(self.sub3_4_4, text='   * [e.g.] Ascending : 1 -> 2 -> 3 ... , Descending : 254 -> 253 -> 251 ... ', font=("", 10), background="#E8F4F8")
+        self.sub3_4_4_2 .grid(row=1, column=0, columnspan=8, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        '''self.sub3_4_4_3 = tk.Label(self.sub3_4_4, text='- Directions based on L1 Diagram:', font=("", 12), background="#E8F4F8")
+        self.sub3_4_4_3.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        option3_4_4_4 = ["Top to bottom", "Bottom to Top"]
+        global variable3_4_4_4
+        variable3_4_4_4 = tk.StringVar()
+        combo3_4_4_4 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_4, textvariable=variable3_4_4_4, font=("", 12), state='readonly')
+        combo3_4_4_4.current(0)
+        combo3_4_4_4.option_add("*TCombobox*Listbox.Font", 12)
+        combo3_4_4_4.grid(row=2, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
+        combo3_4_4_4.bind("<<ComboboxSelected>>")
+
+        option3_4_4_5 = ["Left to right", "Right to Left"]
+        global variable3_4_4_5
+        variable3_4_4_5 = tk.StringVar()
+        combo3_4_4_5 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_5, textvariable=variable3_4_4_5, font=("", 12), state='readonly')
+        combo3_4_4_5.current(0)
+        combo3_4_4_5.option_add("*TCombobox*Listbox.Font", 12)
+        combo3_4_4_5.grid(row=3, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
+        combo3_4_4_5.bind("<<ComboboxSelected>>")'''
+
+        # Support functions
+        self.sub3_4_6 = tk.LabelFrame(self.sub3_4_1, text='Completion of missing IP addresses(Option)', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_4_6.grid(row=4, column=0, columnspan=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=0)
+
+        self.sub3_4_6_1 = tk.Label(self.sub3_4_6, text='- Within the same layer 3 segment:', font=("", 12), background="#E8F4F8")
+        self.sub3_4_6_1 .grid(row=0, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        option3_4_6_1 = [ "Keep existing IP address","Reassign within the same subnet"]
+        global variable3_4_6_1
+        variable3_4_6_1 = tk.StringVar()
+        self.combo3_4_6_1 = ttk.Combobox(self.sub3_4_6 , values=option3_4_6_1, textvariable=variable3_4_6_1, font=("", 12), state='readonly')
+        self.combo3_4_6_1.current(0)
+        self.combo3_4_6_1.option_add("*TCombobox*Listbox.Font", 12)
+        self.combo3_4_6_1.grid(row=0, column=5, sticky='WE', padx=5, pady=2, ipadx=25)
+        self.combo3_4_6_1.bind("<<ComboboxSelected>>")
+
+        # Run
+        self.sub3_4_button_1 = tk.Button(self.sub3_4_1, text=" Run IP Addressing ", font=("", 14), command=lambda: self.click_action_sub('self.sub3_4_button_1',self.combo3_4_1_1.get()))
+        self.sub3_4_button_1.grid(row=6, column=0, sticky='W', padx=30, pady=10)
+
+    def click_action_sub(self, click_value, target_area_name):
+        if click_value == 'self.sub3_4_button_1':  # select Run
+            #change target area name to N/A
+            if target_area_name == '_WAN(Way_Point)_':
+                target_area_name = 'N/A'
+            ns_extensions.auto_ip_addressing.run_auto_ip(self,target_area_name)
+
         if click_value == 'self.self.sub2_5_button_3':  # select browse
             ### check file open
             if ns_def.check_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]','')) == True:
@@ -578,25 +705,25 @@ class ns_front_run():
         self.sub3_1.title('Device Panel')
         self.root.update_idletasks()
         #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
-        geo =  str(self.root.winfo_width() - 180) + 'x' + str(self.root.winfo_height()) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y() + self.root.winfo_height() + 30)
+        geo =  str(self.root.winfo_width() - 180) + 'x' + str(self.root.winfo_height() - 20) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y() + self.root.winfo_height() + 30)
         self.sub3_1.geometry(geo)
 
         self.sub3_0_label_1 = tk.Label(self.sub3_1, text=local_filename, font=("", 12), background="#FFFFFF")
         self.sub3_0_label_1 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=5)
 
-        self.sub3_1 = tk.LabelFrame(self.sub3_1, text='Update to the Master file', font=("", 14), height=1, background="#E5F4F7")
-        self.sub3_1.grid(row=1, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub3_2 = tk.LabelFrame(self.sub3_1, text='Update to the Master file', font=("", 14), height=1, background="#E5F4F7")
+        self.sub3_2.grid(row=1, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.text_sub3_1 = tk.StringVar()
         self.text_sub3_1.set("      drag and drop here ([MASTER]*.xlsx)")
-        self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#E5F4F7")
+        self.sub3_1_label_4 = tk.Label(self.sub3_2, textvariable=self.text_sub3_1, font=("", 10), background="#E5F4F7")
         self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
 
-        self.sub3_1_entry_1 = tk.Entry(self.sub3_1)
+        self.sub3_1_entry_1 = tk.Entry(self.sub3_2)
         self.sub3_1_entry_1.grid(row=4, column=1, sticky="WE", padx=5, pady=3, ipadx=15)
-        self.sub3_1_button_1 = tk.Button(self.sub3_1, text="Browse ...", command=lambda: self.click_action_sub3_1('self.sub3_1_button_2',push_array))
+        self.sub3_1_button_1 = tk.Button(self.sub3_2, text="Browse ...", command=lambda: self.click_action_sub3_1('self.sub3_1_button_2',push_array))
         self.sub3_1_button_1.grid(row=4, column=2, sticky='W', padx=5, pady=2)
-        self.sub3_1_button_1 = tk.Button(self.sub3_1, text="Submit", command=lambda: self.click_action_sub3_1('self.sub3_1_button_3',push_array))
+        self.sub3_1_button_1 = tk.Button(self.sub3_2, text="Submit", command=lambda: self.click_action_sub3_1('self.sub3_1_button_3',push_array))
         self.sub3_1_button_1.grid(row=4, column=3, sticky='W', padx=0, pady=2)
 
         #drag and drop
