@@ -33,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.2.0")
+        self.root.title("Network Sketcher  ver 2.1.2(a)")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -540,11 +540,11 @@ class ns_front_run():
         '''
         Extensions
         '''
-        self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
-        self.sub3_3.grid(row=8, column=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        #self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
+        #self.sub3_3.grid(row=8, column=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
-        self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
-        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=5, pady=2, ipadx=15)
+        #self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
+        #self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=5, pady=2, ipadx=15)
 
     def sub_master_extention_1(self):
         local_filename = self.filename
