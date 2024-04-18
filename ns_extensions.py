@@ -16,20 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-from pptx import *
-import sys, os, re
-import numpy as np
-import math
-import ns_def , ns_ddx_figure
-import openpyxl
-from pptx import Presentation
-from pptx.enum.dml import MSO_LINE
-from pptx.enum.text import MSO_ANCHOR, PP_ALIGN, MSO_AUTO_SIZE
-from pptx.enum.shapes import MSO_SHAPE, MSO_CONNECTOR
-from pptx.dml.color import RGBColor, MSO_THEME_COLOR
-from pptx.dml.line import LineFormat
-from pptx.shapes.connector import Connector
-from pptx.util import Inches, Cm, Pt
+import ns_def
 from collections import Counter
 import tkinter as tk ,tkinter.ttk
 import ipaddress
