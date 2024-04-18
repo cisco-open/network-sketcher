@@ -565,7 +565,7 @@ class ns_front_run():
         self.sub3_4_1 = tk.LabelFrame(self.sub3_4, text='Auto IP Addressing', font=("", 16), height=1, background="#C2E2EC")
         self.sub3_4_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
 
-        self.sub3_4_1_1 = tk.Label(self.sub3_4_1, text='- Select Area:', font=("", 14), background="#E8F4F8")
+        self.sub3_4_1_1 = tk.Label(self.sub3_4_1, text='- Select Area (Required)', font=("", 16), background="#E8F4F8")
         self.sub3_4_1_1 .grid(row=0, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
         option3_4_1_1 = ns_extensions.auto_ip_addressing.get_folder_list(self)
@@ -574,11 +574,11 @@ class ns_front_run():
         self.combo3_4_1_1 = ttk.Combobox(self.sub3_4_1 , values=option3_4_1_1, textvariable=variable3_4_1_1, font=("", 12), state='readonly')
         self.combo3_4_1_1.set("<Select Area>")
         self.combo3_4_1_1.option_add("*TCombobox*Listbox.Font", 12)
-        self.combo3_4_1_1.grid(row=0, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.combo3_4_1_1.grid(row=0, column=1, sticky='WE', padx=5, pady=15, ipady=2, ipadx=15)
         self.combo3_4_1_1.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.combo3_4_1_1.get()))
 
         # IP Address Range Settings
-        self.sub3_4_x = tk.LabelFrame(self.sub3_4_1, text='Range Settings', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_4_x = tk.LabelFrame(self.sub3_4_1, text='Range Settings(Option)', font=("", 14), height=1, background="#E8F4F8")
         self.sub3_4_x.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub3_4_3 = tk.Label(self.sub3_4_x, text='- Starting point of IP address network (CIDR):', font=("", 12), background="#E8F4F8")
@@ -597,7 +597,7 @@ class ns_front_run():
         self.sub3_4_2_entry_1['justify'] = tkinter.CENTER
 
         # IP address numbering rules
-        self.sub3_4_4 = tk.LabelFrame(self.sub3_4_1, text='Numbering rules', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_4_4 = tk.LabelFrame(self.sub3_4_1, text='Numbering rules(Option)', font=("", 14), height=1, background="#E8F4F8")
         self.sub3_4_4.grid(row=3, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
         self.sub3_4_4_1 = tk.Label(self.sub3_4_4, text='- Ascending or descending order:', font=("", 12), background="#E8F4F8")
@@ -606,17 +606,16 @@ class ns_front_run():
         option3_4_4_1 = ["Ascending order", "Descending order"]
         global variable3_4_4_1
         variable3_4_4_1 = tk.StringVar()
-        combo3_4_4_1 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_1, textvariable=variable3_4_4_1, font=("", 12), state='readonly')
-        combo3_4_4_1.current(1)
-        combo3_4_4_1.option_add("*TCombobox*Listbox.Font", 12)
-        combo3_4_4_1.grid(row=0, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
-        combo3_4_4_1.bind("<<ComboboxSelected>>")
-
+        self.combo3_4_4_1 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_1, textvariable=variable3_4_4_1, font=("", 12), state='readonly')
+        self.combo3_4_4_1.current(0)
+        self.combo3_4_4_1.option_add("*TCombobox*Listbox.Font", 12)
+        self.combo3_4_4_1.grid(row=0, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.combo3_4_4_1.bind("<<ComboboxSelected>>")
 
         self.sub3_4_4_2 = tk.Label(self.sub3_4_4, text='   * [e.g.] Ascending : 1 -> 2 -> 3 ... , Descending : 254 -> 253 -> 251 ... ', font=("", 10), background="#E8F4F8")
         self.sub3_4_4_2 .grid(row=1, column=0, columnspan=8, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
-        self.sub3_4_4_3 = tk.Label(self.sub3_4_4, text='- Directions based on L1 Diagram:', font=("", 12), background="#E8F4F8")
+        '''self.sub3_4_4_3 = tk.Label(self.sub3_4_4, text='- Directions based on L1 Diagram:', font=("", 12), background="#E8F4F8")
         self.sub3_4_4_3.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
         option3_4_4_4 = ["Top to bottom", "Bottom to Top"]
@@ -635,23 +634,23 @@ class ns_front_run():
         combo3_4_4_5.current(0)
         combo3_4_4_5.option_add("*TCombobox*Listbox.Font", 12)
         combo3_4_4_5.grid(row=3, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
-        combo3_4_4_5.bind("<<ComboboxSelected>>")
+        combo3_4_4_5.bind("<<ComboboxSelected>>")'''
 
         # Support functions
-        self.sub3_4_6 = tk.LabelFrame(self.sub3_4_1, text='Support functions', font=("", 14), height=1, background="#E8F4F8")
-        self.sub3_4_6.grid(row=4, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+        self.sub3_4_6 = tk.LabelFrame(self.sub3_4_1, text='Completion of missing IP addresses(Option)', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_4_6.grid(row=4, column=0, columnspan=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=0)
 
-        self.sub3_4_6_1 = tk.Label(self.sub3_4_6, text='- Completion of missing IP addresses:', font=("", 12), background="#E8F4F8")
+        self.sub3_4_6_1 = tk.Label(self.sub3_4_6, text='- Within the same layer 3 segment:', font=("", 12), background="#E8F4F8")
         self.sub3_4_6_1 .grid(row=0, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
-        option3_4_6_1 = ["Enable", "Disable"]
+        option3_4_6_1 = [ "Keep existing IP address","Reassign within the same subnet"]
         global variable3_4_6_1
         variable3_4_6_1 = tk.StringVar()
-        combo3_4_6_1 = ttk.Combobox(self.sub3_4_6 , values=option3_4_6_1, textvariable=variable3_4_6_1, font=("", 12), state='readonly')
-        combo3_4_6_1.current(0)
-        combo3_4_6_1.option_add("*TCombobox*Listbox.Font", 12)
-        combo3_4_6_1.grid(row=0, column=5, sticky='WE', padx=5, pady=2, ipadx=0)
-        combo3_4_6_1.bind("<<ComboboxSelected>>")
+        self.combo3_4_6_1 = ttk.Combobox(self.sub3_4_6 , values=option3_4_6_1, textvariable=variable3_4_6_1, font=("", 12), state='readonly')
+        self.combo3_4_6_1.current(0)
+        self.combo3_4_6_1.option_add("*TCombobox*Listbox.Font", 12)
+        self.combo3_4_6_1.grid(row=0, column=5, sticky='WE', padx=5, pady=2, ipadx=25)
+        self.combo3_4_6_1.bind("<<ComboboxSelected>>")
 
         # Run
         self.sub3_4_button_1 = tk.Button(self.sub3_4_1, text=" Run IP Addressing ", font=("", 14), command=lambda: self.click_action_sub('self.sub3_4_button_1',self.combo3_4_1_1.get()))
@@ -659,6 +658,9 @@ class ns_front_run():
 
     def click_action_sub(self, click_value, target_area_name):
         if click_value == 'self.sub3_4_button_1':  # select Run
+            #change target area name to N/A
+            if target_area_name == '_WAN(Way_Point)_':
+                target_area_name = 'N/A'
             ns_extensions.auto_ip_addressing.run_auto_ip(self,target_area_name)
 
         if click_value == 'self.self.sub2_5_button_3':  # select browse
