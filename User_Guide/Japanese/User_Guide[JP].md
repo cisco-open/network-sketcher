@@ -55,14 +55,14 @@
 [5-3-1. 物理インタフェース名の変更](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/5-3-1.%20%E7%89%A9%E7%90%86%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%95%E3%82%A7%E3%83%BC%E3%82%B9%E5%90%8D%E3%81%AE%E5%A4%89%E6%9B%B4.pdf)
 
 ## 6. VPN構成 生成・設定
-[6-1. VPN構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-1.%20VPN%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.md) *ver2.1.0
+[6-1. VPN構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-1.%20VPN%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.md) 
 
-[6-2. VPN設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-2.VPN%E8%A8%AD%E5%AE%9A.md) *ver2.1.0
+[6-2. VPN設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/6-2.VPN%E8%A8%AD%E5%AE%9A.md)
 
 
-## 7. その他
-[7-1. CMLの構成ファイル(yaml)をNetwork Sketcherのマスタファイルに変換](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/7-1.%20CML%E3%81%AE%E6%A7%8B%E6%88%90%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB(yaml)%E3%82%92Network%20Sketcher%E3%81%AE%E3%83%9E%E3%82%B9%E3%82%BF%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AB%E5%A4%89%E6%8F%9B.md) *ver2.1.0
-
+## 7. 拡張機能
+[7-1. CMLの構成ファイル(yaml)をNetwork Sketcherのマスタファイルに変換](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/7-1.%20CML%E3%81%AE%E6%A7%8B%E6%88%90%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB(yaml)%E3%82%92Network%20Sketcher%E3%81%AE%E3%83%9E%E3%82%B9%E3%82%BF%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AB%E5%A4%89%E6%8F%9B.md) 
+[7-2. IPアドレスの自動割り当て](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/7-1.%20CML%E3%81%AE%E6%A7%8B%E6%88%90%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB(yaml)%E3%82%92Network%20Sketcher%E3%81%AE%E3%83%9E%E3%82%B9%E3%82%BF%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AB%E5%A4%89%E6%8F%9B.md) *ver2.2.0
 
 ## 参考情報
 [A-1. 最大用紙サイズを超えたPPTの図形をExcelへ貼り付ける手順](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/A-1.%20%E6%9C%80%E5%A4%A7%E7%94%A8%E7%B4%99%E3%82%B5%E3%82%A4%E3%82%BA%E3%82%92%E8%B6%85%E3%81%88%E3%81%9FPPT%E3%81%AE%E5%9B%B3%E5%BD%A2%E3%82%92Excel%E3%81%B8%E8%B2%BC%E3%82%8A%E4%BB%98%E3%81%91%E3%82%8B%E6%89%8B%E9%A0%86.md)
