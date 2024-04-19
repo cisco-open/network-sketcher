@@ -51,13 +51,15 @@ The English version uses machine translation
 [5-3-1. Change of Physical Interface Name](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-3-1.%20Change%20of%20Physical%20Interface%20Name.pdf)
 
 ## 6. VPN Diagram Generation/Configuration
-[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md) *ver2.1.0
+[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md) 
 
-[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md) *ver2.1.0
+[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md) 
 
 
-## 7. Others
-[7-1. Convert CML configuration file (yaml) to Network Sketcher master file](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md) *ver2.1.0
+## 7. Extentions
+[7-1. Convert CML configuration file (yaml) to Network Sketcher master file](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md) 
+
+[7-2. Automatic IP address assignment](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md)  *Ver2.2.0
 
 ## Appendix
 [A-1. Procedure for pasting PPT figures that exceed the maximum paper size into Excel](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/A-1.%20Procedure%20for%20pasting%20PPT%20figures%20that%20exceed%20the%20maximum%20paper%20size%20into%20Excel.md)
