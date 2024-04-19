@@ -8,15 +8,24 @@
 # DEMO
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
-# Requirement
-- __Python 3.x__
-- __Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and Linux.__
+# New Features
+- Ver 2.2.0
+  - Automatic IP address assignment
+- Ver 2.1.0
+  - VPN Diagram & Configuration
+  - Cross-platform support (Windows, Linux, Mac OS)
+  - Drawing beyond maximum PowerPoint size
+  - Import of yaml file from CML diagrams (L1 & L3 IP Address of Physical IF with IOS)
 
 # Limitations
 - IPv4 only. IPv6 is not supported.
 - Importing CML yaml files is only supported in L1 and L3(IP addresses of physical interfaces of ios, asa, iosxr, and csr1k).
 - VPN diagrams are only supported for Layer 1 and not reflected in Layer 2 and Layer 3 diagrams.
  
+# Requirement
+- __Python 3.x__
+- __Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and Linux.__
+
 # Installation
  * Required
 ```bash
