@@ -25,7 +25,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 # Requirement
 - __Python 3.x__
 - __Network Sketcher now supports cross-platform. Works with Windows, Mac OS, and Linux.__
-- 
+
 # Installation
  * Required
 ```bash
