@@ -1541,12 +1541,6 @@ def check_move_to_right(self,top_device_name_array,target_position_shape_array):
             source_array = target_position_shape_array[self.index_2+ 1]
             target_array = target_position_shape_array[i]
 
-            '''for tmp_new_wp_exist_array_3 in self.new_wp_exist_array[3]:
-                if tmp_new_wp_exist_array_3 in source_array:
-                    source_array.remove(tmp_new_wp_exist_array_3)
-                if tmp_new_wp_exist_array_3 in target_array:
-                    target_array.remove(tmp_new_wp_exist_array_3)'''
-
             for tmp_target_l2_broadcast_group_array in self.target_l2_broadcast_group_array:
                 flag_source = False
                 flag_target = False
@@ -1557,7 +1551,6 @@ def check_move_to_right(self,top_device_name_array,target_position_shape_array):
                             flag_source = True
                         if tmp_tmp_target_l2_broadcast_group_array[0] in target_array:
                             flag_target = True
-
 
                 if flag_source == True and flag_target == True:
                     #print(flag_source ,flag_target )
