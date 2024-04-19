@@ -1603,7 +1603,16 @@ def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
                 if tmp_tmp_target_l2_broadcast_group_array[0] in buttom_device_name_array:
                     tmp_count += 1
 
-            if tmp_count == len(tmp_target_l2_broadcast_group_array[1]) and tmp_count >= 2:
+            ### add for bugfix at ver 2.2.0 ###
+            updated_tmp_target_l2_broadcast_group_array = []
+            combined_list = [item for sublist in target_position_shape_array for item in sublist]
+
+            for tmp_tmp_target_l2_broadcast_group_array in tmp_target_l2_broadcast_group_array[1]:
+                if tmp_tmp_target_l2_broadcast_group_array[0] in combined_list:
+                    updated_tmp_target_l2_broadcast_group_array.append(tmp_tmp_target_l2_broadcast_group_array)
+            ####################################
+
+            if tmp_count == len(updated_tmp_target_l2_broadcast_group_array) and tmp_count >= 2: #bugfix at ver 2.2.0
                 #print('### tmp_count, tmp_target_l2_broadcast_group_array[1] ',tmp_count, tmp_target_l2_broadcast_group_array[1])
                 count_l3segment += 1
                 connected_l3if_key_array.append(tmp_tmp_target_l2_broadcast_group_array)
