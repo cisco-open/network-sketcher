@@ -33,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.1.2(a)")
+        self.root.title("Network Sketcher  ver 2.2.0")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -540,11 +540,11 @@ class ns_front_run():
         '''
         Extensions
         '''
-        #self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
-        #self.sub3_3.grid(row=8, column=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
+        self.sub3_3.grid(row=8, column=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
-        #self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
-        #self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
+        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=5, pady=2, ipadx=15)
 
     def sub_master_extention_1(self):
         local_filename = self.filename
@@ -661,7 +661,18 @@ class ns_front_run():
             #change target area name to N/A
             if target_area_name == '_WAN(Way_Point)_':
                 target_area_name = 'N/A'
+
+            ###check Master file open
+            ns_def.check_file_open(self.inFileTxt_L3_3_1.get())
+
+            ###create backup master file
+            ns_def.get_backup_filename(self.inFileTxt_L3_3_1.get())
+
+            ###run_auto_ip
             ns_extensions.auto_ip_addressing.run_auto_ip(self,target_area_name)
+
+            ### messagebox
+            tkinter.messagebox.showinfo(title='Complete', message='[MASTER] file has been updated.')
 
         if click_value == 'self.self.sub2_5_button_3':  # select browse
             ### check file open

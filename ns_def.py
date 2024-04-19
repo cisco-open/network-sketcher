@@ -888,7 +888,7 @@ def check_file_open(file_fullpath):
             os.rename(file_fullpath, file_fullpath) #can't rename an open file so an error will be thrown
             return False
         except:
-            tkinter.messagebox.showwarning(title="File is being opened", message="Please close the file below or after close the file and run again." + '\n\n' + file_fullpath)
+            tkinter.messagebox.showwarning(title="File is being opened", message="Please close the file below." + '\n\n' + file_fullpath)
             return True
 
     #raise NameError
