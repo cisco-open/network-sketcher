@@ -123,8 +123,6 @@ class  ns_l3_diagram_create():
         Create per area l3 ppt
         '''
         if self.click_value == 'L3-3-2':
-
-
             '''GET SIZE'''
             self.page_size_array = []
             self.slide_width = 0.0
@@ -145,7 +143,7 @@ class  ns_l3_diagram_create():
             self.slide_width += 1.0 * 2  #page margin
             self.slide_hight += 1.0 * 2  #page margin
 
-            print('--- self.page_size_array ,self.slide_width ,self.slide_hight ---  [outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, folder_shape_text] ,self.slide_width ,self.slide_hight')
+            #print('--- self.page_size_array ,self.slide_width ,self.slide_hight ---  [outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, folder_shape_text] ,self.slide_width ,self.slide_hight')
             #print(self.page_size_array,self.slide_width ,self.slide_hight)
 
             '''CREATE L3 DIAGRAM'''
@@ -832,7 +830,7 @@ class  ns_l3_diagram_create():
                 if min_shape_width > shape_width:
                     shape_width = min_shape_width
 
-                print('### WRITE LEFT WP  ', shape_text, shape_width,new_wp_exist_array[2])
+                #print('### WRITE LEFT WP  ', shape_text, shape_width,new_wp_exist_array[2])
                 shape_left = self.left_margin - shape_width - self.between_shape_column * 3 + offset_shape_left
 
                 if action_type == 'CREATE':
@@ -970,7 +968,7 @@ class  ns_l3_diagram_create():
                 if min_shape_width > shape_width:
                     shape_width = min_shape_width
 
-                print('### WRITE RIGHT WP  ', new_wp_exist_array[3], shape_width)
+                #print('### WRITE RIGHT WP  ', new_wp_exist_array[3], shape_width)
                 #shape_left = end_l3_seg_inche_x + self.between_shape_column * 3
                 shape_left = self.area_position_array[0] + self.area_position_array[2] + self.between_shape_column * 2  + offset_shape_right # updated
                 if action_type == 'CREATE':
@@ -1181,6 +1179,7 @@ class  ns_l3_diagram_create():
                     l3segment_edge_array = []
                     l3_network_list = []
                     the_l3segment_l3_network_list = []
+
                     for tmp_target_l2_broadcast_group_array in self.target_l2_broadcast_group_array:
                         if self.connected_l3if_key_array[index_5][index_55] in tmp_target_l2_broadcast_group_array[1]:
                             #print('##MATCH  ',self.connected_l3if_key_array[index_5][index_55])
@@ -1366,11 +1365,11 @@ class  ns_l3_diagram_create():
         '''
         Write line of L3 instance
         '''
-        if self.size_l3_instance_array != []:
+        '''if self.size_l3_instance_array != []:
             print('--- self.size_l3_instance_array ---  shape_text, l3_shape_text, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight')
-            #print(self.size_l3_instance_array)
+            print(self.size_l3_instance_array)
             print('--- self.all_l3if_tag_array --- , tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text,up_shape_width_if_array[0],shape_text')
-            #print(self.all_l3if_tag_array)
+            print(self.all_l3if_tag_array)'''
 
         used_line_array = []
         for tmp_update_l3_instance_array in self.update_l3_instance_array:
@@ -1568,7 +1567,7 @@ def check_move_to_right(self,top_device_name_array,target_position_shape_array):
 
 def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
     #print('--- get_l3_segment_num ---')
-    #print(top_device_name_array )
+    #print(f'top_device_name_array,target_position_shape_array     {top_device_name_array,target_position_shape_array}')
     count_l3segment = 0
     connected_l3if_key_array = []
     tmp_used_l3segment_array = []
@@ -1579,12 +1578,12 @@ def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
         for i in range(self.index_2 + 1 , len(self.index_1_array)):
             buttom_device_name_array = target_position_shape_array[i]
             for tmp_target_l2_broadcast_group_array in self.target_l2_broadcast_group_array:
+
                 if tmp_target_l2_broadcast_group_array[0] not in self.used_l3segment_array:
                     for tmp_tmp_target_l2_broadcast_group_array in tmp_target_l2_broadcast_group_array[1]:
                         if tmp_tmp_target_l2_broadcast_group_array[0] in top_device_name_array and tmp_tmp_target_l2_broadcast_group_array not in connected_l3if_key_array:
-                            #print('tmp_tmp_target_l2_broadcast_group_array[0],top_device_name_array', tmp_tmp_target_l2_broadcast_group_array[0], top_device_name_array)
                             for tmp_tmp_tmp_target_l2_broadcast_group_array in tmp_target_l2_broadcast_group_array[1]:
-                                if tmp_tmp_tmp_target_l2_broadcast_group_array[0] in buttom_device_name_array:
+                                if tmp_tmp_tmp_target_l2_broadcast_group_array[0] in buttom_device_name_array and tmp_target_l2_broadcast_group_array[0] not in tmp_used_l3segment_array:  ### add after 'after' for bugfix at Ver 2.2.0
                                     count_l3segment += 1
                                     connected_l3if_key_array.append(tmp_tmp_target_l2_broadcast_group_array )
                                     tmp_used_l3segment_array.append(tmp_target_l2_broadcast_group_array[0])
@@ -1629,6 +1628,7 @@ def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
                                     count_l3segment += 1
                                     connected_l3if_key_array.insert(0,tmp_tmp_target_l2_broadcast_group_array)
                                     tmp_used_l3segment_array.append(tmp_target_l2_broadcast_group_array[0])
+
 
         self.used_l3segment_array.extend(tmp_used_l3segment_array)
 
