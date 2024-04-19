@@ -661,7 +661,18 @@ class ns_front_run():
             #change target area name to N/A
             if target_area_name == '_WAN(Way_Point)_':
                 target_area_name = 'N/A'
+
+            ###check Master file open
+            ns_def.check_file_open(self.inFileTxt_L3_3_1.get())
+
+            ###create backup master file
+            ns_def.get_backup_filename(self.inFileTxt_L3_3_1.get())
+
+            ###run_auto_ip
             ns_extensions.auto_ip_addressing.run_auto_ip(self,target_area_name)
+
+            ### messagebox
+            tkinter.messagebox.showinfo(title='Complete', message='[MASTER] file has been updated.')
 
         if click_value == 'self.self.sub2_5_button_3':  # select browse
             ### check file open
