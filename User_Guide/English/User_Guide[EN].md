@@ -1,5 +1,7 @@
 # User Guide [English]
-The English version uses machine translation
+
+## 0. Concept
+[0. Concept of Network Sketcher](https://github.com/cisco-open/network-sketcher/blob/ver_2.2.0/User_Guide/English/0-1.concept%20of%20Network%20Sketcher.pdf)
 
 ## 1. First Step
 
