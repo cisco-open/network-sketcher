@@ -1,5 +1,8 @@
 # ユーザガイド [日本語]
 
+## 0. コンセプト
+[0. Network Sketcherのコンセプト](https://github.com/cisco-open/network-sketcher/blob/ver_2.2.0/User_Guide/Japanese/0-1.Network%20Sketcher%E3%82%B3%E3%83%B3%E3%82%BB%E3%83%97%E3%83%88%20.pdf)
+
 ## 1. 最初はここから
 [1-1. 概要](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/1-1.%20Network%20Sketcher%20DX%E3%81%A8%E3%81%AF.pdf)
 
