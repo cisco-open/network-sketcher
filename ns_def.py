@@ -889,7 +889,7 @@ def check_file_open(file_fullpath):
             return False
         except:
             #tkinter.messagebox.showwarning(title="File is being opened", message="Please close the file below." + '\n\n' + file_fullpath)
-            return False
+            return False #chenge for windows at Ver 2.2.0(a)
 
     #raise NameError
 
