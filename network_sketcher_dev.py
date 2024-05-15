@@ -885,21 +885,7 @@ class ns_front_run():
             #print(self.outFileTxt_12_3_1.get())
 
         if click_value == '12-3':  # select create from master
-
             self.click_value = '12-3'
-            # check : file is being opened
-            '''if ns_def.check_file_open(self.inFileTxt_12_1.get()) == True:
-                return ()
-            if ns_def.check_file_open(self.inFileTxt_12_2.get()) == True:
-                return ()
-            if ns_def.check_file_open(self.inFileTxt_12_2_2.get()) == True:
-                return ()
-            if ns_def.check_file_open(self.inFileTxt_12_1_2.get()) == True:
-                return ()
-            if ns_def.check_file_open(self.inFileTxt_12_2_3.get()) == True:
-                return ()
-            if ns_def.check_file_open(self.outFileTxt_12_3_1.get()) == True:
-                return ()'''
 
             # confirm to exist device table and master data file
             if os.path.isfile(self.inFileTxt_12_1.get()) == False:
