@@ -333,7 +333,7 @@ class ns_front_run():
                 self.sub1_3_label_4 = tk.Label(self.sub1_3, textvariable=self.text_sub1_3, font=("", 10), background="#FFF9E7")
                 self.sub1_3_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
                 #ns_front_run.sub_excel_master_1(self, file_type_array)
-                print('Update to the Master file')
+                print('--- Update to the Master file ---')
 
                 ### pre-defined for dev parameter
                 self.inFileTxt_92_1 = tk.Entry(self.sub1_3)
@@ -514,11 +514,11 @@ class ns_front_run():
         self.sub2_4.grid(row=4, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-3-2'))
-        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=10, pady=2, ipadx=15)
+        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=15, pady=2, ipadx=15)
 
         ### run xx-xx for dev , Create VPN diagram
         self.sub2_6 = tk.LabelFrame(self.sub2_2x, text='VPN Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=5, pady=2, ipadx=5, ipady=2)
+        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
         self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=10, pady=2, ipadx=15)
@@ -541,10 +541,13 @@ class ns_front_run():
         Extensions
         '''
         self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
-        self.sub3_3.grid(row=8, column=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub3_3.grid(row=8, column=6, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
-        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=15, pady=2, ipadx=5)
+
+        self.sub3_3_button_2 = tk.Button(self.sub3_3, text="Report", font=("", 12), command=lambda: ns_front_run.sub_master_extention_2(self))
+        self.sub3_3_button_2.grid(row=0, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
 
     def sub_master_extention_1(self):
         local_filename = self.filename
@@ -615,26 +618,6 @@ class ns_front_run():
         self.sub3_4_4_2 = tk.Label(self.sub3_4_4, text='   * [e.g.] Ascending : 1 -> 2 -> 3 ... , Descending : 254 -> 253 -> 251 ... ', font=("", 10), background="#E8F4F8")
         self.sub3_4_4_2 .grid(row=1, column=0, columnspan=8, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
-        '''self.sub3_4_4_3 = tk.Label(self.sub3_4_4, text='- Directions based on L1 Diagram:', font=("", 12), background="#E8F4F8")
-        self.sub3_4_4_3.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
-
-        option3_4_4_4 = ["Top to bottom", "Bottom to Top"]
-        global variable3_4_4_4
-        variable3_4_4_4 = tk.StringVar()
-        combo3_4_4_4 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_4, textvariable=variable3_4_4_4, font=("", 12), state='readonly')
-        combo3_4_4_4.current(0)
-        combo3_4_4_4.option_add("*TCombobox*Listbox.Font", 12)
-        combo3_4_4_4.grid(row=2, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
-        combo3_4_4_4.bind("<<ComboboxSelected>>")
-
-        option3_4_4_5 = ["Left to right", "Right to Left"]
-        global variable3_4_4_5
-        variable3_4_4_5 = tk.StringVar()
-        combo3_4_4_5 = ttk.Combobox(self.sub3_4_4 , values=option3_4_4_5, textvariable=variable3_4_4_5, font=("", 12), state='readonly')
-        combo3_4_4_5.current(0)
-        combo3_4_4_5.option_add("*TCombobox*Listbox.Font", 12)
-        combo3_4_4_5.grid(row=3, column=5, sticky='WE', padx=5, pady=2, ipadx=15)
-        combo3_4_4_5.bind("<<ComboboxSelected>>")'''
 
         # Support functions
         self.sub3_4_6 = tk.LabelFrame(self.sub3_4_1, text='Completion of missing IP addresses(Option)', font=("", 14), height=1, background="#E8F4F8")
@@ -656,7 +639,60 @@ class ns_front_run():
         self.sub3_4_button_1 = tk.Button(self.sub3_4_1, text=" Run IP Addressing ", font=("", 14), command=lambda: self.click_action_sub('self.sub3_4_button_1',self.combo3_4_1_1.get()))
         self.sub3_4_button_1.grid(row=6, column=0, sticky='W', padx=30, pady=10)
 
+    def sub_master_extention_2(self):
+        local_filename = self.filename
+        local_fullpath = self.full_filepath
+        push_array = [self.filename,self.full_filepath]
+
+        self.sub3_5 = tk.Toplevel()
+        self.sub3_5.title('Report')
+        self.root.update_idletasks()
+        #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
+        geo =  str(self.root.winfo_width() - 230) + 'x' + str(self.root.winfo_height() - 60) + '+' + str(self.root.winfo_x() + self.root.winfo_width() +150) + '+' + str(self.root.winfo_y() + 50 )
+        self.sub3_5.geometry(geo)
+
+        self.sub3_5_0 = tk.Label(self.sub3_5, text=local_filename, font=("", 12), background="#FFFFFF")
+        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=5)
+
+        # IP Address report
+        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='IP Address report', font=("", 14), height=1, background="#C2E2EC")
+        self.sub3_5_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
+
+        # Export to the list file
+        self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" Export to the table file ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
+        self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=30, pady=10)
+
+        self.sub3_4_3_entry_1 = tk.Entry(self.sub3_5_1, font=("", 12)) # for report
+
+        # Test Case
+        '''self.sub3_5_2 = tk.LabelFrame(self.sub3_5, text='Test Case report', font=("", 14), height=1, background="#C2E2EC")
+        self.sub3_5_2.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=5, ipadx=3, ipady=0)
+
+        self.sub3_5_5_3 = tk.Label(self.sub3_5_2, text='- Select Area', font=("", 12), background="#E8F4F8")
+        self.sub3_5_5_3 .grid(row=0, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        option3_5_5_3 = ns_extensions.ip_report.get_folder_list(self)
+        global variable3_5_5_3
+        variable3_5_5_3 = tk.StringVar()
+        self.combo3_5_5_3 = ttk.Combobox(self.sub3_5_2 , values=option3_5_5_3, textvariable=variable3_5_5_3, font=("", 12), state='readonly')
+        self.combo3_5_5_3.set("<Select Area>")
+        self.combo3_5_5_3.option_add("*TCombobox*Listbox.Font", 12)
+        self.combo3_5_5_3.grid(row=0, column=1, sticky='WE', padx=5, pady=15, ipady=2, ipadx=15)
+        self.combo3_5_5_3.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.combo3_5_5_3.get()))
+
+        # Export to the list file
+        self.sub3_5_button_1 = tk.Button(self.sub3_5_2, text=" Export to the Failure Test Cases ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1',self.combo3_5_1_1.get()))
+        self.sub3_5_button_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=30, pady=5)'''
+
+
+
     def click_action_sub(self, click_value, target_area_name):
+        if click_value == 'self.sub3_5_button_1':  # select Run
+            ###export_ip_report
+            ns_extensions.ip_report.export_ip_report(self, target_area_name)
+            ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()))
+
+
         if click_value == 'self.sub3_4_button_1':  # select Run
             #change target area name to N/A
             if target_area_name == '_WAN(Way_Point)_':
