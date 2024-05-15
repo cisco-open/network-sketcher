@@ -16,10 +16,243 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-import ns_def
+import ns_def , ns_egt_maker
 from collections import Counter
-import tkinter as tk ,tkinter.ttk
+import tkinter as tk ,tkinter.ttk, os , openpyxl
 import ipaddress
+
+class  ip_report():
+    def export_ip_report(self,dummy):
+        print('--- export_ip_report ---')
+        excel_maseter_file = self.inFileTxt_L2_3_1.get()
+        iDir = os.path.abspath(os.path.dirname(excel_maseter_file))
+
+        # SET IP Address report file patch
+        basename_without_ext = os.path.splitext(os.path.basename(excel_maseter_file))[0]
+        self.outFileTxt_11_2.delete(0, tkinter.END)
+        self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx')
+        self.excel_file_path = iDir + ns_def.return_os_slash() + '_template_[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx'
+
+        ## check file open
+        ns_def.check_file_open(self.outFileTxt_11_2.get())
+
+        # remove exist device file
+        if os.path.isfile(self.outFileTxt_11_2.get()) == True:
+            os.remove(self.outFileTxt_11_2.get())
+
+        print(excel_maseter_file)
+        print(self.outFileTxt_11_2.get())
+
+        self.excel_file_path = self.outFileTxt_11_2.get()
+
+        '''
+        MAKE IP Address List
+        '''
+        master_device_table_tuple = {}
+        ip_address_list_array = []
+        egt_maker_width_array = ['20', '20', '20', '20', '25', '15', '20']  # for Network Sketcher Ver 2.0
+        ip_address_list_array.append([1, ['<RANGE>', '1', '1', '1', '1', '1', '1', '1', '<END>']])
+        ip_address_list_array.append([2, ['<HEADER>', 'IP Address', 'Mask', 'Network Address', 'Device Name', 'L3 IF Name', 'L3 Instance', 'Area', '<END>']])
+
+        current_row_num = 3
+
+        kari_ip_address_list_array = []
+        l3_segment_group_array = ns_def.get_l3_segments(self)
+        #print(l3_segment_group_array)
+        tmp_seg_array = []
+        for tmp_l3_segment_group_array in l3_segment_group_array:
+            #print(tmp_l3_segment_group_array)
+
+            for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
+                tmp_seg_array.append([tmp_tmp_l3_segment_group_array[0],tmp_tmp_l3_segment_group_array[4]])
+
+                ip_with_subnet = tmp_tmp_l3_segment_group_array[4]
+                ip_address = '[None]'
+                subnet_mask = '[None]'
+                network_address = '[None]'
+
+                L3_instance = ' '
+                if tmp_tmp_l3_segment_group_array[3] != '':
+                    L3_instance = tmp_tmp_l3_segment_group_array[3]
+
+                if '/' in str(ip_with_subnet):
+                    network = ipaddress.ip_network(ip_with_subnet, strict=False)
+                    ip_interface = ipaddress.ip_interface(ip_with_subnet)
+                    ip_address = str(ip_interface.ip)
+                    subnet_mask = str(ip_interface.netmask)
+                    ip_address_dummy, prefix_length = ip_with_subnet.split('/')
+                    network_address = str(network.network_address) + str('/') + str(prefix_length)
+                    numeric_sequence = ''.join(f'{int(octet):03}' for octet in ip_address.split('.'))
+                if ip_address == '[None]':
+                    numeric_sequence = str(255255255255)
+                kari_ip_address_list_array.append([numeric_sequence,ip_address,subnet_mask,network_address,tmp_tmp_l3_segment_group_array[1],tmp_tmp_l3_segment_group_array[2],L3_instance,tmp_tmp_l3_segment_group_array[0], '<END>'])
+        sorted_lists = sorted(kari_ip_address_list_array, key=lambda x: x[0], reverse=False)
+        #print(sorted_lists)
+
+        for tmp_sorted_lists in sorted_lists:
+            tmp_sorted_lists[0] = ''
+            ip_address_list_array.append([current_row_num,tmp_sorted_lists])
+            current_row_num += 1
+
+        ip_address_list_array.append([current_row_num, ['<END>']])
+
+        #print(ip_address_list_array)
+        ### Convert to tuple
+        master_device_table_tuple = ns_def.convert_array_to_tuple(ip_address_list_array)
+
+        '''
+        MAKE Summary
+        '''
+        summary_list_master_device_table_tuple = {}
+        summary_list_array = []
+        summary_list_array.append([1, ['<RANGE>', '1', '1','<END>']])
+        summary_list_array.append([2, ['<HEADER>', 'Area', 'Summary(CIDR)',  '<END>']])
+
+        area_list = ip_report.get_folder_list(self)
+        current_row_num = 3
+
+        #print(tmp_seg_array)
+        get_folder = ip_report.get_folder_list(self)
+        #print(get_folder)
+
+        for tmp_get_folder in get_folder:
+            kari_sum_array = []
+            for tmp_tmp_seg_array in tmp_seg_array:
+                if tmp_tmp_seg_array[0] == tmp_get_folder and tmp_tmp_seg_array[1] != '':
+                    kari_sum_array.append(tmp_tmp_seg_array[1])
+
+            #print(kari_sum_array)
+            networks = [ipaddress.ip_network(cidr, strict=False) for cidr in kari_sum_array]
+
+            # clac summary
+            summary_address = ipaddress.collapse_addresses(networks)
+            summary_address_list = [str(network) for network in summary_address]
+            #print(tmp_get_folder,str(summary_address_list))
+
+            first_area_flag = True
+            for tmp_summary_address_list in summary_address_list:
+                if first_area_flag == True:
+                    summary_list_array.append([current_row_num, ['', tmp_get_folder, str(tmp_summary_address_list), '<END>']])
+                    current_row_num += 1
+                    first_area_flag = False
+                else:
+                    summary_list_array.append([current_row_num, ['', '', str(tmp_summary_address_list), '<END>']])
+                    current_row_num += 1
+
+        summary_list_array.append([current_row_num, ['<END>']])
+
+        #print(summary_list_array)
+
+        ### Convert to tuple
+        master_summary_table_tuple = ns_def.convert_array_to_tuple(summary_list_array)
+
+        ''' 
+        Create temp input data file
+        '''
+        ### Create new data excel file
+        self.worksheet_name = 'IP Address_List'
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.title = self.worksheet_name
+        wb.save(self.excel_file_path)
+
+        '''
+        Create [IP Address] file
+        '''
+
+        tmp_master_data_array = []
+        tmp_master_data_array.append([1,['Summary']])
+        tmp_master_data_array.append([2,[self.worksheet_name]])
+        #print(tmp_master_data_array)
+
+
+        template_master_data_tuple = {}
+        template_master_data_tuple = ns_def.convert_array_to_tuple(tmp_master_data_array)
+
+        #print('Create --- template_master_data_tuple---')
+        #print(template_master_data_tuple)
+        offset_row = 0
+        offset_column = 0
+        write_to_section = '_template_'
+        ns_def.write_excel_meta(template_master_data_tuple, self.excel_file_path, self.worksheet_name, write_to_section, offset_row, offset_column)
+
+        ###
+        input_excel_name = self.excel_file_path
+        output_excel_name = self.outFileTxt_11_2.get()
+        NEW_OR_ADD = 'NEW'
+        ns_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
+
+        '''
+        Add IP Address_List table from meta
+        '''
+        # Write normal tuple to excel
+        tmp_ws_name = '_tmp_'
+        master_excel_meta = master_summary_table_tuple
+        ppt_meta_file = output_excel_name
+        excel_file_path = ppt_meta_file
+        worksheet_name = tmp_ws_name
+        section_write_to = '<<N/A>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.create_excel_sheet(ppt_meta_file, tmp_ws_name)
+        ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+        #print(output_excel_name)
+        self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
+        worksheet_name = 'Summary'
+        start_row = 1
+        start_column = 0
+        custom_table_name = ppt_meta_file
+        self.input_tree_excel = ns_egt_maker.insert_custom_excel_table(self.input_tree_excel, worksheet_name, start_row, start_column, custom_table_name)
+        self.input_tree_excel.save(output_excel_name)
+
+        # Remove _tmp_ sheet from excel master
+        ns_def.remove_excel_sheet(ppt_meta_file, tmp_ws_name)
+
+        '''
+        Add Summary table from meta
+        '''
+
+        # Write normal tuple to excel
+        tmp_ws_name = '_tmp_'
+        master_excel_meta = master_device_table_tuple
+        ppt_meta_file = output_excel_name
+        excel_file_path = ppt_meta_file
+        worksheet_name = tmp_ws_name
+        section_write_to = '<<N/A>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.create_excel_sheet(ppt_meta_file, tmp_ws_name)
+        ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+        #print(output_excel_name)
+        self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
+        worksheet_name = 'IP Address_List'
+        start_row = 1
+        start_column = 0
+        custom_table_name = ppt_meta_file
+        self.input_tree_excel = ns_egt_maker.insert_custom_excel_table(self.input_tree_excel, worksheet_name, start_row, start_column, custom_table_name)
+        self.input_tree_excel.save(output_excel_name)
+
+        # Remove _tmp_ sheet from excel master
+        ns_def.remove_excel_sheet(ppt_meta_file, tmp_ws_name)
+
+
+    def get_folder_list(self):
+        print('--- get_folder_list ---')
+        #parameter
+        ws_name = 'Master_Data'
+        excel_maseter_file = self.inFileTxt_L2_3_1.get()
+
+        # GET Folder and wp name List
+        self.folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
+        #print('---- folder_wp_name_array ----')
+        #print(self.folder_wp_name_array)
+
+        return_array = self.folder_wp_name_array[0]
+        #if len(self.folder_wp_name_array[1]) >= 1:
+        #    return_array.append("_WAN(Way_Point)_")
+        return return_array
 
 class  auto_ip_addressing():
     def get_folder_list(self):

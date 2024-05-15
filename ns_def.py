@@ -107,7 +107,7 @@ def get_backup_filename(full_filepath):
 def messagebox_file_open(full_filepath):
     if return_os_slash() == '\\\\': # add ver 2.1.1 for bug fix on Mac OS
         filename = os.path.basename(full_filepath)
-        ret = tkinter.messagebox.askyesno('Complete', 'Would you like to open the created file?\n\n' + filename)
+        ret = tkinter.messagebox.askyesno('Complete', 'Do you want to open the created file?\n\n' + filename)
         if ret == True:
             subprocess.Popen(full_filepath, shell=True)
 
@@ -889,6 +889,7 @@ def check_file_open(file_fullpath):
             return False
         except:
             #tkinter.messagebox.showwarning(title="File is being opened", message="Please close the file below." + '\n\n' + file_fullpath)
+            print('[WARNING] The file you are writing to may have been left open; Windows may display this message even when there is no problem.')
             return False #chenge for windows at Ver 2.2.0(a)
 
     #raise NameError
