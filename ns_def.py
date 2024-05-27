@@ -420,7 +420,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
                                         break
                         current_level +=1
                         #print(current_level,tmp_width,tmp_hight,tmp_count_shape)
-                        current_level_inches_width = min_tag_inches * 12 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver2.2 chage ,  min_tag_inches * 2 ->12
+                        current_level_inches_width = min_tag_inches * 18 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver2.2.1(a) chage ,  min_tag_inches * 2 ->18
                         #print('----current_level_inches_hight ----  ',master_folder_tuple[tmp_master_folder_tuple],master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3],current_level,current_max_hight)
                         tmp_hight += current_max_hight
                         if current_max_width < current_level_inches_width:
