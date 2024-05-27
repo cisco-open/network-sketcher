@@ -45,21 +45,21 @@ class  ns_l3_diagram_create():
 
         self.result_get_l2_broadcast_domains =  ns_def.get_l2_broadcast_domains.run(self,excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
 
-        print('--- self.update_l2_table_array ---')
+        #print('--- self.update_l2_table_array ---')
         #print(self.result_get_l2_broadcast_domains[0])
-        print('--- self.device_l2_boradcast_domain_array ---')
+        #print('--- self.device_l2_boradcast_domain_array ---')
         #print(self.result_get_l2_broadcast_domains[1])
         self.device_l2_boradcast_domain_array = self.result_get_l2_broadcast_domains[1]
-        print('--- device_l2_directly_l3vport_array ---')
+        #print('--- device_l2_directly_l3vport_array ---')
         #print(self.result_get_l2_broadcast_domains[2])
         self.device_l2_directly_l3vport_array = self.result_get_l2_broadcast_domains[2]
-        print('--- device_l2_other_array ---')
+        #print('--- device_l2_other_array ---')
         #print(self.result_get_l2_broadcast_domains[3])
         self.device_l2_other_array = self.result_get_l2_broadcast_domains[3]
         #print('--- marged_l2_broadcast_group_array ---')
         #print(self.result_get_l2_broadcast_domains[4])
         self.marged_l2_broadcast_group_array = self.result_get_l2_broadcast_domains[4]
-        print('--- self.target_l2_broadcast_group_array ---')
+        #print('--- self.target_l2_broadcast_group_array ---')
         #print(self.target_l2_broadcast_group_array)
 
         self.l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
@@ -85,7 +85,7 @@ class  ns_l3_diagram_create():
                 tmp_l3_table_array[1].append(str(add_ip_address_set_array))
 
                 self.update_l3_table_array.append(tmp_l3_table_array[1])
-        print('--- self.update_l3_table_array  ---')
+        #print('--- self.update_l3_table_array  ---')
         #print(self.update_l3_table_array )
 
         # GET way point with folder tuple
@@ -115,7 +115,7 @@ class  ns_l3_diagram_create():
                         flag_start_column = True
                     current_column += 1
 
-        print('---- wp_with_folder_tuple ----')
+        #print('---- wp_with_folder_tuple ----')
         #print(self.wp_with_folder_tuple)
 
 
@@ -194,12 +194,12 @@ class  ns_l3_diagram_create():
                     update_l2_broadcast_group_array.append(tmp_target_l2_broadcast_group_array)
                     break
 
-        print('--- update_l2_broadcast_group_array ---')
+        #print('--- update_l2_broadcast_group_array ---')
         #print(update_l2_broadcast_group_array)
 
         ### get <<POSITION_SHAPE>> in MASTER EXCEL
         target_position_shape_array = []
-        print('--- self.position_shape_array ---')
+        #print('--- self.position_shape_array ---')
         #print(self.position_shape_array )
 
         flag_match_folder = False
@@ -217,7 +217,7 @@ class  ns_l3_diagram_create():
             elif flag_match_folder == True and tmp_position_shape_array[1][0] != '':
                 break
 
-        print('--- target_position_shape_array ---')
+        #print('--- target_position_shape_array ---')
         #print(target_position_shape_array,len(target_position_shape_array))
 
         ### Kyuusai if len(target_position_shape_array) == 1
@@ -290,7 +290,7 @@ class  ns_l3_diagram_create():
 
         new_wp_exist_array = [list(set(new_wp_exist_array [0])),list(set(new_wp_exist_array [1])),list(set(new_wp_exist_array [2])),list(set(new_wp_exist_array[3]))]
 
-        print('--- new_wp_exist_array ---')
+        #print('--- new_wp_exist_array ---')
         #print(new_wp_exist_array ,'  #up/down/left/right')
         self.new_wp_exist_array = new_wp_exist_array
 
@@ -300,7 +300,7 @@ class  ns_l3_diagram_create():
         if new_wp_exist_array[1] != []:
             marge_target_position_shape_array.append(new_wp_exist_array[1])
 
-        print('--- marge_target_position_shape_array ---')
+        #print('--- marge_target_position_shape_array ---')
         #print(marge_target_position_shape_array)
 
         wp_marge_target_position_shape_array = marge_target_position_shape_array
@@ -324,13 +324,13 @@ class  ns_l3_diagram_create():
                 # insert wp to edge of right side
                 wp_marge_target_position_shape_array[left_right_wp_row_num].extend([shape_text])
 
-        print('--- wp_marge_target_position_shape_array---')
+        #print('--- wp_marge_target_position_shape_array---')
         #print(wp_marge_target_position_shape_array)
 
         #get up down l3if array
         self.up_down_l3if_array = get_up_down_l3if_count(self,wp_marge_target_position_shape_array)
 
-        print('--- self.up_down_l3if_array ---  # up/down')
+        #print('--- self.up_down_l3if_array ---  # up/down')
         #print(self.up_down_l3if_array[0])
         #print(self.up_down_l3if_array[1])
 
@@ -361,7 +361,7 @@ class  ns_l3_diagram_create():
                     if return_get_l3_segment_num in tmp_target_l2_broadcast_group_array[1]:
                         self.l3_if_has_l3_segment_array.extend(tmp_target_l2_broadcast_group_array[1])
 
-        print('--- self.l3_if_has_l3_segment_array ---')
+        #print('--- self.l3_if_has_l3_segment_array ---')
         #print(self.l3_if_has_l3_segment_array)
 
         ### GET L3 instance
@@ -373,7 +373,7 @@ class  ns_l3_diagram_create():
                 self.l3_instance_array.append([tmp_update_l3_table_array[1],tmp_update_l3_table_array[3]])
 
         self.l3_instance_array = ns_def.get_l2_broadcast_domains.get_unique_list(self.l3_instance_array)
-        print('--- self.l3_instance_array ---')
+        #print('--- self.l3_instance_array ---')
         #print(self.l3_instance_array)
 
         for tmp_update_l3_table_array in self.update_l3_table_array:
@@ -386,7 +386,7 @@ class  ns_l3_diagram_create():
                         self.update_l3_instance_array.append([tmp_update_l3_table_array, self.defalut_l3_instance_name])
                         #print([tmp_update_l3_table_array, self.defalut_l3_instance_name])
 
-        print('--- self.update_l3_instance_array ---')
+        #print('--- self.update_l3_instance_array ---')
         #print(self.update_l3_instance_array)
 
 
@@ -802,7 +802,7 @@ class  ns_l3_diagram_create():
                 left_offset = start_l3_seg_inche_x - self.left_margin
 
         #print('## end_l3_seg_inche_x ', end_l3_seg_inche_x)
-        print('--- l3segment_line_array ---')
+        #print('--- l3segment_line_array ---')
         #print(l3segment_line_array)
 
 
@@ -1090,7 +1090,7 @@ class  ns_l3_diagram_create():
         '''
         write folder line and outline 
         '''
-        print('--- self.area_position_array ---')
+        #print('--- self.area_position_array ---')
         #print(self.area_position_array)
 
         ### write folder
@@ -1307,11 +1307,11 @@ class  ns_l3_diagram_create():
 
         '''write ip on L3 IF'''
         #print('--- self.mark_multi_ip_array ---  [tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top - tag_shape_hight - offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2],tmp_remake_array,shape_text ]')
-        print('--- self.mark_multi_ip_array ---')
+        #print('--- self.mark_multi_ip_array ---')
         #print(self.mark_multi_ip_array)
-        print('--- self.all_written_if_line_array) ---')
+        #print('--- self.all_written_if_line_array) ---')
         #print(self.all_written_if_line_array)
-        print('--- all_l3segment_l3_netowrk_list ---')
+        #print('--- all_l3segment_l3_netowrk_list ---')
         #print(all_l3segment_l3_netowrk_list)
 
         if self.mark_multi_ip_array != []:
