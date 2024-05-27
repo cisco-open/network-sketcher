@@ -1004,6 +1004,7 @@ class ns_front_run():
                 #### create L2 table from master and l2 data sheet
                 ns_l2_table_from_master.ns_l2_table_from_master_l2_sheet.__init__(self)
 
+            input_excel_master_data.close()
             # view complete
             #tkinter.messagebox.showinfo('info', 'successfully completed')
 
