@@ -1681,7 +1681,7 @@ class  ns_l1_master_create():
 
         self.root_left = 0.28
         self.root_top  = 1.42
-        self.root_width = math.ceil(master_folder_size_array[0] * 10) / 10
+        self.root_width = math.ceil(master_folder_size_array[0] * 11) / 10
         self.root_hight = math.ceil(master_folder_size_array[3] * 10) / 10
 
         # width inches of root folder ( ver 1.1)
