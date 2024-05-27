@@ -211,7 +211,7 @@ class  ns_l1_diagram_create():
 
                 #### GET best width size ####
                 master_folder_size_array = ns_def.get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_shape_tuple, min_tag_inches)
-                print('###master_folder_size_array###  \n'  + str(master_folder_size_array))
+                #print('###master_folder_size_array###  \n'  + str(master_folder_size_array))
 
                 ### get root folder tuple
                 master_root_folder_tuple = ns_def.get_root_folder_tuple(self,master_folder_size_array,tmp_folder_name)
