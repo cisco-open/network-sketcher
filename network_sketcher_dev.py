@@ -1124,6 +1124,7 @@ class ns_front_run():
                 #### create L3 table from master and L3 data sheet
                 ns_l3_table_from_master.ns_l3_table_from_master_l3_sheet.__init__(self)
 
+            input_excel_master_data.close()
             # view complete
             #tkinter.messagebox.showinfo('info', 'successfully completed')
 
