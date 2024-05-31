@@ -294,8 +294,8 @@ class ns_front_run():
             network_sketcher_dev.ns_front_run.click_action(self,'L3-1-2')
 
             # remove exist L3/ file
-            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
-                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]'))
+            #if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:  # fixed ns-005 at 2.2.1(b)
+            #    os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) # fixed ns-005 at 2.2.1(b)
 
             ###Create the device file
             self.click_value_2nd = 'self.sub1_1_button_1'
