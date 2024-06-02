@@ -286,8 +286,8 @@ class ns_front_run():
             network_sketcher_dev.ns_front_run.click_action(self,'L2-1-2')
 
             # remove exist L2/ file
-            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')) == True:
-                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]'))
+            #if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')) == True:  # fixed ns-005 at 2.2.1(b)
+            #    os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]'))  # fixed ns-005 at 2.2.1(b)
 
             ### run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
             self.click_value = 'L3-1-2'
