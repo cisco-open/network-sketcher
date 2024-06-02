@@ -126,7 +126,7 @@ def check_file_type(full_filepath):
                                 return (['ERROR','Please enter a PPT file that does not contain IF tags'])
 
                     except Exception as e:
-                        print('[info] Exception handling with check_file_type') 　# modified at 2.2.1(b)
+                        print('[info] Exception handling with check_file_type')
 
         return_type_array = ['PPT_SKECH','PPT_SKECH']
 
