@@ -113,7 +113,6 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 * Yusuke Ogawa
 * CCIE# 17583
 * Security Architect @ Cisco
-* yuogawa@cisco.com
  
 # License
 SPDX-License-Identifier: Apache-2.0
