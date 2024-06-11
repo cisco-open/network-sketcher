@@ -29,21 +29,21 @@ class  ip_report():
 
         # SET IP Address report file patch
         basename_without_ext = os.path.splitext(os.path.basename(excel_maseter_file))[0]
-        self.outFileTxt_11_2.delete(0, tkinter.END)
-        self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx')
+        self.outFileTxt_11_3.delete(0, tkinter.END)
+        self.outFileTxt_11_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx')
         self.excel_file_path = iDir + ns_def.return_os_slash() + '_template_[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx'
 
         ## check file open
-        ns_def.check_file_open(self.outFileTxt_11_2.get())
+        ns_def.check_file_open(self.outFileTxt_11_3.get())
 
         # remove exist device file
-        if os.path.isfile(self.outFileTxt_11_2.get()) == True:
-            os.remove(self.outFileTxt_11_2.get())
+        if os.path.isfile(self.outFileTxt_11_3.get()) == True:
+            os.remove(self.outFileTxt_11_3.get())
 
         print(excel_maseter_file)
-        print(self.outFileTxt_11_2.get())
+        print(self.outFileTxt_11_3.get())
 
-        self.excel_file_path = self.outFileTxt_11_2.get()
+        self.excel_file_path = self.outFileTxt_11_3.get()
 
         '''
         MAKE IP Address List
@@ -86,7 +86,13 @@ class  ip_report():
                 if ip_address == '[None]':
                     numeric_sequence = str(255255255255)
                 kari_ip_address_list_array.append([numeric_sequence,ip_address,subnet_mask,network_address,tmp_tmp_l3_segment_group_array[1],tmp_tmp_l3_segment_group_array[2],L3_instance,tmp_tmp_l3_segment_group_array[0], '<END>'])
-        sorted_lists = sorted(kari_ip_address_list_array, key=lambda x: x[0], reverse=False)
+        
+        # Remove completely duplicate columns at ver 2.2.1(c)
+        unique_tuples_set = set(tuple(item) for item in kari_ip_address_list_array)
+        unique_list = [list(item) for item in unique_tuples_set]
+        unique_array = np.array(unique_list)
+        sorted_lists = sorted(unique_array, key=lambda x: x[0], reverse=False)
+        
         #print(sorted_lists)
 
         for tmp_sorted_lists in sorted_lists:
@@ -178,7 +184,7 @@ class  ip_report():
 
         ###
         input_excel_name = self.excel_file_path
-        output_excel_name = self.outFileTxt_11_2.get()
+        output_excel_name = self.outFileTxt_11_3.get()
         NEW_OR_ADD = 'NEW'
         ns_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
 
