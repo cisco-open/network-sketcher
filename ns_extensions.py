@@ -20,6 +20,7 @@ import ns_def , ns_egt_maker
 from collections import Counter
 import tkinter as tk ,tkinter.ttk, os , openpyxl
 import ipaddress
+import numpy as np
 
 class  ip_report():
     def export_ip_report(self,dummy):
