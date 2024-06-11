@@ -33,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.2.1(b)")
+        self.root.title("Network Sketcher  ver 2.2.1(c)")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -434,6 +434,7 @@ class ns_front_run():
         self.outFileTxt_L3_3_4_1 = tk.Entry(self.sub2_1)
         self.inFileTxt_11_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_11_2 = tk.Entry(self.sub2_1)
+        self.outFileTxt_11_3 = tk.Entry(self.sub2_1) # for a bug fix at 2.2.1(c)
         self.inFileTxt_L2_1_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_L2_1_4_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_L2_1_1 = tk.Entry(self.sub2_1)
@@ -690,7 +691,7 @@ class ns_front_run():
         if click_value == 'self.sub3_5_button_1':  # select Run
             ###export_ip_report
             ns_extensions.ip_report.export_ip_report(self, target_area_name)
-            ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()))
+            ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
 
 
         if click_value == 'self.sub3_4_button_1':  # select Run
