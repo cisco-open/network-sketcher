@@ -341,6 +341,138 @@ def return_shape_tuple(current_shape_array ,start_row):
         tmp_grid_array = sorted(tmp_grid_array, reverse=False, key=lambda x: x[2])  # sort for top
         master_grid_array.append(tmp_grid_array)
 
+    '''Added automatic horizontal axis placement function at Ver 2.2.2 '''
+    # Remove items containing '_AIR_' in the second element
+    master_grid_array = [[item for item in sublist if '_AIR_' not in item[1]] for sublist in master_grid_array]
+
+    updated_master_grid_array = []
+    device_name_array = []
+
+    for tmp_master_grid_array in master_grid_array:
+        # print('###############')
+        # print(tmp_master_grid_array)
+        for tmp_tmp_master_grid_array in tmp_master_grid_array:
+            # print(tmp_tmp_master_grid_array)
+            device_name_array.append(tmp_tmp_master_grid_array[1])
+    # print('###############')
+    # print(device_name_array)
+
+    vertical_key_array = []
+    used_device_array = []
+    for tmp_device_name_array in device_name_array:
+        flag_no_match = True
+        target = tmp_device_name_array
+        result = None
+
+        for sublist in master_grid_array:
+            for item in sublist:
+                if item[1] == target:
+                    result = item
+                    break
+            if result:
+                break
+
+        for sublist in master_grid_array:
+            for item in sublist:
+                if item[1] not in used_device_array:
+                    # print('###used_device_array###  ', item[1],used_device_array)
+                    if result[2] < item[2] + item[4] and result[2] > item[2]:
+                        # print('@@left type@@  ', item)
+                        flag_no_match = False
+                        if result not in vertical_key_array and result[1] not in used_device_array:
+                            vertical_key_array.append(result)
+                        used_device_array.append(item[1])
+
+                    if result[2] + result[4] > item[2] and result[2] + result[4] < item[2] + item[4]:
+                        # print('@@right type@@  ', item)
+                        flag_no_match = False
+                        if result not in vertical_key_array and result[1] not in used_device_array:
+                            vertical_key_array.append(result)
+                        used_device_array.append(item[1])
+
+                    if result[2] < item[2] and result[2] + result[4] > item[2] + item[4]:
+                        # print('@@big type@@  ', item)
+                        flag_no_match = False
+                        if result not in vertical_key_array and result[1] not in used_device_array:
+                            vertical_key_array.append(result)
+                        used_device_array.append(item[1])
+
+                    if result[2] > item[2] and result[2] + result[4] < item[2] + item[4]:
+                        # print('@@small type@@  ', item)
+                        flag_no_match = False
+                        if result not in vertical_key_array and result[1] not in used_device_array:
+                            vertical_key_array.append(result)
+                        used_device_array.append(item[1])
+
+                    if result[2] == item[2] and result[2] + result[4] == item[2] + item[4] and result[1] != item[1]:
+                        #print('@@equal type@@  ', item)
+                        flag_no_match = False
+                        if result not in vertical_key_array and result[1] not in used_device_array:
+                            vertical_key_array.append(result)
+                        used_device_array.append(item[1])
+
+            if flag_no_match == True and result[1] not in used_device_array:
+                vertical_key_array.append(result)
+
+    #print('####vertical_key_array####')
+    #print(vertical_key_array, len(vertical_key_array))
+
+    # Remove duplicates by converting lists to tuples, adding to a set, and converting back to lists
+    vertical_key_array = [list(t) for t in set(tuple(item) for item in vertical_key_array)]
+    vertical_key_array_2 = []
+    for tmp_vertical_key_array in vertical_key_array:
+        vertical_key_array_2.append(
+            [tmp_vertical_key_array[0], '_AIR_', tmp_vertical_key_array[2], tmp_vertical_key_array[3],
+             tmp_vertical_key_array[4], tmp_vertical_key_array[5], tmp_vertical_key_array[6], tmp_vertical_key_array[7],
+             tmp_vertical_key_array[2] + int(tmp_vertical_key_array[4] * 0.5)])
+
+    vertical_key_array_2 = sorted(vertical_key_array_2, key=lambda x: x[8])
+    #print('####vertical_key_array_2 ####')
+    #print(vertical_key_array_2)
+
+    for tmp_master_grid_array in master_grid_array:
+        # print('####### tmp_master_grid_array ########')
+        # print(tmp_master_grid_array)
+
+        import copy
+        updated_vertical_key_array_2 = copy.deepcopy(vertical_key_array_2)
+
+        for i, tmp_vertical_key_array_2 in enumerate(vertical_key_array_2):
+            for tmp_tmp_master_grid_array in tmp_master_grid_array:
+
+                if tmp_tmp_master_grid_array not in updated_vertical_key_array_2:
+                    if tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] and \
+                            tmp_vertical_key_array_2[2] <= tmp_tmp_master_grid_array[2]:
+                        updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
+                        break
+                    elif tmp_vertical_key_array_2[2] >= tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] + \
+                            tmp_vertical_key_array_2[4] <= tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
+                        updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
+                        break
+                    elif tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] + \
+                            tmp_tmp_master_grid_array[4] and tmp_vertical_key_array_2[2] <= tmp_tmp_master_grid_array[
+                        2] + tmp_tmp_master_grid_array[4]:
+                        updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
+                        break
+                    elif tmp_vertical_key_array_2[2] <= tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] + \
+                            tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
+                        updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
+                        break
+                    elif tmp_vertical_key_array_2[2] == tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[4] == \
+                            tmp_tmp_master_grid_array[4]:
+                        updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
+                        break
+
+        # print(updated_vertical_key_array_2,len(updated_vertical_key_array_2))
+        updated_master_grid_array.append(updated_vertical_key_array_2)
+
+    print(updated_master_grid_array)
+
+    master_grid_array = copy.deepcopy(updated_master_grid_array)
+    print('--- master_grid_array ---')
+    print(master_grid_array)
+    '''Addition completed(ver 2.2.2)'''
+
     # make the tuple format
     tuple_grid_array = {}
     tuple_grid_array[start_row, 1] = master_grid_array[0][0][0]
