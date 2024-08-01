@@ -470,7 +470,7 @@ class  ns_ddx_figure_run():
                             ns_ddx_figure_run.add_segment_line(self,shape_left,shape_top,shape_width,shape_hight,folder_left,folder_top,folder_width,folder_hight,temp_sub_col_count,temp_row_subfolder,temp_width_margin,temp_hight_margin)
 
                         ###write normal shape
-                        if self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value != None and segment_flag == False:
+                        if self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value != None and segment_flag == False and '_AIR_' not in str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value):
                             self.shape = self.slide.shapes
                             self.shape = self.shape.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(shape_left), Inches(shape_top), Inches(shape_width), Inches(shape_hight))
                             ## write text and reflected TAG function in the shape
