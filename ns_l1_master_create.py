@@ -1146,7 +1146,7 @@ class  ns_l1_master_create():
                 elif tmp_start_column < tmp_end_left and tmp_start_row == tmp_end_top and flag_wp == True:
                     mark_lr.append([master_shape_tuple[tmp_begin_tuple], master_shape_tuple[tmp_end_tuple], 'RIGHT', 'LEFT'])
 
-            else:
+            elif tmp_end_tuple != '':  #fixed a bug at ver 2.2.2(a)
                 if tmp_begin_tuple[0] == tmp_end_tuple[0] and tmp_begin_tuple[1] > tmp_end_tuple[1]:
                     mark_lr.append([master_shape_tuple[tmp_begin_tuple],master_shape_tuple[tmp_end_tuple],'LEFT','RIGHT'])
 
