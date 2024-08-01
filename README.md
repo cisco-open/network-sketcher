@@ -10,7 +10,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 # New Features
 - Ver 2.2.2
-  - [Automated device placement adjustment in L1 diagram](https://private-user-images.githubusercontent.com/13013736/353774950-8014132b-4e38-422a-9ab0-3ee397e27b1e.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjI0ODE2NTcsIm5iZiI6MTcyMjQ4MTM1NywicGF0aCI6Ii8xMzAxMzczNi8zNTM3NzQ5NTAtODAxNDEzMmItNGUzOC00MjJhLTlhYjAtM2VlMzk3ZTI3YjFlLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDA4MDElMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwODAxVDAzMDIzN1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWNmMmNhNTU2Y2QyMjI4NjA0ODczNTI1OTJkYTM1MzVlNTgwZmIwOWIwYTBmYjQyYmE4ZTEyNmFhYjY0NmI4ZjgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0._eiNFeBIlhmCsNzIgWIc4sgE4NTjzihmhqpsct8LtVw)
+  - [Automated device placement adjustment in L1 diagram](https://github.com/user-attachments/assets/8014132b-4e38-422a-9ab0-3ee397e27b1e)
 - Ver 2.2.1
   - [IP address table](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-3.%20Export%20IP%20address%20table.md) :[(Sample output file) ](https://github.com/user-attachments/files/15784654/IP_TABLE.Sample.figure5.xlsx)
 
