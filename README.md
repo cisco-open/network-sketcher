@@ -34,7 +34,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 - __openpyxl ver 3.1.3 or higher__
 
 
-# Installation
+# Pre-Installation
  * Required
 ```bash
 pip install tkinterdnd2
