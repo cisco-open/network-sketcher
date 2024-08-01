@@ -33,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.2.2")
+        self.root.title("Network Sketcher  ver 2.2.2(a)")
         self.root.geometry("490x200+100+100")
         
         # Notebook
