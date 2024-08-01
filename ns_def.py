@@ -470,7 +470,7 @@ def return_shape_tuple(current_shape_array ,start_row):
 
     master_grid_array = copy.deepcopy(updated_master_grid_array)
     print('--- master_grid_array ---')
-    print(master_grid_array)
+    #print(master_grid_array)
     '''Addition completed(ver 2.2.2)'''
 
     # make the tuple format
