@@ -466,7 +466,7 @@ def return_shape_tuple(current_shape_array ,start_row):
         # print(updated_vertical_key_array_2,len(updated_vertical_key_array_2))
         updated_master_grid_array.append(updated_vertical_key_array_2)
 
-    print(updated_master_grid_array)
+    #print(updated_master_grid_array)
 
     master_grid_array = copy.deepcopy(updated_master_grid_array)
     print('--- master_grid_array ---')
