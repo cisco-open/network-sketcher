@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
+import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from pptx import *
 import sys, os, re
 import numpy as np
@@ -146,6 +147,7 @@ class  ns_l1_master_create():
         for i, sld in enumerate(self.input_sketch_ppt.slides, start=1):
             #print(f'-- {i} --')
             current_folder_size = 0
+            second_folder_size = 0 # multiple area check. add at ver 2.2.2(b)
 
             for shp in sld.shapes:
                 ### GET Group(Icons),Picture and icon   # Add Ver 1.1
@@ -181,20 +183,35 @@ class  ns_l1_master_create():
                     tmp_shp += 1
 
                     '''Elect Folder array '''
-                    if current_folder_size < (shp.width + shp.height):
-                        current_folder_size = shp.width + shp.height
+                    if current_folder_size < (shp.width * shp.height):
+                        current_folder_size = shp.width * shp.height
                         current_folder_array = tmp_shape_array[tmp_shp-1]
+                    elif second_folder_size < (shp.width * shp.height): # multiple area check. add at ver 2.2.2(b)
+                        second_folder_size = shp.width * shp.height
+                        second_folder_array = tmp_shape_array[tmp_shp - 1]
 
             ### add root folder if there is not root folder. Add ver 1.11
             tmp_count_include_shape = 0
+            tmp_count_include_shape_second = 0
             for tmp_check_shape in tmp_shape_array:
                 if current_folder_array[1] < tmp_check_shape[1] and current_folder_array[2] < tmp_check_shape[2] and \
                         (current_folder_array[1] + current_folder_array[3]) > (tmp_check_shape[1] + tmp_check_shape[3]) and \
                         (current_folder_array[2] + current_folder_array[4]) > (tmp_check_shape[2] + tmp_check_shape[4]):
                     tmp_count_include_shape += 1
                     #print(current_folder_array,tmp_check_shape)
+                for tmp_check_shape in tmp_shape_array: # multiple area check. add at ver 2.2.2(b)
+                    if second_folder_array[1] < tmp_check_shape[1] and second_folder_array[2] < tmp_check_shape[2] and \
+                            (second_folder_array[1] + second_folder_array[3]) > (
+                            tmp_check_shape[1] + tmp_check_shape[3]) and \
+                            (second_folder_array[2] + second_folder_array[4]) > (
+                            tmp_check_shape[2] + tmp_check_shape[4]):
+                        tmp_count_include_shape_second += 1
+                        # print(second_folder_array,tmp_check_shape)
 
             #print('---tmp_count_include_shape---  \n', tmp_count_include_shape)
+
+            if tmp_count_include_shape != 0 and tmp_count_include_shape_second !=0: # multiple area check. add at ver 2.2.2(b)
+                tkinter.messagebox.showwarning("Warning","Only one area is allowed per page.")
 
             if tmp_count_include_shape == 0:
                 tmp_shape_array.append(['_tmp_', 1, 1, 999999999999, 999999999999, 0.0, i])
