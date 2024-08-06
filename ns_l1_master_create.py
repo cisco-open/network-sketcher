@@ -199,14 +199,15 @@ class  ns_l1_master_create():
                         (current_folder_array[2] + current_folder_array[4]) > (tmp_check_shape[2] + tmp_check_shape[4]):
                     tmp_count_include_shape += 1
                     #print(current_folder_array,tmp_check_shape)
-                for tmp_check_shape in tmp_shape_array: # multiple area check. add at ver 2.2.2(b)
-                    if second_folder_array[1] < tmp_check_shape[1] and second_folder_array[2] < tmp_check_shape[2] and \
-                            (second_folder_array[1] + second_folder_array[3]) > (
-                            tmp_check_shape[1] + tmp_check_shape[3]) and \
-                            (second_folder_array[2] + second_folder_array[4]) > (
-                            tmp_check_shape[2] + tmp_check_shape[4]):
-                        tmp_count_include_shape_second += 1
-                        # print(second_folder_array,tmp_check_shape)
+
+            for tmp_check_shape in tmp_shape_array: # multiple area check. add at ver 2.2.2(b)
+                if second_folder_array[1] < tmp_check_shape[1] and second_folder_array[2] < tmp_check_shape[2] and \
+                        (second_folder_array[1] + second_folder_array[3]) > (
+                        tmp_check_shape[1] + tmp_check_shape[3]) and \
+                        (second_folder_array[2] + second_folder_array[4]) > (
+                        tmp_check_shape[2] + tmp_check_shape[4]):
+                    tmp_count_include_shape_second += 1
+                    # print(second_folder_array,tmp_check_shape)
 
             #print('---tmp_count_include_shape---  \n', tmp_count_include_shape)
 
