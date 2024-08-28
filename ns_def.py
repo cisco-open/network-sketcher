@@ -797,7 +797,11 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
         else:
             empty_count = 0
 
-        if empty_count >= 100:
+        ### Add IF section_name == '<<POSITION_TAG>>' for large map at 2.3.0
+        if empty_count >= 100 and section_name == '<<POSITION_TAG>>':
+            flag_finish = True
+            end_row = current_row
+        elif empty_count >= 3000:
             flag_finish = True
             end_row = current_row
         current_row += 1
@@ -1593,6 +1597,7 @@ class  get_l2_broadcast_domains():
     def get_opposite_if(self,device_name,if_name):
         for tmp_position_line_tuple in self.position_line_tuple:
             if tmp_position_line_tuple[0] != 1 and tmp_position_line_tuple[0] != 2:
+                #print(self.position_line_tuple)
                 tmp_if_array_1  = split_portname(self.position_line_tuple[tmp_position_line_tuple[0],3])
                 tmp_if_name_1 = str(self.position_line_tuple[tmp_position_line_tuple[0],13]) + ' ' + tmp_if_array_1[1]
                 tmp_if_array_2  = split_portname(self.position_line_tuple[tmp_position_line_tuple[0],4])

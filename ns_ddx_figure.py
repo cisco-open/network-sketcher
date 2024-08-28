@@ -163,7 +163,12 @@ class  ns_ddx_figure_run():
         self.shape = self.shape.add_shape(MSO_SHAPE.RECTANGLE, Inches(self.root_folder[0]), Inches(self.root_folder[1]), Inches(self.root_folder[2]), Inches(self.root_folder[3]))
         #style fill
         shape_fill = self.shape.fill
-        shape_fill = shape_fill.background()
+
+        #chage outline coler to 255,255,255 at ver 2.3.0
+        #shape_fill = shape_fill.background()
+        shape_fill.solid()
+        shape_fill.fore_color.rgb = RGBColor(255, 255, 255)
+
         # style line
         shape_line = self.shape.line
         shape_line.color.rgb = RGBColor(0, 0, 0)
@@ -2727,13 +2732,13 @@ class extended():
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
 
         elif shape_type == 'OUTLINE_NORMAL':
-            #fill paramter
-            shape_fill.background()
+            #fill paramter change color to 255,255,255 at ver 2.3.0
+            #shape_fill.background()
+            shape_fill.fore_color.rgb = RGBColor(255, 255, 255)
             # line paramter
             shape_line.width = Pt(1.0)
             shape_line.color.rgb = RGBColor(0, 0, 0)
             self.shape.adjustments[0] = float(0.0)  # curve of ROUNDED_RECTANGLE 0.0~1.0
-            # text parameter
 
         elif shape_type == 'IP_ADDRESS_TAG':
             #fill paramter

@@ -166,6 +166,7 @@ class ns_front_run():
         self.inFileTxt_L3_3_1 = tk.Entry(stepZero_L3_2)
         self.inFileTxt_L3_3_1.grid(row=0, column=1, columnspan=7, sticky="WE", pady=3)
         self.outFileTxt_L3_3_4_1 = tk.Entry(stepZero_L3_2)
+        self.outFileTxt_L3_3_5_1 = tk.Entry(stepZero_L3_2)
         inFileBtn_L3_3_1 = tk.Button(stepZero_L3_2, text="Browse ...", command=lambda: self.click_action('L3-3-1'))
         inFileBtn_L3_3_1.grid(row=0, column=8, sticky='W', padx=5, pady=2)
         self.outFileTxt_L3_3_1 = tk.Entry(stepZero_L3_2)
@@ -478,6 +479,7 @@ class ns_front_run():
         root.mainloop()
 
     def click_action(self,click_value):
+        self.click_value_l3 = ''
         if click_value == '1-1': # select browse
             fTyp = [("", ".pptx")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -1200,6 +1202,49 @@ class ns_front_run():
             # check Master_Data_L3 sheet already exits in Excel Master data file
             import ns_l3_diagram_create
             ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+
+            # view complete
+            ns_def.messagebox_file_open(self.output_ppt_file)
+
+        if click_value == 'L3-4-1':  # For All Areas L3 Diagram at ver 2.3.0
+            import ns_l3_diagram_create
+
+
+            full_filepath = self.inFileTxt_L3_3_1.get()
+            iDir = os.path.dirname(full_filepath)
+            basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
+
+            self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
+            self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L3_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+            self.outFileTxt_L3_3_5_1.delete(0, tkinter.END)
+            self.outFileTxt_L3_3_5_1.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext.replace('[MASTER]', '__TMP__[MASTER]') + '.xlsx')
+            self.output_ppt_file = self.outFileTxt_L3_3_4_1.get()
+            self.excel_maseter_file_backup = self.outFileTxt_L3_3_5_1.get()
+
+            # check : file is being opened
+            if ns_def.check_file_open(self.outFileTxt_L3_3_4_1.get()) == True:
+                return ()
+
+            # remove exist L3 file and backup xlsx file
+            if os.path.isfile(self.outFileTxt_L3_3_4_1.get()) == True:
+                os.remove(self.outFileTxt_L3_3_4_1.get())
+
+            if os.path.isfile(self.outFileTxt_L3_3_5_1.get()) == True:
+                os.remove(self.outFileTxt_L3_3_5_1.get())
+
+            # Create a master file that merges multiple areas into one area
+            ns_l3_diagram_create.create_master_file_one_area.__init__(self)
+
+            # Create a one ppt page of file containing all areas of the L3 diagram
+            self.click_value = 'L3-3-2'
+            self.click_value_l3 = 'L3-4-1'
+            self.global_wp_array = []
+
+            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+
+            # remove exist L3 file and backup xlsx file
+            if os.path.isfile(self.outFileTxt_L3_3_5_1.get()) == True:
+                os.remove(self.outFileTxt_L3_3_5_1.get())
 
             # view complete
             ns_def.messagebox_file_open(self.output_ppt_file)

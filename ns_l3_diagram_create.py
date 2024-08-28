@@ -15,9 +15,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+import copy
 
 from pptx import *
-import sys, os, re
+import sys, os, re, shutil
 import numpy as np
 import math
 import ns_def , ns_ddx_figure
@@ -42,6 +43,9 @@ class  ns_l3_diagram_create():
         ws_l2_name = 'Master_Data_L2'
         ws_l3_name = 'Master_Data_L3'
         excel_maseter_file = self.inFileTxt_L3_3_1.get()
+
+        if self.click_value_l3 == 'L3-4-1':
+            excel_maseter_file = self.outFileTxt_L3_3_5_1.get()
 
         self.result_get_l2_broadcast_domains =  ns_def.get_l2_broadcast_domains.run(self,excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
 
@@ -119,6 +123,7 @@ class  ns_l3_diagram_create():
         #print(self.wp_with_folder_tuple)
 
 
+
         '''
         Create per area l3 ppt
         '''
@@ -127,11 +132,11 @@ class  ns_l3_diagram_create():
             self.page_size_array = []
             self.slide_width = 0.0
             self.slide_hight = 0.0
-            for tmp_folder_wp_name_array in self.folder_wp_name_array[0]:
+            for tmp_new_position_folder_array in self.folder_wp_name_array[0]:
                 action_type = 'GET_SIZE'
                 offset_x = 0.0 #inches
                 offset_y = 0.0 #inches
-                self.page_size_array.append( ns_l3_diagram_create.l3_area_create(self, tmp_folder_wp_name_array , action_type ,offset_x ,offset_y))
+                self.page_size_array.append( ns_l3_diagram_create.l3_area_create(self, tmp_new_position_folder_array , action_type ,offset_x ,offset_y))
 
             for tmp_page_size_array in self.page_size_array:
                 if self.slide_width < tmp_page_size_array[3]:
@@ -150,23 +155,45 @@ class  ns_l3_diagram_create():
             self.result_get_l2_broadcast_domains = ns_def.get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
             self.active_ppt = Presentation()  # define target ppt object
 
-            for tmp_folder_wp_name_array in self.folder_wp_name_array[0]:
+            for tmp_new_position_folder_array in self.folder_wp_name_array[0]:
 
                 action_type = 'CREATE'
                 offset_x = 0.0 #inches
                 offset_y = 0.0 #inches
 
                 for tmp_page_size_array in self.page_size_array:
-                    if tmp_page_size_array[5] == tmp_folder_wp_name_array:
+                    if tmp_page_size_array[5] == tmp_new_position_folder_array:
                         offset_x = tmp_page_size_array[1]
                         offset_y = tmp_page_size_array[2]
                         break
 
-                ns_l3_diagram_create.l3_area_create(self, tmp_folder_wp_name_array , action_type,offset_x ,offset_y)
+                ns_l3_diagram_create.l3_area_create(self, tmp_new_position_folder_array , action_type,offset_x ,offset_y)
 
             ### save pptx file
             self.active_ppt.save(self.output_ppt_file)
 
+        '''
+        Modify style of device for All Areas at ver 2.3.0
+        '''
+        if self.click_value_l3 == 'L3-4-1':
+            from pptx.dml.color import RGBColor
+            prs = Presentation(self.output_ppt_file)
+
+            for slide in prs.slides:
+                shapes_to_process = list(slide.shapes)
+
+                while shapes_to_process:
+                    shape = shapes_to_process.pop()
+                    if shape.has_text_frame:
+                        for text in shape.text.splitlines():
+                            if text in self.global_wp_array:
+                                shape.fill.solid()
+                                shape.fill.fore_color.rgb = RGBColor(220, 230, 242)
+                                if shape.adjustments:
+                                    shape.adjustments[0] = 0.2
+
+            #print(self.output_ppt_file)
+            prs.save(self.output_ppt_file)
 
     def l3_area_create(self, target_folder_name, action_type,offset_x ,offset_y):
         print('--- l3_area_create ---  ',target_folder_name,action_type,offset_x ,offset_y)
@@ -416,8 +443,8 @@ class  ns_l3_diagram_create():
             self.slide.shapes.title.top = Inches(0.0)
             self.slide.shapes.title.width = Inches(10.0)
             self.slide.shapes.title.height = Inches(1.0)
-            self.shape = self.slide.shapes
 
+            self.shape = self.slide.shapes
             self.shape.title.text = '[L3] ' + target_folder_name
 
         ### parameter
@@ -448,7 +475,6 @@ class  ns_l3_diagram_create():
 
         l3_segment_hight_ratio = 1.75 # ratio
 
-
         ''' 
         main loop 
         '''
@@ -464,8 +490,9 @@ class  ns_l3_diagram_create():
         self.mark_multi_ip_array = []
         self.size_l3_instance_array = []
         self.used_l3segment_array = []
-        self.area_position_array = [999.0,0.0,0.0,0.0,target_folder_name]  # shape_left, shape_top, shape_width, shape_hight, shape_text
-        self.outline_position_array = [999.0, 0.0, 0.0, 0.0]  # shape_left, shape_top, shape_width, shape_hight
+        self.area_position_array = [9999.0,0.0,0.0,0.0,target_folder_name]  # shape_left, shape_top, shape_width, shape_hight, shape_text
+        self.outline_position_array = [9999.0, 0.0, 0.0, 0.0]  # shape_left, shape_top, shape_width, shape_hight
+
         max_offset_x = 0.0
         end_l3_seg_inche_x = 0.0
         self.mark_wp_top = self.top_margin + top_offset
@@ -476,13 +503,17 @@ class  ns_l3_diagram_create():
 
             ''' write device and wp(up/down)'''
             for tmp_tmp_target_position_shape_array in tmp_target_position_shape_array:
+
+                ''' TEST Ver 2.3.0 '''
+                '''if tmp_tmp_target_position_shape_array == 'WAN-Dum3':
+                    left_offset += 2.0'''
+
                 tmp_left_array = []
                 tmp_right_array = []
                 for i in new_wp_exist_array[2]:
                     tmp_left_array.append(i)
                 for k in new_wp_exist_array[3]:
                     tmp_left_array.append(k)
-
 
                 if tmp_tmp_target_position_shape_array not in tmp_left_array  and tmp_tmp_target_position_shape_array not in tmp_right_array and '_AIR_' not in tmp_tmp_target_position_shape_array:  # except left/right wp in writing pre device. If you need _AIR_ empty space, delete '_AIR_ not in tmp_tmp_target_position_shape_array'
                     shape_text  = tmp_tmp_target_position_shape_array
@@ -492,6 +523,12 @@ class  ns_l3_diagram_create():
                     shape_width_hight_array = ns_def.get_description_width_hight(self.shae_font_large_size,tmp_tmp_target_position_shape_array)
                     shape_width = shape_width_hight_array[0]
                     shape_hight = shape_width_hight_array[1] * 5
+
+                    ### Add wp change at ver 2.3.0 ####
+                    if self.click_value_l3 == 'L3-4-1' and len(self.wp_list_array) != 0:
+                        self.global_wp_array = copy.deepcopy(self.wp_list_array)
+                        self.wp_list_array = []
+                    ###################################
 
                     if shape_text in self.wp_list_array:
                         shape_type = 'WAY_POINT_NORMAL'
@@ -512,6 +549,7 @@ class  ns_l3_diagram_create():
                     #write l3 instance
                     self.between_l3instance = min_between_line * 2
                     tmp_l3_add_shape_array = []
+
                     if shape_type == 'DEVICE_L3_INSTANCE':
                         tmp_l3_instance_array = []
                         for tmp_update_l3_instance_array in self.update_l3_instance_array:
@@ -635,7 +673,6 @@ class  ns_l3_diagram_create():
 
                             if shape_text in new_wp_exist_array[1]:
                                 self.outline_position_array[3] = (shape_top + shape_hight + between_shape_row) - self.outline_position_array[1]
-
 
                     left_offset += shape_width + self.between_shape_column
 
@@ -899,7 +936,7 @@ class  ns_l3_diagram_create():
                                         #if tag_ip_width + tag_shape_width * 0.5 > tmp_add_width:
                                         #    tag_up_offset_x += (tag_ip_width + tag_shape_width * 0.5) - tmp_add_width
 
-                        # wite down side l3 if
+                        # write down side l3 if
                         for down_shape_width_if_array in self.shape_width_if_array[2]:
                             if down_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
                                 #print('##DOWN ',shape_text,down_shape_width_if_array[1])
@@ -1118,11 +1155,14 @@ class  ns_l3_diagram_create():
         ### Kyuusai if len(target_position_shape_array) == 1
         outline_shape_hight += 0.2
 
-
         if action_type == 'CREATE':
             self.shape = self.slide.shapes
             ns_ddx_figure.extended.add_shape(self, outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, outline_shape_text)
 
+            # move shape to back layer when set 'OUTLINE_NORMAL' at ver 2.3.0
+            if outline_shape_type == 'OUTLINE_NORMAL':
+                self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
+                self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
 
         '''
         loop write l3segment
@@ -1397,8 +1437,6 @@ class  ns_l3_diagram_create():
         return ([outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, folder_shape_text])
 
 
-
-
 '''
 LOCAL DEF
 '''
@@ -1638,6 +1676,171 @@ def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
     return ([count_l3segment,connected_l3if_key_array])
 
 
+class  create_master_file_one_area():
+    def __init__(self):
+        print('--- create_master_file_one_area--- ')
+
+        #copy master file
+        self.excel_maseter_file_backup
+        shutil.copy(self.inFileTxt_L3_3_1.get(), self.excel_maseter_file_backup)
+
+        #GET backup master file parameter
+        # parameter
+        ws_name = 'Master_Data'
+        tmp_ws_name = '_tmp_'
+        ppt_meta_file = str(self.excel_maseter_file_backup)
+
+        # convert from master to array and convert to tuple
+        self.position_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_FOLDER>>')
+        self.position_shape_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_SHAPE>>')
+        #self.root_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<ROOT_FOLDER>>')
+        self.position_folder_tuple = ns_def.convert_array_to_tuple(self.position_folder_array)
+        self.position_shape_tuple = ns_def.convert_array_to_tuple(self.position_shape_array)
+        #self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
+
+        #print('---- self.position_folder_tuple ----')
+        #print(self.position_folder_tuple)
+        #print('---- self.position_folder_array ----')
+        #print(self.position_folder_array)
+        #print('---- self.position_shape_tuple ----')
+        #print(self.position_shape_tuple)
+        #print('---- self.position_shape_array ----')
+        #print(self.position_shape_array)
+
+        # GET Folder and wp name List
+        folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, ppt_meta_file)
+        #print('---- folder_wp_name_array ----')
+        #print(folder_wp_name_array)
+
+        #SET new <<POSITION_FOLDER>>
+        self.new_position_folder_tuple = {}
+        self.new_position_folder_tuple = {(1, 1): '<<POSITION_FOLDER>>', (1, 2): 1.0, (2, 1): 1, (2, 2): 'All Areas'}
+
+        write_to_section = '<<POSITION_FOLDER>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_folder_tuple)
+        ns_def.write_excel_meta(self.new_position_folder_tuple , self.excel_maseter_file_backup, 'Master_Data', write_to_section, offset_row, offset_column)
 
 
+        '''
+        make one area shape <<POSITION_SHAPE>>
+        '''
+        # Create a new dictionary to store the filtered and renumbered tuples
+        original_dict = self.position_folder_tuple
+        new_dict = {}
+        new_x = 1
+
+        for (x, y), value in original_dict.items():
+            if y != 1 and value != '' and isinstance(value, str):  # Exclude if y is 1, value is empty string, or value is not a string
+                if new_x not in new_dict:
+                    new_dict[new_x] = {}
+                new_dict[new_x][y] = value
+                if y == max(k[1] for k in original_dict.keys() if k[0] == x):
+                    new_x += 1
+
+        # Renumber the (x, y) pairs to ensure no gaps
+        renumbered_dict = {}
+        new_x = 1
+        for x in sorted(new_dict.keys()):
+            new_y = 1
+            for y in sorted(new_dict[x].keys()):
+                renumbered_dict[(new_x, new_y)] = new_dict[x][y]
+                new_y += 1
+            new_x += 1
+
+        '''make one area from per area''' # renumbered_dict is folder summary
+
+        input_position_shape_tuple = self.position_shape_tuple
+        area_start_x = 2
+        area_start_y = 1
+        area_max_x = 2
+        area_max_y = 1
+        master_x = 2
+        master_y = 1
+        new_tuple = {}
+        pre_xx = 2
+        pre_yy = 1
+
+        for (yy, xx), now_area in sorted(renumbered_dict.items()):
+            #print(yy,xx,now_area)
+
+            if yy > pre_yy:
+                master_y = area_max_y + 1
+                master_x = 2
+            elif xx > pre_xx:
+                master_y = area_start_y
+                master_x = area_max_x
+
+            flag_inarea = False
+            flag_first_inarea = True
+            for (y, x), value in sorted(input_position_shape_tuple.items()):
+                if x == 1 and value == now_area:
+                    flag_inarea = True
+
+                if flag_inarea == True:
+                    if x == 1:
+                        if value == '<END>':
+                            pre_yy = yy
+                            pre_xx = xx
+
+                            if area_max_y < (master_y - 1):
+                                area_max_y = master_y - 1
+                            break
+                    else:
+                        if value != '<END>':
+                            if flag_first_inarea == True:
+                                area_start_y = master_y
+                                area_start_x = master_x
+                                flag_first_inarea = False
+
+                            new_tuple[(master_y,master_x)] = value
+                            master_x += 1
+
+                        if value == '<END>':
+                            master_y += 1
+                            area_max_x = master_x
+                            master_x = area_start_x
+
+        #print(new_tuple)
+
+        # Find the maximum x for each y
+        max_x_for_y = {}
+        for (y, x) in new_tuple.keys():
+            if y not in max_x_for_y:
+                max_x_for_y[y] = x
+            else:
+                if x > max_x_for_y[y]:
+                    max_x_for_y[y] = x
+
+        # Add '<END>' to the new_tuple
+        for y, max_x in max_x_for_y.items():
+            new_tuple[(y, max_x + 1)] = '<END>'
+
+        # Find the maximum x value for each y
+        max_x_per_y = {}
+        for (y, x) in new_tuple.keys():
+            if y not in max_x_per_y:
+                max_x_per_y[y] = x
+            else:
+                max_x_per_y[y] = max(max_x_per_y[y], x)
+
+        # Add missing (y, x) pairs with '_AIR_'
+        for y, max_x in max_x_per_y.items():
+            for x in range(2, max_x + 1):
+                if (y, x) not in new_tuple:
+                    new_tuple[(y, x)] = '_AIR_'
+
+        #print(new_tuple)
+
+        #last input
+        new_tuple[(1, 1)] = 'All Areas'
+        new_tuple[(master_y, 1)] = '<END>'
+
+        # SET new <<POSITION_SHAPE>>
+        write_to_section = '<<POSITION_SHAPE>>'
+        offset_row = 1
+        offset_column = 0
+        ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_shape_tuple)
+        ns_def.write_excel_meta(new_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
 
