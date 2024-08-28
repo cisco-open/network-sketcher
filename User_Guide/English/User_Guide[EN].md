@@ -18,7 +18,7 @@
 
 [2-2. Generation of L2 diagram (with commentary)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-2.%20generation%20of%20L2%20diagram.pdf)
 
-[2-3. Generate of L3 diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-3.%20generate%20of%20L3%20diagram.pdf)
+[2-3. Generate of L3 diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-3.%20generate%20of%20L3%20diagram.pdf) *ver2.3.0
 
 [2-4. Exporting Device Files (with commentary)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-4%20Exporting%20Device%20Files.pdf)
 
