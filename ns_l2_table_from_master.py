@@ -28,7 +28,7 @@ class  ns_l2_table_from_master():
         '''
         make L2 Table excel file
         '''
-        print('### ns_l2_table_from_master() ###')
+        print('--- ns_l2_table_from_master() ---')
         #parameter
         ws_name = 'Master_Data'
         tmp_ws_name = '_tmp_'

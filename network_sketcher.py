@@ -33,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.2.2(b)")
+        self.root.title("Network Sketcher  ver 2.3.0")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -432,6 +432,7 @@ class ns_front_run():
         self.outFileTxt_L2_3_2 = tk.Entry(self.sub2_1)
         self.inFileTxt_L3_3_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_L3_3_4_1 = tk.Entry(self.sub2_1)
+        self.outFileTxt_L3_3_5_1 = tk.Entry(self.sub2_1)
         self.inFileTxt_11_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_11_2 = tk.Entry(self.sub2_1)
         self.outFileTxt_11_3 = tk.Entry(self.sub2_1) # for a bug fix at 2.2.1(c)
@@ -505,24 +506,27 @@ class ns_front_run():
         self.sub2_3.grid(row=4, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-2'))
-        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
         self.sub2_3_button_2 = tk.Button(self.sub2_3, text="Per Device", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-3'))
-        self.sub2_3_button_2.grid(row=6, column=2, sticky='WE', padx=5, pady=2)
+        self.sub2_3_button_2.grid(row=6, column=2, sticky='WE', padx=5, pady=2, ipadx=5)
 
 
         ### run L3-3-x for dev , Create L3 diagram
         self.sub2_4 = tk.LabelFrame(self.sub2_2x, text='Layer3 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_4.grid(row=4, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
+        self.sub2_4_button_1 = tk.Button(self.sub2_4, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-4-1')) # add button at ver 2.3.0
+        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=5, pady=2, ipadx=5)
+
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-3-2'))
-        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=15, pady=2, ipadx=15)
+        self.sub2_4_button_1.grid(row=6, column=4, sticky='WE', padx=5, pady=2, ipadx=5)
 
         ### run xx-xx for dev , Create VPN diagram
         self.sub2_6 = tk.LabelFrame(self.sub2_2x, text='VPN Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
-        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=10, pady=2, ipadx=15)
+        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
 
         #self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
         #self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
