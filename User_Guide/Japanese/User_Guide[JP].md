@@ -18,7 +18,7 @@
 
 [2-2. L2構成図の生成（凡例付き）](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-2.%20L2%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf)
 
-[2-3. L3構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-3.%20L3%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf)
+[2-3. L3構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-3.%20L3%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf) *ver2.3.0
 
 [2-4. デバイスファイルのエクスポート（解説付き）](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-4.%20%E3%83%87%E3%83%90%E3%82%A4%E3%82%B9%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88.pdf)
 
