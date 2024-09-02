@@ -1034,6 +1034,9 @@ class  ns_l1_master_create():
         numpy_shape_array = np.array(master_shape_array)
         numpy_line_array = np.array(line_array)
         np.line_point = []
+
+        xy_ratio = 0.5 # add ver 2.3.1(a)
+
         for i in range(1,num_slide + 1):
             tmp_numpy_shape_array =  numpy_shape_array[numpy_shape_array[:, 7] == str(i)]
             tmp_numpy_line_array = numpy_line_array[numpy_line_array[:, 4] == i]
@@ -1054,6 +1057,10 @@ class  ns_l1_master_create():
                     else:
                         begin_near_x = abs(tmp_numpy_line[0] - (int(tmp_numpy_shape[2]) + int(tmp_numpy_shape[4])))
 
+                    # add ver 2.3.1(a)
+                    if int(tmp_numpy_shape[2]) < int(tmp_numpy_line[0]) and int(tmp_numpy_shape[2] + tmp_numpy_shape[4]) > int(tmp_numpy_line[0]):
+                        begin_near_x = int(begin_near_x * xy_ratio)
+
                     if (begin_cal_x + begin_cal_y) > (begin_near_x + begin_near_y):
                         begin_cal_y = begin_near_y
                         begin_cal_x = begin_near_x
@@ -1072,13 +1079,17 @@ class  ns_l1_master_create():
                     else:
                         end_near_x = abs(tmp_numpy_line[2] - (int(tmp_numpy_shape[2]) + int(tmp_numpy_shape[4])))
 
+                    # add ver 2.3.1(a)
+                    if int(tmp_numpy_shape[2]) < int(tmp_numpy_line[2]) and int(tmp_numpy_shape[2] + tmp_numpy_shape[4]) > int(tmp_numpy_line[2]):
+                        end_near_x = int(end_near_x * xy_ratio)
+
                     if (end_cal_x + end_cal_y) > (end_near_x + end_near_y) and begin_shape_name != tmp_numpy_shape[1]:
                         end_cal_y = end_near_y
                         end_cal_x = end_near_x
                         end_shape_name = tmp_numpy_shape[1]
                         end_folder_name = tmp_numpy_shape[0]
 
-                np.line_point.append([begin_shape_name,begin_near_x,begin_near_y,end_shape_name,end_near_x,end_near_y,tmp_numpy_line[4]])
+                np.line_point.append([begin_shape_name, begin_near_x, begin_near_y, end_shape_name, end_near_x, end_near_y, tmp_numpy_line[4]])
         print(' --- np.line_point ----')
         #print(np.line_point)
 
