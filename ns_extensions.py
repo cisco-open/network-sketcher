@@ -257,8 +257,10 @@ class  ip_report():
         #print(self.folder_wp_name_array)
 
         return_array = self.folder_wp_name_array[0]
+        return_array.sort(reverse=False)
         #if len(self.folder_wp_name_array[1]) >= 1:
         #    return_array.append("_WAN(Way_Point)_")
+
         return return_array
 
 class  auto_ip_addressing():
@@ -274,6 +276,7 @@ class  auto_ip_addressing():
         #print(self.folder_wp_name_array)
 
         return_array = self.folder_wp_name_array[0]
+        return_array.sort(reverse=False)
         if len(self.folder_wp_name_array[1]) >= 1:
             return_array.append("_WAN(Way_Point)_")
         return return_array

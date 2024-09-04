@@ -33,7 +33,7 @@ class ns_front_run():
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.0(a)")
+        self.root.title("Network Sketcher  ver 2.3.0(b)")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -486,7 +486,7 @@ class ns_front_run():
 
         ### run 2-4-x for dev , Create L1 diagram
         self.sub2_2x = tk.LabelFrame(self.sub2_1, text='Create Diagram files', font=("", 14), height=1, background="#FBE5D6")
-        self.sub2_2x.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_2x.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=0, ipadx=5, ipady=5)
 
         self.sub2_2 = tk.LabelFrame(self.sub2_2x, text='Layer1 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_2.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
@@ -505,15 +505,26 @@ class ns_front_run():
         self.sub2_3 = tk.LabelFrame(self.sub2_2x, text='Layer2 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_3.grid(row=4, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
+        ## Add at ve 2.3.0(b)
+        optionL2_3_6 = ns_extensions.ip_report.get_folder_list(self)
+        optionL2_3_6 = [item for item in optionL2_3_6 if item != '_WAN(Way_Point)_']
+        global variableL2_3_6
+        variableL2_3_6 = tk.StringVar()
+        self.comboL2_3_6 = ttk.Combobox(self.sub2_3 , values=optionL2_3_6, textvariable=variableL2_3_6, font=("", 12), state='readonly')
+        self.comboL2_3_6.set("<Select Area>")
+        self.comboL2_3_6.option_add("*TCombobox*Listbox.Font", 12)
+        self.comboL2_3_6.grid(row=0, column=0, sticky='WE', padx=1, pady=2, ipady=0, ipadx=8, columnspan=3)
+        #self.comboL2_3_6.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.comboL2_3_6.get()))
+
         self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-2'))
-        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
-        self.sub2_3_button_2 = tk.Button(self.sub2_3, text="Per Device", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-3'))
-        self.sub2_3_button_2.grid(row=6, column=2, sticky='WE', padx=5, pady=2, ipadx=5)
+        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=0, pady=0, ipadx=0)
+        #self.sub2_3_button_2 = tk.Button(self.sub2_3, text="Per Device", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-3'))
+        #self.sub2_3_button_2.grid(row=6, column=2, sticky='WE', padx=5, pady=2, ipadx=5)
 
 
         ### run L3-3-x for dev , Create L3 diagram
         self.sub2_4 = tk.LabelFrame(self.sub2_2x, text='Layer3 Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_4.grid(row=4, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_4.grid(row=4, column=3, sticky='W', padx=1, pady=5, ipadx=5, ipady=5)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-4-1')) # add button at ver 2.3.0
         self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=5, pady=2, ipadx=5)
@@ -523,7 +534,7 @@ class ns_front_run():
 
         ### run xx-xx for dev , Create VPN diagram
         self.sub2_6 = tk.LabelFrame(self.sub2_2x, text='VPN Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=2, pady=5, ipadx=5, ipady=5)
 
         self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
         self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
@@ -536,7 +547,7 @@ class ns_front_run():
         self.sub2_0_label_2 .grid(row=7, column=0, columnspan=7, sticky='W', padx=0, pady=0, ipadx=0, ipady=0)
 
         self.sub2_5 = tk.LabelFrame(self.sub2_1, text='Export to the Device file', font=("", 14), height=1, background="#DFC9EF")
-        self.sub2_5.grid(row=8, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=2)
+        self.sub2_5.grid(row=8, column=0, columnspan=7, sticky='W', padx=5, pady=0, ipadx=5, ipady=2)
 
         push_array = []
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
@@ -546,7 +557,7 @@ class ns_front_run():
         Extensions
         '''
         self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
-        self.sub3_3.grid(row=8, column=6, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub3_3.grid(row=8, column=6, sticky='W', padx=5, pady=0, ipadx=5, ipady=5)
 
         self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
         self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=15, pady=2, ipadx=5)
