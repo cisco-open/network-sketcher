@@ -1062,7 +1062,7 @@ class ns_front_run():
             if click_value == 'L2-3-2':
                 self.click_value = 'L2-3-2'
                 self.outFileTxt_L2_3_4_1.delete(0, tkinter.END)
-                self.outFileTxt_L2_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L2_DIAGRAM]'+str(self.comboL2_3_6.get())+'_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+                self.outFileTxt_L2_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L2_DIAGRAM]'+str(self.comboL2_3_6.get())+'_' + basename_without_ext.replace('[MASTER]', '') + '.pptx') #modify at ver 2.3.0(b)
                 self.output_ppt_file = self.outFileTxt_L2_3_4_1.get()
 
                 # check : file is being opened

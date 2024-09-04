@@ -507,11 +507,10 @@ class ns_front_run():
 
         ## Add at ve 2.3.0(b)
         optionL2_3_6 = ns_extensions.ip_report.get_folder_list(self)
-        optionL2_3_6 = [item for item in optionL2_3_6 if item != '_WAN(Way_Point)_']
         global variableL2_3_6
         variableL2_3_6 = tk.StringVar()
         self.comboL2_3_6 = ttk.Combobox(self.sub2_3 , values=optionL2_3_6, textvariable=variableL2_3_6, font=("", 12), state='readonly')
-        self.comboL2_3_6.set("<Select Area>")
+        self.comboL2_3_6.set(str(optionL2_3_6[0]))
         self.comboL2_3_6.option_add("*TCombobox*Listbox.Font", 12)
         self.comboL2_3_6.grid(row=0, column=0, sticky='WE', padx=1, pady=2, ipady=0, ipadx=8, columnspan=3)
         #self.comboL2_3_6.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.comboL2_3_6.get()))
