@@ -29,11 +29,18 @@ class ns_front_run():
     Main Panel
     '''
     def __init__(self):
+        #add cli flow at ver 2.3.1
+        if len(sys.argv) > 1:
+            import network_sketcher_cli
+            self.argv_array = sys.argv[1:]
+            network_sketcher_cli.ns_cli_run.__init__(self.argv_array)
+            exit()
+
         self.click_value = ''
         self.click_value_2nd = ''
         self.click_value_3rd = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.0(b)")
+        self.root.title("Network Sketcher  ver 2.3.1")
         self.root.geometry("490x200+100+100")
         
         # Notebook
