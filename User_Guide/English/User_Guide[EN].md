@@ -66,7 +66,7 @@
 [7-3. Export IP address table](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-3.%20Export%20IP%20address%20table.md) *Ver2.2.1
 
 ## 8. CLI Function
-8-1. show commands *ver2.3.1
+[8-1. show commands](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/8-1.%20show%20commands.md) *ver2.3.1
 
 ## Appendix
 [A-1. Procedure for pasting PPT figures that exceed the maximum paper size into Excel](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/A-1.%20Procedure%20for%20pasting%20PPT%20figures%20that%20exceed%20the%20maximum%20paper%20size%20into%20Excel.md)
