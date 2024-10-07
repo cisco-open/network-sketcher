@@ -9,13 +9,14 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
+- Ver 2.3.1
+  - [Added the ability to output information in the master file via CLI](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/8-1.%20show%20commands.md)
 - Ver 2.3.0
   - [Added the ability to create an overall L3 diagram (All Areas)](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.0)
 - Ver 2.2.2
   - [Automated device placement adjustment in L1 diagram](https://github.com/user-attachments/assets/8014132b-4e38-422a-9ab0-3ee397e27b1e)
 - Ver 2.2.1
   - [IP address table](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-3.%20Export%20IP%20address%20table.md) :[(Sample output file) ](https://github.com/user-attachments/files/15784654/IP_TABLE.Sample.figure5.xlsx)
-
 - Ver 2.2.0
   - [Automatic IP address assignment](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-2.%20Automatic%20IP%20address%20assignment.md)
 - Ver 2.1.0
