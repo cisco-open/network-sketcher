@@ -788,7 +788,8 @@ class ns_front_run():
             ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
 
             # view complete
-            ns_def.messagebox_file_open(self.output_ppt_file)
+            if self.click_value == '2-4-3': #Add at Ver 2.3.1(a)
+                ns_def.messagebox_file_open(self.output_ppt_file)
 
             # return value of self.click_value for re-run 2-4-3 after VPN-1-1'
             self.click_value = ''
