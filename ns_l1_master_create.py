@@ -576,17 +576,20 @@ class  ns_l1_master_create():
         max_num_y_grid = merge_group_folder_array[-1][1]
         current_y_grid = 0
 
-        #kyusai y grid == 1
-
         pre_y_num = merge_group_folder_array[0][1]
         flag_sigle_y_num = True
+        flag_one_only = True
         for cur_merge_group_folder_array in merge_group_folder_array:
             if pre_y_num != cur_merge_group_folder_array[1]:
                 flag_sigle_y_num = False
-                break
+                #break
+
+            if cur_merge_group_folder_array[1] != pre_y_num: #add at ver 2.3.1(b)
+                flag_one_only = False
 
         if flag_sigle_y_num == True:
-            row -= 4
+            if flag_one_only == True and len(merge_group_folder_array) == 1: #add at ver 2.3.1(b)
+                row -= 4
 
         ''' make master_folder_tuple'''
         flag_first_shape = True
