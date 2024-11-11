@@ -513,9 +513,13 @@ class  ns_l1_master_create():
 
                             '''a group which does not have UP and Down move to max downside'''
                             if new_group_folder_array[bb][ii][1] == '' and new_group_folder_array[bb][ii][2] == '' and max_y_grid >= y_num_array[bb]:
-                                y_num_array[bb] = max_y_grid + 1
-                                first_change_bit = True
-                                #print(y_num_array)
+                                if new_group_folder_array[bb][ii][3] != '' and new_group_folder_array[bb][ii][4] != '':  ## bug fix at ver 2.3.1(b)
+                                    y_num_array[bb] = max_y_grid + 1
+                                    first_change_bit = True
+
+                                if len(y_num_array) == 1:
+                                    y_num_array[bb] = max_y_grid + 1
+                                    first_change_bit = True
 
             if pre_y_num_array == y_num_array:
                 if first_change_bit == True:
