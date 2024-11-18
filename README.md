@@ -36,7 +36,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 - __Software that can edit .pptx and .xlsx files__
   - Microsoft Powerpoint and Excel are best
   - The free version offers import/export functions for Google Slides and spreadsheets. The xlsx format function display will show an error, but it works fine.
-  - LibreOffice and Softmaker office cannot be used.
+  - Libre Office and Softmaker office cannot be used.
 
 # Usage
  
