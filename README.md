@@ -29,29 +29,36 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 # Limitations
 - IPv4 only. IPv6 is not supported.
 - Importing CML yaml files is only supported in L1 and L3(IP addresses of physical interfaces of ios, asa, iosxr, and csr1k).
-- VPN diagrams are only supported for Layer 1 and not reflected in Layer 2 and Layer 3 diagrams.
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
 - __Python ver 3.x__
 - __openpyxl ver 3.1.3 or higher__
+- __Software that can edit .pptx and .xlsx files__
+  - Microsoft Powerpoint and Excel are best
+  - The free version offers import/export functions for Google Slides and spreadsheets. The xlsx format function display will show an error, but it works fine.
+  - LibreOffice and Softmaker office cannot be used.
 
-
-# Pre-Installation
- * Required
+# Usage
+ 
 ```bash
-pip install tkinterdnd2
-pip install tkinterdnd2-universal
-pip install openpyxl
-pip install python-pptx
-pip install ipaddress
-pip install numpy
-pip install pyyaml
-pip install ciscoconfparse
+git clone https://github.com/cisco-open/network-sketcher/
+cd network-sketcher
+python -m pip install -r requirements.txt
+python network_sketcher.py
 ```
-or
+
+# Supplemental Usage
+ * Alternative to “pip install -r requirements.txt”
 ```bash
-pip install -r requirements.txt
+python -m pip install tkinterdnd2
+python -m pip install tkinterdnd2-universal
+python -m pip install openpyxl
+python -m pip install python-pptx
+python -m pip install ipaddress
+python -m pip install numpy
+python -m pip install pyyaml
+python -m pip install ciscoconfparse
 ```
 
 * Mac OS requires the following additional installation.
@@ -62,14 +69,6 @@ brew install tcl-tk
 * Linux requires the following additional installation.
 ```bash
 sudo apt-get install python3-tk
-```
- 
-# Usage
- 
-```bash
-git clone https://github.com/cisco-open/network-sketcher/
-cd network-sketcher
-python network_sketcher.py
 ```
 
 # SAMPLE
