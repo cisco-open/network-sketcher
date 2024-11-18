@@ -49,7 +49,7 @@ python network_sketcher.py
 ```
 
 # Supplemental Usage
- * Alternative to “pip install -r requirements.txt”
+ * Alternative to “python -m pip install -r requirements.txt”
 ```bash
 python -m pip install tkinterdnd2
 python -m pip install tkinterdnd2-universal
