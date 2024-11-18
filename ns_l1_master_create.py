@@ -150,6 +150,7 @@ class  ns_l1_master_create():
             second_folder_size = 0 # multiple area check. add at ver 2.2.2(b)
 
             for shp in sld.shapes:
+                print(shp.shape_type)
                 ### GET Group(Icons),Picture and icon   # Add Ver 1.1
                 if 'GROUP' in str(shp.shape_type)  or 'PICTURE' in str(shp.shape_type) :
                     tmp_shape_array.append(['@Icon@~'+str(icon_num)+'~', shp.left, shp.top, shp.width, shp.height, shp.rotation, i])

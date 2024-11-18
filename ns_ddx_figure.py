@@ -2773,6 +2773,16 @@ class extended():
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
 
+        elif shape_type == 'L3_SEGMENT_VPN':
+            #fill paramter
+            shape_fill.fore_color.rgb = RGBColor(251, 243, 243)
+            # line paramter
+            shape_line.color.rgb = RGBColor(192, 0, 0)
+            shape_line.width = Pt(0.75)
+            self.shape.adjustments[0] = float(0.3)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            # text parameter
+            self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
+
         elif shape_type == 'DEVICE_FRAME':
             '''Note, not used'''
             #fill paramter
@@ -2921,6 +2931,14 @@ class extended():
 
         if line_type == 'L3_SEGMENT-L3IF':
             shape_line.color.rgb = RGBColor(0, 0, 0)
+            line_elem = self.shape.line._get_or_add_ln()
+            shape_line.width = Pt(0.7)
+            line_elem.append(parse_xml("""
+                    <a:tailEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+
+        if line_type == 'L3_SEGMENT-VPN':
+            shape_line.color.rgb = RGBColor(192, 0, 0)
             line_elem = self.shape.line._get_or_add_ln()
             shape_line.width = Pt(0.7)
             line_elem.append(parse_xml("""

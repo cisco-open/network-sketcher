@@ -18,7 +18,7 @@ limitations under the License.
 
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os
-import ns_def
+import ns_def, ns_vpn_diagram_create
 import openpyxl
 
 class ns_front_run():
@@ -1210,13 +1210,18 @@ class ns_front_run():
         if click_value == 'L3-4-1':  # For All Areas L3 Diagram at ver 2.3.0
             import ns_l3_diagram_create
 
-
             full_filepath = self.inFileTxt_L3_3_1.get()
             iDir = os.path.dirname(full_filepath)
             basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
 
             self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
             self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L3_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+
+            # Modify Master file for L3 VPN. add ver 2.3.2
+            if self.click_value_VPN == 'VPN-1-3':
+                self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
+                self.outFileTxt_L3_3_4_1.insert(tk.END,iDir + ns_def.return_os_slash() + '[VPNs_on_L3]' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+
             self.outFileTxt_L3_3_5_1.delete(0, tkinter.END)
             self.outFileTxt_L3_3_5_1.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext.replace('[MASTER]', '__TMP__[MASTER]') + '.xlsx')
             self.output_ppt_file = self.outFileTxt_L3_3_4_1.get()
@@ -1235,6 +1240,11 @@ class ns_front_run():
 
             # Create a master file that merges multiple areas into one area
             ns_l3_diagram_create.create_master_file_one_area.__init__(self)
+
+            # Modify Master file for L3 VPN. add ver 2.3.2
+            self.vpn_hostname_if_list = []
+            if self.click_value_VPN == 'VPN-1-3':
+                ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
 
             # Create a one ppt page of file containing all areas of the L3 diagram
             self.click_value = 'L3-3-2'

@@ -17,7 +17,7 @@ limitations under the License.
 '''
 
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
-import sys, os, shutil , unicodedata,subprocess,datetime,random,shutil
+import sys, os, shutil , unicodedata,subprocess,datetime,random
 import openpyxl
 import math ,ipaddress ,yaml
 from pptx import *
@@ -100,7 +100,7 @@ def get_backup_filename(full_filepath):
     backup_full_filepath = iDir + return_os_slash() + basename_without_ext + '_' +yyyymmddhhss + basename_ext
 
     shutil.copyfile(full_filepath, backup_full_filepath)
-    print('### Backup Master file ###  ', backup_full_filepath)
+    print('--- Backup Master file ---', backup_full_filepath)
 
     return (backup_full_filepath)
 

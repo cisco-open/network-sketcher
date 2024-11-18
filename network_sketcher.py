@@ -39,8 +39,9 @@ class ns_front_run():
         self.click_value = ''
         self.click_value_2nd = ''
         self.click_value_3rd = ''
+        self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.1(b)")
+        self.root.title("Network Sketcher  ver 2.3.2")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -440,6 +441,7 @@ class ns_front_run():
         self.inFileTxt_L3_3_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_L3_3_4_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_L3_3_5_1 = tk.Entry(self.sub2_1)
+        self.outFileTxt_L3_4_2_2 = tk.Entry(self.sub2_1)
         self.inFileTxt_11_1 = tk.Entry(self.sub2_1)
         self.outFileTxt_11_2 = tk.Entry(self.sub2_1)
         self.outFileTxt_11_3 = tk.Entry(self.sub2_1) # for a bug fix at 2.2.1(c)
@@ -510,7 +512,7 @@ class ns_front_run():
 
         ### run L2-3-x for dev , Create L2 diagram
         self.sub2_3 = tk.LabelFrame(self.sub2_2x, text='Layer2 Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_3.grid(row=4, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_3.grid(row=4, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=2)
 
         ## Add at ve 2.3.0(b)
         optionL2_3_6 = ns_extensions.ip_report.get_folder_list(self)
@@ -519,34 +521,39 @@ class ns_front_run():
         self.comboL2_3_6 = ttk.Combobox(self.sub2_3 , values=optionL2_3_6, textvariable=variableL2_3_6, font=("", 12), state='readonly')
         self.comboL2_3_6.set(str(optionL2_3_6[0]))
         self.comboL2_3_6.option_add("*TCombobox*Listbox.Font", 12)
-        self.comboL2_3_6.grid(row=0, column=0, sticky='WE', padx=1, pady=2, ipady=0, ipadx=8, columnspan=3)
+        self.comboL2_3_6.grid(row=0, column=0, sticky='WE', padx=1, pady=5, ipady=0, ipadx=8, columnspan=3)
         #self.comboL2_3_6.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.comboL2_3_6.get()))
 
         self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-2'))
-        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=0, pady=0, ipadx=0)
+        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=0, pady=5, ipadx=0)
         #self.sub2_3_button_2 = tk.Button(self.sub2_3, text="Per Device", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-3'))
         #self.sub2_3_button_2.grid(row=6, column=2, sticky='WE', padx=5, pady=2, ipadx=5)
 
-
         ### run L3-3-x for dev , Create L3 diagram
         self.sub2_4 = tk.LabelFrame(self.sub2_2x, text='Layer3 Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_4.grid(row=4, column=3, sticky='W', padx=1, pady=5, ipadx=5, ipady=5)
+        self.sub2_4.grid(row=4, column=2, sticky='W', padx=1, pady=0, ipadx=5, ipady=2)
+
+        self.sub2_4_empty1 = tk.LabelFrame(self.sub2_4, text='', font=("", 14), width=10)
+        self.sub2_4_empty1 .grid(row=1, column=1, sticky='WE', padx=0, pady=0, ipadx=1)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-4-1')) # add button at ver 2.3.0
-        self.sub2_4_button_1.grid(row=6, column=3, sticky='WE', padx=5, pady=2, ipadx=5)
+        self.sub2_4_button_1.grid(row=1, column=2, sticky='WE', padx=5, pady=2, ipadx=20)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-3-2'))
-        self.sub2_4_button_1.grid(row=6, column=4, sticky='WE', padx=5, pady=2, ipadx=5)
+        self.sub2_4_button_1.grid(row=2, column=2, sticky='WE', padx=5, pady=2, ipadx=20)
 
         ### run xx-xx for dev , Create VPN diagram
         self.sub2_6 = tk.LabelFrame(self.sub2_2x, text='VPN Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=2, pady=5, ipadx=5, ipady=5)
+        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=2, pady=0, ipadx=10, ipady=2)
+
+        self.sub2_6_empty1 = tk.LabelFrame(self.sub2_6, text='', font=("", 14), width=15)
+        self.sub2_6_empty1 .grid(row=10, column=0, sticky='WE', padx=0, pady=0, ipadx=1)
 
         self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
         self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
 
-        #self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPN only", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
-        #self.sub2_6_button_4.grid(row=10, column=2, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPNs on L3", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
+        self.sub2_6_button_4.grid(row=11, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
 
         ### run 11-4 for dev , Export to the Device file
         self.sub2_0_label_2 = tk.Label(self.sub2_1, text='', font=("", 1))
@@ -686,27 +693,6 @@ class ns_front_run():
 
         self.sub3_4_3_entry_1 = tk.Entry(self.sub3_5_1, font=("", 12)) # for report
 
-        # Test Case
-        '''self.sub3_5_2 = tk.LabelFrame(self.sub3_5, text='Test Case report', font=("", 14), height=1, background="#C2E2EC")
-        self.sub3_5_2.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=5, ipadx=3, ipady=0)
-
-        self.sub3_5_5_3 = tk.Label(self.sub3_5_2, text='- Select Area', font=("", 12), background="#E8F4F8")
-        self.sub3_5_5_3 .grid(row=0, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
-
-        option3_5_5_3 = ns_extensions.ip_report.get_folder_list(self)
-        global variable3_5_5_3
-        variable3_5_5_3 = tk.StringVar()
-        self.combo3_5_5_3 = ttk.Combobox(self.sub3_5_2 , values=option3_5_5_3, textvariable=variable3_5_5_3, font=("", 12), state='readonly')
-        self.combo3_5_5_3.set("<Select Area>")
-        self.combo3_5_5_3.option_add("*TCombobox*Listbox.Font", 12)
-        self.combo3_5_5_3.grid(row=0, column=1, sticky='WE', padx=5, pady=15, ipady=2, ipadx=15)
-        self.combo3_5_5_3.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.combo3_5_5_3.get()))
-
-        # Export to the list file
-        self.sub3_5_button_1 = tk.Button(self.sub3_5_2, text=" Export to the Failure Test Cases ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1',self.combo3_5_1_1.get()))
-        self.sub3_5_button_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=30, pady=5)'''
-
-
 
     def click_action_sub(self, click_value, target_area_name):
         if click_value == 'self.sub3_5_button_1':  # select Run
@@ -761,8 +747,20 @@ class ns_front_run():
 
             ns_def.messagebox_file_open(self.output_ppt_file) #Add at Ver 2.3.1(a)
 
-        if click_value == 'self.self.sub2_6_button_2':  # Click "VPN only"
-            print('--- Click "VPN only ---')
+        if click_value == 'self.self.sub2_6_button_2':  # Click "VPNs on L3"
+            print('--- Click VPNs on L3 ---')
+            self.click_value = 'L3-4-1'
+            self.click_value_VPN = 'VPN-1-3'
+
+            ### Modify Master file for L3 vpn ###
+            #ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
+
+            ### Create L3 All Areas with l3vpn master file ###
+            network_sketcher_dev.ns_front_run.click_action(self, 'L3-4-1')
+
+            ### reset initial value
+            self.click_value_VPN = ''
+
 
     '''
     Device Panel
