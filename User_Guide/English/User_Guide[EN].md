@@ -53,9 +53,9 @@
 [5-3-1. Change of Physical Interface Name](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-3-1.%20Change%20of%20Physical%20Interface%20Name.pdf)
 
 ## 6. VPN Diagram Generation/Configuration
-[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md) 
+[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md)  *ver2.3.2
 
-[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md) 
+[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md)  *ver2.3.2
 
 
 ## 7. Extentions
