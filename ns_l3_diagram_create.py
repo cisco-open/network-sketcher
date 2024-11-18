@@ -196,7 +196,7 @@ class  ns_l3_diagram_create():
             prs.save(self.output_ppt_file)
 
     def l3_area_create(self, target_folder_name, action_type,offset_x ,offset_y):
-        print('--- l3_area_create ---  ',target_folder_name,action_type,offset_x ,offset_y)
+        print('--- l3_area_create ---  ')
         self.used_l3segment_array = []
         ### get l3segment in the target folder
         target_all_device_array = []
@@ -446,6 +446,9 @@ class  ns_l3_diagram_create():
 
             self.shape = self.slide.shapes
             self.shape.title.text = '[L3] ' + target_folder_name
+
+            if self.click_value_VPN == 'VPN-1-3':  # add ver 2.3.2
+                self.shape.title.text = '[VPNs on L3]  ' + target_folder_name
 
         ### parameter
         self.left_margin = 1.0 # Inches
@@ -1254,6 +1257,10 @@ class  ns_l3_diagram_create():
                                                     inche_from_connect_x -= offset_if_line
                                                     inche_to_connect_x -= offset_if_line
 
+                                    if self.click_value_VPN == 'VPN-1-3':  # add ver 2.3.2
+                                        if [tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]] in self.vpn_hostname_if_list:
+                                            line_type = 'L3_SEGMENT-VPN'
+
                                     # print(line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
                                     if action_type == 'CREATE':
                                         ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
@@ -1334,6 +1341,34 @@ class  ns_l3_diagram_create():
                     tmp_char_width = ns_def.get_description_width_hight(self.tag_font_large_size,shape_text)[0]
                     if shape_width < tmp_char_width:
                         shape_width = tmp_char_width
+
+                    if self.click_value_VPN == 'VPN-1-3': #add ver 2.3.2
+                        #print('--- self.vpn_hostname_if_list ---')
+                        #print(self.vpn_hostname_if_list)
+
+                        list1 = self.vpn_hostname_if_list
+                        list2 = the_l3segment_l3_network_list
+
+                        # Logic to check for a complete match (both elements)
+                        for item1 in list1:
+                            match_found = False
+                            # Extract the two elements of list1 (device name and VPN name)
+                            device_name = item1[0]
+                            vpn_name = item1[1]
+
+                            # Loop over each entry in list2
+                            for item2 in list2:
+                                # Extract the second element of item2, which is a list with [device_name, interface]
+                                interface_info = item2[1]
+
+                                # Check if both the device names and the interface names match
+                                if device_name == interface_info[0] and vpn_name == interface_info[1]:
+                                    #print(f"--- VPN Segment found:  {interface_info}")
+                                    match_found = True
+                                    break  # Stop once a match is found
+
+                            if match_found == True:
+                                shape_type = 'L3_SEGMENT_VPN'
 
                     #write l3 segment
                     if action_type == 'CREATE':

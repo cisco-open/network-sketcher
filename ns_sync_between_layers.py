@@ -25,7 +25,7 @@ import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import ns_def ,ns_ddx_figure , network_sketcher,network_sketcher_dev
 
 def l2_device_table_sync_with_l3_master(self):
-    print('### l2_device_table_sync_with_l3_master### ')
+    print('--- l2_device_table_sync_with_l3_master ---')
 
     ### get exist L2 table sheet in master file
     ws_l2_name = 'Master_Data_L2'
@@ -120,7 +120,7 @@ def l2_device_table_sync_with_l3_master(self):
     ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
 
 def l2_device_port_name_sync_with_l3_master(self):
-    print('### l2_device_vport_name_sync_with_l3_master ### ')
+    print('--- l2_device_vport_name_sync_with_l3_master ---')
     ws_name = 'Master_Data'
     ws_l2_name = 'Master_Data_L2'
     ws_l3_name = 'Master_Data_L3'
@@ -149,8 +149,8 @@ def l2_device_port_name_sync_with_l3_master(self):
                         break
         if flag_get_start == True:
             break
-    print('start_folder_array')
-    print(start_folder_array)
+    #print('start_folder_array')
+    #print(start_folder_array)
 
 
     # convert from device table to array and convert to tuple
@@ -254,7 +254,7 @@ def l2_device_port_name_sync_with_l3_master(self):
 
 
 def l1_device_port_name_sync_with_l2l3_master(self):
-    print('### l1_device_port_name_sync_with_l2l3_master ### ')
+    print('--- l1_device_port_name_sync_with_l2l3_master ---')
     #print(self.update_port_num_array)
 
     ws_l2_name = 'Master_Data_L2'

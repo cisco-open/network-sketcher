@@ -62,12 +62,14 @@ class  ns_l1_table_sync_master():
         flag_get_start = False
         for tmp_column in range(1, 100):
             for tmp_row in range(1, 100):
+                print(str(excel_device_table.active.cell(tmp_row, tmp_column).fill.bgColor.value).lower())
                 if '4f81bd' in str(excel_device_table.active.cell(tmp_row, tmp_column).fill.bgColor.value).lower() and 'dce6f1' in str(excel_device_table.active.cell(tmp_row +1, tmp_column).fill.bgColor.value).lower() :
                     start_folder_array = tmp_row +1,tmp_column,excel_device_table.active.cell(tmp_row + 1, tmp_column).value
                     for tmp_folder_wp_name_array in folder_wp_name_array[0]:
                         if tmp_folder_wp_name_array == start_folder_array[2]:
                             flag_get_start = True
                             break
+
             if flag_get_start == True:
                 break
         #print('start_folder_array')

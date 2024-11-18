@@ -15,8 +15,138 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
+import sys, os, subprocess ,webbrowser , shutil
 from pptx import Presentation
-import ns_def,ns_ddx_figure
+import ns_def,ns_ddx_figure, ns_egt_maker
+
+class ns_modify_master_l3vpn():
+    def __init__(self):
+        print('--- ns_modify_master_l3vpn ---')
+
+        # GET backup master file parameter
+        # parameter
+        ws_name = 'Master_Data'
+        ws_l2_name = 'Master_Data_L2'
+        ws_l3_name = 'Master_Data_L3'
+        tmp_ws_name = '_tmp_'
+        ppt_meta_file = str(self.excel_maseter_file_backup)
+        print(self.excel_maseter_file_backup)
+
+        # convert from master to array and convert to tuple
+        #self.position_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_FOLDER>>')
+        #self.position_shape_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_SHAPE>>')
+        #self.root_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<ROOT_FOLDER>>')
+        self.position_line_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_LINE>>')
+        #self.position_folder_tuple = ns_def.convert_array_to_tuple(self.position_folder_array)
+        #self.position_shape_tuple = ns_def.convert_array_to_tuple(self.position_shape_array)
+        #self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
+        #self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
+        self.position_line_tuple = ns_def.convert_array_to_tuple(self.position_line_array)
+
+        self.l2_table_array = ns_def.convert_master_to_array(ws_l2_name, ppt_meta_file, '<<L2_TABLE>>')
+        self.l2_table_array_tuple = ns_def.convert_array_to_tuple(self.l2_table_array)
+        self.l3_table_array = ns_def.convert_master_to_array(ws_l3_name, ppt_meta_file, '<<L3_TABLE>>')
+
+        # print('---- self.position_folder_tuple ----')
+        # print(self.position_folder_tuple)
+        # print('---- self.position_folder_array ----')
+        # print(self.position_folder_array)
+        # print('---- self.position_shape_tuple ----')
+        # print(self.position_shape_tuple)
+        # print('---- self.position_shape_array ----')
+        # print(self.position_shape_array)
+
+        #print(self.l2_table_array)
+        #print(self.l3_table_array)
+
+        ### GET candidate VPN IF in Maseter_data_L2
+        l2candidate_list = []
+        l2candidate_array = []
+        for row in self.l2_table_array:
+            while len(row[1]) < 9:
+                row[1].append('')
+
+            values = row[1]
+            if len(values) > 7 and values[5] != '' and values[2] == '' and values[3] == '' and values[6] == '' and values[7] == '':
+                l2candidate_list.append([values[1],values[5]])
+                l2candidate_array.append(row)
+
+        #print(l2candidate_list)
+        #print(l2candidate_array)
+
+        ### GET candidate VPN IF in Maseter_data_L3
+        l3candidate_array = []
+        update_original_list = []
+        for row in self.l3_table_array:
+            while len(row[1]) < 9:
+                row[1].append('')
+
+            values = row[1]
+            #print([values[1],values[2],values[5],values[6]])
+
+            original_list = [values[1],values[2],values[5],values[6]]
+            # Split the third and fourth elements by commas
+            devices = original_list[2].split(',')
+            vpns = original_list[3].split(',')
+
+            paired_lists = []
+            for i in range(len(devices)):
+                # Create a new list for each pair and append it to paired_lists
+                paired_lists.append([values[1],values[2],devices[i], vpns[i]])
+
+                if len(values) > 7 and [values[1],values[2]] in l2candidate_list and  [devices[i],vpns[i]] in l2candidate_list:
+                    l3candidate_array.append([values[1],values[2],devices[i],vpns[i]])
+
+        #print(l3candidate_array)
+
+        ### make meta data for L1 Master_Data sheet
+        #print(self.position_line_array )
+        max_value = max(item[0] for item in self.position_line_array)
+        add_value = max_value
+
+        add_vpn_position_line_array = self.position_line_array
+
+        for tmp_l3candidate_array in l3candidate_array:
+            add_value += 1
+            ifname1 = ns_def.adjust_portname(tmp_l3candidate_array[1])
+            ifname2 = ns_def.adjust_portname(tmp_l3candidate_array[3])
+            add_vpn_position_line_array.append([add_value, [tmp_l3candidate_array[0], tmp_l3candidate_array[2], str(ifname1[0] + ' ' + ifname1[2]), str(ifname2[0] + ' ' + ifname2[2]), '', '', '', '', '', '', '', '', ifname1[1], 'Auto', 'Auto', '1000BASE-T', ifname2[1], 'Auto', 'Auto', '1000BASE-T']])
+
+        #print(add_vpn_position_line_array)
+        self.add_vpn_position_line_tuple = ns_def.convert_array_to_tuple(add_vpn_position_line_array)
+
+        ### write L1 Master data
+        ns_def.clear_section_sheet(ws_name, ppt_meta_file, self.position_line_tuple)
+        ns_def.write_excel_meta(self.add_vpn_position_line_tuple, ppt_meta_file, ws_name, '<<POSITION_LINE>>',0, 0)
+
+        ### make meta data for L2 Master_Data sheet
+        update_l2_table_array = []
+
+        l2candidate_array = []
+        for item in l3candidate_array:
+            l2candidate_array.append([item[0], item[1]])
+            l2candidate_array.append([item[2], item[3]])
+
+        #print(l2candidate_array)
+        self.vpn_hostname_if_list = l2candidate_array
+
+        for tmp_l2_table_array in self.l2_table_array:
+            if len(tmp_l2_table_array[1]) >= 6:
+                if [tmp_l2_table_array[1][1],tmp_l2_table_array[1][5]] in l2candidate_array:
+                    #print([tmp_l2_table_array[1][1],tmp_l2_table_array[1][5]])
+                    update_l2_table_array.append([tmp_l2_table_array[0], [tmp_l2_table_array[1][0], tmp_l2_table_array[1][1], '', tmp_l2_table_array[1][5], '', '', '', '', '']])
+
+                else:
+                    update_l2_table_array.append(tmp_l2_table_array)
+
+        #print(update_l2_table_array)
+        self.update_l2_table_array_tuple = ns_def.convert_array_to_tuple(update_l2_table_array)
+
+        ### write L2 Master data
+        ns_def.clear_section_sheet(ws_l2_name , ppt_meta_file, self.l2_table_array_tuple)
+        ns_def.write_excel_meta(self.update_l2_table_array_tuple, ppt_meta_file, ws_l2_name , '<<L2_TABLE>>',0, 0)
+
 
 class  ns_write_vpns_on_l1():
     def __init__(self):
