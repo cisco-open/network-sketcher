@@ -37,10 +37,10 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 - __Python ver 3.x__
 - __Software that can edit .pptx and .xlsx files__
   - Microsoft Powerpoint and Excel are best
-  - The free version offers import/export functions for Google Slides and spreadsheets. The xlsx format function display will show an error, but it works fine.
+  - Google Slides and Spreadsheets import/export functionality is available. Excel functions display will show an error, but it works fine.
   - Libre Office and Softmaker office cannot be used.
 
-# Usage
+# Installation
  
 ```bash
 git clone https://github.com/cisco-open/network-sketcher/
@@ -49,7 +49,7 @@ python -m pip install -r requirements.txt
 python network_sketcher.py
 ```
 
-# Supplemental Usage
+# Installation Supplement
  * Alternative to “python -m pip install -r requirements.txt”
 ```bash
 python -m pip install tkinterdnd2
