@@ -1049,6 +1049,8 @@ class  ns_l1_master_create():
         xy_ratio = 0.5 # add ver 2.3.1(a)
 
         for i in range(1,num_slide + 1):
+            if len(numpy_line_array) == 0:  ### add 2.3.2(b) for bug fix ns-009
+                break
             tmp_numpy_shape_array =  numpy_shape_array[numpy_shape_array[:, 7] == str(i)]
             tmp_numpy_line_array = numpy_line_array[numpy_line_array[:, 4] == i]
             for tmp_numpy_line in tmp_numpy_line_array:
