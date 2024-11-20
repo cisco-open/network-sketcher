@@ -398,7 +398,7 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
 
     for index_l3,tmp_original_master_l3_table_array in enumerate(original_master_l3_table_array):
         tmp_original_master_l3_table_array[1].extend(['','','','','','','',''])
-        del tmp_original_master_l3_table_array[1][5:]
+        del tmp_original_master_l3_table_array[1][7:] # bug fix ns-010 at 2.3.2(b)
         original_master_l3_table_array[index_l3] = tmp_original_master_l3_table_array
 
     #print(original_master_l2_table_array)
