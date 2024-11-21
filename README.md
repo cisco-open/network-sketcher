@@ -72,6 +72,17 @@ brew install tcl-tk
 sudo apt-get install python3-tk
 ```
 
+# User Guide
+| Lang  | Link |
+| ------------- | ------------- |
+| English  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
+| 日本語  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
+ 
+# How to create the exe file for Windows using pyinstaller
+ ```bash
+pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinterdnd2 --noconsole --additional-hooks-dir  [file path] --clean
+ ```
+
 # SAMPLE
 ## Input ppt file (rough sketch)
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/87e792ec-f0d6-47f9-96ad-1dfda4de5228)
@@ -102,18 +113,6 @@ sudo apt-get install python3-tk
 ### Master file(Excel)
 [MASTER.Sample.figure5.xlsx](https://github.com/cisco-open/network-sketcher/files/12298821/MASTER.Sample.figure5.xlsx)
 
-
-# User Guide
-| Lang  | Link |
-| ------------- | ------------- |
-| English  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
-| 日本語  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
- 
-# Note
-* How to make the exe file for Windows using pyinstaller
- ```bash
-pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinterdnd2 --noconsole --additional-hooks-dir  [file path] --clean
- ```
 
 # Author
  
