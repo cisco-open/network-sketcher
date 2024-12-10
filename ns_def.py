@@ -960,7 +960,7 @@ def clear_tag_in_position_line(tmp_ws_name, ppt_meta_file, clear_section_taple):
 
     return ('clear_tag_in_position_line')
 
-
+#get shape name in the folder and sort by tuple type
 def get_shape_folder_tuple(position_shape_tuple):
     return_tuple = {}
     current_folder_name = ''
@@ -1168,7 +1168,7 @@ def get_ipv4_value(ipv4_address):
 
 class  get_l2_broadcast_domains():
     def run(self,excel_maseter_file):
-        print('--- get_l2_broadcast_domains ---')
+        #print('--- get_l2_broadcast_domains ---')
         '''
         STEP0 get values of Master Data
         '''
@@ -1528,7 +1528,7 @@ class  get_l2_broadcast_domains():
 
             marged_l2_broadcast_group_array.append(tmp_marged_l2_broadcast_group_array)
 
-        print('--- marged_l2_broadcast_group_array ---')
+        #print('--- marged_l2_broadcast_group_array ---')
         #print(get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array))
         marged_l2_broadcast_group_array = get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array)
 

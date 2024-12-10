@@ -2678,8 +2678,10 @@ class extended():
         print('ns_ddx_figure_extended()')
 
     def add_shape(self,shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text):
-        '''Default Parameter'''
 
+        self.add_shape_write_array.append([shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text])
+
+        '''Default Parameter'''
         self.shape = self.shape.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(shape_left), Inches(shape_top), Inches(shape_width), Inches(shape_hight))
 
         # fill parameter
@@ -2724,7 +2726,7 @@ class extended():
             # line paramter
             shape_line.width = Pt(1.0)
             shape_line.color.rgb = RGBColor(205, 205, 205)
-            self.shape.adjustments[0] = float(0.025)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.015)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             #self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
             self.shape.text_frame.paragraphs[0].font.size = Pt(self.folder_font_size )
