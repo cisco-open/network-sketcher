@@ -41,7 +41,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.2(b)")
+        self.root.title("Network Sketcher  ver 2.3.3")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -218,7 +218,6 @@ class ns_front_run():
         self.entry_name_sub1_3 = 'self.sub1_3_entry_1'
         self.sub1_3.drop_target_register(DND_FILES)
         self.sub1_3.dnd_bind("<<Drop>>", self.drop_sub1_3 ,self.entry_name_sub1_3)
-
 
     def drop_sub1_3(self, event):
         if event:

@@ -31,6 +31,7 @@ from pptx.dml.color import RGBColor, MSO_THEME_COLOR
 from pptx.dml.line import LineFormat
 from pptx.shapes.connector import Connector
 from pptx.util import Inches, Cm, Pt
+from collections import defaultdict
 
 class  ns_l3_diagram_create():
     def __init__(self):
@@ -122,8 +123,6 @@ class  ns_l3_diagram_create():
         #print('---- wp_with_folder_tuple ----')
         #print(self.wp_with_folder_tuple)
 
-
-
         '''
         Create per area l3 ppt
         '''
@@ -151,12 +150,22 @@ class  ns_l3_diagram_create():
             #print('--- self.page_size_array ,self.slide_width ,self.slide_hight ---  [outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, folder_shape_text] ,self.slide_width ,self.slide_hight')
             #print(self.page_size_array,self.slide_width ,self.slide_hight)
 
+            # Calculate area offset for one area at ver 2.3.3
+            if self.click_value_l3 == 'L3-4-1':
+                create_master_file_one_area.calculate_area_offset(self)
+
             '''CREATE L3 DIAGRAM'''
             self.result_get_l2_broadcast_domains = ns_def.get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
-            self.active_ppt = Presentation()  # define target ppt object
+            #self.active_ppt = Presentation()  # define target ppt object
+
+            if os.path.exists(self.output_ppt_file) and self.flag_second_page == True:
+                self.active_ppt = Presentation(self.output_ppt_file)
+                slide_layout = self.active_ppt.slide_layouts[5]  # Blank layout
+                #self.active_ppt.slides.add_slide(slide_layout)
+            else:
+                self.active_ppt = Presentation()
 
             for tmp_new_position_folder_array in self.folder_wp_name_array[0]:
-
                 action_type = 'CREATE'
                 offset_x = 0.0 #inches
                 offset_y = 0.0 #inches
@@ -196,7 +205,7 @@ class  ns_l3_diagram_create():
             prs.save(self.output_ppt_file)
 
     def l3_area_create(self, target_folder_name, action_type,offset_x ,offset_y):
-        print('--- l3_area_create ---  ')
+        print('--- l3_area_create -',action_type,' - ',target_folder_name,'---')
         self.used_l3segment_array = []
         ### get l3segment in the target folder
         target_all_device_array = []
@@ -446,9 +455,16 @@ class  ns_l3_diagram_create():
 
             self.shape = self.slide.shapes
             self.shape.title.text = '[L3] ' + target_folder_name
+            if self.flag_second_page == True and self.click_value_l3 == 'L3-4-1':
+                self.shape.title.text = '[L3] ' + target_folder_name +'  <Focus on Connectivity>'
+            elif self.flag_second_page == False and self.click_value_l3 == 'L3-4-1':
+                self.shape.title.text = '[L3] ' + target_folder_name + '  <Focus on Area>'
 
             if self.click_value_VPN == 'VPN-1-3':  # add ver 2.3.2
-                self.shape.title.text = '[VPNs on L3]  ' + target_folder_name
+                if self.flag_second_page == True and self.click_value_l3 == 'L3-4-1':
+                    self.shape.title.text = '[VPNs on L3] <Focus on Connectivity>'
+                elif self.flag_second_page == False and self.click_value_l3 == 'L3-4-1':
+                    self.shape.title.text = '[VPNs on L3] <Focus on Area>'
 
         ### parameter
         self.left_margin = 1.0 # Inches
@@ -472,7 +488,12 @@ class  ns_l3_diagram_create():
         self.between_shape_column = 0.5 #inches
         between_shape_row = 0.25  # inches
         self.between_l3if = 0.25  #inches
-        l3_segment_up_down_offset = 0.15 # inches
+
+        l3_segment_up_down_offset = 0.15
+
+        if self.click_value_l3 == 'L3-4-1': # inches  #changed at ver 2.3.3
+            l3_segment_up_down_offset = 0.45
+
         min_between_line = 0.075  # inches
         min_shape_width = 1.0 #inches
 
@@ -501,15 +522,48 @@ class  ns_l3_diagram_create():
         self.mark_wp_top = self.top_margin + top_offset
         flag_first_colmun = True
 
+        ### ver 2.3.3 make self.target_offset_shape_array ###
+        # get shape name in the folder and sort
+        ws_name = 'Master_Data'
+        ppt_meta_file = str(self.inFileTxt_11_1.get())
+        self.ori_position_shape_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_SHAPE>>')
+        ori_position_shape_tuple = ns_def.convert_array_to_tuple(self.ori_position_shape_array)
+        self.shape_folder_tuple = ns_def.get_shape_folder_tuple(ori_position_shape_tuple)
+        # print(self.shape_folder_tuple)
+
+        self.target_offset_shape_array = []
+
+        def process_elements(array):
+            target_array = []
+            for element in array:
+                if element[0] >= 2:
+                    items = element[1]
+                    for item in items[1:]:
+                        if '_AIR_' not in item and '<END>' not in item:
+                            target_array.append(item)
+                            break  # Stop after appending the first valid item
+            return target_array
+
+        # Process the array and print the result
+        self.target_offset_shape_array = process_elements(self.ori_position_shape_array)
+        #print('--- self.target_offset_shape_array ---')
+        #print(self.target_offset_shape_array)
+        ################################################
+
         for self.index_2,tmp_target_position_shape_array in enumerate(target_position_shape_array):
             start_l3_seg_inche_x = self.left_margin + left_offset
 
             ''' write device and wp(up/down)'''
+            self.flag_area_equel_left = True
+            self.second_area_offset = 0.0
+
             for tmp_tmp_target_position_shape_array in tmp_target_position_shape_array:
 
-                ''' TEST Ver 2.3.0 '''
-                '''if tmp_tmp_target_position_shape_array == 'WAN-Dum3':
-                    left_offset += 2.0'''
+                ''' OFFSET Ver 2.3.3 '''
+                if self.click_value_l3 == 'L3-4-1':
+                    if action_type == 'CREATE' and tmp_tmp_target_position_shape_array not in '_AIR_':
+                        shape_name = tmp_tmp_target_position_shape_array
+                        left_offset += create_master_file_one_area.get_l3_shape_offset(self,shape_name ,left_offset)
 
                 tmp_left_array = []
                 tmp_right_array = []
@@ -628,6 +682,9 @@ class  ns_l3_diagram_create():
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text)
 
+                                if self.click_value_l3 == 'L3-4-1':
+                                    self.add_shape_array.append([shape_type, shape_left, shape_top, shape_width, shape_hight,shape_text])  # add ver 2.3.3
+
                                 offset_l3_instance += tmp_plus_width
                                 self.size_l3_instance_array.append([shape_text, l3_shape_text, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight])
 
@@ -638,6 +695,9 @@ class  ns_l3_diagram_create():
                             ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
                             self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
                             self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
+
+                        if self.click_value_l3 == 'L3-4-1':
+                            self.add_shape_array.append([shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text])  # add ver 2.3.3
 
                         '''GET Folder and Outline position'''
                         # get folder left
@@ -876,6 +936,8 @@ class  ns_l3_diagram_create():
                 if action_type == 'CREATE':
                     self.shape = self.slide.shapes
                     ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
+                    if self.click_value_l3 == 'L3-4-1':
+                        self.add_shape_array.append([shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text])  # add ver 2.3.3
 
                 #get left side folder and outline point
                 self.area_position_array[0] = shape_left + shape_width + self.between_shape_column * 2 - offset_shape_left
@@ -1015,6 +1077,9 @@ class  ns_l3_diagram_create():
                     self.shape = self.slide.shapes
                     ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
 
+                if self.click_value_l3 == 'L3-4-1':
+                    self.add_shape_array.append([shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text])  # add ver 2.3.3
+
                 #get left side folder and outline point
                 self.outline_position_array[2] += shape_width + self.between_shape_column * 3
 
@@ -1140,12 +1205,80 @@ class  ns_l3_diagram_create():
         folder_shape_width = self.area_position_array[2]
         folder_shape_hight = self.area_position_array[3]
         folder_shape_text = self.area_position_array[4]
+        max_folder_left_width = 0.0
 
-        if action_type == 'CREATE':
+        if action_type == 'CREATE' and self.click_value_l3 != 'L3-4-1':
             self.shape = self.slide.shapes
             ns_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top, folder_shape_width, folder_shape_hight, folder_shape_text)
             self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
             self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
+
+        elif action_type == 'CREATE' and self.click_value_l3 == 'L3-4-1' and self.flag_second_page == False:
+            '''write folder line when l3 all areas'''
+            #print(self.add_shape_write_array )    #shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text
+            #print(self.unique_area_device_array)
+
+            area_groups = {}
+
+            # Group the shapes by area_name
+            for shape in self.add_shape_write_array:
+                shape_area_name = None
+
+                # Find the corresponding area_name for the shape's device_name
+                for area_device in self.unique_area_device_array:
+                    if shape[5] == area_device[1]:  # shape[5] corresponds to the device_name
+                        shape_area_name = area_device[0]  # area_name is in area_device[0]
+                        break
+
+                if shape_area_name:
+                    if shape_area_name not in area_groups:
+                        area_groups[shape_area_name] = []
+                    area_groups[shape_area_name].append(shape)
+
+            # Now, for each area_name, calculate the new values
+            area_outline_array = []
+
+            for area_name, shapes in area_groups.items():
+                # Initialize min/max variables
+                min_shape_left = float('inf')
+                min_shape_top = float('inf')
+                max_right_edge = float('-inf')  # This will store the maximum (shape_left + shape_width)
+                max_bottom_edge = float('-inf')  # This will store the maximum (shape_top + shape_height)
+
+                # Loop through all shapes in the area and find the new min/max values
+                for shape in shapes:
+                    min_shape_left = min(min_shape_left, shape[1])  # shape[1] is shape_left
+                    min_shape_top = min(min_shape_top, shape[2])  # shape[2] is shape_top
+                    max_right_edge = max(max_right_edge, shape[1] + shape[3])  # shape[1] + shape[3] is the rightmost edge
+                    max_bottom_edge = max(max_bottom_edge, shape[2] + shape[4])  # shape[2] + shape[4] is the bottommost edge
+
+                # Calculate the final output values based on the new format
+                width_difference = max_right_edge - min_shape_left  # Right edge minus left edge
+                height_difference = max_bottom_edge - min_shape_top  # Bottom edge minus top edge
+
+                # Append the results for this area
+                area_outline_array.append([area_name, min_shape_left, min_shape_top, width_difference, height_difference])
+
+            #print(area_outline_array)
+
+            # write the area outline
+            area_margin_x = 0.5 #inchi
+            area_margin_y = 0.3 #inchi
+
+            for tmp_area_outline_array in area_outline_array:
+                if '_wp_' not in tmp_area_outline_array[0]:
+                    self.shape = self.slide.shapes
+                    folder_shape_left = tmp_area_outline_array[1] - area_margin_x
+                    folder_shape_top = tmp_area_outline_array[2]- area_margin_y
+                    folder_shape_width = tmp_area_outline_array[3] + (area_margin_x * 2)
+                    folder_shape_hight = tmp_area_outline_array[4] + (area_margin_y * 2)
+                    folder_shape_text = tmp_area_outline_array[0]
+                    ns_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top,folder_shape_width, folder_shape_hight, folder_shape_text)
+                    self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
+                    self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
+
+                    if max_folder_left_width < (folder_shape_left + folder_shape_width):
+                        max_folder_left_width = folder_shape_left + folder_shape_width
 
         ### write outline
         outline_shape_type = 'OUTLINE_NORMAL'
@@ -1159,6 +1292,10 @@ class  ns_l3_diagram_create():
         outline_shape_hight += 0.2
 
         if action_type == 'CREATE':
+            ### adjust outline width . add ver 2.3.3 ###
+            if (max_folder_left_width + 0.5) > (outline_shape_left + outline_shape_width):
+                outline_shape_width += max_folder_left_width - (outline_shape_left + outline_shape_width) + 0.5
+
             self.shape = self.slide.shapes
             ns_ddx_figure.extended.add_shape(self, outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, outline_shape_text)
 
@@ -1440,12 +1577,6 @@ class  ns_l3_diagram_create():
         '''
         Write line of L3 instance
         '''
-        '''if self.size_l3_instance_array != []:
-            print('--- self.size_l3_instance_array ---  shape_text, l3_shape_text, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight')
-            print(self.size_l3_instance_array)
-            print('--- self.all_l3if_tag_array --- , tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text,up_shape_width_if_array[0],shape_text')
-            print(self.all_l3if_tag_array)'''
-
         used_line_array = []
         for tmp_update_l3_instance_array in self.update_l3_instance_array:
             for tmp_all_l3if_tag_array in self.all_l3if_tag_array:
@@ -1866,8 +1997,6 @@ class  create_master_file_one_area():
                 if (y, x) not in new_tuple:
                     new_tuple[(y, x)] = '_AIR_'
 
-        #print(new_tuple)
-
         #last input
         new_tuple[(1, 1)] = 'All Areas'
         new_tuple[(master_y, 1)] = '<END>'
@@ -1879,3 +2008,262 @@ class  create_master_file_one_area():
         ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_shape_tuple)
         ns_def.write_excel_meta(new_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
 
+
+    def calculate_area_offset(self):
+        #print(self.add_shape_array)
+        ''' get DEVICE_NORMAL'''
+        device_normal_array = []
+        for tmp_add_shape_array in self.add_shape_array:
+            if tmp_add_shape_array[0] == 'DEVICE_NORMAL' or tmp_add_shape_array[0] == 'DEVICE_L3_INSTANCE':
+                device_normal_array.append(tmp_add_shape_array[1:])
+
+        #print('shape_left, shape_top, shape_width, shape_hight,shape_text')
+        #print(device_normal_array)
+
+        # List to store the transformed data
+        transformed_data = []
+
+        # Processing each sublist
+        data = device_normal_array
+        self.shape_left_inchi_array = []
+        for sublist in data:
+            # Add the 1st (index 0), 3rd (index 2), and 4th (index 3) elements together
+            sum_value = sublist[0] + sublist[2]
+            # Create a new sublist with the last element (string) and the calculated sum
+            # shape_text,  shape_top, shape_left,shape_left + shape_width
+            transformed_data.append([sublist[4], sublist[1],sublist[0] , sum_value])
+            self.shape_left_inchi_array.append([sublist[4],sublist[0]])
+
+        # Print the result
+        #print(transformed_data)
+
+        ''' GET Area-Device array'''
+        data = self.l2_table_array
+        # Filtering data based on condition: first item >= 3, then extracting the first two items
+        filtered_data = []
+        for item in data:
+            if item[0] >= 3:
+                filtered_data.append(item[1][:2])  # Extracting the first two items from the second list
+
+        # Removing duplicates
+        unique_data = []
+        seen = set()
+        for entry in filtered_data:
+            if entry[1] not in seen:
+                unique_data.append(entry)
+                seen.add(entry[1])
+
+        # Display the results
+        #print(unique_data)
+
+        # change 'N/A' to own folder name
+        for item in unique_data:
+            if item[0] == 'N/A':
+                corresponding_value = self.shape_folder_tuple.get(item[1], None)
+                if corresponding_value:
+                    item[0] = corresponding_value
+
+        # Display the results
+        #print(unique_data)
+        self.unique_area_device_array = unique_data
+
+        # Dictionary to group by the first element
+        grouped_data = defaultdict(list)
+
+        # Group the data by the first element
+        data = unique_data
+        for entry in data:
+            grouped_data[entry[0]].append(entry[1])
+
+        # Create the result where the second element is an array of devices
+        self.result_area_device_array = [[key, value] for key, value in grouped_data.items()]
+
+        # Output the result
+        #print(self.result_area_device_array)
+
+        ''' Calculate the distance to the right of each area　'''
+        # Iterate through the self.result_area_device_array to match and add corresponding data
+        for area in self.result_area_device_array:
+            area_name = area[0]  # Site name
+            device_list = area[1]  # List of devices related to the site
+
+            # Create a new list to store the devices with their matched data
+            new_device_list = []
+
+            # For each device in the device list, find the corresponding data in transformed_data
+            for device in device_list:
+                for data in transformed_data:
+                    if data[0] == device:
+                        # Append the device along with its corresponding data
+                        new_device_list.append([device, *data[1:]])  # Add data from the transformed_data
+
+            # Update the area[1] with the newly created list with the added data
+            area[1] = new_device_list
+
+        # Print the updated self.result_area_device_array
+        print('--- self.result_area_device_array ---')
+        #print(self.result_area_device_array)
+
+        ''' GET max width per area '''
+        area_min_max_diff_array = []
+        # Process the self.result_area_device_array to find the required differences
+        for area in self.result_area_device_array:
+            area_name = area[0]  # Area name, e.g., 'DC-TOP1'
+            device_data_list = area[1]  # List of devices and their data
+
+            # Create a dictionary to group devices by their second value (data[1] value)
+            grouped_data = {}
+
+            # Group devices by the second element (data[1])
+            for device_data in device_data_list:
+                key = device_data[1]  # The second item, which we group by (e.g., 3.02, 11.04, etc.)
+                if key not in grouped_data:
+                    grouped_data[key] = []
+                grouped_data[key].append(device_data)
+
+            # Process each group and calculate the required difference
+            for key, group in grouped_data.items():
+                # Find the smallest third element and the largest fourth element in the group
+                min_third = min([item[2] for item in group])  # Smallest value in the third position
+                max_fourth = max([item[3] for item in group])  # Largest value in the fourth position
+
+                # Calculate the difference
+                difference = max_fourth - min_third
+
+                # Print the result for this group
+                area_min_max_diff_array.append([area_name,min_third,max_fourth,difference])
+                #print(f"Area: {area_name}, Group: {key}, Min Third: {min_third}, Max Fourth: {max_fourth}, Difference: {difference}")
+
+        print('--- area_min_max_diff_array ---')
+        #print(area_min_max_diff_array)
+
+        ''' Create a defaultdict to group the entries by the category (first element) '''
+        # A defaultdict allows us to easily append items to lists without checking if the key exists.
+        grouped = defaultdict(list)
+
+        # Iterate through each entry in the input data
+        for entry in area_min_max_diff_array:
+            category = entry[0]  # Get the category (first element)
+            fourth_value = entry[3]  # Get the fourth value (index 3)
+            grouped[category].append(
+                (fourth_value, entry))  # Append the fourth value and the full entry to the corresponding category
+
+        # List to store the final results
+        result_area_width = []
+
+        # Iterate over the grouped categories to find the entry with the maximum fourth value
+        for category, values in grouped.items():
+            # Use the max function to find the entry with the largest fourth value within each category
+            # 'values' is a list of tuples, where the first item in each tuple is the fourth value (index 3)
+            max_value_entry = max(values, key=lambda x: x[0])
+
+            # Append the category and the maximum fourth value to the result list
+            result_area_width.append([category, max_value_entry[0]])
+
+        # Print the result: for each category, output the category name and the maximum fourth value
+        print('--- result_area_width ---')
+        #print(result_area_width)
+
+        ''' GET area location '''
+        ws_name = 'Master_Data'
+        ppt_meta_file = str(self.inFileTxt_11_1.get())
+        ori_position_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_FOLDER>>')
+        #print(ori_position_folder_array)
+
+        # List of strings to exclude
+        exclude_strings = ['<<POSITION_FOLDER>>', '<SET_WIDTH>']
+
+        # Initialize an empty list to store the processed results
+        processed_array = []
+
+        # Iterate through all elements in ori_position_folder_array
+        for element in ori_position_folder_array:
+            # Extract the second element (the list) of the current element
+            second_element = element[1]
+
+            # Remove numbers and exclude the strings specified in exclude_strings
+            cleaned = [item for item in second_element if
+                       isinstance(item, str) and item not in exclude_strings and item != '']
+
+            # Only add non-empty lists to processed_array
+            if cleaned:
+                processed_array.append(cleaned)
+
+        # Print the processed results
+        #print(processed_array)
+
+        ''' get start left per area '''
+        start_left_inchi = self.left_margin
+        between_area_inchi = 1.5
+
+        # Create a dictionary for quick lookup of result_area_width
+        result_dict = {item[0]: item[1] for item in result_area_width}
+
+        # Initialize start_area_array
+        start_area_array = []
+
+        # Iterate over processed_array to compute start_area_array
+        for sublist in processed_array:
+            sublist_result = []
+            for index, item in enumerate(sublist):
+                if item in result_dict:
+                    if index == 0:
+                        # For the first item, start from 0 + start_left_inchi
+                        start_value = start_left_inchi
+                    else:
+                        # Calculate the value based on conditions for subsequent items
+                        start_value = sum(result_dict[prev_item] for prev_item in sublist[:index])
+                        start_value += start_left_inchi
+                        start_value += between_area_inchi * index
+                    sublist_result.append([item, start_value])
+            start_area_array.append(sublist_result)
+
+        # Output the start_area_array
+        #self.update_start_area_array = []
+        for sublist in start_area_array:
+            for item in sublist:
+                self.update_start_area_array.append(item)
+
+        #print(start_area_array)
+        #print(self.update_start_area_array)
+
+    def get_l3_shape_offset(self,shape_name,left_offset):
+        target_folder_name = self.shape_folder_tuple.get(shape_name)
+        area_value = None
+        for item in self.update_start_area_array:
+            if item[0] == target_folder_name:
+                area_value = item[1]
+                break
+
+        if shape_name in self.target_offset_shape_array:
+            #print(shape_name, target_folder_name, area_value)
+            for item in self.shape_left_inchi_array:
+                if item[0] == shape_name:
+                    left_value = item[1]
+                    break
+
+            offset_value = area_value - left_offset
+
+            '''
+            To prevent the lines from overlapping, activate the following code. However, the figure would be very long.
+            '''
+            if self.flag_second_page == True:
+                if area_value >= left_value:
+                    offset_value = area_value - left_offset
+                else:
+                    offset_value = 0.0
+                #print(shape_name, area_value, left_value, offset_value,left_offset)
+
+                ### Calculate the offset for the area from the second row onwards　###
+                if area_value == 1.0 and left_value != 1.0:
+                    self.flag_area_equel_left = False
+                    self.second_area_offset = left_offset
+
+                if self.flag_area_equel_left == False and area_value != 1.0 :
+                    offset_value = area_value + self.second_area_offset - left_offset - 1.0
+
+
+        else:
+            offset_value = 0.0
+
+        return offset_value

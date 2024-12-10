@@ -480,6 +480,7 @@ class ns_front_run():
 
     def click_action(self,click_value):
         self.click_value_l3 = ''
+
         if click_value == '1-1': # select browse
             fTyp = [("", ".pptx")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -1209,6 +1210,8 @@ class ns_front_run():
 
         if click_value == 'L3-4-1':  # For All Areas L3 Diagram at ver 2.3.0
             import ns_l3_diagram_create
+            self.add_shape_array = []  # add parameter at Ver 2.3.3
+            self.add_shape_write_array = []  # add parameter at Ver 2.3.3
 
             full_filepath = self.inFileTxt_L3_3_1.get()
             iDir = os.path.dirname(full_filepath)
@@ -1250,7 +1253,11 @@ class ns_front_run():
             self.click_value = 'L3-3-2'
             self.click_value_l3 = 'L3-4-1'
             self.global_wp_array = []
+            self.update_start_area_array = []
 
+            self.flag_second_page = False
+            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+            self.flag_second_page = True
             ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
             # remove exist L3 file and backup xlsx file
