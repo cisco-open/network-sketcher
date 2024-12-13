@@ -561,7 +561,7 @@ class  ns_l3_diagram_create():
 
                 ''' OFFSET Ver 2.3.3 '''
                 if self.click_value_l3 == 'L3-4-1':
-                    if action_type == 'CREATE' and tmp_tmp_target_position_shape_array not in '_AIR_':
+                    if action_type == 'CREATE' and tmp_tmp_target_position_shape_array not in '_AIR_' and self.flag_second_page == False:
                         shape_name = tmp_tmp_target_position_shape_array
                         left_offset += create_master_file_one_area.get_l3_shape_offset(self,shape_name ,left_offset)
 
@@ -2243,25 +2243,6 @@ class  create_master_file_one_area():
                     break
 
             offset_value = area_value - left_offset
-
-            '''
-            To prevent the lines from overlapping, activate the following code. However, the figure would be very long.
-            '''
-            if self.flag_second_page == True:
-                if area_value >= left_value:
-                    offset_value = area_value - left_offset
-                else:
-                    offset_value = 0.0
-                #print(shape_name, area_value, left_value, offset_value,left_offset)
-
-                ### Calculate the offset for the area from the second row onwards　###
-                if area_value == 1.0 and left_value != 1.0:
-                    self.flag_area_equel_left = False
-                    self.second_area_offset = left_offset
-
-                if self.flag_area_equel_left == False and area_value != 1.0 :
-                    offset_value = area_value + self.second_area_offset - left_offset - 1.0
-
 
         else:
             offset_value = 0.0
