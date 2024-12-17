@@ -2678,8 +2678,8 @@ class extended():
         print('ns_ddx_figure_extended()')
 
     def add_shape(self,shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text):
-
-        self.add_shape_write_array.append([shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text])
+        if self.click_value_l3 == 'L3-4-1': # add ver 2.3.3(b)
+            self.add_shape_write_array.append([shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text])
 
         '''Default Parameter'''
         self.shape = self.shape.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(shape_left), Inches(shape_top), Inches(shape_width), Inches(shape_hight))
