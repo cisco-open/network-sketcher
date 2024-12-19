@@ -492,7 +492,7 @@ class  ns_l3_diagram_create():
         l3_segment_up_down_offset = 0.15
 
         if self.click_value_l3 == 'L3-4-1': # inches  #changed at ver 2.3.3
-            l3_segment_up_down_offset = 0.45
+            l3_segment_up_down_offset = 0.35
 
         min_between_line = 0.075  # inches
         min_shape_width = 1.0 #inches
@@ -1847,7 +1847,6 @@ class  create_master_file_one_area():
         print('--- create_master_file_one_area--- ')
 
         #copy master file
-        self.excel_maseter_file_backup
         shutil.copy(self.inFileTxt_L3_3_1.get(), self.excel_maseter_file_backup)
 
         #GET backup master file parameter

@@ -480,6 +480,7 @@ class ns_front_run():
 
     def click_action(self,click_value):
         self.click_value_l3 = ''
+        self.flag_second_page = False  # Add at Ver 2.3.4
 
         if click_value == '1-1': # select browse
             fTyp = [("", ".pptx")]
@@ -784,9 +785,24 @@ class ns_front_run():
             if ns_def.check_file_open(self.inFileTxt_2_1.get()) == True:
                 return ()
 
-            # import module
+            # create l1 diagram
             import ns_l1_diagram_create
             ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+
+            self.flag_second_page = True # Add at Ver 2.3.4
+
+            # create l1 summary_diagram, Add at Ver 2.3.4
+            if self.click_value == '2-4-3':
+                import ns_extensions
+                ns_extensions.summary_diagram.export_summary_diagram(self,'Dummy')
+
+                ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+
+                # remove exist ppt file
+                if os.path.isfile(self.excel_maseter_file_backup) == True:
+                    os.remove(self.excel_maseter_file_backup)
+
+            self.flag_second_page = False  # Add at Ver 2.3.4
 
             # view complete
             if self.click_value == '2-4-3': #Add at Ver 2.3.1(a)

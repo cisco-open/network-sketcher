@@ -41,7 +41,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.3(b)")
+        self.root.title("Network Sketcher  ver 2.3.4")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -680,25 +680,34 @@ class ns_front_run():
         self.sub3_5.geometry(geo)
 
         self.sub3_5_0 = tk.Label(self.sub3_5, text=local_filename, font=("", 12), background="#FFFFFF")
-        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=5)
+        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=15)
 
         # IP Address report
-        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='IP Address report', font=("", 14), height=1, background="#C2E2EC")
+        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='Export', font=("", 14), height=1, background="#C2E2EC")
         self.sub3_5_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
 
-        # Export to the list file
-        self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" Export to the table file ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
-        self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=30, pady=10)
+        # Export to the IP Address table
+        self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" IP Address table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
+        self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=20, pady=5)
 
-        self.sub3_4_3_entry_1 = tk.Entry(self.sub3_5_1, font=("", 12)) # for report
+        '''# Export to the Summary Diagram
+        self.sub3_5_button_2 = tk.Button(self.sub3_5_1, text=" Summary Diagram ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_2','dummy'))
+        self.sub3_5_button_2.grid(row=7, column=0, sticky='W', padx=20, pady=5)
+
+        self.sub3_4_3_entry_1 = tk.Entry(self.sub3_5_1, font=("", 12)) # for report'''
 
 
     def click_action_sub(self, click_value, target_area_name):
-        if click_value == 'self.sub3_5_button_1':  # select Run
+        if click_value == 'self.sub3_5_button_1':  # select IP address table
             ###export_ip_report
             ns_extensions.ip_report.export_ip_report(self, target_area_name)
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
 
+        '''if click_value == 'self.sub3_5_button_2':  # select export_summary_diagram
+            ###export_summary_diagram
+            dummy = ''
+            ns_extensions.summary_diagram.export_summary_diagram(self, dummy)
+            ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))'''
 
         if click_value == 'self.sub3_4_button_1':  # select Run
             #change target area name to N/A

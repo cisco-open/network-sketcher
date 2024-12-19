@@ -18,8 +18,8 @@ limitations under the License.
 
 import ns_def , ns_egt_maker
 from collections import Counter
-import tkinter as tk ,tkinter.ttk, os , openpyxl
-import ipaddress
+import tkinter as tk ,tkinter.ttk , openpyxl
+import ipaddress,sys, os, re, shutil
 import numpy as np
 
 class  ip_report():
@@ -40,9 +40,6 @@ class  ip_report():
         # remove exist device file
         if os.path.isfile(self.outFileTxt_11_3.get()) == True:
             os.remove(self.outFileTxt_11_3.get())
-
-        print(excel_maseter_file)
-        print(self.outFileTxt_11_3.get())
 
         self.excel_file_path = self.outFileTxt_11_3.get()
 
@@ -246,7 +243,7 @@ class  ip_report():
 
 
     def get_folder_list(self):
-        print('--- get_folder_list ---')
+        #print('--- get_folder_list ---')
         #parameter
         ws_name = 'Master_Data'
         excel_maseter_file = self.inFileTxt_L2_3_1.get()
@@ -265,7 +262,7 @@ class  ip_report():
 
 class  auto_ip_addressing():
     def get_folder_list(self):
-        print('--- get_folder_list ---')
+        #print('--- get_folder_list ---')
         #parameter
         ws_name = 'Master_Data'
         excel_maseter_file = self.inFileTxt_L2_3_1.get()
@@ -635,10 +632,216 @@ class  auto_ip_addressing():
         # write tuple to excel master data
         ns_def.write_excel_meta(last_l3_table_tuple, excel_maseter_file, excel_master_ws_name_l3, '_template_', 0, 0)
 
+class  summary_diagram():
+    def export_summary_diagram(self,dummy): # add at ver 2.3.4
+        print('--- export_summary_diagram ---')
+        iDir = os.path.abspath(os.path.dirname(self.full_filepath ))
 
+        # SET IP Address report file patch
+        basename_without_ext = os.path.splitext(os.path.basename(self.inFileTxt_L2_3_1.get()))[0]
 
+        self.outFileTxt_Lx_1_1 = tk.Entry()
+        self.outFileTxt_Lx_1_1.delete(0, tkinter.END)
+        self.outFileTxt_Lx_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext.replace('[MASTER]','__TMP__[MASTER]') + '.xlsx')
+        self.excel_maseter_file_backup  = self.outFileTxt_Lx_1_1.get()
 
+        # remove exist _TMP_ file
+        if os.path.isfile(str(self.excel_maseter_file_backup)) == True:
+            os.remove(str(self.excel_maseter_file_backup))
 
+        shutil.copy(str(self.inFileTxt_L2_3_1.get()), str(self.excel_maseter_file_backup))
 
+        #GET backup master file parameter
+        # parameter
+        ws_name = 'Master_Data'
+        tmp_ws_name = '_tmp_'
+        ppt_meta_file = str(self.excel_maseter_file_backup)
 
+        # convert from master to array and convert to tuple
+        self.position_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_FOLDER>>')
+        self.position_shape_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_SHAPE>>')
+        self.root_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<ROOT_FOLDER>>')
+        self.positoin_line_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_LINE>>')
+        self.position_folder_tuple = ns_def.convert_array_to_tuple(self.position_folder_array)
+        self.position_shape_tuple = ns_def.convert_array_to_tuple(self.position_shape_array)
+        self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
+        self.positoin_line_tuple = ns_def.convert_array_to_tuple(self.positoin_line_array)
 
+        #print('---- self.position_folder_tuple ----')
+        #print(self.position_folder_tuple)
+        #print('---- self.position_folder_array ----')
+        #print(self.position_folder_array)
+        #print('---- self.position_shape_tuple ----')
+        #print(self.position_shape_tuple)
+        #print('--- self.position_shape_array ---')
+        #print(self.position_shape_array)
+
+        # GET Folder and wp name List
+        folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, ppt_meta_file)
+        #print('---- folder_wp_name_array ----')
+        #print(folder_wp_name_array)
+
+        '''delete shape in <<POSITION_SHAPE>>'''
+        new_position_shape_array = []
+        counter = 1
+
+        for item in self.position_shape_array:
+            number = item[0]
+            elements = item[1]
+
+            # Rule 1: If the first element is 1, do not change it
+            if number == 1:
+                new_position_shape_array.append([counter, elements])
+                counter += 1
+                continue
+
+            # Additional Rule: If the first item contains '_wp_', do not change it
+            if '_wp_' in elements[0]:
+                new_position_shape_array.append([counter, elements])
+                counter += 1
+                continue
+
+            # Rule 2: If the first element of the second item is '', remove the entire entry
+            if elements[0] == '':
+                continue
+
+            # Rule 3: Otherwise, set the second element to '<END>' and remove the rest
+            new_entry = [elements[0], '<END>']
+
+            # Assign a new ascending order number
+            new_position_shape_array.append([counter, new_entry])
+            counter += 1
+
+        # Output the new array
+        #print('--- new_position_shape_array ---')
+        #print(new_position_shape_array)
+
+        new_position_shape_tuple = ns_def.convert_array_to_tuple(new_position_shape_array)
+        #print(new_position_shape_tuple)
+
+        # SET new <<POSITION_SHAPE>>
+        write_to_section = '<<POSITION_SHAPE>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_shape_tuple)
+        ns_def.write_excel_meta(new_position_shape_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
+
+        ''' change value of <<POSITION_FOLDER>>'''
+        self_position_folder_tuple = self.position_folder_tuple
+
+        # Initialize new tuple
+        new_position_folder_tuple = {}
+
+        # Ratio values
+        ratio_x = 0.35
+        ratio_y = 0.25
+
+        offset_sum_x = 0.0
+        max_offset_sum_x = 0.0
+        offset_sum_y = 0.0
+
+        current_y_axis = 1
+
+        # Iterate through the original tuple to apply the transformations
+        for (y, x), value in self_position_folder_tuple.items():
+            # Check the conditions for transformation -- X-axis
+            if (
+                    x >= 2 and
+                    self_position_folder_tuple.get((y, 1)) not in ['<SET_WIDTH>', '<<POSITION_FOLDER>>'] and
+                    '_wp_' not in str(value) and str(value) != ''
+            ):
+                # Calculate the new key and transformed value
+                new_key = (y - 1, x)
+                new_value = self_position_folder_tuple.get((y - 1 , x))
+
+                # Add to the new tuple
+                new_position_folder_tuple[new_key] = new_value * ratio_x
+
+                if current_y_axis == y:
+                    offset_sum_x += (new_value - new_value * ratio_x)
+                    if max_offset_sum_x < offset_sum_x:
+                        max_offset_sum_x = offset_sum_x
+                else:
+                    offset_sum_x = (new_value - new_value * ratio_x)
+                    current_y_axis = y
+                    if max_offset_sum_x < offset_sum_x:
+                        max_offset_sum_x = offset_sum_x
+
+            # Check the conditions for transformation -- Y-axis
+            if (
+                    x == 1 and
+                    self_position_folder_tuple.get((y, 1)) not in ['<SET_WIDTH>', '<<POSITION_FOLDER>>']
+            ):
+                flag_wp_include = False
+                for (yy, xx), value in self_position_folder_tuple.items():
+                    # Check the conditions for transformation 2nd
+                    if (
+                            y == yy and
+                            isinstance(self_position_folder_tuple[yy, xx], str) and  # Check if the value is a string
+                            '_wp_' not in str(self_position_folder_tuple[yy, xx]) and  # Check if '_wp_' is in the string
+                            self_position_folder_tuple[yy, xx] != ''
+                    ):
+                        flag_wp_include = True
+
+                if flag_wp_include == True :
+                    new_position_folder_tuple[y,x] = self_position_folder_tuple[y,x] * ratio_y
+                    offset_sum_y += (self_position_folder_tuple[y,x] - (self_position_folder_tuple[y,x] * ratio_y))
+
+        # Output the new tuple
+        #print(new_position_folder_tuple)
+
+        # Combine dictionaries, prioritizing new_position_folder_tuple
+        combined_position_folder_tuple = self_position_folder_tuple.copy()  # Start with a copy of the original
+        combined_position_folder_tuple.update(new_position_folder_tuple)  # Update with new values, overwriting where keys overlap
+
+        # Output the combined result
+        #print(combined_position_folder_tuple)
+
+        # SET new <<FOLDER_SHAPE>>
+        write_to_section = '<<POSITION_FOLDER>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_folder_tuple)
+        ns_def.write_excel_meta(combined_position_folder_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
+
+        ''' change value of <<ROOT_FOLDER>>'''
+        # Create a new tuple with the modifications
+        new_root_folder_tuple = self.root_folder_tuple.copy()
+
+        # Modify the specific values
+        new_root_folder_tuple[(2, 2)] = 'Summary Diagram'
+        new_root_folder_tuple[(2, 7)] = self.root_folder_tuple[(2, 7)] - max_offset_sum_x
+        new_root_folder_tuple[(2, 8)] = offset_sum_y
+
+        # SET new <<ROOT_SHAPE>>
+        write_to_section = '<<ROOT_FOLDER>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.root_folder_tuple)
+        ns_def.write_excel_meta(new_root_folder_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
+
+        ''' change value of <<POSITION_LINE>>'''
+        new_get_shape_folder_tuple =  ns_def.get_shape_folder_tuple(self.position_shape_tuple)
+        #print(new_get_shape_folder_tuple)
+        #print(self.positoin_line_tuple)
+        self_positoin_line_tuple = self.positoin_line_tuple
+        last_positoin_line_tuple = self_positoin_line_tuple.copy()
+
+        oppsite_wp_array = []
+        for (y, x), value in self_positoin_line_tuple.items():
+            if value in new_get_shape_folder_tuple: # for ns-011 bug of tmp workaround
+                if x in [1, 2] and y >= 3 and '_wp_' in new_get_shape_folder_tuple[value]:
+                    if x == 1:
+                        last_positoin_line_tuple[(y, x + 1)] = new_get_shape_folder_tuple[self_positoin_line_tuple[y, (x + 1)]]
+                    if x == 2:
+                        last_positoin_line_tuple[(y, x - 1)] = new_get_shape_folder_tuple[self_positoin_line_tuple[y, (x - 1)]]
+
+        # Output the result
+        #print(last_positoin_line_tuple)
+
+        # SET new <<FOLDER_SHAPE>>
+        write_to_section = '<<POSITION_LINE>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.positoin_line_tuple)
+        ns_def.write_excel_meta(last_positoin_line_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
