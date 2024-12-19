@@ -35,6 +35,8 @@ class  ns_l1_diagram_create():
         ### click action
         if self.click_value_dummy == '12-3':
             ppt_meta_file = str(self.inFileTxt_12_2.get())
+        elif self.flag_second_page == True:
+            ppt_meta_file = self.excel_maseter_file_backup
 
         #convert from master to array and convert to tuple
         self.position_folder_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file,'<<POSITION_FOLDER>>')

@@ -91,7 +91,7 @@ def return_os_slash():
 def get_backup_filename(full_filepath):
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     yyyymmddhhss = str(now.strftime('%Y%m%d%H%M%S'))
-    print(yyyymmddhhss)
+    #print(yyyymmddhhss)
 
     filename = os.path.basename(full_filepath)
     iDir = os.path.abspath(os.path.dirname(full_filepath))
