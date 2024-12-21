@@ -37,7 +37,7 @@ class  ns_l1_diagram_sync_master():
         target_excel_master_ws_name = 'Master_Data_tmp_'
 
         # self.updated_name_array made from ns_l1_create
-        print('self.updated_name_array   ' + str(self.updated_name_array))
+        #print('self.updated_name_array   ' + str(self.updated_name_array))
 
         # convert from master to array and convert to tuple
         self.source_position_line_array = ns_def.convert_master_to_array(source_excel_master_ws_name, source_master_file, '<<POSITION_LINE>>')
@@ -144,7 +144,7 @@ class  ns_l1_diagram_sync_master():
                                 self.target_position_line_tuple_fix[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num] = self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num]
 
         #overwrite positon line in Master data
-        print('--- self.target_position_line_tuple_fix ---')
+        #print('--- self.target_position_line_tuple_fix ---')
         #print(self.target_position_line_tuple_fix)
 
         offset_row = 0

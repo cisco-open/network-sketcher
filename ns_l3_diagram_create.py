@@ -35,7 +35,7 @@ from collections import defaultdict
 
 class  ns_l3_diagram_create():
     def __init__(self):
-        print('--- ns_l3_diagram_create ---')
+        #print('--- ns_l3_diagram_create ---')
         '''
         STEP0 get values of Master Data
         '''
@@ -2100,7 +2100,7 @@ class  create_master_file_one_area():
             area[1] = new_device_list
 
         # Print the updated self.result_area_device_array
-        print('--- self.result_area_device_array ---')
+        #print('--- self.result_area_device_array ---')
         #print(self.result_area_device_array)
 
         ''' GET max width per area '''
@@ -2133,7 +2133,7 @@ class  create_master_file_one_area():
                 area_min_max_diff_array.append([area_name,min_third,max_fourth,difference])
                 #print(f"Area: {area_name}, Group: {key}, Min Third: {min_third}, Max Fourth: {max_fourth}, Difference: {difference}")
 
-        print('--- area_min_max_diff_array ---')
+        #print('--- area_min_max_diff_array ---')
         #print(area_min_max_diff_array)
 
         ''' Create a defaultdict to group the entries by the category (first element) '''
@@ -2160,7 +2160,7 @@ class  create_master_file_one_area():
             result_area_width.append([category, max_value_entry[0]])
 
         # Print the result: for each category, output the category name and the maximum fourth value
-        print('--- result_area_width ---')
+        #print('--- result_area_width ---')
         #print(result_area_width)
 
         ''' GET area location '''

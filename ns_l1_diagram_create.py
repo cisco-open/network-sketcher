@@ -53,17 +53,17 @@ class  ns_l1_diagram_create():
         self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
 
 
-        print('---- self.position_folder_tuple ----')
+        #print('---- self.position_folder_tuple ----')
         #print(self.position_folder_array)
         #print(self.position_folder_tuple)
-        print('---- self.position_shape_tuple ----')
+        #print('---- self.position_shape_tuple ----')
         #print(self.position_shape_tuple)
-        print('---- self.position_line_tuple ----')
+        #print('---- self.position_line_tuple ----')
         #print(self.position_line_tuple)
 
         # GET Folder and wp name List
         folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, ppt_meta_file)
-        print('---- folder_wp_name_array ----')
+        #print('---- folder_wp_name_array ----')
         #print(folder_wp_name_array)
 
         #GET way point with folder tuple
@@ -93,7 +93,7 @@ class  ns_l1_diagram_create():
                         flag_start_column = True
                     current_column += 1
 
-        print('---- wp_with_folder_tuple ----')
+        #print('---- wp_with_folder_tuple ----')
         #print(wp_with_folder_tuple)
 
         '''
@@ -145,7 +145,7 @@ class  ns_l1_diagram_create():
                                     if tmp_wp_with_folder_tuple == self.position_line_tuple[tmp_position_line_tuple[0],1]:
                                         if str(wp_with_folder_tuple[tmp_wp_with_folder_tuple]) not in connected_wp_folder_array:
                                             connected_wp_folder_array.append(wp_with_folder_tuple[tmp_wp_with_folder_tuple])
-                print('---- connected_wp_folder_array ----')
+                #print('---- connected_wp_folder_array ----')
                 #print(tmp_folder_name,connected_wp_folder_array)
 
                 #GET extract_folder_tuple
@@ -157,7 +157,7 @@ class  ns_l1_diagram_create():
                         extract_folder_tuple[tmp_position_folder_tuple[0],1] = self.position_folder_tuple[tmp_position_folder_tuple[0],1]
                         extract_folder_tuple[tmp_position_folder_tuple[0] - 1, 1] = self.position_folder_tuple[tmp_position_folder_tuple[0] - 1, 1]
 
-                print('---- extract_folder_tuple ----')
+                #print('---- extract_folder_tuple ----')
                 #print(extract_folder_tuple)
 
                 # copy Master_Data sheet to _tmp_
@@ -189,12 +189,12 @@ class  ns_l1_diagram_create():
                         else:
                             current_y_grid_array.append([tmp_array[0] + offset_row -1,tmp_array[1]])
 
-                print('---- current_y_grid_array ----')
+                #print('---- current_y_grid_array ----')
                 #print(current_y_grid_array)
 
                 convert_tuple = {}
                 convert_tuple = ns_def.convert_array_to_tuple(current_y_grid_array)
-                print('---- convert_tuple ----')
+                #print('---- convert_tuple ----')
                 #print(convert_tuple)
 
                 master_excel_meta = convert_tuple
@@ -248,7 +248,7 @@ class  ns_l1_diagram_create():
                 self.excel_file_path = ppt_meta_file
                 self.worksheet_name = tmp_ws_name
 
-                print('---- master_root_folder_tuple ---- ')
+                #print('---- master_root_folder_tuple ---- ')
                 #print(master_root_folder_tuple)
 
                 if self.all_slide_max_width < master_root_folder_tuple[2,7]:

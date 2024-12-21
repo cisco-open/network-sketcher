@@ -50,25 +50,25 @@ class  ns_l3_table_from_master():
         self.position_tag_tuple = ns_def.convert_array_to_tuple(self.position_tag_array)
         self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
 
-        print('---- self.position_folder_tuple ----')
+        #print('---- self.position_folder_tuple ----')
         #print(self.position_folder_tuple)
-        print('---- self.position_shape_tuple ----')
+        #print('---- self.position_shape_tuple ----')
         #print(self.position_shape_tuple)
-        print('---- self.position_line_tuple ----')
+        #print('---- self.position_line_tuple ----')
         #print(self.position_line_tuple)
 
         # GET Folder and wp name List
         folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
-        print('---- folder_wp_name_array ----')
+        #print('---- folder_wp_name_array ----')
         #print(folder_wp_name_array)
 
         # GET L2 TABLE
         self.l2_table_array = ns_def.convert_master_to_array(ws_name_l2, excel_maseter_file, '<<L2_TABLE>>')
         self.l2_table_tuple = ns_def.convert_array_to_tuple(self.l2_table_array)
 
-        print('--- self.l2_table_array ---')
+        #print('--- self.l2_table_array ---')
         #print(self.l2_table_array)
-        print('--- self.l2_table_tuple ---')
+        #print('--- self.l2_table_tuple ---')
         #print(self.l2_table_tuple)
 
         ## sort interface and identify L3
@@ -143,7 +143,7 @@ class  ns_l3_table_from_master():
             start_row += 1
         L3_table_array.append([start_row, ['<END>']])
 
-        print('---- L3_table_array ----')
+        #print('---- L3_table_array ----')
         #print(L3_table_array)
 
         update_L3_table_array = []
@@ -247,7 +247,7 @@ class  ns_l3_table_from_master():
                 tmp_L3_table_array[1][1] = now_shape_name
 
                 excel_L3_table_array.append(([tmp_L3_table_array[0] + tmp_offset_row,tmp_L3_table_array[1]]))
-        print('--- excel_L3_table_array ---')
+        #print('--- excel_L3_table_array ---')
         #print(excel_L3_table_array)
         L3_master_data_tuple = {}
         L3_master_data_tuple = ns_def.convert_array_to_tuple(excel_L3_table_array)
@@ -271,7 +271,7 @@ class ns_l3_table_from_master_l3_sheet():
         '''
         make L3 Table sheet from master L3 sheet
         '''
-        print('---ns_L3_table_from_master_L3()---')
+        #print('---ns_L3_table_from_master_L3()---')
 
         tmp_ws_name = '_tmp_'
         excel_maseter_file = self.inFileTxt_L3_1_1.get()
@@ -280,7 +280,7 @@ class ns_l3_table_from_master_l3_sheet():
 
         master_L3_array = []
         master_L3_array = ns_def.convert_master_to_array('Master_Data_L3', excel_maseter_file, '<<L3_TABLE>>')
-        print('--- master_L3_array ---')
+        #print('--- master_L3_array ---')
         #print(master_L3_array)
 
         L3_table_array = []
@@ -311,7 +311,7 @@ class ns_l3_table_from_master_l3_sheet():
 
         L3_table_array.append([max_row_num + 1 ,['<END>']])
 
-        print('--- L3_table_array ---')
+        #print('--- L3_table_array ---')
         #print(L3_table_array)
 
         # remove duplicated value in row 1 or 2
@@ -358,7 +358,7 @@ class ns_l3_table_from_master_l3_sheet():
         section_write_to = '<<N/A>>'
         offset_row = 0
         offset_column = 0
-        print('---master_excel_meta---')
+        #print('---master_excel_meta---')
         #print(master_excel_meta)
         ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
 

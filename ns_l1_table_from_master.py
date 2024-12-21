@@ -58,16 +58,16 @@ class  ns_l1_table_from_master():
         self.position_tag_tuple = ns_def.convert_array_to_tuple(self.position_tag_array)
         self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
 
-        print('---- self.position_folder_tuple ----')
+        #print('---- self.position_folder_tuple ----')
         #print(self.position_folder_tuple)
-        print('---- self.position_shape_tuple ----')
+        #print('---- self.position_shape_tuple ----')
         #print(self.position_shape_tuple)
-        print('---- self.position_line_tuple ----')
+        #print('---- self.position_line_tuple ----')
         #print(self.position_line_tuple)
 
         # GET Folder and wp name List
         folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
-        print('---- folder_wp_name_array ----')
+        #print('---- folder_wp_name_array ----')
         #print(folder_wp_name_array)
 
         '''make device table excel file'''
@@ -82,7 +82,7 @@ class  ns_l1_table_from_master():
         egt_prefix = '>>' # for egt maker value.
 
         #sort folder name
-        print('---- new_folder_wp_name_array ----')
+        #print('---- new_folder_wp_name_array ----')
         new_folder_wp_name_array = sorted(folder_wp_name_array[0], key=str.lower)
         new_folder_wp_name_array.extend(sorted(folder_wp_name_array[1], key=str.lower))
         #print(new_folder_wp_name_array)
@@ -101,14 +101,14 @@ class  ns_l1_table_from_master():
                 tmp_current_array.extend(['N/A'])
             #get shape name in the folder and sort
             shape_folder_tuple = ns_def.get_shape_folder_tuple(self.position_shape_tuple)
-            print('---- shape_folder_tuple ----')
+            #print('---- shape_folder_tuple ----')
             #print(shape_folder_tuple)
             for tmp_shape_folder_tuple in shape_folder_tuple:
                 #print(shape_folder_tuple[tmp_shape_folder_tuple] ,tmp_new_folder_wp_name_array )
                 if shape_folder_tuple[tmp_shape_folder_tuple] == tmp_new_folder_wp_name_array:
                     tmp_sort_array.append(tmp_shape_folder_tuple)
             new_tmp_sort_array = sorted(tmp_sort_array, key=str.lower)
-            print('---- new_tmp_sort_array ----')
+            #print('---- new_tmp_sort_array ----')
             #print(new_tmp_sort_array)
 
             '''get tag of the shape'''
@@ -194,7 +194,7 @@ class  ns_l1_table_from_master():
 
         device_table_array.append([start_row, ['<END>']])
 
-        print('---- device_table_array ----')
+        #print('---- device_table_array ----')
         #print(device_table_array)
 
         ''' sort Interafce number'''
@@ -234,15 +234,15 @@ class  ns_l1_table_from_master():
                 overwrite_if_array.append([tuple_num, tmp_current_if_array[:9]])
                 tuple_num += 1
 
-        print('---- overwrite_if_array ----')
+        #print('---- overwrite_if_array ----')
         #print(overwrite_if_array)
         overwrite_if_tuple = ns_def.convert_array_to_tuple(overwrite_if_array)
-        print('---- overwrite_if_tuple ----')
+        #print('---- overwrite_if_tuple ----')
         #print(overwrite_if_tuple)
 
         ### Convert to tuple
         master_device_table_tuple = ns_def.convert_array_to_tuple(device_table_array)
-        print('---- master_device_table_tuple ----')
+        #print('---- master_device_table_tuple ----')
         #print(master_device_table_tuple)
 
         # Create _tmp_ sheet

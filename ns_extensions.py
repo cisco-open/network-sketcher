@@ -279,7 +279,7 @@ class  auto_ip_addressing():
         return return_array
 
     def get_auto_ip_param(self,target_area_name):
-        print('--- get_auto_ip_param ---')
+        #print('--- get_auto_ip_param ---')
         #print(target_area_name)
 
         if target_area_name == "_WAN(Way_Point)_":
@@ -452,7 +452,7 @@ class  auto_ip_addressing():
         self.sub3_4_3_entry_1.insert(0, use_network)
 
     def run_auto_ip(self,target_area_name):
-        print('--- run_auto_ip ---')
+        #print('--- run_auto_ip ---')
         l3_segment_group_array = ns_def.get_l3_segments(self)
         #print(l3_segment_group_array)
 
@@ -462,7 +462,7 @@ class  auto_ip_addressing():
             for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
                 if tmp_tmp_l3_segment_group_array[4] != '':
                     exist_ip_list.append(tmp_tmp_l3_segment_group_array[4])
-        print('--- exist_ip_list ---')
+        #print('--- exist_ip_list ---')
         #print(exist_ip_list)
 
         # Set to store unique networks without duplicates
@@ -478,7 +478,7 @@ class  auto_ip_addressing():
             unique_networks.add(network)
 
         # Print the list of unique network addresses in CIDR notation
-        print("--- Unique network addresses in CIDR notation: ---")
+        #print("--- Unique network addresses in CIDR notation: ---")
         #for network in sorted(unique_networks):
         #    print(network.with_prefixlen)
 
@@ -586,7 +586,7 @@ class  auto_ip_addressing():
 
                 unique_networks.add(subnet)
 
-        print('--- ip_assigned_l3_segment_group_array ---')
+        #print('--- ip_assigned_l3_segment_group_array ---')
         #print(ip_assigned_l3_segment_group_array)
 
         '''
@@ -615,7 +615,7 @@ class  auto_ip_addressing():
                 if flag_l3_if_match == False:
                     updated_l3_table_array.append(tmp_l3_table_array)
 
-        print('--- updated_l3_table_array ---')
+        #print('--- updated_l3_table_array ---')
         #print(updated_l3_table_array)
 
         '''
