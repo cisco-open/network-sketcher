@@ -690,24 +690,11 @@ class ns_front_run():
         self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" IP Address table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
         self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=20, pady=5)
 
-        '''# Export to the Summary Diagram
-        self.sub3_5_button_2 = tk.Button(self.sub3_5_1, text=" Summary Diagram ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_2','dummy'))
-        self.sub3_5_button_2.grid(row=7, column=0, sticky='W', padx=20, pady=5)
-
-        self.sub3_4_3_entry_1 = tk.Entry(self.sub3_5_1, font=("", 12)) # for report'''
-
-
     def click_action_sub(self, click_value, target_area_name):
         if click_value == 'self.sub3_5_button_1':  # select IP address table
             ###export_ip_report
             ns_extensions.ip_report.export_ip_report(self, target_area_name)
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
-
-        '''if click_value == 'self.sub3_5_button_2':  # select export_summary_diagram
-            ###export_summary_diagram
-            dummy = ''
-            ns_extensions.summary_diagram.export_summary_diagram(self, dummy)
-            ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))'''
 
         if click_value == 'self.sub3_4_button_1':  # select Run
             #change target area name to N/A
@@ -756,7 +743,7 @@ class ns_front_run():
             ns_def.messagebox_file_open(self.output_ppt_file) #Add at Ver 2.3.1(a)
 
         if click_value == 'self.self.sub2_6_button_2':  # Click "VPNs on L3"
-            print('--- Click VPNs on L3 ---')
+            #print('--- Click VPNs on L3 ---')
             self.click_value = 'L3-4-1'
             self.click_value_VPN = 'VPN-1-3'
 
@@ -847,7 +834,7 @@ class ns_front_run():
                 self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#E5F4F7")
                 self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
                 #ns_front_run.sub_excel_master_1(self, file_type_array)
-                print('Update to the Master file')
+                print('--- Update to the Master file ---')
 
                 ### pre-defined for dev parameter
                 self.inFileTxt_11_1 = tk.Entry(self.sub3_1)
@@ -955,7 +942,7 @@ class ns_front_run():
                         self.click_action_sub('self.self.sub2_5_button_3', push_array)
                         self.click_value_2nd = ''
                         if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
-                            print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
+                            #print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
                             subprocess.Popen(full_filepath_device, shell=True)
 
                 ### open master panel

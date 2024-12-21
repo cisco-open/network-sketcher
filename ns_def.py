@@ -30,7 +30,7 @@ def get_l3_segments(self):
     excel_maseter_file = self.inFileTxt_L3_3_1.get()
 
     self.result_get_l2_broadcast_domains = get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
-    print('--- get_l3_segments ---')
+    #print('--- get_l3_segments ---')
     #print('--- self.target_l2_broadcast_group_array ---')
     #print(self.target_l2_broadcast_group_array)
 
@@ -126,7 +126,8 @@ def check_file_type(full_filepath):
                                 return (['ERROR','Please enter a PPT file that does not contain IF tags'])
 
                     except Exception as e:
-                        print('[info] Exception handling with check_file_type')
+                        #print('[info] Exception handling with check_file_type')
+                        flag_exception_dummy = True
 
         return_type_array = ['PPT_SKECH','PPT_SKECH']
 
@@ -204,7 +205,7 @@ def write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section
     :return: none
     '''
 
-    print(excel_file_path, worksheet_name, section_write_to)
+    #print(excel_file_path, worksheet_name, section_write_to)
     wb = openpyxl.load_workbook(excel_file_path)
     wb.active = wb[worksheet_name]
 
@@ -260,7 +261,7 @@ def overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, sec
     :return: none
     '''
 
-    print(excel_file_path, worksheet_name, section_write_to)
+    #print(excel_file_path, worksheet_name, section_write_to)
     wb = openpyxl.load_workbook(excel_file_path)
     wb.active = wb[worksheet_name]
 
@@ -347,78 +348,55 @@ def return_shape_tuple(current_shape_array ,start_row):
 
     updated_master_grid_array = []
     device_name_array = []
+    kari_master_grid_array = []
 
     for tmp_master_grid_array in master_grid_array:
-        # print('###############')
-        # print(tmp_master_grid_array)
         for tmp_tmp_master_grid_array in tmp_master_grid_array:
-            # print(tmp_tmp_master_grid_array)
             device_name_array.append(tmp_tmp_master_grid_array[1])
-    # print('###############')
-    # print(device_name_array)
+            kari_master_grid_array.append(tmp_tmp_master_grid_array)
+    #print('--- device_name_array ---')
+    #print(device_name_array)
 
     vertical_key_array = []
     used_device_array = []
+
     for tmp_device_name_array in device_name_array:
-        flag_no_match = True
-        target = tmp_device_name_array
-        result = None
+        if tmp_device_name_array not in used_device_array:
+            #print('#####tmp_device_name_array,used_device_array,vertical_key_array',tmp_device_name_array,used_device_array,vertical_key_array)
+            target = tmp_device_name_array
+            result = None
 
-        for sublist in master_grid_array:
-            for item in sublist:
-                if item[1] == target:
-                    result = item
+            for kari_kari_master_grid_array in kari_master_grid_array:
+                if kari_kari_master_grid_array[1] == target:
+                    result = kari_kari_master_grid_array
                     break
-            if result:
-                break
 
-        for sublist in master_grid_array:
-            for item in sublist:
-                if item[1] not in used_device_array:
-                    # print('###used_device_array###  ', item[1],used_device_array)
-                    if result[2] < item[2] + item[4] and result[2] > item[2]:
-                        # print('@@left type@@  ', item)
-                        flag_no_match = False
-                        if result not in vertical_key_array and result[1] not in used_device_array:
-                            vertical_key_array.append(result)
-                        used_device_array.append(item[1])
-
-                    if result[2] + result[4] > item[2] and result[2] + result[4] < item[2] + item[4]:
-                        # print('@@right type@@  ', item)
-                        flag_no_match = False
-                        if result not in vertical_key_array and result[1] not in used_device_array:
-                            vertical_key_array.append(result)
-                        used_device_array.append(item[1])
-
-                    if result[2] < item[2] and result[2] + result[4] > item[2] + item[4]:
-                        # print('@@big type@@  ', item)
-                        flag_no_match = False
-                        if result not in vertical_key_array and result[1] not in used_device_array:
-                            vertical_key_array.append(result)
-                        used_device_array.append(item[1])
-
-                    if result[2] > item[2] and result[2] + result[4] < item[2] + item[4]:
-                        # print('@@small type@@  ', item)
-                        flag_no_match = False
-                        if result not in vertical_key_array and result[1] not in used_device_array:
-                            vertical_key_array.append(result)
-                        used_device_array.append(item[1])
-
-                    if result[2] == item[2] and result[2] + result[4] == item[2] + item[4] and result[1] != item[1]:
-                        #print('@@equal type@@  ', item)
-                        flag_no_match = False
-                        if result not in vertical_key_array and result[1] not in used_device_array:
-                            vertical_key_array.append(result)
-                        used_device_array.append(item[1])
-
-            if flag_no_match == True and result[1] not in used_device_array:
+            if result not in vertical_key_array and result[1] not in used_device_array:
                 vertical_key_array.append(result)
+                used_device_array.append(result)
 
-    #print('####vertical_key_array####')
-    #print(vertical_key_array, len(vertical_key_array))
+            except_array = []
+
+            for sublist in master_grid_array:
+                except_array.extend(sublist)
+                flag_1st_match = False
+
+                #re-make at ver 2.3.4
+                for item in sublist:
+                    if ((result[2] < item[2] + item[4] and result[2] > item[2]) or \
+                        (result[2] + result[4] > item[2] and result[2] + result[4] < item[2] + item[4]) or \
+                        (result[2] < item[2] and result[2] + result[4] > item[2] + item[4])  or \
+                        (result[2] > item[2] and result[2] + result[4] < item[2] + item[4])  or \
+                        (result[2] == item[2] and result[2] + result[4] == item[2] + item[4] and result[1] != item[1])) and \
+                        (item[1] not in used_device_array) and (flag_1st_match == False or item not in except_array):
+                            used_device_array.append(item[1])
+                            except_array.remove(item)
+                            flag_1st_match = True
 
     # Remove duplicates by converting lists to tuples, adding to a set, and converting back to lists
     vertical_key_array = [list(t) for t in set(tuple(item) for item in vertical_key_array)]
+    #print(vertical_key_array, len(vertical_key_array))
+
     vertical_key_array_2 = []
     for tmp_vertical_key_array in vertical_key_array:
         vertical_key_array_2.append(
@@ -431,8 +409,8 @@ def return_shape_tuple(current_shape_array ,start_row):
     #print(vertical_key_array_2)
 
     for tmp_master_grid_array in master_grid_array:
-        # print('####### tmp_master_grid_array ########')
-        # print(tmp_master_grid_array)
+        #print('####### tmp_master_grid_array ########')
+        #print(tmp_master_grid_array)
 
         import copy
         updated_vertical_key_array_2 = copy.deepcopy(vertical_key_array_2)
@@ -441,38 +419,31 @@ def return_shape_tuple(current_shape_array ,start_row):
             for tmp_tmp_master_grid_array in tmp_master_grid_array:
 
                 if tmp_tmp_master_grid_array not in updated_vertical_key_array_2:
-                    if tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] and \
-                            tmp_vertical_key_array_2[2] <= tmp_tmp_master_grid_array[2]:
+                    if tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] > tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] < tmp_tmp_master_grid_array[2]:
                         updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
                         break
-                    elif tmp_vertical_key_array_2[2] >= tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] + \
-                            tmp_vertical_key_array_2[4] <= tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
+                    elif tmp_vertical_key_array_2[2] > tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] < tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
                         updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
                         break
-                    elif tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] + \
-                            tmp_tmp_master_grid_array[4] and tmp_vertical_key_array_2[2] <= tmp_tmp_master_grid_array[
-                        2] + tmp_tmp_master_grid_array[4]:
+                    elif tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4] and tmp_vertical_key_array_2[2] < tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
                         updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
                         break
-                    elif tmp_vertical_key_array_2[2] <= tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] + \
-                            tmp_vertical_key_array_2[4] >= tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
+                    elif tmp_vertical_key_array_2[2] < tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[2] + tmp_vertical_key_array_2[4] > tmp_tmp_master_grid_array[2] + tmp_tmp_master_grid_array[4]:
                         updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
                         break
-                    elif tmp_vertical_key_array_2[2] == tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[4] == \
-                            tmp_tmp_master_grid_array[4]:
+                    elif tmp_vertical_key_array_2[2] == tmp_tmp_master_grid_array[2] and tmp_vertical_key_array_2[4] == tmp_tmp_master_grid_array[4]:
                         updated_vertical_key_array_2[i] = tmp_tmp_master_grid_array
                         break
 
-        # print(updated_vertical_key_array_2,len(updated_vertical_key_array_2))
+        #print(updated_vertical_key_array_2,len(updated_vertical_key_array_2))
         updated_master_grid_array.append(updated_vertical_key_array_2)
-
+    #print('--- updated_master_grid_array ---')
     #print(updated_master_grid_array)
 
     master_grid_array = copy.deepcopy(updated_master_grid_array)
-    print('--- master_grid_array ---')
+    #print('--- master_grid_array ---')
     #print(master_grid_array)
     '''Addition completed(ver 2.2.2)'''
-
     # make the tuple format
     tuple_grid_array = {}
     tuple_grid_array[start_row, 1] = master_grid_array[0][0][0]
@@ -691,6 +662,7 @@ def convert_tuple_to_array(tmp_master_data_tuple):
                 tmp_tmp_array.append(tmp_array[2])
     master_data_array.append([tmp_num, tmp_tmp_array])
     return(master_data_array)
+
 
 ### return folder and wp name array from master excel file ###
 def get_folder_wp_array_from_master(ws_name, ppt_meta_file):
