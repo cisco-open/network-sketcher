@@ -480,6 +480,7 @@ class ns_front_run():
 
     def click_action(self,click_value):
         self.click_value_l3 = ''
+        self.flag_second_page = False  # Add at Ver 2.3.4
 
         if click_value == '1-1': # select browse
             fTyp = [("", ".pptx")]
@@ -784,9 +785,24 @@ class ns_front_run():
             if ns_def.check_file_open(self.inFileTxt_2_1.get()) == True:
                 return ()
 
-            # import module
+            # create l1 diagram
             import ns_l1_diagram_create
             ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+
+            self.flag_second_page = True # Add at Ver 2.3.4
+
+            # create l1 summary_diagram, Add at Ver 2.3.4
+            if self.click_value == '2-4-3':
+                import ns_extensions
+                ns_extensions.summary_diagram.export_summary_diagram(self,'Dummy')
+
+                ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+
+                # remove exist ppt file
+                if os.path.isfile(self.excel_maseter_file_backup) == True:
+                    os.remove(self.excel_maseter_file_backup)
+
+            self.flag_second_page = False  # Add at Ver 2.3.4
 
             # view complete
             if self.click_value == '2-4-3': #Add at Ver 2.3.1(a)
@@ -1009,8 +1025,6 @@ class ns_front_run():
                 ns_l2_table_from_master.ns_l2_table_from_master_l2_sheet.__init__(self)
 
             input_excel_master_data.close()
-            # view complete
-            #tkinter.messagebox.showinfo('info', 'successfully completed')
 
         if click_value == 'L2-2-1': # select browse
             fTyp = [("", ".xlsx")]
@@ -1045,9 +1059,6 @@ class ns_front_run():
                     # import module
                     import ns_l2_table_sync_master
                     ns_l2_table_sync_master.ns_l2_table_sync_master.__init__(self)
-
-                    # view complete
-                    #tkinter.messagebox.showinfo('info', 'successfully completed')
 
         if click_value == 'L2-3-1': # select browse
             fTyp = [("", ".xlsx")]
@@ -1095,7 +1106,6 @@ class ns_front_run():
 
             # view complete
             ns_def.messagebox_file_open(self.output_ppt_file)
-
 
         if click_value == 'L3-1-1': # select browse
             fTyp = [("", ".xlsx")]
@@ -1153,9 +1163,6 @@ class ns_front_run():
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.inFileTxt_L3_2_2_backup= iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L3_2_2.get()))[0] + '_backup' + '.xlsx'
 
-            # check : file is being opened
-            '''if ns_def.check_file_open(self.inFileTxt_L3_2_2.get()) == True:
-                return ()'''
             # confirm to exist device table and master data file
             if os.path.isfile(self.inFileTxt_L3_2_1.get()) == False:
                 tkinter.messagebox.showerror('Error', 'Could not find the L3 Table file')
@@ -1178,11 +1185,6 @@ class ns_front_run():
             self.inFileTxt_L3_3_1.insert(tk.END, full_filepath)
 
         if click_value == 'L3-3-2' or click_value == 'L3-3-3':  # select create from master
-            ### TEST MODE ###
-            #self.inFileTxt_L3_3_1.delete(0, tkinter.END)
-            #self.inFileTxt_L3_3_1.insert(tk.END, 'C:/work/Network Sketcher/Network Skecher Ver2.0/[MASTER]Sample figure5.xlsx')
-            #################
-
             full_filepath = self.inFileTxt_L3_3_1.get()
             iDir = os.path.dirname(full_filepath)
             basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]

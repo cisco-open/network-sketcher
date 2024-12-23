@@ -50,21 +50,22 @@ class  ns_ddx_figure_run():
         else:
             self.active_ppt = Presentation()
 
-        # width inches of slide master
-        if (self.root_width + self.root_left * 2) < ppt_min_width:
-            self.active_ppt.slide_width = Inches(ppt_min_width)
-        elif (self.root_width + self.root_left * 2) > ppt_max_width:
-            self.active_ppt.slide_width = Inches(ppt_max_width)
-        else:
-            self.active_ppt.slide_width = Inches(self.root_width + self.root_left * 2)
+        if self.flag_second_page == False:
+            # width inches of slide master
+            if (self.root_width + self.root_left * 2) < ppt_min_width:
+                self.active_ppt.slide_width = Inches(ppt_min_width)
+            elif (self.root_width + self.root_left * 2) > ppt_max_width:
+                self.active_ppt.slide_width = Inches(ppt_max_width)
+            else:
+                self.active_ppt.slide_width = Inches(self.root_width + self.root_left * 2)
 
-        # height inches of slide master
-        if (self.root_hight + self.root_top * 1.5) < ppt_min_hight:
-            self.active_ppt.slide_height = Inches(ppt_min_hight)
-        elif (self.root_hight + self.root_top * 1.5) > ppt_max_hight:
-            self.active_ppt.slide_height = Inches(ppt_max_hight)
-        else:
-            self.active_ppt.slide_height = Inches(self.root_hight + self.root_top * 1.5)
+            # height inches of slide master
+            if (self.root_hight + self.root_top * 1.5) < ppt_min_hight:
+                self.active_ppt.slide_height = Inches(ppt_min_hight)
+            elif (self.root_hight + self.root_top * 1.5) > ppt_max_hight:
+                self.active_ppt.slide_height = Inches(ppt_max_hight)
+            else:
+                self.active_ppt.slide_height = Inches(self.root_hight + self.root_top * 1.5)
 
         self.input_ppt_mata_excel = openpyxl.load_workbook(ppt_meta_file)
 
@@ -280,6 +281,19 @@ class  ns_ddx_figure_run():
                     self.shape.adjustments[0] = 0.1  # curve of ROUNDED_RECTANGLE 0.0~1.0
                     self.shape.shadow.inherit = False  # disalbe dealut shadow effect
 
+                    ### change folder coler when create summary diagram at ver 2.3.4
+                    if self.flag_second_page == True and self.click_value == '2-4-3':
+                        shape_fill = self.shape.fill
+                        shape_fill.solid()
+                        shape_fill.fore_color.rgb = RGBColor(254, 246, 240)
+                        shape_line.color.rgb = RGBColor(251, 201, 159)
+                        shape_line.width = Pt(2.0)
+                        self.shape.adjustments[0] = 0.3
+                        self.shape.text_frame.paragraphs[0].font.size = Pt(16)
+
+
+
+
                     '''change stlye from meta file'''
                     temp_style_row = 1
                     temp_style_flag = False
@@ -361,6 +375,11 @@ class  ns_ddx_figure_run():
                             break
 
                         temp_style_row += 1
+
+                    ### change folder coler when create summary diagram at ver 2.3.4
+                    if self.flag_second_page == True and self.click_value == '2-4-3':
+                        self.shape.text_frame.paragraphs[0].font.size = Pt(16)
+                        self.shape.text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
 
                     '''run add shapes in own sub folder'''
                     self.ddx_meta_row_folder = temp_row_folder
@@ -527,7 +546,7 @@ class  ns_ddx_figure_run():
                             self.shape.shadow.inherit = False  # disalbe dealut shadow effect
 
                             ### change style for _AIR_ shape###
-                            if  '_AIR_' in temp_shape_text:
+                            if '_AIR_' in temp_shape_text:
                                 shape_line.color.rgb = RGBColor(255, 255, 255)
                                 self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
 

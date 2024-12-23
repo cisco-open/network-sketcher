@@ -341,7 +341,7 @@ class  ns_l3_config_to_master_yaml():
         #get L3 Table Excel file
         l3_table_array = []
         l3_table_array = ns_def.convert_excel_to_array(l3_table_ws_name, l3_table_file, 3)
-        print('--- l3_table_array ---')
+        #print('--- l3_table_array ---')
         #print(l3_table_array)
 
         '''get L3 ipaddress from yaml'''

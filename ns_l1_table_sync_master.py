@@ -43,13 +43,13 @@ class  ns_l1_table_sync_master():
         self.position_line_array = ns_def.convert_master_to_array(excel_master_ws_name, excel_maseter_file, '<<POSITION_LINE>>')
         self.position_line_tuple = ns_def.convert_array_to_tuple(self.position_line_array)
 
-        print('---- self.position_line_tuple ----')
+        #print('---- self.position_line_tuple ----')
         #print(self.position_line_tuple)
 
 
         # GET Folder and wp name List
         folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
-        print('---- folder_wp_name_array ----')
+        #print('---- folder_wp_name_array ----')
         #print(folder_wp_name_array)
 
         '''GET start row and column in Device table'''
@@ -82,7 +82,7 @@ class  ns_l1_table_sync_master():
         self.device_table_array = ns_def.convert_excel_to_array(excel_ws_name, excel_file, start_row)
         self.device_table_tuple = ns_def.convert_array_to_tuple(self.position_line_array)
 
-        print('---- self.device_table_array ----')
+        #print('---- self.device_table_array ----')
         #print(self.device_table_array)
 
         ### convert to shape,interface array
@@ -114,7 +114,7 @@ class  ns_l1_table_sync_master():
             #print('last_append  ' + str(current_shape_name) + '   ' + str(tmp_last_append) )
 
 
-        print('---- new_devicetable_array ----')
+        #print('---- new_devicetable_array ----')
         #print(new_devicetable_array)
 
         '''
@@ -236,15 +236,9 @@ class  ns_l1_table_sync_master():
                                 break
 
         #print(done_line_from_to_array)
-        print('---- overwrite_line_tuple ----')
+        #print('---- overwrite_line_tuple ----')
         #print(overwrite_line_tuple)
 
-        ### Sync file copy ###
-        '''if os.path.isfile(excel_maseter_file_backup) == True:
-            os.remove(excel_maseter_file_backup)
-            shutil.copy(excel_maseter_file, excel_maseter_file_backup)
-        else:
-            shutil.copy(excel_maseter_file, excel_maseter_file_backup)'''
         ### overwerite overwrite_line_tuple to excel master data
         master_excel_meta = overwrite_line_tuple
         excel_file_path = excel_maseter_file
@@ -256,7 +250,7 @@ class  ns_l1_table_sync_master():
 
 
         #print(done_line_from_to_array)
-        print('---- overwrite_line_tuple ----')
+        #print('---- overwrite_line_tuple ----')
         #print(overwrite_line_tuple)
 
         ### overwerite overwrite_line_tuple to excel master data

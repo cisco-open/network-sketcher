@@ -130,7 +130,7 @@ class  ns_l1_master_create():
         # get number of slides
         for idx, slide in enumerate(self.input_sketch_ppt.slides):
             num_slide = idx + 1
-        print('---- number of slides %d ----' %  num_slide)
+        #print('---- number of slides %d ----' %  num_slide)
 
         # get shapes folder waypoint
         tmp_shape_array = []
@@ -224,8 +224,10 @@ class  ns_l1_master_create():
             if str(current_folder_array[0])[-1] == "~":
                 p = r'\~.*\~'
                 r = re.findall(p, str(current_folder_array[0]))
-                r = re.sub("\[\'\~", "", str(r))
-                r = re.sub("\~\'\]", "", str(r))
+                r = re.sub(r"\[\'\~", "", str(r))
+                r = re.sub(r"\~\'\]", "", str(r))
+                #r = re.sub("\[\'\~", "", str(r))
+                #r = re.sub("\~\'\]", "", str(r))
                 if r.isdecimal() == True and current_folder_array[0] not in exclude_folder_array:
                     exclude_folder_array.append(current_folder_array[0])
             #print(exclude_folder_array)
@@ -292,8 +294,10 @@ class  ns_l1_master_create():
             if str(tmp_exclude_array[1])[-1] == "~" and "~" in str(tmp_exclude_array[1]) :
                 p = r'\~.*\~'
                 r = re.findall(p, str(tmp_exclude_array[1]))
-                r = re.sub("\[\'\~", "", str(r))
-                r = re.sub("\~\'\]", "", str(r))
+                r = re.sub(r"\[\'\~", "", str(r))
+                r = re.sub(r"\~\'\]", "", str(r))
+                #r = re.sub("\[\'\~", "", str(r))
+                #r = re.sub("\~\'\]", "", str(r))
                 if r.isdecimal() == True:
                     exclude_pre_shape_array.append(tmp_exclude_array[1])
         #print(exclude_pre_shape_array)
@@ -319,19 +323,19 @@ class  ns_l1_master_create():
             duplicate_num = 1
             shape_array.append(last_array)
 
-        print('-- master_shape_array --')
+        #print('-- master_shape_array --')
         #print(master_shape_array)
 
-        print('-- shape_array --')
+        #print('-- shape_array --')
         #print(shape_array)
 
-        print('-- line_array --')
+        #print('-- line_array --')
         #print(line_array)
 
-        print('-- folder_array --')
+        #print('-- folder_array --')
         #print(folder_array)
 
-        print('-- wp_array --')
+        #print('-- wp_array --')
         #print(wp_array)
 
         ### Add Way Point to Folder array ###
@@ -362,7 +366,7 @@ class  ns_l1_master_create():
             tmp_right_flag = ''
             tmp_left_flag = ''
 
-        print('-- new_folder_wp_array --')
+        #print('-- new_folder_wp_array --')
         #print(new_folder_wp_array)
 
         ''' add connected way point'''
@@ -407,7 +411,7 @@ class  ns_l1_master_create():
             right_flag = ''
 
             connect_folder_wp_array.append(tmp_array)
-        print('--connect_folder_wp_array--')
+        #print('--connect_folder_wp_array--')
         #print(connect_folder_wp_array)
 
         ''' grouping x grid folder'''
@@ -469,7 +473,7 @@ class  ns_l1_master_create():
                         tmp_i += 1
                     group_folder_wp_array[tmp_i].append(tmp_folder)
 
-        print('--group_folder_wp_array--')
+        #print('--group_folder_wp_array--')
         #print(group_folder_wp_array)
 
         ''' set y grid folder'''
@@ -488,11 +492,11 @@ class  ns_l1_master_create():
                 new_group_folder_array.append(test_folder)
             else:
                 new_group_folder_array.append(tmp_num_folder)
-        print('--new_group_folder_array  ,   add [] to single folder-')
+        #print('--new_group_folder_array  ,   add [] to single folder-')
         #print(new_group_folder_array)
 
         # change Y grid of y_num_array
-        print(' -- move each group to downside - ')
+        #print(' -- move each group to downside - ')
         change_bit = True
         first_change_bit = True
         max_y_grid = 1
@@ -542,7 +546,7 @@ class  ns_l1_master_create():
             if y_num_start-1 == len(y_num_array):
                 y_num_bit = False
 
-        print(' -- Update group folder array for Excel position -- ')
+        #print(' -- Update group folder array for Excel position -- ')
         #print(update_group_folder_array)
 
         '''
@@ -564,7 +568,7 @@ class  ns_l1_master_create():
                         if tmp_new_folder_wp_array[4] != '':
                             merge_group_folder_array[i][0][ii][4] = tmp_new_folder_wp_array[4] + '_wp_'
                         break
-        print(' -- merge_group_folder_array -- ')
+        #print('--- merge_group_folder_array ---')
         #print(merge_group_folder_array)
 
         #Line up shapes
@@ -594,7 +598,7 @@ class  ns_l1_master_create():
         ''' make master_folder_tuple'''
         flag_first_shape = True
         for i in range(1,max_num_y_grid+1):
-            print('---- Y Grid %d ----  ' % i)
+            #print('---- Y Grid %d ----  ' % i)
             flag_up_wp = False
             flag_down_wp = False
             flag_left_wp = False
@@ -789,7 +793,7 @@ class  ns_l1_master_create():
             ## previsious down flag ##
             pre_flag_down_wp = flag_down_wp
 
-        print(' -- master_folder_tuple <<POSITION_FOLDER>> -- ')
+        #print(' -- master_folder_tuple <<POSITION_FOLDER>> -- ')
         #print(master_folder_tuple)
 
         '''bug fix 001,  put 0.999 on empty cell(width)'''
@@ -891,13 +895,169 @@ class  ns_l1_master_create():
         if flag_exist_2_1_a == False:
             master_folder_tuple[2,1] = 10
 
-        print('--- master_folder_tuple <<POSITION_FOLDER>> -- ')
+        #print('--- master_folder_tuple <<POSITION_FOLDER>> -- ')
         #print(master_folder_tuple)
+        '''
+        Kyuusai at ver 2.3.4
+        '''
+        kari_master_folder_array = ns_def.convert_tuple_to_array(master_folder_tuple)
+        #print(kari_master_folder_array)
 
-        '''For Debug, write excel meta'''
-        #write_to_section = '<<POSITION_FOLDER>>'
-        #ns_def.write_excel_meta(master_folder_tuple, self.excel_file_path, self.worksheet_name, write_to_section,offset_row, offset_column)
-        #exit()
+        ''' bug fix 1'''
+        # Step 1: Extract and filter numbers
+        filtered_indices = [i for i, item in enumerate(kari_master_folder_array) if item[0] >= 2]
+
+        # Step 2: Generate a new continuous sequence starting from 3
+        start = 2
+        new_numbers = list(range(start, start + len(filtered_indices)))
+
+        # Step 3: Replace the original numbers with the new sequence
+        for index, new_number in zip(filtered_indices, new_numbers):
+            kari_master_folder_array[index][0] = new_number
+
+        # Step 4: Display the updated master_folder_tuple
+        #print(kari_master_folder_array)
+
+        master_folder_tuple = ns_def.convert_array_to_tuple(kari_master_folder_array)
+
+        ''' bug fix 2'''
+        #print('--- folder_name_of_wp ---')
+        #print(folder_name_of_wp)
+
+        # Extract values from master_folder_tuple
+        master_values = set(value for value in master_folder_tuple.values() if isinstance(value, str))
+
+        # Initialize lists to collect unique values and sublists from merge_group_folder_array
+        unique_values = []
+        result_sublists = []
+
+        # Iterate over merge_group_folder_array to collect relevant values and sublists
+        for group in merge_group_folder_array:
+            for sublist in group[0]:
+                # Check if any item in the sublist meets the criteria
+                sublist_contains_valid_item = False
+                for item in sublist:
+                    if isinstance(item, str) and item and '_wp_' in item and item not in master_values:
+                        if item not in unique_values:  # Ensure the value is unique in the list
+                            unique_values.append(item)
+                        sublist_contains_valid_item = True
+                # If any valid item is found, add the sublist to result_sublists
+                if sublist_contains_valid_item:
+                    result_sublists.append(sublist)
+
+        # Display the results
+        #print("Unique values not in master_folder_array:", unique_values)
+        #print("Sublists containing these values:", result_sublists)
+
+        '''insert unique _wp_ values '''
+        for tmp_unique_values in unique_values:
+            for tmp_result_sublists in result_sublists:
+                if tmp_result_sublists[3] == tmp_unique_values:
+                    #print(tmp_result_sublists[0],tmp_unique_values,'LEFT')
+                    for unique_value in unique_values:
+                        for sublist_index, sublist in enumerate(result_sublists):
+                            if unique_value in sublist:
+                                # Locate the corresponding sublist in kari_master_folder_array
+                                for kmfa in kari_master_folder_array:
+                                    position = -1
+                                    for idx, item in enumerate(kmfa[1]):
+                                        if item == sublist[0]:
+                                            position = idx
+                                            break
+                                    if position != -1:
+                                        # Insert the unique value one position before the found item
+                                        kmfa[1].insert(position, unique_value)
+
+                    master_folder_tuple = ns_def.convert_array_to_tuple(kari_master_folder_array)
+
+                elif tmp_result_sublists[4] == tmp_unique_values:
+                    #print(tmp_result_sublists[0],tmp_unique_values, 'RIGHT')
+                    for unique_value in unique_values:
+                        for sublist in result_sublists:
+                            if unique_value in sublist:
+                                # Locate the corresponding sublist in kari_master_folder_array
+                                for kmfa in kari_master_folder_array:
+                                    if first_element in kmfa[1]:
+                                        position = kmfa[1].index(first_element)
+                                        # Insert the unique value immediately after the first element of result_sublists[0]
+                                        kmfa[1].insert(position + 1, unique_value)
+
+                    master_folder_tuple = ns_def.convert_array_to_tuple(kari_master_folder_array)
+
+        for tmp_unique_values in unique_values:
+            folder_name_of_wp.append(tmp_unique_values)
+
+        ''' bug fix 3'''
+        #print('--- kari_master_folder_array ---')
+        #print(kari_master_folder_array)
+
+        # Initialize a list to hold non-matching elements
+        non_matching_elements = []
+
+        # Flatten the merge_group_folder_array for easier processing
+        flat_merge_group = [item for sublist in merge_group_folder_array for item in sublist[0]]
+
+        # Process each item in the flat list
+        for item in flat_merge_group:
+            device_name = item[0]
+            before_value = item[3]
+            after_value = item[4]
+
+            # Assume the item does not match initially
+            matches = False
+
+            # Check each element in kari_master_folder_array
+            for master in kari_master_folder_array:
+                master_values = master[1]
+
+                # Check if device_name is in master_values
+                if device_name in master_values:
+                    # Get the index of the device_name
+                    device_index = master_values.index(device_name)
+
+                    # Check before and after values
+                    before_match = (before_value == '' or (
+                                device_index > 0 and master_values[device_index - 1] == before_value))
+                    after_match = (after_value == '' or (device_index < len(master_values) - 1 and master_values[
+                        device_index + 1] == after_value))
+
+                    # If both before and after values match, mark as matching
+                    if before_match and after_match:
+                        matches = True
+                        break
+
+            # If no match was found, add to non-matching elements
+            if not matches:
+                non_matching_elements.append(item)
+
+        # Print the non-matching elements
+        #print("Non-matching elements:", non_matching_elements)
+
+        if non_matching_elements != []:
+            # Determine the correct and incorrect sequences from non_matching_elements
+            correct_sequence = [non_matching_elements[0][0], non_matching_elements[0][4], non_matching_elements[1][0]]
+            incorrect_sequence = [non_matching_elements[0][4], non_matching_elements[0][0], non_matching_elements[1][0]]
+
+            # Iterate over the kari_master_folder_array to find and correct the sequence
+            for master in kari_master_folder_array:
+                master_values = master[1]
+                length = len(incorrect_sequence)
+
+                # Iterate over the master_values to find the incorrect sequence
+                for i in range(len(master_values) - length + 1):
+                    # Check if the slice matches the incorrect sequence
+                    if master_values[i:i + length] == incorrect_sequence:
+                        # Replace with the correct sequence
+                        master_values[i:i + length] = correct_sequence
+
+            # Display the modified kari_master_folder_array
+            #print("Modified kari_master_folder_array:", kari_master_folder_array)
+            master_folder_tuple = ns_def.convert_array_to_tuple(kari_master_folder_array)
+
+        ''' Additional fix related to bug 1~3 '''
+        if (2, 2) in master_folder_tuple:
+            if isinstance(master_folder_tuple[(2, 2)], str) and '_wp_' in master_folder_tuple[(2, 2)]:
+                del master_folder_tuple[(1, 1)]
 
         '''
         Write <<STYLE_FOLDER>>
@@ -926,7 +1086,7 @@ class  ns_l1_master_create():
                 master_style_folder_meta[style_folder_row, 4] = '<AUTO>'
                 master_style_folder_meta[style_folder_row, 5] = '<AUTO>'
 
-        print('---- master_style_folder_meta ----')
+        #print('---- master_style_folder_meta ----')
         #print(master_style_folder_meta)
 
         write_to_section = '<<STYLE_FOLDER>>'
@@ -947,7 +1107,6 @@ class  ns_l1_master_create():
                 if each_folder_array[0] == each_shape_array[0]:
                     flag_target_folder = True
                     current_shape_array.append(each_shape_array)
-
                 if flag_target_folder == True and (each_folder_array[0] != each_shape_array[0] or each_shape_array[1] == shape_array[-1][1]):
                     current_shape_tuple = ns_def.return_shape_tuple(current_shape_array,start_row)
 
@@ -960,7 +1119,7 @@ class  ns_l1_master_create():
         '''
         Write <<POSITION_SHAPE>> for WayPoint
         '''
-        print('---- folder_name_of_wp ----')
+        #print('---- folder_name_of_wp ----')
         #print(folder_name_of_wp)
         pre_folder_name_of_wp = []
         for replace_folder_name_of_wp in folder_name_of_wp:
@@ -975,7 +1134,7 @@ class  ns_l1_master_create():
                     if tmp_wp[0] == tmp_tmp_wp[0] and tmp_wp[2] == tmp_tmp_wp[2] and tmp_wp[1] != tmp_tmp_wp[1]:
                         multi_wp.append([tmp_wp[1], tmp_wp[2],tmp_tmp_wp[1]])
 
-        print('---- multi_wp ----')
+        #print('---- multi_wp ----')
         #print(multi_wp)
 
         for tmp_folder_name_of_wp in folder_name_of_wp:
@@ -1030,7 +1189,7 @@ class  ns_l1_master_create():
             master_shape_tuple[start_row + 1, 1] = '<END>'
             start_row += 2
 
-        print('---- master_shape_tuple ----   <<POSITION_SHAPE>>')
+        #print('---- master_shape_tuple ----   <<POSITION_SHAPE>>')
         #print(master_shape_tuple)
         write_to_section = '<<POSITION_SHAPE>>'
         ns_def.write_excel_meta(master_shape_tuple, self.excel_file_path, self.worksheet_name, write_to_section,offset_row, offset_column)
@@ -1111,7 +1270,7 @@ class  ns_l1_master_create():
                         end_folder_name = tmp_numpy_shape[0]
 
                 np.line_point.append([begin_shape_name, begin_near_x, begin_near_y, end_shape_name, end_near_x, end_near_y, tmp_numpy_line[4]])
-        print(' --- np.line_point ----')
+        #print(' --- np.line_point ----')
         #print(np.line_point)
 
         ### mark RIGHT LEFT ###
@@ -1196,14 +1355,14 @@ class  ns_l1_master_create():
                 elif tmp_start_column < tmp_end_left and tmp_start_row == tmp_end_top and flag_wp == True:
                     mark_lr.append([master_shape_tuple[tmp_begin_tuple], master_shape_tuple[tmp_end_tuple], 'RIGHT', 'LEFT'])
 
-            elif tmp_end_tuple != '':  #fixed a bug at ver 2.2.2(a)
+            elif tmp_end_tuple != '' and tmp_begin_tuple != '':  #fixed a bug at ver 2.2.2(a) and fix at ver 2.3.4
                 if tmp_begin_tuple[0] == tmp_end_tuple[0] and tmp_begin_tuple[1] > tmp_end_tuple[1]:
                     mark_lr.append([master_shape_tuple[tmp_begin_tuple],master_shape_tuple[tmp_end_tuple],'LEFT','RIGHT'])
 
                 if tmp_begin_tuple[0] == tmp_end_tuple[0] and tmp_begin_tuple[1] < tmp_end_tuple[1]:
                     mark_lr.append([master_shape_tuple[tmp_begin_tuple], master_shape_tuple[tmp_end_tuple], 'RIGHT', 'LEFT'])
 
-        print('---- mark_lr ----')
+        #print('---- mark_lr ----')
         #print(mark_lr)
 
         ### make tuple of line ###
@@ -1262,7 +1421,7 @@ class  ns_l1_master_create():
                 full_line_array.append([tmp_current_shape, tmp_target_list])
                 #print(tmp_current_shape, tmp_target_list , '   Second')
 
-        print('---- full_line_array ----')
+        #print('---- full_line_array ----')
         #print(full_line_array)
 
         ### mark to up down left right ###
@@ -1391,7 +1550,7 @@ class  ns_l1_master_create():
                 pre_udlr_array.append([tmp_udlr_array[0],[tmp_up_array,tmp_down_array,tmp_left_array,tmp_right_array]])
                 master_udlr_array.append(pre_udlr_array)
 
-        print('---- master_udlr_array ----')
+        #print('---- master_udlr_array ----')
         #print(master_udlr_array)
 
         ### put offset value to master_line_tuple
@@ -1427,7 +1586,7 @@ class  ns_l1_master_create():
                                         finish_line_list.append([tmp_master_line_tuple[0],8+tmp_offset_column])
                                         break
 
-        print('---- pre_master_line_tuple ----')
+        #print('---- pre_master_line_tuple ----')
         #print(pre_master_line_tuple)
         for tmp_pre_master_line_tuple in pre_master_line_tuple:
             master_line_tuple[tmp_pre_master_line_tuple] = pre_master_line_tuple[tmp_pre_master_line_tuple]
@@ -1458,7 +1617,7 @@ class  ns_l1_master_create():
         for tmp_pre_master_line_tuple in pre_pre_master_line_tuple:
             master_line_tuple[tmp_pre_master_line_tuple] = pre_pre_master_line_tuple[tmp_pre_master_line_tuple]
 
-        print('---- master_line_tuple ----')
+        #print('---- master_line_tuple ----')
         #print(master_line_tuple)
 
         ### increse offset value for WP , ver 1.12
@@ -1596,7 +1755,7 @@ class  ns_l1_master_create():
                     master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 5)] = max_len_num * tag_offet_inche
                     master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 6)] = 'YES'
 
-            print('---- master_line_tag_tuple ---- ')
+            #print('---- master_line_tag_tuple ---- ')
             #print(master_line_tag_tuple)
             write_to_section = '<<POSITION_TAG>>'
             offset_row = 2
@@ -1713,8 +1872,13 @@ class  ns_l1_master_create():
                     if tmp_master_folder_size_array[0] == tmp_pre_update_master_folder_tuple[0]:
                         update_master_folder_tuple[tmp_pre_update_master_folder_tuple] = tmp_master_folder_size_array[1]
 
-        print('update_master_folder_tuple-----  <<POSITION_FOLDER>> ')
+        #print('--- update_master_folder_tuple ---  <<POSITION_FOLDER>> ')
         #print(update_master_folder_tuple)
+
+        ''' Additional fix related to bug 1~3 at ver 2.3.4'''
+        if (1, 2) not in update_master_folder_tuple and (2, 3) in update_master_folder_tuple and (1, 4) in update_master_folder_tuple:
+            if isinstance(update_master_folder_tuple[(2, 3)], str) and '_wp_' in update_master_folder_tuple[(2, 3)]:
+                update_master_folder_tuple[1, 2] = update_master_folder_tuple[1, 4]
 
         ### write excel meta ###
         write_to_section = '<<POSITION_FOLDER>>'

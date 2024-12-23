@@ -48,7 +48,7 @@ class  ns_l3_table_sync_master():
         #get L3 Table Excel file
         l3_table_array = []
         l3_table_array = ns_def.convert_excel_to_array(l3_table_ws_name, l3_table_file, 3)
-        print('--- l3_table_array ---')
+        #print('--- l3_table_array ---')
         #print(l3_table_array)
 
         tmp_current_value1 = '_dummy_'
@@ -114,7 +114,7 @@ class  ns_l3_table_sync_master():
             last_l3_table_array.append([tmp_row_num,tmp_sorted_new_l3_table_array])
             tmp_row_num += 1
 
-        print('--- last_l3_table_array ---')
+        #print('--- last_l3_table_array ---')
         #print(last_l3_table_array)
 
         last_l3_table_tuple = {}

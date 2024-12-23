@@ -41,7 +41,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.3(b)")
+        self.root.title("Network Sketcher  ver 2.3.4")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -680,25 +680,21 @@ class ns_front_run():
         self.sub3_5.geometry(geo)
 
         self.sub3_5_0 = tk.Label(self.sub3_5, text=local_filename, font=("", 12), background="#FFFFFF")
-        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=5)
+        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=15)
 
         # IP Address report
-        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='IP Address report', font=("", 14), height=1, background="#C2E2EC")
+        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='Export', font=("", 14), height=1, background="#C2E2EC")
         self.sub3_5_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
 
-        # Export to the list file
-        self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" Export to the table file ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
-        self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=30, pady=10)
-
-        self.sub3_4_3_entry_1 = tk.Entry(self.sub3_5_1, font=("", 12)) # for report
-
+        # Export to the IP Address table
+        self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" IP Address table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
+        self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=20, pady=5)
 
     def click_action_sub(self, click_value, target_area_name):
-        if click_value == 'self.sub3_5_button_1':  # select Run
+        if click_value == 'self.sub3_5_button_1':  # select IP address table
             ###export_ip_report
             ns_extensions.ip_report.export_ip_report(self, target_area_name)
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
-
 
         if click_value == 'self.sub3_4_button_1':  # select Run
             #change target area name to N/A
@@ -736,7 +732,7 @@ class ns_front_run():
                 ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]',''))
 
         if click_value == 'self.self.sub2_6_button_1':  # Click "VPNs on L1"
-            print('--- Click "VPNs on L1" ---')
+            #print('--- Click "VPNs on L1" ---')
             ### create L1 Table with [VPNs_on_L1]]
             self.click_value = 'VPN-1-1'
             network_sketcher_dev.ns_front_run.click_action(self, '2-4-3')
@@ -747,7 +743,7 @@ class ns_front_run():
             ns_def.messagebox_file_open(self.output_ppt_file) #Add at Ver 2.3.1(a)
 
         if click_value == 'self.self.sub2_6_button_2':  # Click "VPNs on L3"
-            print('--- Click VPNs on L3 ---')
+            #print('--- Click VPNs on L3 ---')
             self.click_value = 'L3-4-1'
             self.click_value_VPN = 'VPN-1-3'
 
@@ -838,7 +834,7 @@ class ns_front_run():
                 self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#E5F4F7")
                 self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
                 #ns_front_run.sub_excel_master_1(self, file_type_array)
-                print('Update to the Master file')
+                print('--- Update to the Master file ---')
 
                 ### pre-defined for dev parameter
                 self.inFileTxt_11_1 = tk.Entry(self.sub3_1)
@@ -946,7 +942,7 @@ class ns_front_run():
                         self.click_action_sub('self.self.sub2_5_button_3', push_array)
                         self.click_value_2nd = ''
                         if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
-                            print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
+                            #print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
                             subprocess.Popen(full_filepath_device, shell=True)
 
                 ### open master panel

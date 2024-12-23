@@ -289,7 +289,7 @@ def create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD,egt_make
 
     ##### Main script prepared #####
     input_tree_excel = openpyxl.load_workbook(input_excel_name)
-    print('Read the input excel file -> ' + input_excel_name)
+    #print('Read the input excel file -> ' + input_excel_name)
 
     ##### NEW Sheet , Insert paragraph##
     if NEW_OR_ADD == 'ADD':
@@ -321,14 +321,14 @@ def create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD,egt_make
                     output_tree_excel.active.cell(output_row, column).value = num_to_bullet_front[column] + input_tree_excel.active.cell(input_row, column).value + num_to_bullet_back[column]
                     number_of_sheets += 1
                     first_sheet_name = str(output_tree_excel.active.title)
-                    print('Create a new sheet -> ' + output_tree_excel.active.cell(output_row, column).value)
+                    #print('Create a new sheet -> ' + output_tree_excel.active.cell(output_row, column).value)
                 else:
                     output_row = 1
                     output_tree_excel.create_sheet(title=str(input_tree_excel.active.cell(input_row, column).value))
                     output_tree_excel.active = output_tree_excel[str(input_tree_excel.active.cell(input_row, column).value)]
                     output_tree_excel.active.cell(output_row, column).value = num_to_bullet_front[column] + input_tree_excel.active.cell(input_row, column).value + num_to_bullet_back[column]
                     number_of_sheets += 1
-                    print('Create a new sheet -> ' + output_tree_excel.active.cell(output_row, column).value)
+                    #print('Create a new sheet -> ' + output_tree_excel.active.cell(output_row, column).value)
 
                 output_tree_excel.active.row_dimensions[output_row].height = first_paragraph_height
                 output_tree_excel.active.cell(output_row, column).font = first_paragraph_font
