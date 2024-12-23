@@ -9,6 +9,10 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
+- Ver 2.3.4
+  - [Summary Diagram is automatically added in L1 All Areas](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.4)
+- Ver 2.3.3
+  - [Two patterns are created: area-oriented and connection-oriented](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.3)
 - Ver 2.3.2
   - ["VPNs on L3” has been added to the VPN configuration diagram to reflect VPN segments in the Layer 3 logical configuration diagram.](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md)
 - Ver 2.3.1
