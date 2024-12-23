@@ -732,7 +732,7 @@ class ns_front_run():
                 ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]',''))
 
         if click_value == 'self.self.sub2_6_button_1':  # Click "VPNs on L1"
-            print('--- Click "VPNs on L1" ---')
+            #print('--- Click "VPNs on L1" ---')
             ### create L1 Table with [VPNs_on_L1]]
             self.click_value = 'VPN-1-1'
             network_sketcher_dev.ns_front_run.click_action(self, '2-4-3')

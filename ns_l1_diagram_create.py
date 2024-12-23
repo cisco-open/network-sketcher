@@ -239,10 +239,6 @@ class  ns_l1_diagram_create():
                     clear_section_tuple[1,1] = '<<POSITION_LINE>>'
                     ns_def.clear_tag_in_position_line(tmp_ws_name, ppt_meta_file, clear_section_tuple)
 
-                # adjust for per slide size
-                self.root_width = self.all_slide_max_width
-                self.root_hight = self.all_slide_max_hight + 1.0  # top side margin + 1.0
-
                 ### Create ppt
                 #self.output_diagram_path = self.outFileTxt_2_1.get()
                 self.excel_file_path = ppt_meta_file
@@ -255,6 +251,10 @@ class  ns_l1_diagram_create():
                     self.all_slide_max_width = master_root_folder_tuple[2, 7]
                 if self.all_slide_max_hight < master_root_folder_tuple[2,8]  + 1.0:  # top side margin + 1.0
                     self.all_slide_max_hight = master_root_folder_tuple[2, 8]  + 1.0 # top side margin + 1.0
+
+                # adjust for per slide size
+                self.root_width = self.all_slide_max_width
+                self.root_hight = self.all_slide_max_hight + 1.0  # top side margin + 1.0
 
                 ns_ddx_figure.ns_ddx_figure_run.__init__(self)
                 #exit()

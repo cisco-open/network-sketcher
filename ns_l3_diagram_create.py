@@ -260,7 +260,6 @@ class  ns_l3_diagram_create():
         if len(target_position_shape_array) == 1:
             target_position_shape_array.append(['_AIR_9999']) # add dummy shape to second row
 
-
         ### get WP of <<POSITION_FOLDER>>in MASTER EXCEL
         wp_exist_array = [[], [], [], []]  # up/down/left/right
         target_folder_row = 1
@@ -897,7 +896,7 @@ class  ns_l3_diagram_create():
                 max_offset_x = now_offset_x
 
             if check_move_to_right(self,top_device_name_array,target_position_shape_array) == True:
-                left_offset = max_offset_x
+                left_offset = max_offset_x + self.left_margin # add 1.0 at ver 2.3.4
             else:
                 left_offset = start_l3_seg_inche_x - self.left_margin
 
@@ -1979,8 +1978,10 @@ class  create_master_file_one_area():
                     max_x_for_y[y] = x
 
         # Add '<END>' to the new_tuple
+        all_max_y = 1
         for y, max_x in max_x_for_y.items():
             new_tuple[(y, max_x + 1)] = '<END>'
+            all_max_y = y
 
         # Find the maximum x value for each y
         max_x_per_y = {}
@@ -1998,7 +1999,7 @@ class  create_master_file_one_area():
 
         #last input
         new_tuple[(1, 1)] = 'All Areas'
-        new_tuple[(master_y, 1)] = '<END>'
+        new_tuple[(all_max_y + 1, 1)] = '<END>' #change y axis at ver 2.3.4
 
         # SET new <<POSITION_SHAPE>>
         write_to_section = '<<POSITION_SHAPE>>'
@@ -2006,7 +2007,6 @@ class  create_master_file_one_area():
         offset_column = 0
         ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_shape_tuple)
         ns_def.write_excel_meta(new_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
-
 
     def calculate_area_offset(self):
         #print(self.add_shape_array)
