@@ -33,7 +33,7 @@ from pptx.util import Inches, Cm, Pt
 
 class  ns_l2_diagram_create():
     def __init__(self):
-        print('--- ns_l2_diagram_create ---')
+        #print('--- ns_l2_diagram_create ---')
 
         '''
         STEP0 get values of Master Data
@@ -56,11 +56,11 @@ class  ns_l2_diagram_create():
         self.position_style_shape_tuple = ns_def.convert_array_to_tuple(self.position_style_shape_array)
         self.position_tag_tuple = ns_def.convert_array_to_tuple(self.position_tag_array)
         self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
-        print('---- self.position_folder_tuple ----')
+        #print('---- self.position_folder_tuple ----')
         #print(self.position_folder_tuple)
-        print('---- self.position_shape_tuple ----')
+        #print('---- self.position_shape_tuple ----')
         #print(self.position_shape_tuple)
-        print('---- self.position_line_tuple ----')
+        #print('---- self.position_line_tuple ----')
         #print(self.position_line_tuple)
 
         # GET Folder and wp name List
@@ -102,7 +102,7 @@ class  ns_l2_diagram_create():
         self.ppt_hight = 10.0  # inches
 
         self.all_device_l2_size_array = []
-        print('--- l2_device_materials   RETURN_DEVICE_SIZE ---')
+        #print('--- l2_device_materials   RETURN_DEVICE_SIZE ---')
         for tmp_device_list_array in device_list_array:
             self.active_ppt = Presentation()  #define target ppt object
             action_type = 'RETURN_DEVICE_SIZE' #'RETURN_DEVICE_SIZE' - > return array[left, top , width, hight] , 'WRITE_DEVICE_L2' -> write device l2 materials
@@ -141,7 +141,7 @@ class  ns_l2_diagram_create():
                     self.ppt_hight = tmp_all_device_size_array[1][3]
 
             self.active_ppt = Presentation()  # define target ppt object
-            print('--- l2_device_materials   WRITE_DEVICE_L2 ---')
+            #print('--- l2_device_materials   WRITE_DEVICE_L2 ---')
             for tmp_all_device_size_array in self.all_device_l2_size_array:
                 input_device_name = tmp_all_device_size_array[0]  # device_name
                 device_size_array =  tmp_all_device_size_array[1]
@@ -176,7 +176,7 @@ class  ns_l2_diagram_create():
 
                 l2_position_style_shape_array.append(tmp_position_style_shape_array)
 
-        print('--- l2_position_style_shape_array ---')
+        #print('--- l2_position_style_shape_array ---')
         #print(l2_position_style_shape_array)
 
         l2_position_style_shape_tuple = ns_def.convert_array_to_tuple(l2_position_style_shape_array)
@@ -208,7 +208,7 @@ class  ns_l2_diagram_create():
                         flag_start_column = True
                     current_column += 1
 
-        print('---- wp_with_folder_tuple ----')
+        #print('---- wp_with_folder_tuple ----')
         # print(wp_with_folder_tuple)
         # GET connected way point of each folder
         ''' GET Size of PPT slide '''
@@ -255,7 +255,7 @@ class  ns_l2_diagram_create():
                             if tmp_wp_with_folder_tuple == self.position_line_tuple[tmp_position_line_tuple[0], 1]:
                                 if str(wp_with_folder_tuple[tmp_wp_with_folder_tuple]) not in connected_wp_folder_array:
                                     connected_wp_folder_array.append(wp_with_folder_tuple[tmp_wp_with_folder_tuple])
-        print('---- connected_wp_folder_array ----')
+        #print('---- connected_wp_folder_array ----')
         # print(tmp_folder_name,connected_wp_folder_array)
 
         # GET extract_folder_tuple
@@ -267,7 +267,7 @@ class  ns_l2_diagram_create():
                 extract_folder_tuple[tmp_position_folder_tuple[0], 1] = self.position_folder_tuple[tmp_position_folder_tuple[0], 1]
                 extract_folder_tuple[tmp_position_folder_tuple[0] - 1, 1] = self.position_folder_tuple[tmp_position_folder_tuple[0] - 1, 1]
 
-        print('---- extract_folder_tuple ----')
+        #print('---- extract_folder_tuple ----')
         # print(extract_folder_tuple)
 
         # copy Master_Data sheet to _tmp_
@@ -300,12 +300,12 @@ class  ns_l2_diagram_create():
                 else:
                     current_y_grid_array.append([tmp_array[0] + offset_row - 1, tmp_array[1]])
 
-        print('---- current_y_grid_array ----')
+        #print('---- current_y_grid_array ----')
         # print(current_y_grid_array)
 
         convert_tuple = {}
         convert_tuple = ns_def.convert_array_to_tuple(current_y_grid_array)
-        print('---- convert_tuple ----')
+        #print('---- convert_tuple ----')
         # print(convert_tuple)
 
         master_excel_meta = convert_tuple
@@ -364,17 +364,17 @@ class  ns_l2_diagram_create():
         #modify x grid
         tmp_sheet_position_folder_array = ns_def.convert_master_to_array(tmp_ws_name, ppt_meta_file, '<<POSITION_FOLDER>>')
         tmp_sheet_position_folder_tuple = ns_def.convert_array_to_tuple(tmp_sheet_position_folder_array)
-
         for tmp_tmp_sheet_position_folder_tuple in tmp_sheet_position_folder_tuple:
             for tmp_master_folder_size_array_2 in master_folder_size_array[2]:
-                if tmp_sheet_position_folder_tuple[tmp_tmp_sheet_position_folder_tuple[0],tmp_tmp_sheet_position_folder_tuple[1]] == tmp_master_folder_size_array_2[1][0][0]  and tmp_master_folder_size_array_2[1][0][0] != 10:
-                    tmp_num = 0
-                    for tmp_current_y_grid_array in current_y_grid_array:
-                        if tmp_current_y_grid_array[0] == tmp_tmp_sheet_position_folder_tuple[0] - 1 and tmp_master_folder_size_array_2[1][0][1] != 0:
-                            #print(update_current_y_grid_array[tmp_num][1][tmp_tmp_sheet_position_folder_tuple[1] - 1], tmp_master_folder_size_array_2[1][0][1])
-                            update_current_y_grid_array[tmp_num][1][tmp_tmp_sheet_position_folder_tuple[1] - 1] = tmp_master_folder_size_array_2[1][0][1]
-                            break
-                        tmp_num += 1
+                if tmp_sheet_position_folder_tuple[tmp_tmp_sheet_position_folder_tuple[0],tmp_tmp_sheet_position_folder_tuple[1]] == tmp_master_folder_size_array_2[1][0][0] and tmp_master_folder_size_array_2[1][0][0] != 10 and \
+                    isinstance(tmp_sheet_position_folder_tuple[tmp_tmp_sheet_position_folder_tuple[0],tmp_tmp_sheet_position_folder_tuple[1]], str) == True and isinstance(tmp_master_folder_size_array_2[1][0][0], str) == True: # add at ver 2.3.4
+                        tmp_num = 0
+                        for tmp_current_y_grid_array in current_y_grid_array:
+                            if tmp_current_y_grid_array[0] == tmp_tmp_sheet_position_folder_tuple[0] - 1 and tmp_master_folder_size_array_2[1][0][1] != 0:
+                                #print(update_current_y_grid_array[tmp_num][1][tmp_tmp_sheet_position_folder_tuple[1] - 1], tmp_master_folder_size_array_2[1][0][1])
+                                update_current_y_grid_array[tmp_num][1][tmp_tmp_sheet_position_folder_tuple[1] - 1] = tmp_master_folder_size_array_2[1][0][1]
+                                break
+                            tmp_num += 1
 
         #modify y grid
         tmp_num = 0

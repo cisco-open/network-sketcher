@@ -56,7 +56,7 @@ class  ns_l2_table_sync_master():
         #get L2 Table Excel file
         l2_table_array = []
         l2_table_array = ns_def.convert_excel_to_array(l2_table_ws_name, l2_table_file, 3)
-        print('--- l2_table_array ---')
+        #print('--- l2_table_array ---')
         #print(l2_table_array)
 
         tmp_current_value1 = '_dummy_'
@@ -144,7 +144,7 @@ class  ns_l2_table_sync_master():
             last_l2_table_array.append([tmp_row_num,tmp_sorted_new_l2_table_array])
             tmp_row_num += 1
 
-        print('--- last_l2_table_array ---')
+        #print('--- last_l2_table_array ---')
         #print(last_l2_table_array)
 
         last_l2_table_tuple = {}

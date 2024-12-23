@@ -35,7 +35,7 @@ from collections import defaultdict
 
 class  ns_l3_diagram_create():
     def __init__(self):
-        print('--- ns_l3_diagram_create ---')
+        #print('--- ns_l3_diagram_create ---')
         '''
         STEP0 get values of Master Data
         '''
@@ -259,7 +259,6 @@ class  ns_l3_diagram_create():
         ### Kyuusai if len(target_position_shape_array) == 1
         if len(target_position_shape_array) == 1:
             target_position_shape_array.append(['_AIR_9999']) # add dummy shape to second row
-
 
         ### get WP of <<POSITION_FOLDER>>in MASTER EXCEL
         wp_exist_array = [[], [], [], []]  # up/down/left/right
@@ -492,7 +491,7 @@ class  ns_l3_diagram_create():
         l3_segment_up_down_offset = 0.15
 
         if self.click_value_l3 == 'L3-4-1': # inches  #changed at ver 2.3.3
-            l3_segment_up_down_offset = 0.45
+            l3_segment_up_down_offset = 0.35
 
         min_between_line = 0.075  # inches
         min_shape_width = 1.0 #inches
@@ -897,7 +896,7 @@ class  ns_l3_diagram_create():
                 max_offset_x = now_offset_x
 
             if check_move_to_right(self,top_device_name_array,target_position_shape_array) == True:
-                left_offset = max_offset_x
+                left_offset = max_offset_x + self.left_margin # add 1.0 at ver 2.3.4
             else:
                 left_offset = start_l3_seg_inche_x - self.left_margin
 
@@ -1847,7 +1846,6 @@ class  create_master_file_one_area():
         print('--- create_master_file_one_area--- ')
 
         #copy master file
-        self.excel_maseter_file_backup
         shutil.copy(self.inFileTxt_L3_3_1.get(), self.excel_maseter_file_backup)
 
         #GET backup master file parameter
@@ -1980,8 +1978,10 @@ class  create_master_file_one_area():
                     max_x_for_y[y] = x
 
         # Add '<END>' to the new_tuple
+        all_max_y = 1
         for y, max_x in max_x_for_y.items():
             new_tuple[(y, max_x + 1)] = '<END>'
+            all_max_y = y
 
         # Find the maximum x value for each y
         max_x_per_y = {}
@@ -1999,7 +1999,7 @@ class  create_master_file_one_area():
 
         #last input
         new_tuple[(1, 1)] = 'All Areas'
-        new_tuple[(master_y, 1)] = '<END>'
+        new_tuple[(all_max_y + 1, 1)] = '<END>' #change y axis at ver 2.3.4
 
         # SET new <<POSITION_SHAPE>>
         write_to_section = '<<POSITION_SHAPE>>'
@@ -2007,7 +2007,6 @@ class  create_master_file_one_area():
         offset_column = 0
         ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.position_shape_tuple)
         ns_def.write_excel_meta(new_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
-
 
     def calculate_area_offset(self):
         #print(self.add_shape_array)
@@ -2101,7 +2100,7 @@ class  create_master_file_one_area():
             area[1] = new_device_list
 
         # Print the updated self.result_area_device_array
-        print('--- self.result_area_device_array ---')
+        #print('--- self.result_area_device_array ---')
         #print(self.result_area_device_array)
 
         ''' GET max width per area '''
@@ -2134,7 +2133,7 @@ class  create_master_file_one_area():
                 area_min_max_diff_array.append([area_name,min_third,max_fourth,difference])
                 #print(f"Area: {area_name}, Group: {key}, Min Third: {min_third}, Max Fourth: {max_fourth}, Difference: {difference}")
 
-        print('--- area_min_max_diff_array ---')
+        #print('--- area_min_max_diff_array ---')
         #print(area_min_max_diff_array)
 
         ''' Create a defaultdict to group the entries by the category (first element) '''
@@ -2161,7 +2160,7 @@ class  create_master_file_one_area():
             result_area_width.append([category, max_value_entry[0]])
 
         # Print the result: for each category, output the category name and the maximum fourth value
-        print('--- result_area_width ---')
+        #print('--- result_area_width ---')
         #print(result_area_width)
 
         ''' GET area location '''

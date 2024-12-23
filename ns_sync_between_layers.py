@@ -25,7 +25,7 @@ import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import ns_def ,ns_ddx_figure , network_sketcher,network_sketcher_dev
 
 def l2_device_table_sync_with_l3_master(self):
-    print('--- l2_device_table_sync_with_l3_master ---')
+    #print('--- l2_device_table_sync_with_l3_master ---')
 
     ### get exist L2 table sheet in master file
     ws_l2_name = 'Master_Data_L2'
@@ -101,7 +101,7 @@ def l2_device_table_sync_with_l3_master(self):
         del tmp_sort_master_l3_table_array[-2:]
         last_master_l3_table_array.append([index_l3_3 + 3 ,tmp_sort_master_l3_table_array])
 
-    print('--- last_master_l3_table_array ---')
+    #print('--- last_master_l3_table_array ---')
     #print(last_master_l3_table_array)
 
     ### Re-Write L3 sheet
@@ -120,7 +120,7 @@ def l2_device_table_sync_with_l3_master(self):
     ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
 
 def l2_device_port_name_sync_with_l3_master(self):
-    print('--- l2_device_vport_name_sync_with_l3_master ---')
+    #print('--- l2_device_vport_name_sync_with_l3_master ---')
     ws_name = 'Master_Data'
     ws_l2_name = 'Master_Data_L2'
     ws_l3_name = 'Master_Data_L3'
@@ -134,7 +134,7 @@ def l2_device_port_name_sync_with_l3_master(self):
 
     # GET Folder and wp name List
     folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
-    print('---- folder_wp_name_array ----')
+    #print('---- folder_wp_name_array ----')
     # print(folder_wp_name_array)
 
 
@@ -186,10 +186,10 @@ def l2_device_port_name_sync_with_l3_master(self):
             self.update_l2_table_vport_array.append([tmp_device_l2_table_array[1][1],tmp_update_if_array[0],tmp_update_if_array[1]])
 
 
-    print('--- update_device_l2_table_array. ---')
+    #print('--- update_device_l2_table_array. ---')
     #print(update_device_l2_table_array)
 
-    print('--- self.update_l2_table_vport_array ---')
+    #print('--- self.update_l2_table_vport_array ---')
     #print(self.update_l2_table_vport_array)
 
     ### make overwrite tuple
@@ -232,7 +232,7 @@ def l2_device_port_name_sync_with_l3_master(self):
                     overwrite_master_l3_table_tuple[tmp_master_l3_table_tuple[0],3] = tmp_update_l3_table_vport_array[2]
                     break
 
-    print('--- overwrite_master_l2_table_tuple ,overwrite_master_l3_table_tuple---')
+    #print('--- overwrite_master_l2_table_tuple ,overwrite_master_l3_table_tuple---')
     #print(overwrite_master_l2_table_tuple,overwrite_master_l3_table_tuple)
 
     ### write master l2/l3
@@ -254,7 +254,7 @@ def l2_device_port_name_sync_with_l3_master(self):
 
 
 def l1_device_port_name_sync_with_l2l3_master(self):
-    print('--- l1_device_port_name_sync_with_l2l3_master ---')
+    #print('--- l1_device_port_name_sync_with_l2l3_master ---')
     #print(self.update_port_num_array)
 
     ws_l2_name = 'Master_Data_L2'
@@ -288,7 +288,7 @@ def l1_device_port_name_sync_with_l2l3_master(self):
                     overwrite_l3_tuple[tmp_master_l3_table_tuple[0], 3] = tmp_update_port_num_array[2]
                     break
 
-    print('--- overwrite_l2_tuple ,overwrite_l3_tuple---')
+    #print('--- overwrite_l2_tuple ,overwrite_l3_tuple---')
     #print(overwrite_l2_tuple,overwrite_l3_tuple)
 
     ### write master l2/l3
@@ -375,7 +375,7 @@ def l1_sketch_device_name_sync_with_l2l3_master(self):
 
 
 def l1_master_device_and_line_sync_with_l2l3_master(self):
-    print('l1_master_device_and_line_sync_with_l2l3_master')
+    #print('l1_master_device_and_line_sync_with_l2l3_master')
 
     ### get exist L2 table sheet in master file
     ws_l2_name = 'Master_Data_L2'

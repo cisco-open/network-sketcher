@@ -22,7 +22,7 @@ import ns_def,ns_ddx_figure, ns_egt_maker
 
 class ns_modify_master_l3vpn():
     def __init__(self):
-        print('--- ns_modify_master_l3vpn ---')
+        #print('--- ns_modify_master_l3vpn ---')
 
         # GET backup master file parameter
         # parameter
@@ -154,7 +154,7 @@ class  ns_write_vpns_on_l1():
         ws_l3_name = 'Master_Data_L3'
         excel_maseter_file = self.inFileTxt_L3_3_1.get()
 
-        print('--- ns_vpns_on_l1_create ---')
+        #print('--- ns_vpns_on_l1_create ---')
         #### GET self.l3_table_array ####
         self.l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
         #print('--- self.l3_table_array  ---')
@@ -179,7 +179,7 @@ class  ns_write_vpns_on_l1():
             else:
                 self.update_l3_table_array.append(tmp_l3_table_array)
 
-        print('--- self.update_l3_table_array ---')
+        #print('--- self.update_l3_table_array ---')
         #print(self.update_l3_table_array)
 
         ### make a vpn table ###

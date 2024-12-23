@@ -28,7 +28,7 @@ class  ns_l2_table_from_master():
         '''
         make L2 Table excel file
         '''
-        print('--- ns_l2_table_from_master() ---')
+        #print('--- ns_l2_table_from_master() ---')
         #parameter
         ws_name = 'Master_Data'
         tmp_ws_name = '_tmp_'
@@ -49,16 +49,16 @@ class  ns_l2_table_from_master():
         self.position_tag_tuple = ns_def.convert_array_to_tuple(self.position_tag_array)
         self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
 
-        print('---- self.position_folder_tuple ----')
+        #print('---- self.position_folder_tuple ----')
         #print(self.position_folder_tuple)
-        print('---- self.position_shape_tuple ----')
+        #print('---- self.position_shape_tuple ----')
         #print(self.position_shape_tuple)
-        print('---- self.position_line_tuple ----')
+        #print('---- self.position_line_tuple ----')
         #print(self.position_line_tuple)
 
         # GET Folder and wp name List
         folder_wp_name_array = ns_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
-        print('---- folder_wp_name_array ----')
+        #print('---- folder_wp_name_array ----')
         #print(folder_wp_name_array)
 
         '''
@@ -80,7 +80,7 @@ class  ns_l2_table_from_master():
         egt_prefix = '>>' # for egt maker value.
 
         #sort folder name
-        print('---- new_folder_wp_name_array ----')
+        #print('---- new_folder_wp_name_array ----')
         new_folder_wp_name_array = sorted(folder_wp_name_array[0], key=str.lower)
         new_folder_wp_name_array.extend(sorted(folder_wp_name_array[1], key=str.lower))
         #print(new_folder_wp_name_array)
@@ -99,14 +99,14 @@ class  ns_l2_table_from_master():
                 tmp_current_array.extend(['N/A'])
             #get shape name in the folder and sort
             shape_folder_tuple = ns_def.get_shape_folder_tuple(self.position_shape_tuple)
-            print('---- shape_folder_tuple ----')
+            #print('---- shape_folder_tuple ----')
             #print(shape_folder_tuple)
             for tmp_shape_folder_tuple in shape_folder_tuple:
                 #print(shape_folder_tuple[tmp_shape_folder_tuple] ,tmp_new_folder_wp_name_array )
                 if shape_folder_tuple[tmp_shape_folder_tuple] == tmp_new_folder_wp_name_array:
                     tmp_sort_array.append(tmp_shape_folder_tuple)
             new_tmp_sort_array = sorted(tmp_sort_array, key=str.lower)
-            print('---- new_tmp_sort_array ----')
+            #print('---- new_tmp_sort_array ----')
             #print(new_tmp_sort_array)
 
             '''get tag of the shape'''
@@ -170,7 +170,7 @@ class  ns_l2_table_from_master():
 
         l2_table_array.append([start_row, ['<END>']])
 
-        print('---- l2_table_array ----')
+        #print('---- l2_table_array ----')
         #print(l2_table_array)
 
         ''' sort Interafce number'''
@@ -210,15 +210,15 @@ class  ns_l2_table_from_master():
                 overwrite_if_array.append([tuple_num, tmp_current_if_array[:9]])
                 tuple_num += 1
 
-        print('---- overwrite_if_array ----')
+        #print('---- overwrite_if_array ----')
         #print(overwrite_if_array)
         overwrite_if_tuple = ns_def.convert_array_to_tuple(overwrite_if_array)
-        print('---- overwrite_if_tuple ----')
+        #print('---- overwrite_if_tuple ----')
         #print(overwrite_if_tuple)
 
         ### Convert to tuple
         master_l2_table_tuple = ns_def.convert_array_to_tuple(l2_table_array)
-        print('---- master_l2_table_tuple ----')
+        #print('---- master_l2_table_tuple ----')
         #print(master_l2_table_tuple)
 
         # Create _tmp_ sheet
@@ -313,7 +313,7 @@ class  ns_l2_table_from_master():
             #l2_master_data_array.append([tmp_row , [current_area_name, current_device_name, tmp_l2_table_array[1][2], tmp_l2_table_array[1][3], tmp_l2_table_array[1][4], tmp_l2_table_array[1][5]]])
             l2_master_data_array.append([tmp_row , [current_area_name, current_device_name, '', tmp_l2_table_array[1][3], '', tmp_l2_table_array[1][5]]])
             tmp_row += 1
-        print('--- l2_master_data_array ---')
+        #print('--- l2_master_data_array ---')
         #print(l2_master_data_array)
 
         l2_master_data_tuple = {}
@@ -321,7 +321,7 @@ class  ns_l2_table_from_master():
 
         # create Master_Data_L2 sheet
         ns_def.create_excel_sheet(excel_maseter_file, excel_master_ws_name_l2)
-        print('create Master_Data_L2 sheet')
+        #print('--- create Master_Data_L2 sheet ---')
 
         # write l2_master_data_array tupple to Master data L2 sheet
         offset_row = 0
@@ -335,7 +335,7 @@ class ns_l2_table_from_master_l2_sheet():
         '''
         make L2 Table sheet from master l2 sheet
         '''
-        print('---ns_l2_table_from_master_l2()---')
+        #print('---ns_l2_table_from_master_l2()---')
 
         tmp_ws_name = '_tmp_'
         excel_maseter_file = self.inFileTxt_L2_1_1.get()
@@ -380,7 +380,7 @@ class ns_l2_table_from_master_l2_sheet():
 
         l2_table_array.append([max_row_num + 1 ,['<END>']])
 
-        print('--- l2_table_array ---')
+        #print('--- l2_table_array ---')
         #print(l2_table_array)
 
         # remove duplicated value in row 1 or 2
@@ -423,7 +423,7 @@ class ns_l2_table_from_master_l2_sheet():
 
             new_new_new_l2_table_array.append(tmp_l2_table_array)
 
-        print('--- new_new_new_l2_table_array ---')
+        #print('--- new_new_new_l2_table_array ---')
         #print(new_new_new_l2_table_array)
 
         l2_table_tuple = {}
@@ -439,7 +439,7 @@ class ns_l2_table_from_master_l2_sheet():
         section_write_to = '<<N/A>>'
         offset_row = 0
         offset_column = 0
-        print('---master_excel_meta---')
+        #print('---master_excel_meta---')
         #print(master_excel_meta)
         ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
 
