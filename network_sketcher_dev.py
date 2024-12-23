@@ -1025,8 +1025,6 @@ class ns_front_run():
                 ns_l2_table_from_master.ns_l2_table_from_master_l2_sheet.__init__(self)
 
             input_excel_master_data.close()
-            # view complete
-            #tkinter.messagebox.showinfo('info', 'successfully completed')
 
         if click_value == 'L2-2-1': # select browse
             fTyp = [("", ".xlsx")]
@@ -1061,9 +1059,6 @@ class ns_front_run():
                     # import module
                     import ns_l2_table_sync_master
                     ns_l2_table_sync_master.ns_l2_table_sync_master.__init__(self)
-
-                    # view complete
-                    #tkinter.messagebox.showinfo('info', 'successfully completed')
 
         if click_value == 'L2-3-1': # select browse
             fTyp = [("", ".xlsx")]
@@ -1111,7 +1106,6 @@ class ns_front_run():
 
             # view complete
             ns_def.messagebox_file_open(self.output_ppt_file)
-
 
         if click_value == 'L3-1-1': # select browse
             fTyp = [("", ".xlsx")]
@@ -1169,9 +1163,6 @@ class ns_front_run():
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.inFileTxt_L3_2_2_backup= iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L3_2_2.get()))[0] + '_backup' + '.xlsx'
 
-            # check : file is being opened
-            '''if ns_def.check_file_open(self.inFileTxt_L3_2_2.get()) == True:
-                return ()'''
             # confirm to exist device table and master data file
             if os.path.isfile(self.inFileTxt_L3_2_1.get()) == False:
                 tkinter.messagebox.showerror('Error', 'Could not find the L3 Table file')
@@ -1194,11 +1185,6 @@ class ns_front_run():
             self.inFileTxt_L3_3_1.insert(tk.END, full_filepath)
 
         if click_value == 'L3-3-2' or click_value == 'L3-3-3':  # select create from master
-            ### TEST MODE ###
-            #self.inFileTxt_L3_3_1.delete(0, tkinter.END)
-            #self.inFileTxt_L3_3_1.insert(tk.END, 'C:/work/Network Sketcher/Network Skecher Ver2.0/[MASTER]Sample figure5.xlsx')
-            #################
-
             full_filepath = self.inFileTxt_L3_3_1.get()
             iDir = os.path.dirname(full_filepath)
             basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
