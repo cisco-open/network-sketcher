@@ -4,7 +4,7 @@
 [0. Network Sketcherのコンセプト](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/0-1.Network%20Sketcher%E3%82%B3%E3%83%B3%E3%82%BB%E3%83%97%E3%83%88.md)
 
 ## 1. 最初はここから
-[1-1. 概要](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/1-1.%20Network%20Sketcher%20DX%E3%81%A8%E3%81%AF.pdf)
+[1-1. 概要](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/1-1.Network%20Sketcher%E6%A6%82%E8%A6%81%20.pdf)
 
 [1-2. ラフスケッチの作成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/1-2.%20%E3%83%A9%E3%83%95%E3%82%B9%E3%82%B1%E3%83%83%E3%83%81%E3%81%AE%E4%BD%9C%E6%88%90.pdf)
 
