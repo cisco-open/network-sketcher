@@ -3,6 +3,8 @@
 
 # Network Sketcher
 **Network Sketcher makes network design and configuration management faster, more accurate, and easier. Simply create your first rough sketch and it will automatically generate L1L2L3 network diagrams and management tables. Network components are integrated into one master file, so when you update the management table (device file), all related network diagrams and management tables are automatically updated as well.**
+![image](https://github.com/user-attachments/assets/ec45825a-089b-4636-b19f-b2cf9a2721c9)
+
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/240ddee0-823d-472f-87d4-8ae7eb1fff7d)
 
 # DEMO
