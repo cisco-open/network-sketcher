@@ -1,7 +1,7 @@
 # User Guide [English]
 
 ## 0. Concept
-[0. Concept of Network Sketcher](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/0-1.concept%20of%20Network%20Sketcher.pdf)
+[0. Concept of Network Sketcher](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/0-1.concept%20of%20Network%20Sketcher.md)
 
 ## 1. First Step
 
