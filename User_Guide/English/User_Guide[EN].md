@@ -5,7 +5,7 @@
 
 ## 1. First Step
 
-[1-1. Overview](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/1-1%20What%20is%20Network%20Sketcher%20DX.pdf)
+[1-1. Overview](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/1-1%20Overview.pdf)
 
 [1-2. Creating a rough sketch](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/1-2.creating%20a%20rough%20sketch.pdf)
 
