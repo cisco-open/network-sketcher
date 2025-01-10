@@ -53,10 +53,18 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
   - Libre Office and Softmaker office cannot be used.
 
 # Installation
- 
 ```bash
 git clone https://github.com/cisco-open/network-sketcher/
 cd network-sketcher
+python -m pip install -r requirements.txt
+python network_sketcher.py
+```
+or
+```bash
+#Download via browser
+https://github.com/cisco-open/network-sketcher/archive/refs/heads/main.zip
+
+#Unzip the ZIP file and execute the following in the prompt of the folder
 python -m pip install -r requirements.txt
 python network_sketcher.py
 ```
