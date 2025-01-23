@@ -302,7 +302,7 @@ def create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD,egt_make
         number_of_sheets += 1
         output_row = int(input_tree_excel.active.cell(1, 1).value)+3
         input_tree_excel.active.cell(1, 1).value = None
-        sheetNames = input_tree_excel.get_sheet_names()
+        sheetNames = input_tree_excel.sheetnames
         output_tree_excel.active = output_tree_excel.sheetnames.index(sheetNames[0])
         insert_excel_empty_row(output_tree_excel, sheetNames[0], output_row-1)
         insert_excel_empty_row(output_tree_excel, sheetNames[0], output_row-1)
@@ -394,7 +394,7 @@ def create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD,egt_make
     if NEW_OR_ADD == 'NEW':
         output_tree_excel.active = output_tree_excel[first_sheet_name]
     output_tree_excel.save(output_excel_name)
-    print('Complete to Save the output excel file -> ' + output_excel_name)
+    print('Output Excel file saved successfully -> ' + output_excel_name)
     return(output_tree_excel)
 
 '''

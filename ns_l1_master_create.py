@@ -112,6 +112,11 @@ class  ns_l1_master_create():
             ,'From_Port_Name','From_Speed','From_Duplex','From_Port_Type','To__Port_Name','To_Speed','To_From_Duplex','To_From_Port_Type']])
         tmp_master_data_array.append([30, ['<<POSITION_TAG>>','Type(SHAPE/LINE)','Offset_SHAPE_X','Offset_SHAPE_Y','Offset_LINE(inches)','Adjust_LINE_Angle(YES/NO)']])
         tmp_master_data_array.append([31, ['<DEFAULT>','SHAPE','0','0','0.3','YES']])
+        #Add at ver 2.4.0
+        tmp_master_data_array.append([35, ['<<ATTRIBUTE>>']])
+        tmp_master_data_array.append([36, ['Device Name','Default','Attribute-A','Attribute-B','Attribute-C','Attribute-D','Attribute-E','Attribute-F','Attribute-G','Attribute-H','<END>']])
+        tmp_master_data_array.append([40, ['<<END_MARK>>']])
+
         #print(tmp_master_data_array)
 
         template_master_data_tuple = {}
@@ -1163,7 +1168,7 @@ class  ns_l1_master_create():
                         tmp_sort_multi_wp.append(tmp_shape_array)
 
                 current_multi_wp_tuple = ns_def.return_shape_tuple(tmp_sort_multi_wp, start_row)
-                print(' --- current_multi_wp_tuple --- ')
+                #print(' --- current_multi_wp_tuple --- ')
                 #print(master_shape_tuple[start_row, 1],current_multi_wp_tuple)
 
                 pre_multi_wp_hight = 0
@@ -1736,7 +1741,6 @@ class  ns_l1_master_create():
         '''
         master_line_tag_tuple = {}
         if flag_put_line_tag == True:
-
             for tmp_master_style_shape_tuple in master_style_shape_tuple:
                 if tmp_master_style_shape_tuple[1] == 1:
                     ### check max char num of shape's tag name
@@ -1929,6 +1933,31 @@ class  ns_l1_master_create():
 
         #print('---- <<ROOT_FOLDER>>  master_root_folder_tuple ---- ',master_root_folder_tuple)
         #print(master_root_folder_tuple)
+
+        '''
+        Write <<ATTRIBUTE>> at ver 2.4.0
+        '''
+        master_attribute_tuple = {}
+        for tmp_master_style_shape_tuple in master_style_shape_tuple:
+            if tmp_master_style_shape_tuple[1] == 1:
+                master_attribute_tuple[(tmp_master_style_shape_tuple[0], 1)] = master_style_shape_tuple[tmp_master_style_shape_tuple]
+                if master_style_shape_tuple[(tmp_master_style_shape_tuple[0], 5)] == 'GREEN':
+                    # SET 'GREEN'
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'DEVICE\',[235, 241, 222]]'
+                elif master_style_shape_tuple[(tmp_master_style_shape_tuple[0], 5)] == 'BLUE':
+                    # SET 'BLUE'
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'WayPoint\', [220, 230, 242]]'
+                else:
+                    # Others
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'<EMPTY>\', [232, 232, 232]]'
+
+            for i in range(3, 11):
+                master_attribute_tuple[(tmp_master_style_shape_tuple[0], i)] = '[\'<EMPTY>\', [255, 255, 255]]'
+
+        write_to_section = '<<ATTRIBUTE>>'
+        offset_row = 2
+        ns_def.write_excel_meta(master_attribute_tuple, self.excel_file_path, self.worksheet_name, write_to_section, offset_row, offset_column)
+        offset_row = 0
 
 if __name__ == '__main__':
     ns_l1_master_create()
