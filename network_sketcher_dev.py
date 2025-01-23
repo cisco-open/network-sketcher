@@ -1046,9 +1046,6 @@ class ns_front_run():
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.inFileTxt_L2_2_2_backup= iDir + ns_def.return_os_slash() + os.path.splitext(os.path.basename(self.inFileTxt_L2_2_2.get()))[0] + '_backup' + '.xlsx'
 
-            # check : file is being opened
-            '''if ns_def.check_file_open(self.inFileTxt_L2_2_2.get()) == True:
-                return ()'''
             # confirm to exist device table and master data file
             if os.path.isfile(self.inFileTxt_L2_2_1.get()) == False:
                 tkinter.messagebox.showerror('Error', 'Could not find the L2 Table file')
@@ -1268,6 +1265,21 @@ class ns_front_run():
 
             # view complete
             ns_def.messagebox_file_open(self.output_ppt_file)
+
+        if click_value == 'ATTR-1-1':  # add Attribute table to device file at ver 2.4.0
+            self.click_value = 'ATTR-1-1'
+
+            # check : file is being opened
+            if ns_def.check_file_open(self.inFileTxt_L3_1_1.get().replace('[MASTER]', '[ATTRIBUTE]')) == True:
+                return ()
+
+            # remove exist L3 file
+            if os.path.isfile(self.inFileTxt_L3_1_1.get().replace('[MASTER]', '[ATTRIBUTE]')) == True:
+                os.remove(self.inFileTxt_L3_1_1.get().replace('[MASTER]', '[ATTRIBUTE]'))
+
+            #### create ATTRIBUTE table
+            import ns_attribute_table_from_master
+            ns_attribute_table_from_master.ns_attribute_table_from_master.__init__(self)
 
 if __name__ == '__main__':
     ns_front_run()

@@ -40,7 +40,7 @@ class  ns_l2_table_sync_master():
 
         #check L2 Table sheet in Excel file
         input_excel_l2_table = openpyxl.load_workbook(l2_table_file)
-        ws_list = input_excel_l2_table.get_sheet_names()
+        ws_list = input_excel_l2_table.sheetnames
         if l2_table_ws_name not in ws_list:
             tkinter.messagebox.showwarning(title="L2 Table not in [L2_TABLE] file", message="Please check L2 Table sheet in [L2_TABLE] file.")
             return
