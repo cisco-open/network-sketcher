@@ -1,0 +1,61 @@
+## What you can do with this procedure
+* *Update the [Attribute] sheet of the device file and set the attributes.**
+![image](https://github.com/user-attachments/assets/f05b29db-2ffd-4686-8fba-e34db8af5c2f)
+
+
+## procedure
+1. **Generate equipment port management table**
+    1. Export the device file with reference to [2-4. device file export (with explanation)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-4.%20%E3%83%87%E3%83%90%E3%82%A4%E3%82%B9%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88.pdf)
+
+1. **Update [Attribute] sheet**
+    1. Select the device file [Attribute] sheet
+
+       ![image](https://github.com/user-attachments/assets/f330506b-808e-4f59-8692-b2a53e42bb04)
+
+    1. Set attribute name/color and item name.
+       - Attribute name
+         - Enter any device name and a string that will be the attribute name in the cell for the attribute item
+           ![image](https://github.com/user-attachments/assets/4e33c60c-ee52-41a7-8f7c-dc3f4201afb9)
+
+       - Attributes Colors
+         - Sets the color to the cell in which the attribute name is entered
+           ![image](https://github.com/user-attachments/assets/c179c069-ffbd-4f59-8ad9-c890347f4630)
+
+           - Note: Cell colors are not compatible with Excel's theme colors. Please use standard colors.
+             ![image](https://github.com/user-attachments/assets/64397ed8-f7e9-4ace-8b7f-51e02eb9c025)
+
+       - Item name
+         - Attribute item names can be changed
+           ![image](https://github.com/user-attachments/assets/a8783b64-f18e-4036-b3a6-ec5fb143437e)
+
+           - Note: Only attributes can be renamed; do not change the Area Name or Device Name.
+           - Note: Attribute color should not be changed.
+
+
+1. **Synchronize updated information**
+    1. Drag and drop the updated device file to the Main Panel.
+    1. The Device Panel appears. Drag and drop the master file to be updated to [Update to the Master file].
+    1. The master file is updated. The master file is updated, and the master file before the update is backed up.
+       ![image](https://github.com/user-attachments/assets/1f343875-ad12-4436-84cd-0c033c4e3f42)
+
+
+1. **Confirmation of the configuration diagram reflecting the attribute colors**
+   1. Select the “Attribute” item you set from the Master Panel
+   ![image](https://github.com/user-attachments/assets/f521a0de-8344-49c0-87b6-6099011a6728)
+
+   2. Generate and check various configuration diagrams
+       - Generate and check L1/L2/L3 configuration diagrams by referring to the following links
+          - [2-1. Generation of L1 diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-1.%20L1%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf)
+          - [2-2. Generation of L2 diagram(with legend)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-2.%20L2%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf)
+          - [2-3. Generation of L3diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-3.%20L3%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf)
+        -  Sample Images
+       ![image](https://github.com/user-attachments/assets/6c1e64db-a8f6-4336-9ccf-e3543f838af5)
+
+
+
+
+
+
+
+
+
