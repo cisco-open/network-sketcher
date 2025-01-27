@@ -18,8 +18,8 @@ limitations under the License.
 
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from tkinterdnd2 import *
-import sys, os, subprocess ,webbrowser
-import ns_def,network_sketcher_dev,ns_sync_between_layers
+import sys, os, subprocess ,webbrowser ,openpyxl
+import ns_def,network_sketcher_dev,ns_sync_between_layers,ns_attribute_table_sync_master
 import ns_extensions
 import ns_vpn_diagram_create
 
@@ -41,7 +41,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.3.4")
+        self.root.title("Network Sketcher  ver 2.4.0 Beta")
         self.root.geometry("490x200+100+100")
         
         # Notebook
@@ -151,6 +151,13 @@ class ns_front_run():
                 ns_front_run.sub_excel_master_1(self, file_type_array)
 
             elif file_type_array[0] == 'EXCEL_DEVICE':
+                #check attribute Table sheet in Excel file at ver 2.4.0
+                input_device_table = openpyxl.load_workbook(str(self.main1_1_entry_1.get()))
+                ws_list = input_device_table.sheetnames
+                if 'Attribute' not in ws_list:
+                    tkinter.messagebox.showinfo('info', 'The \'Attribute\' sheet, which was added in Ver. 2.4, is missing from the Dervice file. Please export the device file again from the master file.')
+                    return
+
                 #print(file_type_array)
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
@@ -394,7 +401,6 @@ class ns_front_run():
                 self.filename = os.path.basename(self.full_filepath)
                 ns_front_run.sub_excel_master_1(self, file_type_array)
 
-
             else:
                 self.text_sub1_3.set('[ERROR] Please input the Master file')
                 self.sub1_3_label_4 = tk.Label(self.sub1_3, textvariable=self.text_sub1_3, font=("", 10), background="#FBE5D6")
@@ -419,7 +425,7 @@ class ns_front_run():
         self.sub2_1.title('Master Panel')
         self.root.update_idletasks()
         #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
-        geo =  str(self.root.winfo_width() + 130) + 'x' + str(self.root.winfo_height() + 150) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
+        geo =  str(self.root.winfo_width() + 180) + 'x' + str(self.root.winfo_height() + 120) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
         self.sub2_1.geometry(geo)
 
         self.sub2_0_label_1 = tk.Label(self.sub2_1, text=local_filename, font=("", 12), background="#FFFFFF")
@@ -494,10 +500,10 @@ class ns_front_run():
 
         ### run 2-4-x for dev , Create L1 diagram
         self.sub2_2x = tk.LabelFrame(self.sub2_1, text='Create Diagram files', font=("", 14), height=1, background="#FBE5D6")
-        self.sub2_2x.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=0, ipadx=5, ipady=5)
+        self.sub2_2x.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=0, ipadx=2, ipady=0)
 
         self.sub2_2 = tk.LabelFrame(self.sub2_2x, text='Layer1 Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_2.grid(row=1, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.sub2_2.grid(row=1, column=0, columnspan=7, sticky='W', padx=2, pady=2, ipadx=5, ipady=2)
 
         self.sub2_2_button_3 = tk.Button(self.sub2_2, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-3'))
         self.sub2_2_button_3.grid(row=2, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
@@ -508,58 +514,70 @@ class ns_front_run():
         self.sub2_2_button_2 = tk.Button(self.sub2_2, text="Per Area with IF Tag", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-2'))
         self.sub2_2_button_2.grid(row=2, column=4, sticky='WE', padx=5, pady=2)
 
-
         ### run L2-3-x for dev , Create L2 diagram
         self.sub2_3 = tk.LabelFrame(self.sub2_2x, text='Layer2 Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_3.grid(row=4, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=2)
+        self.sub2_3.grid(row=4, column=0, sticky='W', padx=1, pady=0, ipadx=1, ipady=2)
 
         ## Add at ve 2.3.0(b)
         optionL2_3_6 = ns_extensions.ip_report.get_folder_list(self)
         global variableL2_3_6
         variableL2_3_6 = tk.StringVar()
-        self.comboL2_3_6 = ttk.Combobox(self.sub2_3 , values=optionL2_3_6, textvariable=variableL2_3_6, font=("", 12), state='readonly')
+        self.comboL2_3_6 = ttk.Combobox(self.sub2_3 , values=optionL2_3_6, textvariable=variableL2_3_6, font=("", 12), state='readonly' , width=20)
         self.comboL2_3_6.set(str(optionL2_3_6[0]))
         self.comboL2_3_6.option_add("*TCombobox*Listbox.Font", 12)
         self.comboL2_3_6.grid(row=0, column=0, sticky='WE', padx=1, pady=5, ipady=0, ipadx=8, columnspan=3)
-        #self.comboL2_3_6.bind("<<ComboboxSelected>>", lambda event: ns_extensions.auto_ip_addressing.get_auto_ip_param(self,self.comboL2_3_6.get()))
 
         self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-2'))
-        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=0, pady=5, ipadx=0)
-        #self.sub2_3_button_2 = tk.Button(self.sub2_3, text="Per Device", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-3'))
-        #self.sub2_3_button_2.grid(row=6, column=2, sticky='WE', padx=5, pady=2, ipadx=5)
+        self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=0, pady=2, ipadx=0)
 
         ### run L3-3-x for dev , Create L3 diagram
         self.sub2_4 = tk.LabelFrame(self.sub2_2x, text='Layer3 Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_4.grid(row=4, column=2, sticky='W', padx=1, pady=0, ipadx=5, ipady=2)
+        self.sub2_4.grid(row=4, column=2, sticky='W', padx=1, pady=0, ipadx=1, ipady=2)
 
         self.sub2_4_empty1 = tk.LabelFrame(self.sub2_4, text='', font=("", 14), width=10)
         self.sub2_4_empty1 .grid(row=1, column=1, sticky='WE', padx=0, pady=0, ipadx=1)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-4-1')) # add button at ver 2.3.0
-        self.sub2_4_button_1.grid(row=1, column=2, sticky='WE', padx=5, pady=2, ipadx=20)
+        self.sub2_4_button_1.grid(row=1, column=2, sticky='WE', padx=1, pady=2, ipadx=20)
 
         self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-3-2'))
-        self.sub2_4_button_1.grid(row=2, column=2, sticky='WE', padx=5, pady=2, ipadx=20)
+        self.sub2_4_button_1.grid(row=2, column=2, sticky='WE', padx=1, pady=2, ipadx=20)
 
         ### run xx-xx for dev , Create VPN diagram
         self.sub2_6 = tk.LabelFrame(self.sub2_2x, text='VPN Diagram', font=("", 14), height=1, background="#FEF6F0")
-        self.sub2_6.grid(row=4, column=4, columnspan=1, sticky='W', padx=2, pady=0, ipadx=10, ipady=2)
+        self.sub2_6.grid(row=4, column=4, sticky='W', padx=1, pady=0, ipadx=5, ipady=2)
 
         self.sub2_6_empty1 = tk.LabelFrame(self.sub2_6, text='', font=("", 14), width=15)
         self.sub2_6_empty1 .grid(row=10, column=0, sticky='WE', padx=0, pady=0, ipadx=1)
 
         self.sub2_6_button_3 = tk.Button(self.sub2_6, text="VPNs on L1", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_1', push_array))
-        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
+        self.sub2_6_button_3.grid(row=10, column=1, sticky='WE', padx=1, pady=2, ipadx=5)
 
         self.sub2_6_button_4 = tk.Button(self.sub2_6, text="VPNs on L3", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_6_button_2', push_array))
-        self.sub2_6_button_4.grid(row=11, column=1, sticky='WE', padx=5, pady=2, ipadx=5)
+        self.sub2_6_button_4.grid(row=11, column=1, sticky='WE', padx=1, pady=2, ipadx=5)
+
+        ### Attribute combobox at ver 2.4.0
+        self.ATTR_1_2 = tk.LabelFrame(self.sub2_2x, text='Attribute ', font=("", 12), height=1, background="#FEF6F0")
+        self.ATTR_1_2.grid(row=4, column=5, sticky='W', padx=3, pady=3, ipadx=0, ipady=0)
+
+        optionATTR_1_1 = ns_def.get_attribute_title_list(self, self.inFileTxt_L2_3_1.get())
+        global variableATTR_1_1
+        variableATTR_1_1 = tk.StringVar()
+        self.comboATTR_1_1 = ttk.Combobox(self.ATTR_1_2, values=optionATTR_1_1, textvariable=variableATTR_1_1, font=("", 12), state='readonly',width=10)
+        self.comboATTR_1_1.set(str(optionATTR_1_1[0]))
+        self.comboATTR_1_1.option_add("*TCombobox*Listbox.Font", 12)
+        self.comboATTR_1_1.grid(row=0, column=0, sticky='N', padx=1, pady=1, ipady=0, ipadx=3)
+        self.comboATTR_1_1.bind("<<ComboboxSelected>>", self.on_combobox_select)
+        #print(self.comboATTR_1_1.get())
+
+        self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(self.inFileTxt_L2_3_1.get(), self.comboATTR_1_1.get())
 
         ### run 11-4 for dev , Export to the Device file
         self.sub2_0_label_2 = tk.Label(self.sub2_1, text='', font=("", 1))
         self.sub2_0_label_2 .grid(row=7, column=0, columnspan=7, sticky='W', padx=0, pady=0, ipadx=0, ipady=0)
 
         self.sub2_5 = tk.LabelFrame(self.sub2_1, text='Export to the Device file', font=("", 14), height=1, background="#DFC9EF")
-        self.sub2_5.grid(row=8, column=0, columnspan=7, sticky='W', padx=5, pady=0, ipadx=5, ipady=2)
+        self.sub2_5.grid(row=8, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=2)
 
         push_array = []
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
@@ -569,7 +587,7 @@ class ns_front_run():
         Extensions
         '''
         self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
-        self.sub3_3.grid(row=8, column=6, sticky='W', padx=5, pady=0, ipadx=5, ipady=5)
+        self.sub3_3.grid(row=8, column=1, sticky='W', padx=1, pady=0, ipadx=5, ipady=5)
 
         self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
         self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=15, pady=2, ipadx=5)
@@ -577,6 +595,8 @@ class ns_front_run():
         self.sub3_3_button_2 = tk.Button(self.sub3_3, text="Report", font=("", 12), command=lambda: ns_front_run.sub_master_extention_2(self))
         self.sub3_3_button_2.grid(row=0, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
 
+    def on_combobox_select(self, event):
+        self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(self.inFileTxt_L2_3_1.get(), self.comboATTR_1_1.get())
     def sub_master_extention_1(self):
         local_filename = self.filename
         local_fullpath = self.full_filepath
@@ -713,20 +733,24 @@ class ns_front_run():
             ### messagebox
             tkinter.messagebox.showinfo(title='Complete', message='[MASTER] file has been updated.')
 
-        if click_value == 'self.self.sub2_5_button_3':  # select browse
+        if click_value == 'self.self.sub2_5_button_3':  # Create Device file
             ### check file open
             if ns_def.check_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]','')) == True:
                 return ()
 
-            ### create device file
+            ### create device file and L1 Table
             self.click_value = '11-4'
             network_sketcher_dev.ns_front_run.click_action(self, '11-4')
-            # run x-x for dev , Create L2 Table file
+            # run x-x for dev , Create L2 Table
             self.click_value = 'L2-1-2'
             network_sketcher_dev.ns_front_run.click_action(self, 'L2-1-2')
-            # run x-x for dev , Create L3 Table file
+            # run x-x for dev , Create L3 Table
             self.click_value = 'L3-1-2'
             network_sketcher_dev.ns_front_run.click_action(self, 'L3-1-2')
+
+            # run x-x for dev , Create Attribute Table add to ver 2.4.0
+            self.click_value = 'ATTR-1-1'
+            network_sketcher_dev.ns_front_run.click_action(self, 'ATTR-1-1')
 
             if self.click_value_2nd != 'self.sub1_1_button_1' and self.click_value_2nd != 'self.sub3_1_button_3':
                 ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]',''))
@@ -904,10 +928,8 @@ class ns_front_run():
                 self.inFileTxt_L2_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_1_1.insert(tk.END, full_filepath_master)
 
-
                 ### check file open
-                if ns_def.check_file_open(full_filepath_master) == True:
-                    return ()
+                ns_def.check_file_open(full_filepath_master)
 
                 ###create backup master file
                 ns_def.get_backup_filename(full_filepath_master)
@@ -932,6 +954,9 @@ class ns_front_run():
 
                 ### l2_master_sync_with_l3_master
                 ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
+
+                # attribute table sync to master at ver 2.4.0
+                ns_attribute_table_sync_master.ns_attribute_table_sync_master.__init__(self)
 
                 filename = os.path.basename(full_filepath_device)
                 ret = tkinter.messagebox.askyesno('Complete', 'Would you like to re-export the Device file?\n\n' + filename)

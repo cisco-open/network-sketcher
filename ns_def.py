@@ -19,9 +19,10 @@ limitations under the License.
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os, shutil , unicodedata,subprocess,datetime,random
 import openpyxl
-import math ,ipaddress ,yaml
+import math ,ipaddress ,yaml, ast
 from pptx import *
 import platform
+from openpyxl.styles import PatternFill
 
 def get_l3_segments(self):
     '''get values of Master Data'''
@@ -136,7 +137,7 @@ def check_file_type(full_filepath):
         input_excel = openpyxl.load_workbook(full_filepath)
 
         # check ws name
-        ws_list = input_excel.get_sheet_names()
+        ws_list = input_excel.sheetnames
         for sheet_name in ws_list:
             if sheet_name == 'Master_Data':
                 return_type_array = ['EXCEL_MASTER', ws_list]
@@ -700,7 +701,7 @@ def copy_excel_sheet(ws_name, ppt_meta_file, copy_sheet_name):
     input_ppt_mata_excel = openpyxl.load_workbook(ppt_meta_file)
 
     # check tmp_ws_name already exits
-    ws_list = input_ppt_mata_excel.get_sheet_names()
+    ws_list = input_ppt_mata_excel.sheetnames
     if copy_sheet_name in ws_list:
         ws = input_ppt_mata_excel.remove(input_ppt_mata_excel[copy_sheet_name])
     # copy
@@ -715,7 +716,7 @@ def remove_excel_sheet(ppt_meta_file, copy_sheet_name):
     input_ppt_mata_excel = openpyxl.load_workbook(ppt_meta_file)
 
     # check tmp_ws_name already exits
-    ws_list = input_ppt_mata_excel.get_sheet_names()
+    ws_list = input_ppt_mata_excel.sheetnames
     if copy_sheet_name in ws_list:
         ws = input_ppt_mata_excel.remove(input_ppt_mata_excel[copy_sheet_name])
     input_ppt_mata_excel.save(ppt_meta_file)
@@ -728,7 +729,7 @@ def create_excel_sheet(ppt_meta_file, sheet_name):
     input_ppt_mata_excel = openpyxl.load_workbook(ppt_meta_file)
 
     # check tmp_ws_name already exits
-    ws_list = input_ppt_mata_excel.get_sheet_names()
+    ws_list = input_ppt_mata_excel.sheetnames
     if sheet_name in ws_list:
         ws = input_ppt_mata_excel.remove(input_ppt_mata_excel[sheet_name])
         ws = input_ppt_mata_excel.create_sheet(sheet_name)
@@ -746,6 +747,7 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
 
     # GET Folder names
     flag_finish = False
+    flag_not_found = False
     flag_get_start_row = False
     current_row = 1
     empty_count = 0
@@ -772,14 +774,17 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
         ### Add IF section_name == '<<POSITION_TAG>>' for large map at 2.3.0
         if empty_count >= 100 and section_name == '<<POSITION_TAG>>':
             flag_finish = True
+            flag_not_found = True
             end_row = current_row
         elif empty_count >= 3000:
             flag_finish = True
             end_row = current_row
+            flag_not_found = True
         current_row += 1
     #print(start_row,end_row)
 
     return_array = []
+    max_row = 1
     for tmp_row in range(start_row,end_row+1):
         tmp_array = []
         current_row_array = []
@@ -789,6 +794,7 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
         while flag_column_end == False:
             if str(input_ppt_mata_excel.active.cell(tmp_row, tmp_column).value) != 'None' and tmp_empty_count == 0:
                 current_row_array.append(input_ppt_mata_excel.active.cell(tmp_row, tmp_column).value)
+                max_row = tmp_row
 
             if str(input_ppt_mata_excel.active.cell(tmp_row, tmp_column).value) == 'None':
                 tmp_empty_count += 1
@@ -799,13 +805,19 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
                 for m in tmp_array:
                     current_row_array.append(m)
                 current_row_array.append(input_ppt_mata_excel.active.cell(tmp_row, tmp_column).value)
+                max_row = tmp_row
                 tmp_array = []
             if tmp_empty_count >= 100:
                 flag_column_end = True
+
             tmp_column += 1
 
         if len(current_row_array) != 0:
             return_array.append([tmp_row - start_row +1,current_row_array])
+
+    if flag_not_found == True and ws_name == 'Master_Data':
+        return_array = ['_NOT_FOUND_',max_row]
+
     return(return_array)
 
 #convert from excel table to array
@@ -859,7 +871,6 @@ def convert_excel_to_array(ws_name, excel_file, start_row):
             return_array.append([tmp_row - start_row +1,current_row_array])
     input_ppt_mata_excel.close()
     return(return_array)
-
 
 def clear_section_sheet(tmp_ws_name, ppt_meta_file, clear_section_taple):
     wb = openpyxl.load_workbook(ppt_meta_file)
@@ -1137,7 +1148,101 @@ def get_ipv4_value(ipv4_address):
 
     return(return_ipv4_value)
 
+#Example usage
+#change_cell_color(self.input_tree_excel "Sheet1", 1, 1, (235, 241, 222))
+def change_cell_color(workbook, sheet_name, row, column, rgb_color):
 
+    # Access the specified sheet
+    if sheet_name not in workbook.sheetnames:
+        raise ValueError(f"Sheet '{sheet_name}' not found in the workbook.")
+    sheet = workbook[sheet_name]
+
+    # Convert RGB color to a hexadecimal string
+    hex_color = "{:02x}{:02x}{:02x}".format(*rgb_color)
+
+    # Create a PatternFill with the specified RGB color
+    fill = PatternFill(start_color=hex_color, end_color=hex_color, fill_type="solid")
+
+    # Apply the fill to the specified cell
+    sheet.cell(row=row, column=column).fill = fill
+
+def get_attribute_title_list(self, master_file_path):
+    attribute_array = convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
+
+    ### add <<ATTRIBUTE>> to Mater file of pre ver 2.3
+    if attribute_array[0] == '_NOT_FOUND_':
+        excel_file_path = self.inFileTxt_L2_3_1.get()
+
+        ### check file open
+        if check_file_open(excel_file_path) == True:
+            return ()
+
+        ###create backup master file
+        get_backup_filename(excel_file_path)
+
+        tmp_master_data_array = []
+        tmp_master_data_array.append([1, ['<<ATTRIBUTE>>']])
+        tmp_master_data_array.append([2, ['Device Name','Default','Attribute-A','Attribute-B','Attribute-C','Attribute-D','Attribute-E','Attribute-F','Attribute-G','Attribute-H','<END>']])
+        tmp_master_data_array.append([7, ['<<END_MARK>>']])
+        template_master_data_tuple = {}
+        template_master_data_tuple = convert_array_to_tuple(tmp_master_data_array)
+        offset_row = attribute_array[1] + 4
+        offset_column = 0
+        write_to_section = '_template_'
+
+        worksheet_name = 'Master_Data'
+        write_excel_meta(template_master_data_tuple, excel_file_path, worksheet_name, write_to_section, offset_row, offset_column)
+
+        # add data fo attribute
+        master_style_shape_array = convert_master_to_array(worksheet_name, excel_file_path, '<<STYLE_SHAPE>>')
+        master_style_shape_array = master_style_shape_array[3:]
+        for index, item in enumerate(master_style_shape_array):
+            item[0] = index + 1
+        master_style_shape_tuple = convert_array_to_tuple(master_style_shape_array)
+        master_attribute_tuple = {}
+        for tmp_master_style_shape_tuple in master_style_shape_tuple:
+            if tmp_master_style_shape_tuple[1] == 1:
+                master_attribute_tuple[(tmp_master_style_shape_tuple[0], 1)] = master_style_shape_tuple[tmp_master_style_shape_tuple]
+                if master_style_shape_tuple[(tmp_master_style_shape_tuple[0], 5)] == 'GREEN':
+                    # SET 'GREEN'
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'DEVICE\',[235, 241, 222]]'
+                elif master_style_shape_tuple[(tmp_master_style_shape_tuple[0], 5)] == 'BLUE':
+                    # SET 'BLUE'
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'WayPoint\', [240, 244, 250]]'
+                else:
+                    # Others
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'<EMPTY>\', [232, 232, 232]]'
+
+            for i in range(3, 11):
+                master_attribute_tuple[(tmp_master_style_shape_tuple[0], i)] = '[\'<EMPTY>\', [255, 255, 255]]'
+
+        write_to_section = '<<ATTRIBUTE>>'
+        offset_row = 2
+        write_excel_meta(master_attribute_tuple, excel_file_path, worksheet_name, write_to_section, offset_row, offset_column)
+        attribute_array = convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
+
+    attribute_list = attribute_array[1][1]
+    return attribute_list[1:-1]
+
+def get_global_attribute_tuple(master_file_path,selected_title):
+    attribute_array = convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
+    attribute_array = attribute_array[1:]
+    update_attribute_array = []
+    selected_index = 0
+    for kari_attribute_array in attribute_array:
+        update_attribute_array.append(kari_attribute_array[1])
+        for index, tmp_attribute_array in enumerate(kari_attribute_array[1], start=0):
+            if tmp_attribute_array == selected_title and tmp_attribute_array != '<END>':
+                selected_index = index
+
+    selected_attribute_tuple = {}
+    for kari_update_attribute_array in update_attribute_array:
+        if kari_update_attribute_array[0] != 'Device Name':
+            parsed_list = ast.literal_eval(kari_update_attribute_array[selected_index])
+            extracted_array = parsed_list[1]
+            selected_attribute_tuple[kari_update_attribute_array[0]] = extracted_array
+    #print(selected_title,selected_attribute_tuple)
+    return selected_attribute_tuple
 class  get_l2_broadcast_domains():
     def run(self,excel_maseter_file):
         #print('--- get_l2_broadcast_domains ---')

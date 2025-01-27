@@ -131,8 +131,6 @@ class  ns_l3_table_from_master():
         L3_table_array.append([1, ['<RANGE>', '1', '1', '1', '1', '1', '1', '1', '<END>']])
         L3_table_array.append([2, ['<HEADER>', 'Area', 'Device Name', 'L3 Port Name','L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)', '[VPN] Target Device Name (Comma Separated)', '[VPN] Target L3 Port Name (Comma Separated)', '<END>']])
 
-
-
         start_row = 3
         start_column = 2
 
@@ -198,7 +196,7 @@ class  ns_l3_table_from_master():
         ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
         #Add L3 Table sheet
         input_excel_name = excel_maseter_file
-        output_excel_name =  self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+        output_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
 
         NEW_OR_ADD = 'NEW'
         ns_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
@@ -256,7 +254,7 @@ class  ns_l3_table_from_master():
         # create Master_Data_L3 sheet
         ns_def.create_excel_sheet(excel_maseter_file, ws_name_l3 )
 
-        # write L3_master_data_array tupple to Master data L3 sheet
+        # write L3_master_data_array tuple to Master data L3 sheet
         offset_row = 0
         offset_column = 0
         write_to_section = '_template_'
