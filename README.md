@@ -17,6 +17,8 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
+- Ver 2.4.0
+  - [Attributes can be added to device files to reflect colors on diagrams  ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-8.%20Attribute_settings.md)
 - Ver 2.3.4
   - [Summary Diagram is automatically added in L1 All Areas](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.4)
 - Ver 2.3.3
@@ -42,7 +44,6 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 # Limitations
 - IPv4 only. IPv6 is not supported.
-- Importing CML yaml files is only supported in L1 and L3(IP addresses of physical interfaces of ios, asa, iosxr, and csr1k).
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
