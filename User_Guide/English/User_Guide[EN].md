@@ -29,19 +29,21 @@
 
 ## 4. L2/L3 Diagram Configuration
 
-[4-1. L2 segment setting ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-1.L2%20segment%20setting%20.pdf)
+[4-1. L2 segment settings ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-1.L2%20segment%20setting%20.pdf)
 
 [4-2. Port channel settings ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-2.Port%20channel%20settings%20.pdf)
 
 [4-3. VLAN interface (SVI) settings ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-3.VLAN%20interface%20(SVI)%20settings%20.pdf)
 
-[4-4. Sub-interface setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-4.Sub-interface%20setting.pdf)
+[4-4. Sub-interface settings](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-4.Sub-interface%20setting.pdf)
 
 [4-5. Loopback Interface Configuration](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-5.Loopback%20Interface%20Configuration.pdf)
 
 [4-6. IP address configuration](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-6.IP%20address%20configuration.pdf)
 
 [4-7. L3 instance (virtual router) configuration](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-7.L3%20instance%20(virtual%20router)%20configuration.pdf)
+
+4-8. Attribute Settings
 
 ## 5. Name change
 [5-1. Area name/Device name change](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-1.%20area%20namedevice%20name%20change.pdf)
