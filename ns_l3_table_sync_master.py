@@ -40,7 +40,7 @@ class  ns_l3_table_sync_master():
 
         #check L3 Table sheet in Excel file
         input_excel_l3_table = openpyxl.load_workbook(l3_table_file)
-        ws_list = input_excel_l3_table.get_sheet_names()
+        ws_list = input_excel_l3_table.sheetnames
         if l3_table_ws_name not in ws_list:
             tkinter.messagebox.showwarning(title="L3 Table not in [L3_TABLE] file", message="Please check L3 Table sheet in [L3_TABLE] file.")
             return

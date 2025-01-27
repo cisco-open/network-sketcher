@@ -106,7 +106,7 @@ class  ns_ddx_figure_run():
 
         else:
             print('<ALL_Worksheets>  selected')
-            ws_list = self.input_ppt_mata_excel.get_sheet_names()
+            ws_list = self.input_ppt_mata_excel.sheetnames
 
             for ws_name in ws_list:
                 ### select active worksheet
@@ -288,7 +288,7 @@ class  ns_ddx_figure_run():
                         shape_fill.fore_color.rgb = RGBColor(254, 246, 240)
                         shape_line.color.rgb = RGBColor(251, 201, 159)
                         shape_line.width = Pt(2.0)
-                        self.shape.adjustments[0] = 0.3
+                        self.shape.adjustments[0] = 0.15
                         self.shape.text_frame.paragraphs[0].font.size = Pt(16)
 
 
@@ -594,6 +594,10 @@ class  ns_ddx_figure_run():
                                         shape_fill = self.shape.fill
                                         shape_fill.solid()
                                         shape_fill.fore_color.rgb = RGBColor(255, 255, 255)
+
+                                    ### apply attribute color to shape at ver 2.4.0
+                                    tmp_rgp_color = self.attribute_tuple1_1[temp_shape_text]
+                                    shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1], tmp_rgp_color[2])
 
                                     '''
                                     ### change style for L2 materials shape### ver 2.0 for device frame, wp frame
@@ -2823,6 +2827,10 @@ class extended():
         elif shape_type == 'DEVICE_NORMAL':
             #fill paramter
             shape_fill.fore_color.rgb = RGBColor(235, 241, 222)
+            ### apply attribute color to shape at ver 2.4.0
+            tmp_rgp_color = self.attribute_tuple1_1[self.shape.text]
+            shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1], tmp_rgp_color[2])
+
             #line paramter
             shape_line.color.rgb = RGBColor(0, 0, 0)
             shape_line.width = Pt(1.0)
@@ -2831,9 +2839,31 @@ class extended():
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
             self.shape.text_frame.paragraphs[0].font.size = Pt(self.shae_font_large_size)
 
+
+
         elif shape_type == 'DEVICE_L3_INSTANCE':
             #fill paramter
             shape_fill.fore_color.rgb = RGBColor(250, 251, 247)
+            ### apply attribute color to shape at ver 2.4.0
+            tmp_rgp_color = self.attribute_tuple1_1[self.shape.text]
+
+            if tmp_rgp_color[0] + 15 >= 256:
+                r = 255
+            else:
+                r = tmp_rgp_color[0] + 15
+
+            if tmp_rgp_color[1] + 10 >= 256:
+                g = 255
+            else:
+                g = tmp_rgp_color[1] + 10
+
+            if tmp_rgp_color[2] + 25 >= 256:
+                b = 255
+            else:
+                b = tmp_rgp_color[2] + 25
+
+            shape_fill.fore_color.rgb = RGBColor(r, g, b)
+
             #line paramter
             shape_line.color.rgb = RGBColor(0, 0, 0)
             shape_line.width = Pt(0.5)
@@ -2913,6 +2943,11 @@ class extended():
 
         elif shape_type == 'WAY_POINT_NORMAL':
             shape_fill.fore_color.rgb = RGBColor(220, 230, 242)
+
+            ### apply attribute color to shape at ver 2.4.0
+            tmp_rgp_color = self.attribute_tuple1_1[self.shape.text]
+            shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1], tmp_rgp_color[2])
+
             self.shape.adjustments[0] = 0.2
             self.shape.text_frame.paragraphs[0].font.size = Pt(self.shae_font_large_size)
 
