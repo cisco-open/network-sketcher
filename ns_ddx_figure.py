@@ -607,6 +607,27 @@ class  ns_ddx_figure_run():
                                         self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
                                         self.shape.text_frame.vertical_anchor = MSO_ANCHOR.TOP
                                         shape_fill.fore_color.rgb = RGBColor(250, 251, 247)
+
+                                        ### change color at ver 2.4.0
+                                        tmp_rgp_color = self.attribute_tuple1_1[temp_shape_text]
+                                        if tmp_rgp_color[0] + 15 >= 256:
+                                            r = 255
+                                        else:
+                                            r = tmp_rgp_color[0] + 15
+
+                                        if tmp_rgp_color[1] + 10 >= 256:
+                                            g = 255
+                                        else:
+                                            g = tmp_rgp_color[1] + 10
+
+                                        if tmp_rgp_color[2] + 25 >= 256:
+                                            b = 255
+                                        else:
+                                            b = tmp_rgp_color[2] + 25
+
+                                        shape_fill.fore_color.rgb = RGBColor(r, g, b)
+
+
                                         self.shape.text_frame.paragraphs[0].font.size = Pt(self.folder_font_size)
                                         self.shape.text_frame.margin_left = Inches(0.1)
                                         self.shape.text_frame.margin_top = Inches(0.05)
@@ -614,6 +635,11 @@ class  ns_ddx_figure_run():
                                     ### WAY POINT ###
                                     if self.click_value == 'L2-3-2' and self.input_ppt_mata_excel.active.cell(temp_temp_style_shape_row, 5).value == 'BLUE':
                                         shape_fill.fore_color.rgb = RGBColor(237, 242, 249)
+                                        ### change color at ver 2.4.0
+                                        tmp_rgp_color = self.attribute_tuple1_1[temp_shape_text]
+                                        shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1],tmp_rgp_color[2])
+
+
                                         self.shape.adjustments[0] = 0.1
                                         self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
                                         self.shape.text_frame.vertical_anchor = MSO_ANCHOR.TOP

@@ -28,6 +28,7 @@ class  ns_l1_table_from_master():
         '''
         make device table excel file
         '''
+        print('--- Device file create ---')
         #parameter
         ws_name = 'Master_Data'
         tmp_ws_name = '_tmp_'

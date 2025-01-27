@@ -26,6 +26,7 @@ import openpyxl
 
 class  ns_l1_master_create():
     def __init__(self):
+        print('--- Master file create ---')
         '''parameter '''
         flag_put_line_tag = True  #Write Tag Name in <<POSITION_LINE>>
         line_offset_value = 0.2  # in <<POSITION_LINE>> inches

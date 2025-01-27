@@ -1171,6 +1171,7 @@ def get_attribute_title_list(self, master_file_path):
 
     ### add <<ATTRIBUTE>> to Mater file of pre ver 2.3
     if attribute_array[0] == '_NOT_FOUND_':
+        print('--- Attribute data not found, add it ---')
         excel_file_path = self.inFileTxt_L2_3_1.get()
 
         ### check file open

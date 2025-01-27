@@ -918,7 +918,7 @@ class ns_front_run():
                     import ns_l1_table_sync_master
                     flag_return = ns_l1_table_sync_master.ns_l1_table_sync_master.__init__(self)
 
-                    print(self.inFileTxt_12_2.get())
+                    #print(self.inFileTxt_12_2.get())
                     full_filepath = self.inFileTxt_12_2.get()
 
                     self.inFileTxt_11_1.delete(0, tkinter.END)

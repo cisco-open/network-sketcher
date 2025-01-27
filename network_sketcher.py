@@ -347,7 +347,7 @@ class ns_front_run():
                 self.sub1_3_label_4 = tk.Label(self.sub1_3, textvariable=self.text_sub1_3, font=("", 10), background="#FFF9E7")
                 self.sub1_3_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
                 #ns_front_run.sub_excel_master_1(self, file_type_array)
-                print('--- Update to the Master file ---')
+                #print('--- Update to the Master file ---')
 
                 ### pre-defined for dev parameter
                 self.inFileTxt_92_1 = tk.Entry(self.sub1_3)
@@ -858,7 +858,7 @@ class ns_front_run():
                 self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#E5F4F7")
                 self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
                 #ns_front_run.sub_excel_master_1(self, file_type_array)
-                print('--- Update to the Master file ---')
+                #print('--- Update to the Master file ---')
 
                 ### pre-defined for dev parameter
                 self.inFileTxt_11_1 = tk.Entry(self.sub3_1)
@@ -935,27 +935,34 @@ class ns_front_run():
                 ns_def.get_backup_filename(full_filepath_master)
 
                 ### l1_device_port_name_sync_with_l1_master
+                print('--- Layer1 sync ---')
                 self.click_value = '12-3'
                 network_sketcher_dev.ns_front_run.click_action(self, '12-3')
 
                 ### l2_device_table_sync_with_l2_master
+                print('--- Layer2 sync ---')
                 self.click_value = 'L2-2-3'
                 network_sketcher_dev.ns_front_run.click_action(self, 'L2-2-3')
 
                 ### l3_device_table_sync_with_l3_master
+                print('--- Layer3 sync ---')
                 self.click_value = 'L3-2-3'
                 network_sketcher_dev.ns_front_run.click_action(self, 'L3-2-3')
 
                 ### l1_device_port_name_sync_with_l2l3_master
+                print('--- Port sync(1/3) ---')
                 ns_sync_between_layers.l1_device_port_name_sync_with_l2l3_master(self)
 
                 ### l2_device_port_name_sync_with_l3_master
+                print('--- Port sync(2/3) ---')
                 ns_sync_between_layers.l2_device_port_name_sync_with_l3_master(self)
 
                 ### l2_master_sync_with_l3_master
+                print('--- Port sync(3/3) ---')
                 ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
                 # attribute table sync to master at ver 2.4.0
+                print('--- Attribute sync ---')
                 ns_attribute_table_sync_master.ns_attribute_table_sync_master.__init__(self)
 
                 filename = os.path.basename(full_filepath_device)
