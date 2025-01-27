@@ -18,9 +18,9 @@
 
 [2-2. Generation of L2 diagram (with commentary)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-2.%20generation%20of%20L2%20diagram.pdf)
 
-[2-3. Generate of L3 diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-3.%20generate%20of%20L3%20diagram.pdf) *ver2.3.0
+[2-3. Generate of L3 diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-3.%20generate%20of%20L3%20diagram.pdf)
 
-[2-4. Exporting Device Files (with commentary)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-4%20Exporting%20Device%20Files.pdf)
+[2-4. Exporting Device Files (with commentary)](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/2-4%20Exporting%20Device%20Files.md) *ver 2.4.0
 
 ## 3. L1 Diagram Configuration
 
@@ -43,7 +43,7 @@
 
 [4-7. L3 instance (virtual router) configuration](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-7.L3%20instance%20(virtual%20router)%20configuration.pdf)
 
-4-8. Attribute Settings
+[4-8. Attribute Settings](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-8.%20Attribute_settings.md) *ver2.4.0
 
 ## 5. Name change
 [5-1. Area name/Device name change](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-1.%20area%20namedevice%20name%20change.pdf)
@@ -55,20 +55,20 @@
 [5-3-1. Change of Physical Interface Name](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/5-3-1.%20Change%20of%20Physical%20Interface%20Name.pdf)
 
 ## 6. VPN Diagram Generation/Configuration
-[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md)  *ver2.3.2
+[6-1. Generation of VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md) 
 
-[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md)  *ver2.3.2
+[6-2. VPN setting](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md) 
 
 
 ## 7. Extentions
 [7-1. Convert CML configuration file (yaml) to Network Sketcher master file](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md) 
 
-[7-2. Automatic IP address assignment](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-2.%20Automatic%20IP%20address%20assignment.md)  *Ver2.2.0
+[7-2. Automatic IP address assignment](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-2.%20Automatic%20IP%20address%20assignment.md)  
 
-[7-3. Export IP address table](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-3.%20Export%20IP%20address%20table.md) *Ver2.2.1
+[7-3. Export IP address table](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-3.%20Export%20IP%20address%20table.md) 
 
 ## 8. CLI Function
-[8-1. show commands](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/8-1.%20show%20commands.md) *ver2.3.1
+[8-1. show commands](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/8-1.%20show%20commands.md)
 
 ## Appendix
 [A-1. Procedure for pasting PPT figures that exceed the maximum paper size into Excel](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/A-1.%20Procedure%20for%20pasting%20PPT%20figures%20that%20exceed%20the%20maximum%20paper%20size%20into%20Excel.md)
