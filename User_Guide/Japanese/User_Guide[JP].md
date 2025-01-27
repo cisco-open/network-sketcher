@@ -18,7 +18,7 @@
 
 [2-3. L3構成図の生成](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-3.%20L3%E6%A7%8B%E6%88%90%E5%9B%B3%E3%81%AE%E7%94%9F%E6%88%90.pdf)
 
-[2-4. デバイスファイルのエクスポート（解説付き）](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-4.%20%E3%83%87%E3%83%90%E3%82%A4%E3%82%B9%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88.pdf)
+[2-4. デバイスファイルのエクスポート（解説付き）](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/2-4.%20%E3%83%87%E3%83%90%E3%82%A4%E3%82%B9%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88.md) *ver 2.4.0
 
 ## 3. L1構成 設定
 
@@ -40,7 +40,7 @@
 
 [4-7. L3インスタンス（仮想ルータ）設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/4-7.%20L3%E3%82%A4%E3%83%B3%E3%82%B9%E3%82%BF%E3%83%B3%E3%82%B9%EF%BC%88%E4%BB%AE%E6%83%B3%E3%83%AB%E3%83%BC%E3%82%BF%EF%BC%89%E8%A8%AD%E5%AE%9A.pdf)
 
-4-8. アトリビュート設定
+[4-8. アトリビュート設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/4-8.%20%E3%82%A2%E3%83%88%E3%83%AA%E3%83%93%E3%83%A5%E3%83%BC%E3%83%88%E8%A8%AD%E5%AE%9A.md) *ver 2.4.0
 
 ## 5. 名称の変更
 
