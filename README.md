@@ -47,7 +47,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
-- __Python ver 3.12 or lower__　*tkinterdnd2 uses the tkinter.tix module, which was removed in python 3.13
+- __Python ver 3.x__
 - __Software that can edit .pptx and .xlsx files__
   - Microsoft Powerpoint and Excel are best
   - Google Slides and Spreadsheets import/export functionality is available. Excel functions display will show an error, but it works fine.
