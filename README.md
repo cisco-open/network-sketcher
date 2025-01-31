@@ -94,7 +94,7 @@ sudo apt-get install python3-tk
 ```
 
 # User Guide
-| Lang  | Link |
+| Language  | Link |
 | ------------- | ------------- |
 | English  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
 | Japanese  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
