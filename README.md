@@ -106,34 +106,33 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 
 # SAMPLE
 ## Input ppt file (rough sketch)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/87e792ec-f0d6-47f9-96ad-1dfda4de5228)
+![image](https://github.com/user-attachments/assets/35e13f4b-d81e-42df-a036-b018b47a199a)
 
-[Sample-rough-sketch.pptx](https://github.com/cisco-open/network-sketcher/files/12298813/Sample-rough-sketch.pptx)
+[Sample-rough-sketch.pptx](https://github.com/user-attachments/files/18611136/Sample-rough-sketch.pptx)
 
 ## Output
-### Device table(Excel)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/f806bbe0-9a53-4030-aca1-f4df7a616a34)
-
-[DEVICE.Sample.figure5.xlsx](https://github.com/cisco-open/network-sketcher/files/12298814/DEVICE.Sample.figure5.xlsx)
-
 ### L1 figure(PPT)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/4bc62cdd-ca32-4bc0-a70a-ceaa24faf9e8)
+![image](https://github.com/user-attachments/assets/e28aef48-411c-48fe-8700-336b298a658f)
 
-[L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298815/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
+[[L1_DIAGRAM]AllAreasTag_Sample.figure5.pptx](https://github.com/user-attachments/files/18611145/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
 
 ### L2 figure(PPT)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/0fd450b2-02df-42cc-9750-b9e43cf35525)
+![image](https://github.com/user-attachments/assets/8a62d5ed-f244-4e87-85a0-89925aaa339f)
 
-[L2_DIAGRAM.PerArea_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298817/L2_DIAGRAM.PerArea_Sample.figure5.pptx)
+[[L2_DIAGRAM]DC-TOP1_Sample.figure5.pptx](https://github.com/user-attachments/files/18611147/L2_DIAGRAM.DC-TOP1_Sample.figure5.pptx)
 
 ### L3 figure(PPT)
-![image](https://github.com/cisco-open/network-sketcher/assets/13013736/78519067-f42c-4f3f-ac1d-602f769adddd)
+![image](https://github.com/user-attachments/assets/0e0b6e8c-628b-4af5-a20a-a940eab4877a)
 
-[L3_DIAGRAM.PerArea_Sample.figure5.pptx](https://github.com/cisco-open/network-sketcher/files/12298818/L3_DIAGRAM.PerArea_Sample.figure5.pptx)
+[[L3_DIAGRAM]AllAreas_old_Sample.figure5.pptx](https://github.com/user-attachments/files/18611149/L3_DIAGRAM.AllAreas_old_Sample.figure5.pptx)
+
+### Device table(Excel)
+![image](https://github.com/user-attachments/assets/33f95b5c-03d3-419e-bbee-5786efe9deb7)
+
+[[DEVICE]Sample.figure5.xlsx](https://github.com/user-attachments/files/18611140/DEVICE.Sample.figure5.xlsx)
 
 ### Master file(Excel)
-[MASTER.Sample.figure5.xlsx](https://github.com/cisco-open/network-sketcher/files/12298821/MASTER.Sample.figure5.xlsx)
-
+[[MASTER]Sample.figure5.xlsx](https://github.com/user-attachments/files/18611151/MASTER.Sample.figure5.xlsx)
 
 # Author
  
