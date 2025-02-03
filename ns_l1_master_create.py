@@ -133,6 +133,7 @@ class  ns_l1_master_create():
         '''
         MAIN RUN
         '''
+        second_folder_array = []
         # get number of slides
         for idx, slide in enumerate(self.input_sketch_ppt.slides):
             num_slide = idx + 1
@@ -206,14 +207,15 @@ class  ns_l1_master_create():
                     tmp_count_include_shape += 1
                     #print(current_folder_array,tmp_check_shape)
 
-            for tmp_check_shape in tmp_shape_array: # multiple area check. add at ver 2.2.2(b)
-                if second_folder_array[1] < tmp_check_shape[1] and second_folder_array[2] < tmp_check_shape[2] and \
-                        (second_folder_array[1] + second_folder_array[3]) > (
-                        tmp_check_shape[1] + tmp_check_shape[3]) and \
-                        (second_folder_array[2] + second_folder_array[4]) > (
-                        tmp_check_shape[2] + tmp_check_shape[4]):
-                    tmp_count_include_shape_second += 1
-                    # print(second_folder_array,tmp_check_shape)
+            if second_folder_array != []:
+                for tmp_check_shape in tmp_shape_array: # multiple area check. add at ver 2.2.2(b)
+                    if second_folder_array[1] < tmp_check_shape[1] and second_folder_array[2] < tmp_check_shape[2] and \
+                            (second_folder_array[1] + second_folder_array[3]) > (
+                            tmp_check_shape[1] + tmp_check_shape[3]) and \
+                            (second_folder_array[2] + second_folder_array[4]) > (
+                            tmp_check_shape[2] + tmp_check_shape[4]):
+                        tmp_count_include_shape_second += 1
+                        # print(second_folder_array,tmp_check_shape)
 
             #print('---tmp_count_include_shape---  \n', tmp_count_include_shape)
 

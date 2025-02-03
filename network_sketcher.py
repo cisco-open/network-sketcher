@@ -41,7 +41,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.4.0")
+        self.root.title("Network Sketcher  ver 2.4.0(a)")
         self.root.geometry("490x200+100+100")
         
         # Notebook

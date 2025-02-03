@@ -799,7 +799,7 @@ class ns_front_run():
                 ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
 
                 # remove exist ppt file
-                if os.path.isfile(self.excel_maseter_file_backup) == True:
+                if os.path.isfile(self.excel_maseter_file_backup) == True and ns_def.check_file_locked(self.excel_maseter_file_backup) == False:
                     os.remove(self.excel_maseter_file_backup)
 
             self.flag_second_page = False  # Add at Ver 2.3.4
