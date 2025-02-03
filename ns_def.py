@@ -1244,6 +1244,17 @@ def get_global_attribute_tuple(master_file_path,selected_title):
             selected_attribute_tuple[kari_update_attribute_array[0]] = extracted_array
     #print(selected_title,selected_attribute_tuple)
     return selected_attribute_tuple
+
+def check_file_locked(file_path):
+    if not os.path.exists(file_path):
+        return False
+
+    try:
+        os.rename(file_path, file_path)
+        return False
+    except PermissionError:
+        return True
+
 class  get_l2_broadcast_domains():
     def run(self,excel_maseter_file):
         #print('--- get_l2_broadcast_domains ---')

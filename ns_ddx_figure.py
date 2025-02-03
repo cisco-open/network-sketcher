@@ -597,7 +597,8 @@ class  ns_ddx_figure_run():
 
                                     ### apply attribute color to shape at ver 2.4.0
                                     tmp_rgp_color = self.attribute_tuple1_1[temp_shape_text]
-                                    shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1], tmp_rgp_color[2])
+                                    if shape_fill != None:
+                                        shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1], tmp_rgp_color[2])
 
                                     '''
                                     ### change style for L2 materials shape### ver 2.0 for device frame, wp frame

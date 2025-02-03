@@ -62,7 +62,7 @@ def l2_device_table_sync_with_l3_master(self):
     network_sketcher_dev.ns_front_run.click_action(self, 'L3-1-2')
 
     # remove exist L3/ file
-    if os.path.isfile(self.full_filepath.replace('[MASTER]', '[L3_TABLE]')) == True:
+    if os.path.isfile(self.full_filepath.replace('[MASTER]', '[L3_TABLE]')) == True and ns_def.check_file_locked(self.full_filepath.replace('[MASTER]', '[L3_TABLE]')) == False:
         os.remove(self.full_filepath.replace('[MASTER]', '[L3_TABLE]'))
 
     ### get re-create L3 Master
