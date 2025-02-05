@@ -108,7 +108,7 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 ## Input ppt file (rough sketch)
 ![image](https://github.com/user-attachments/assets/35e13f4b-d81e-42df-a036-b018b47a199a)
 
-[Sample-rough-sketch.pptx](https://github.com/user-attachments/files/18611136/Sample-rough-sketch.pptx)
+[Sample-rough5.pptx](https://github.com/user-attachments/files/18668273/Sample-rough5.pptx)
 
 ## Output
 ### L1 figure(PPT)
