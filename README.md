@@ -2,7 +2,7 @@
 
 
 # Network Sketcher
-**Network Sketcher makes network design and configuration management faster, more accurate, and easier. Simply create your first rough sketch and it will automatically generate L1L2L3 network diagrams and management tables. Network components are integrated into one master file, so when you update the management table (device file), all related network diagrams and management tables are automatically updated as well.**
+**Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel.**
 
 * Automatic generation of each configuration document by metadatization of network configuration information
 * Automated synchronization between documents
@@ -49,7 +49,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
 - __Python ver 3.x__
 - __Software that can edit .pptx and .xlsx files__
-  - Microsoft Powerpoint and Excel are best
+  - Microsoft Powerpoint and Excel are the best
   - Google Slides and Spreadsheets import/export functionality is available. Excel functions display will show an error, but it works fine.
   - Libre Office and Softmaker office cannot be used.
 
