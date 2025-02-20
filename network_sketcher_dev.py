@@ -1253,9 +1253,17 @@ class ns_front_run():
             self.click_value_l3 = 'L3-4-1'
             self.global_wp_array = []
             self.update_start_area_array = []
+            self.y_grid_segment_array = []
 
             self.flag_second_page = False
+            self.flag_re_create = False
             ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+
+
+            ### add re-create for y-grid offset at ver 2.4.1
+            self.flag_re_create = True
+            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+
             self.flag_second_page = True
             ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
