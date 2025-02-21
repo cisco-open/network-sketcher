@@ -661,6 +661,11 @@ class  ns_l3_diagram_create():
                                 l3_shape_width = tmp_tmp_l3_add_shape_array[3]
                                 l3_shape_hight = tmp_tmp_l3_add_shape_array[4]
                                 l3_shape_text = tmp_tmp_l3_add_shape_array[5]
+
+                                # add at ver 2.4.1
+                                if self.flag_re_create == True and self.flag_second_page == False and action_type == 'CREATE':
+                                    l3_shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
+
                                 self.shape = self.slide.shapes
                                 ns_ddx_figure.extended.add_shape(self, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text)
 
@@ -702,13 +707,17 @@ class  ns_l3_diagram_create():
 
                     if '_AIR_' not in shape_text:
                         if action_type == 'CREATE':
+                            # add at ver 2.4.1
+                            if self.flag_re_create == True and self.flag_second_page == False:
+                                shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
+
                             self.shape = self.slide.shapes
                             ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
                             self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
                             self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
 
                         if self.click_value_l3 == 'L3-4-1':
-                            self.add_shape_array.append([shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text])  # add ver 2.3.3
+                            self.add_shape_array.append([shape_type, shape_left, shape_top , shape_width, shape_hight, shape_text])  # add ver 2.3.3
 
                         '''GET Folder and Outline position'''
                         # get folder left
@@ -910,6 +919,15 @@ class  ns_l3_diagram_create():
                     tmp_line_offset += between_shape_row
 
             l3segment_line_array.append([[start_l3_seg_inche_x,end_l3_seg_inche_x],tmp_l3segment_y_array,return_get_l3_segment_num[1]])
+
+            ### add at ver 2.4.1
+            if self.flag_re_create == True and self.flag_second_page == False and tmp_l3segment_y_array != [] and action_type == 'CREATE':
+                self.per_index2_after_array.append(max(tmp_l3segment_y_array))
+                #print(self.per_index2_before_array)
+                #print(self.per_index2_after_array)
+
+            elif self.flag_re_create == False and self.flag_second_page == False and tmp_l3segment_y_array != [] and action_type == 'CREATE':
+                self.per_index2_before_array.append(max(tmp_l3segment_y_array))
 
             '''change offset  check_move_to_right '''
             top_offset += shape_hight + between_shape_row
@@ -1291,10 +1309,11 @@ class  ns_l3_diagram_create():
                 if '_wp_' not in tmp_area_outline_array[0]:
                     self.shape = self.slide.shapes
                     folder_shape_left = tmp_area_outline_array[1] - area_margin_x
-                    folder_shape_top = tmp_area_outline_array[2]- area_margin_y
+                    folder_shape_top = tmp_area_outline_array[2] - area_margin_y
                     folder_shape_width = tmp_area_outline_array[3] + (area_margin_x * 2)
                     folder_shape_hight = tmp_area_outline_array[4] + (area_margin_y * 2)
                     folder_shape_text = tmp_area_outline_array[0]
+
                     ns_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top,folder_shape_width, folder_shape_hight, folder_shape_text)
                     self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
                     self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
@@ -1636,7 +1655,7 @@ def get_optimize_y_grid_array(self):
     #print('[index_5,[shape_left, shape_top, shape_width, shape_hight]]')
     #print(self.y_grid_segment_array)
     y_grid_segment_per_inches = 0.25 #inches
-    x_grid_segment_buffer = 0.05 #inches
+    x_grid_segment_buffer = 0.03 #inches
 
     # Iterate through the list and group shapes by index_5
     shapes_by_index = {}
@@ -1675,8 +1694,8 @@ def get_optimize_y_grid_array(self):
                         #Check to overlapping [shape_left, shape_top, shape_width, shape_hight]
                         #print('overlap check---> ', (tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2]) ,x_grid_segment_buffer,candidate_y_grid_segment_shape[0],tmp_kari_done_y_grid_segment_array[1][1], candidate_shape_top)
 
-                        if round((tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2] - x_grid_segment_buffer), 3) >= round(candidate_y_grid_segment_shape[0], 3) and \
-                            round((tmp_kari_done_y_grid_segment_array[1][0] + x_grid_segment_buffer), 3) <= round(candidate_y_grid_segment_shape[0] + candidate_y_grid_segment_shape[2], 3):
+                        if round((tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2] + x_grid_segment_buffer), 3) >= round(candidate_y_grid_segment_shape[0], 3) and \
+                            round((tmp_kari_done_y_grid_segment_array[1][0] - x_grid_segment_buffer), 3) <= round(candidate_y_grid_segment_shape[0] + candidate_y_grid_segment_shape[2], 3):
                             if round(tmp_kari_done_y_grid_segment_array[1][1], 3) == round(candidate_shape_top, 3):
                                 #partial overlap
                                 if last_shape_top < (candidate_shape_top + y_grid_segment_per_inches):
@@ -1699,7 +1718,7 @@ def get_optimize_y_grid_array(self):
                 #print('<append written array> --> ',[tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],last_shape_top,candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
                 kari_done_y_grid_segment_array.append([tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],last_shape_top,candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
 
-        print('<<one line array>> --> ',kari_done_y_grid_segment_array)
+        #print('<<one line array>> --> ',kari_done_y_grid_segment_array)
         done_y_grid_segment_array = done_y_grid_segment_array + kari_done_y_grid_segment_array
     #print('done_y_grid_segment_array --> ',done_y_grid_segment_array)
     return done_y_grid_segment_array
