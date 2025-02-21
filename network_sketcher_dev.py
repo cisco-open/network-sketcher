@@ -1257,8 +1257,10 @@ class ns_front_run():
 
             self.flag_second_page = False
             self.flag_re_create = False
-            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+            self.per_index2_before_array = [0.0]
+            self.per_index2_after_array  = [0.0]
 
+            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
             ### add re-create for y-grid offset at ver 2.4.1
             self.flag_re_create = True

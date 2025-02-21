@@ -760,11 +760,12 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
             flag_get_start_row = True
             current_row += 1
 
-        if '<<' in  str(input_ppt_mata_excel.active.cell(current_row , 1).value) and '>>' in  str(input_ppt_mata_excel.active.cell(current_row, 1).value)\
+        if '<<' in str(input_ppt_mata_excel.active.cell(current_row , 1).value) and '>>' in str(input_ppt_mata_excel.active.cell(current_row, 1).value)\
                 and flag_get_start_row == True:
             #print(input_ppt_mata_excel.active.cell(current_row, 1).value)
             end_row = current_row - 1
             flag_finish = True
+            break
 
         if str(input_ppt_mata_excel.active.cell(current_row, 1).value) == 'None':
             empty_count += 1
@@ -772,14 +773,16 @@ def convert_master_to_array(ws_name, ppt_meta_file,section_name):
             empty_count = 0
 
         ### Add IF section_name == '<<POSITION_TAG>>' for large map at 2.3.0
-        if empty_count >= 100 and section_name == '<<POSITION_TAG>>':
+        if empty_count >= 10000 and section_name == '<<POSITION_TAG>>':
             flag_finish = True
             flag_not_found = True
             end_row = current_row
+            break
         elif empty_count >= 3000:
             flag_finish = True
             end_row = current_row
             flag_not_found = True
+            break
         current_row += 1
     #print(start_row,end_row)
 
