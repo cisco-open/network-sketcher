@@ -132,7 +132,7 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 [[DEVICE]Sample.figure5.xlsx](https://github.com/user-attachments/files/18611140/DEVICE.Sample.figure5.xlsx)
 
 ### Master file(Excel)
-[[MASTER]Sample.figure5.xlsx](https://github.com/user-attachments/files/18611151/MASTER.Sample.figure5.xlsx)
+[[MASTER]Sample.figure5.xlsx](https://github.com/user-attachments/files/18918397/MASTER_Sample.figure5.zip)
 
 # Author
  
