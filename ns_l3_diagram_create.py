@@ -240,13 +240,14 @@ class  ns_l3_diagram_create():
                     update_l2_broadcast_group_array.append(tmp_target_l2_broadcast_group_array)
                     break
 
-        #print('--- update_l2_broadcast_group_array ---')
-        #print(update_l2_broadcast_group_array)
-
         ### get <<POSITION_SHAPE>> in MASTER EXCEL
         target_position_shape_array = []
         #print('--- self.position_shape_array ---')
         #print(self.position_shape_array )
+
+        ### planning at ver 2.4.1
+        #print('--- self.update_l3_table_array  ---')
+        #print(self.update_l3_table_array )
 
         flag_match_folder = False
         for tmp_position_shape_array in self.position_shape_array:
@@ -663,7 +664,7 @@ class  ns_l3_diagram_create():
                                 l3_shape_text = tmp_tmp_l3_add_shape_array[5]
 
                                 # add at ver 2.4.1
-                                if self.flag_re_create == True and self.flag_second_page == False and action_type == 'CREATE':
+                                if self.flag_re_create == True and self.flag_second_page == False and action_type == 'CREATE' and len(self.per_index2_before_array) > self.index_2:
                                     l3_shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
 
                                 self.shape = self.slide.shapes
@@ -695,6 +696,9 @@ class  ns_l3_diagram_create():
                                 l3_shape_type = 'L3_INSTANCE'
 
                                 if action_type == 'CREATE':
+                                    # add at ver 2.4.1
+                                    if self.flag_re_create == True and self.flag_second_page == False and len(self.per_index2_before_array) > self.index_2:
+                                        l3_shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text)
 
@@ -708,7 +712,8 @@ class  ns_l3_diagram_create():
                     if '_AIR_' not in shape_text:
                         if action_type == 'CREATE':
                             # add at ver 2.4.1
-                            if self.flag_re_create == True and self.flag_second_page == False:
+                            #print(self.index_2,self.per_index2_before_array,self.per_index2_after_array)
+                            if self.flag_re_create == True and self.flag_second_page == False and len(self.per_index2_before_array) > self.index_2:
                                 shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
 
                             self.shape = self.slide.shapes
@@ -928,6 +933,12 @@ class  ns_l3_diagram_create():
 
             elif self.flag_re_create == False and self.flag_second_page == False and tmp_l3segment_y_array != [] and action_type == 'CREATE':
                 self.per_index2_before_array.append(max(tmp_l3segment_y_array))
+
+            elif self.flag_re_create == True and self.flag_second_page == False and tmp_l3segment_y_array == [] and action_type == 'CREATE' and self.per_index2_after_array != []:
+                self.per_index2_after_array.append(self.per_index2_after_array[-1] + 0.5) #0.5 is the offset value in the case of WP; this offset value is uniformly set to 0.5 because it is difficult to determine whether it is WP or not.
+
+            elif self.flag_re_create == False and self.flag_second_page == False and tmp_l3segment_y_array == [] and action_type == 'CREATE' and self.per_index2_before_array != []:
+                self.per_index2_before_array.append(self.per_index2_before_array[-1])
 
             '''change offset  check_move_to_right '''
             top_offset += shape_hight + between_shape_row
