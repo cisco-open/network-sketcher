@@ -995,7 +995,7 @@ class  ns_l1_master_create():
         for tmp_unique_values in unique_values:
             folder_name_of_wp.append(tmp_unique_values)
 
-        ''' bug fix 3'''
+        ''' bug fix case9'''
         #print('--- kari_master_folder_array ---')
         #print(kari_master_folder_array)
 
@@ -1041,7 +1041,7 @@ class  ns_l1_master_create():
         # Print the non-matching elements
         #print("Non-matching elements:", non_matching_elements)
 
-        if non_matching_elements != []:
+        if non_matching_elements != [] and len(non_matching_elements) == 2:
             # Determine the correct and incorrect sequences from non_matching_elements
             correct_sequence = [non_matching_elements[0][0], non_matching_elements[0][4], non_matching_elements[1][0]]
             incorrect_sequence = [non_matching_elements[0][4], non_matching_elements[0][0], non_matching_elements[1][0]]
@@ -1057,6 +1057,30 @@ class  ns_l1_master_create():
                     if master_values[i:i + length] == incorrect_sequence:
                         # Replace with the correct sequence
                         master_values[i:i + length] = correct_sequence
+
+            # Display the modified kari_master_folder_array
+            #print("Modified kari_master_folder_array:", kari_master_folder_array)
+            master_folder_tuple = ns_def.convert_array_to_tuple(kari_master_folder_array)
+
+        elif non_matching_elements != [] and len(non_matching_elements) == 1:
+            #bug fix case 12 at ver 2.4.1
+            #print(kari_master_folder_array,non_matching_elements[0])
+
+            #no exit right wp pattern
+            if non_matching_elements[0][4] != '':
+                # Target string to match in kari_master_folder_array
+                target_string = non_matching_elements[0][4]
+                # Element to insert before the target string when a match is found
+                element_to_insert = non_matching_elements[0][0]
+
+                # Iterate through each sublist in kari_master_folder_array
+                for sublist in kari_master_folder_array:
+                    # Check if the second element in the sublist (a list) contains the target string
+                    if target_string in sublist[1]:
+                        # Find the index of the target string
+                        index = sublist[1].index(target_string)
+                        # Insert the element_to_insert before the target_string
+                        sublist[1].insert(index, element_to_insert)
 
             # Display the modified kari_master_folder_array
             #print("Modified kari_master_folder_array:", kari_master_folder_array)

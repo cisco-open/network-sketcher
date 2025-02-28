@@ -240,15 +240,34 @@ class  ns_l3_diagram_create():
                     update_l2_broadcast_group_array.append(tmp_target_l2_broadcast_group_array)
                     break
 
-        ### get <<POSITION_SHAPE>> in MASTER EXCEL
+        ### add at ver 2.4.1  remove no l3if device from self.update_l3_table_array
+        l3_device_array = [sub_array[1] for sub_array in self.update_l3_table_array]
+        # Removing duplicates while preserving order
+        l3_device_array = list(dict.fromkeys(l3_device_array))
+        #print(l3_device_array)
+        # Create the filtered array
+        l3only_position_shape_array = []
+
+        for index, sub_array in self.position_shape_array:
+            if index == 1:
+                # Append the original array for index 1
+                l3only_position_shape_array.append([index, sub_array])
+            else:
+                first_item = sub_array[0]
+                last_item = sub_array[-1]
+                # Filter devices present in l3_device_array, keeping '_AIR_' and the first/last items
+                filtered_devices = [
+                    item for item in sub_array
+                    if item in l3_device_array or item == '_AIR_' or item == first_item or item == last_item
+                ]
+                l3only_position_shape_array.append([index, filtered_devices])
+
+        # set the result
+        #print(l3only_position_shape_array)
+        self.position_shape_array = l3only_position_shape_array
+
+
         target_position_shape_array = []
-        #print('--- self.position_shape_array ---')
-        #print(self.position_shape_array )
-
-        ### planning at ver 2.4.1
-        #print('--- self.update_l3_table_array  ---')
-        #print(self.update_l3_table_array )
-
         flag_match_folder = False
         for tmp_position_shape_array in self.position_shape_array:
             if tmp_position_shape_array[1][0] == target_folder_name:
