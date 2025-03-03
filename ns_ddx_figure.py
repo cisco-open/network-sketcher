@@ -2728,7 +2728,7 @@ class extended():
         print('ns_ddx_figure_extended()')
 
     def add_shape(self,shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text):
-        if self.click_value_l3 == 'L3-4-1': # add ver 2.3.3(b)
+        if self.click_value_l3 == 'L3-4-1' and self.flag_re_create == True and self.flag_second_page == False: # add ver 2.3.3(b) , update at ver 2.4.1
             self.add_shape_write_array.append([shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text])
 
         '''Default Parameter'''
