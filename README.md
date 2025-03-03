@@ -17,6 +17,8 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
+- Ver 2.4.1
+  - [Optimized placement of segments in the Layer 3 overall configuration chart](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.4.1)
 - Ver 2.4.0
   - [Attributes can be added to device files to reflect colors on diagrams  ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-8.%20Attribute_settings.md)
 - Ver 2.3.4
