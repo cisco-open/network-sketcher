@@ -1186,6 +1186,13 @@ class ns_front_run():
             iDir = os.path.dirname(full_filepath)
             basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
 
+            self.y_grid_segment_array = []
+            self.flag_second_page = False
+            self.flag_re_create = False
+            self.per_index2_before_array = [0.0]
+            self.per_index2_after_array  = [0.0]
+            self.last_case_offset = 0.0
+
             if click_value == 'L3-3-2':
                 self.click_value = 'L3-3-2'
                 self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
@@ -1253,9 +1260,19 @@ class ns_front_run():
             self.click_value_l3 = 'L3-4-1'
             self.global_wp_array = []
             self.update_start_area_array = []
+            self.y_grid_segment_array = []
 
             self.flag_second_page = False
+            self.flag_re_create = False
+            self.per_index2_before_array = [0.0]
+            self.per_index2_after_array  = [0.0]
+
             ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+
+            ### add re-create for y-grid offset at ver 2.4.1
+            self.flag_re_create = True
+            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+
             self.flag_second_page = True
             ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 

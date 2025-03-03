@@ -210,6 +210,12 @@ class  ns_l3_diagram_create():
 
     def l3_area_create(self, target_folder_name, action_type,offset_x ,offset_y):
         print('--- l3_area_create -',action_type,' - ',target_folder_name,'---')
+
+        ### add for y-grid optimize at ve 2.4.1
+        if self.flag_re_create == True and self.flag_second_page == False and action_type == 'GET_SIZE':
+            self.optimize_y_grid_array = get_optimize_y_grid_array(self)
+            #print(self.optimize_y_grid_array)
+
         self.used_l3segment_array = []
         ### get l3segment in the target folder
         target_all_device_array = []
@@ -234,14 +240,34 @@ class  ns_l3_diagram_create():
                     update_l2_broadcast_group_array.append(tmp_target_l2_broadcast_group_array)
                     break
 
-        #print('--- update_l2_broadcast_group_array ---')
-        #print(update_l2_broadcast_group_array)
+        ### add at ver 2.4.1  remove no l3if device from self.update_l3_table_array
+        l3_device_array = [sub_array[1] for sub_array in self.update_l3_table_array]
+        # Removing duplicates while preserving order
+        l3_device_array = list(dict.fromkeys(l3_device_array))
+        #print(l3_device_array)
+        # Create the filtered array
+        l3only_position_shape_array = []
 
-        ### get <<POSITION_SHAPE>> in MASTER EXCEL
+        for index, sub_array in self.position_shape_array:
+            if index == 1:
+                # Append the original array for index 1
+                l3only_position_shape_array.append([index, sub_array])
+            else:
+                first_item = sub_array[0]
+                last_item = sub_array[-1]
+                # Filter devices present in l3_device_array, keeping '_AIR_' and the first/last items
+                filtered_devices = [
+                    item for item in sub_array
+                    if item in l3_device_array or item == '_AIR_' or item == first_item or item == last_item
+                ]
+                l3only_position_shape_array.append([index, filtered_devices])
+
+        # set the result
+        #print(l3only_position_shape_array)
+        self.position_shape_array = l3only_position_shape_array
+
+
         target_position_shape_array = []
-        #print('--- self.position_shape_array ---')
-        #print(self.position_shape_array )
-
         flag_match_folder = False
         for tmp_position_shape_array in self.position_shape_array:
             if tmp_position_shape_array[1][0] == target_folder_name:
@@ -553,8 +579,10 @@ class  ns_l3_diagram_create():
         #print(self.target_offset_shape_array)
         ################################################
 
+        current_segment_count = 0  # add at ver 2.4.1
         for self.index_2,tmp_target_position_shape_array in enumerate(target_position_shape_array):
             start_l3_seg_inche_x = self.left_margin + left_offset
+            sum_delta_y_grid = 0.0  # at ver 2.4.1
 
             ''' write device and wp(up/down)'''
             self.flag_area_equel_left = True
@@ -653,6 +681,11 @@ class  ns_l3_diagram_create():
                                 l3_shape_width = tmp_tmp_l3_add_shape_array[3]
                                 l3_shape_hight = tmp_tmp_l3_add_shape_array[4]
                                 l3_shape_text = tmp_tmp_l3_add_shape_array[5]
+
+                                # add at ver 2.4.1
+                                if self.flag_re_create == True and self.flag_second_page == False and action_type == 'CREATE' and len(self.per_index2_before_array) > self.index_2:
+                                    l3_shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
+
                                 self.shape = self.slide.shapes
                                 ns_ddx_figure.extended.add_shape(self, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text)
 
@@ -682,6 +715,9 @@ class  ns_l3_diagram_create():
                                 l3_shape_type = 'L3_INSTANCE'
 
                                 if action_type == 'CREATE':
+                                    # add at ver 2.4.1
+                                    if self.flag_re_create == True and self.flag_second_page == False and len(self.per_index2_before_array) > self.index_2:
+                                        l3_shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text)
 
@@ -694,13 +730,18 @@ class  ns_l3_diagram_create():
 
                     if '_AIR_' not in shape_text:
                         if action_type == 'CREATE':
+                            # add at ver 2.4.1
+                            #print(self.index_2,self.per_index2_before_array,self.per_index2_after_array)
+                            if self.flag_re_create == True and self.flag_second_page == False and len(self.per_index2_before_array) > self.index_2:
+                                shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
+
                             self.shape = self.slide.shapes
                             ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
                             self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
                             self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
 
                         if self.click_value_l3 == 'L3-4-1':
-                            self.add_shape_array.append([shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text])  # add ver 2.3.3
+                            self.add_shape_array.append([shape_type, shape_left, shape_top , shape_width, shape_hight, shape_text])  # add ver 2.3.3
 
                         '''GET Folder and Outline position'''
                         # get folder left
@@ -875,10 +916,10 @@ class  ns_l3_diagram_create():
             count_l3segment = return_get_l3_segment_num[0]
             self.connected_l3if_key_array.append(return_get_l3_segment_num[1])
             #print('##  return_get_l3_segment_num ',return_get_l3_segment_num ,top_device_name_array )
-
             tmp_l3segment_y_array = []
             if count_l3segment != 0:
                 tmp_line_offset = l3_segment_up_down_offset
+                #current_segment_count = 0
                 for tmp_count_l3segment in range(count_l3segment):
                     #add distance upside or downside of device shape
                     if tmp_count_l3segment == 0:
@@ -888,9 +929,35 @@ class  ns_l3_diagram_create():
                     if tmp_count_l3segment +1 == count_l3segment:
                         top_offset += l3_segment_up_down_offset
 
+                    ### add at ver 2.4.1 ###
+                    if self.flag_re_create == True and self.flag_second_page == False:
+                        #print('self.y_grid_segment_array,self.optimize_y_grid_array  ---> ', self.y_grid_segment_array[current_segment_count][1][1],self.optimize_y_grid_array[current_segment_count][1][1])
+                        delta_y_grid = self.y_grid_segment_array[current_segment_count][1][1] - self.optimize_y_grid_array[current_segment_count][1][1] - sum_delta_y_grid
+                        sum_delta_y_grid += delta_y_grid
+                        if delta_y_grid != 0:
+                            #print('delta_y_grid -->', delta_y_grid)
+                            tmp_line_offset -= delta_y_grid
+                        current_segment_count += 1
+
                     tmp_l3segment_y_array.append(shape_top + tmp_line_offset  + shape_hight + between_shape_row)
                     tmp_line_offset += between_shape_row
+
             l3segment_line_array.append([[start_l3_seg_inche_x,end_l3_seg_inche_x],tmp_l3segment_y_array,return_get_l3_segment_num[1]])
+
+            ### add at ver 2.4.1
+            if self.flag_re_create == True and self.flag_second_page == False and tmp_l3segment_y_array != [] and action_type == 'CREATE':
+                self.per_index2_after_array.append(max(tmp_l3segment_y_array))
+                #print(self.per_index2_before_array)
+                #print(self.per_index2_after_array)
+
+            elif self.flag_re_create == False and self.flag_second_page == False and tmp_l3segment_y_array != [] and action_type == 'CREATE':
+                self.per_index2_before_array.append(max(tmp_l3segment_y_array))
+
+            elif self.flag_re_create == True and self.flag_second_page == False and tmp_l3segment_y_array == [] and action_type == 'CREATE' and self.per_index2_after_array != []:
+                self.per_index2_after_array.append(self.per_index2_after_array[-1] + 0.5) #0.5 is the offset value in the case of WP; this offset value is uniformly set to 0.5 because it is difficult to determine whether it is WP or not.
+
+            elif self.flag_re_create == False and self.flag_second_page == False and tmp_l3segment_y_array == [] and action_type == 'CREATE' and self.per_index2_before_array != []:
+                self.per_index2_before_array.append(self.per_index2_before_array[-1])
 
             '''change offset  check_move_to_right '''
             top_offset += shape_hight + between_shape_row
@@ -1272,10 +1339,11 @@ class  ns_l3_diagram_create():
                 if '_wp_' not in tmp_area_outline_array[0]:
                     self.shape = self.slide.shapes
                     folder_shape_left = tmp_area_outline_array[1] - area_margin_x
-                    folder_shape_top = tmp_area_outline_array[2]- area_margin_y
+                    folder_shape_top = tmp_area_outline_array[2] - area_margin_y
                     folder_shape_width = tmp_area_outline_array[3] + (area_margin_x * 2)
                     folder_shape_hight = tmp_area_outline_array[4] + (area_margin_y * 2)
                     folder_shape_text = tmp_area_outline_array[0]
+
                     ns_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top,folder_shape_width, folder_shape_hight, folder_shape_text)
                     self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
                     self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
@@ -1517,6 +1585,8 @@ class  ns_l3_diagram_create():
                         self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
                         self.slide.shapes._spTree.insert(3, self.shape._element)  # move shape to back layer
 
+                        self.y_grid_segment_array.append([index_5,[shape_left, shape_top, shape_width, shape_hight]])
+
 
         #print('#### self.all_written_line_position_array  | line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y \n'  ,self.all_written_line_position_array , len(self.all_written_line_position_array))
 
@@ -1609,6 +1679,80 @@ class  ns_l3_diagram_create():
 '''
 LOCAL DEF
 '''
+#add at ver 2.4.1
+def get_optimize_y_grid_array(self):
+    print('--- optimize_y_grid_array ---')
+    #print('[index_5,[shape_left, shape_top, shape_width, shape_hight]]')
+    #print(self.y_grid_segment_array)
+    y_grid_segment_per_inches = 0.25 #inches
+    x_grid_segment_buffer = 0.03 #inches
+
+    # Iterate through the list and group shapes by index_5
+    shapes_by_index = {}
+    for index_5, shape_data in self.y_grid_segment_array:
+        if index_5 not in shapes_by_index:
+            shapes_by_index[index_5] = []
+        shapes_by_index[index_5].append(shape_data)
+
+    done_y_grid_segment_array = []
+    for tmp_shapes_by_index in shapes_by_index:
+        kari_done_y_grid_segment_array = []
+        for tmp_number, tmp_tmp_shapes_by_index in enumerate(shapes_by_index[tmp_shapes_by_index]):
+            #print('check segment start --> ',tmp_shapes_by_index,tmp_number,tmp_tmp_shapes_by_index)
+
+
+            if tmp_number == 0:
+                kari_done_y_grid_segment_array.append([tmp_shapes_by_index,tmp_tmp_shapes_by_index])
+                first_shape_top = tmp_tmp_shapes_by_index[1]
+            else:
+                candidate_y_grid_segment_shape = tmp_tmp_shapes_by_index
+                #print('candidate_y_grid_segment_shape---> ', candidate_y_grid_segment_shape)
+
+                '''i = count_upside_segment'''
+                last_shape_top = first_shape_top
+                h=0
+                k = len(kari_done_y_grid_segment_array)
+                while h < k: # check per segment
+                    candidate_shape_top = tmp_tmp_shapes_by_index[1]
+                    #count_upside_segment = int(abs(first_shape_top - candidate_y_grid_segment_shape[1]) / y_grid_segment_per_inches)
+                    j = 0
+                    i = len(kari_done_y_grid_segment_array)
+                    #print('kari_done_y_grid_segment_array --> ', kari_done_y_grid_segment_array)
+                    tmp_kari_done_y_grid_segment_array = kari_done_y_grid_segment_array[h]
+                    while j < i: #check y-grid duplicate
+                        candidate_shape_top -= y_grid_segment_per_inches
+                        #Check to overlapping [shape_left, shape_top, shape_width, shape_hight]
+                        #print('overlap check---> ', (tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2]) ,x_grid_segment_buffer,candidate_y_grid_segment_shape[0],tmp_kari_done_y_grid_segment_array[1][1], candidate_shape_top)
+
+                        if round((tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2] + x_grid_segment_buffer), 3) >= round(candidate_y_grid_segment_shape[0], 3) and \
+                            round((tmp_kari_done_y_grid_segment_array[1][0] - x_grid_segment_buffer), 3) <= round(candidate_y_grid_segment_shape[0] + candidate_y_grid_segment_shape[2], 3):
+                            if round(tmp_kari_done_y_grid_segment_array[1][1], 3) == round(candidate_shape_top, 3):
+                                #partial overlap
+                                if last_shape_top < (candidate_shape_top + y_grid_segment_per_inches):
+                                    last_shape_top = (candidate_shape_top + y_grid_segment_per_inches)
+                                    #print('partial overlap---> ', [tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],(candidate_shape_top + y_grid_segment_per_inches),candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
+                                    break
+
+                            elif round(tmp_kari_done_y_grid_segment_array[1][1], 3) == round((candidate_shape_top + y_grid_segment_per_inches), 3):
+                                #exact match
+                                if last_shape_top < (candidate_shape_top + y_grid_segment_per_inches + y_grid_segment_per_inches):
+                                    last_shape_top = (candidate_shape_top + y_grid_segment_per_inches + y_grid_segment_per_inches)
+                                    #print('Y grid is same as initial value ---> ', [tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],(candidate_shape_top + y_grid_segment_per_inches + y_grid_segment_per_inches),candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
+                                    break
+                            j += 1
+                        else:
+                            break
+
+                    h += 1
+
+                #print('<append written array> --> ',[tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],last_shape_top,candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
+                kari_done_y_grid_segment_array.append([tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],last_shape_top,candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
+
+        #print('<<one line array>> --> ',kari_done_y_grid_segment_array)
+        done_y_grid_segment_array = done_y_grid_segment_array + kari_done_y_grid_segment_array
+    #print('done_y_grid_segment_array --> ',done_y_grid_segment_array)
+    return done_y_grid_segment_array
+
 
 def get_shape_width_if_array(self,device_name):
     #get if array
@@ -1843,6 +1987,7 @@ def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
 
     #print('-- connected_l3if_key_array --', connected_l3if_key_array)
     return ([count_l3segment,connected_l3if_key_array])
+
 
 
 class  create_master_file_one_area():
