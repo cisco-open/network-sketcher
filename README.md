@@ -77,7 +77,7 @@ python network_sketcher.py
 ```bash
 python -m pip install tkinterdnd2
 python -m pip install tkinterdnd2-universal
-python -m pip install openpyxl
+python -m pip install  "openpyxl<=3.1.5"
 python -m pip install python-pptx
 python -m pip install ipaddress
 python -m pip install numpy
