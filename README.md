@@ -75,8 +75,8 @@ python network_sketcher.py
 # Installation Supplement
  * Alternative to “python -m pip install -r requirements.txt”
 ```bash
-python -m pip install tkinterdnd2
 python -m pip install tkinterdnd2-universal
+python -m pip install tkinterdnd2
 python -m pip install  "openpyxl>=3.1.3,<=3.1.5"
 python -m pip install python-pptx
 python -m pip install ipaddress
