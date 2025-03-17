@@ -24,7 +24,7 @@
 
 [3-1. エリア・デバイス・結線の追加・削除](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/3-1.%20%E3%82%A8%E3%83%AA%E3%82%A2%E3%83%BB%E3%83%87%E3%83%90%E3%82%A4%E3%82%B9%E3%83%BB%E7%B5%90%E7%B7%9A%E3%81%AE%E8%BF%BD%E5%8A%A0%E3%83%BB%E5%89%8A%E9%99%A4.pdf)
 
-## 4. L2/L3構成 設定
+## 4. L2/L3構成、アトリビュート 設定
 
 [4-1. L2セグメント設定](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/4-1.%20L2%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%88%E8%A8%AD%E5%AE%9A.pdf)
 
