@@ -27,7 +27,7 @@
 [3-1. Adding/deleting areas, devices, and connections](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/3-1.%20addingdeleting%20areas%2C%20devices%2C%20and%20connections.pdf)
 
 
-## 4. L2/L3 Diagram, Attribute Configuration
+## 4. L2/L3 Diagram, Attributes Configuration
 
 [4-1. L2 segment settings ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-1.L2%20segment%20setting%20.pdf)
 
