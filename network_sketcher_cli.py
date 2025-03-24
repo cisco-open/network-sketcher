@@ -17,7 +17,7 @@ limitations under the License.
 '''
 
 class ns_cli_run():
-    def __init__(argv_array):
+    def __init__(self,argv_array):
         # GET file path of master
         master_file_path = get_next_arg(argv_array, '--master')
         if master_file_path == None:
@@ -26,34 +26,39 @@ class ns_cli_run():
 
         # run show command
         if 'show' in argv_array:
-            print_type(argv_array, ns_cli_run.cli_show(master_file_path,argv_array))
+            print_type(self,argv_array, ns_cli_run.cli_show(self, master_file_path,argv_array))
             exit()
         else:
             print('[ERROR] Supported commands are as follows')
             print('show <sub-command>')
 
-    def cli_show(master_file_path, argv_array):
+    def cli_show(self, master_file_path, argv_array):
         next_arg = get_next_arg(argv_array, 'show')
         show_command_list = [\
             'show area', \
             'show area_device', \
             'show area_location', \
+            'show attribute', \
+            'show attribute_color', \
             'show device', \
             'show device_interface', \
             'show device_location', \
-            'show link', \
-            'show interface', \
+            'show l1_interface', \
+            'show l1_link', \
+            'show l2_broadcast_domain', \
+            'show l2_interface', \
+            'show l3_broadcast_domain', \
+            'show l3_interface', \
             'show waypoint', \
             'show waypoint_interface', \
-            'show l2_interface', \
-            'show l3_interface']
+            ]
 
         if next_arg == None or '--' in next_arg or str('show ' + next_arg) not in show_command_list:
+            print(next_arg)
             print('[ERROR] Supported commands are as follows')
             for tmp_show_command_list in show_command_list:
                 print(tmp_show_command_list)
             exit()
-
 
         if next_arg == 'area' or 'area_location':
             import ns_def
@@ -100,7 +105,7 @@ class ns_cli_run():
 
             return(tmp_return)
 
-        if next_arg == 'line' or 'device_interface' or 'waypoint_interface' or 'interface':
+        if next_arg == 'device_interface' or 'waypoint_interface' or 'l1_link' or 'l1_interface':
             import ns_def
             position_line_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
             position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
@@ -131,7 +136,7 @@ class ns_cli_run():
                     interface_detail_list.append([item[1][0], item[1][2], if_full_name_src, item[1][13], item[1][14], item[1][15]])
                     interface_detail_list.append([item[1][1], item[1][3], if_full_name_tar, item[1][17], item[1][18], item[1][19]])
 
-            if next_arg == 'link':
+            if next_arg == 'l1_link':
                 line_list = sorted(line_list, key=lambda x: (x[0][0],x[0][1]), reverse=False)
                 return (line_list)
 
@@ -159,7 +164,7 @@ class ns_cli_run():
                 result = [[device, interfaces] for device, interfaces in grouped_data.items()]
                 return (result)
 
-            elif next_arg == 'interface':
+            elif next_arg == 'l1_interface':
                 interface_detail_list = sorted(interface_detail_list, key=lambda x: (x[0], x[1]), reverse=False)
                 return (interface_detail_list)
 
@@ -249,14 +254,14 @@ class ns_cli_run():
 
         if next_arg == 'l2_interface':
             import ns_def
-            l2_interface_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path,'<<L2_TABLE>>')
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path,'<<L2_TABLE>>')
 
-            update_l2_interface_array = []
-            for tmp_l2_interface_array in l2_interface_array:
-                if tmp_l2_interface_array[0] != 1 and tmp_l2_interface_array[0] != 2:
-                    update_l2_interface_array.append(tmp_l2_interface_array[1][1:])
+            update_attribute_array = []
+            for tmp_attribute_array in l2_attribute_array:
+                if tmp_attribute_array[0] != 1 and tmp_attribute_array[0] != 2:
+                    update_attribute_array.append(tmp_attribute_array[1][1:])
 
-            padded_data = [sublist + [''] * (7 - len(sublist)) for sublist in update_l2_interface_array]
+            padded_data = [sublist + [''] * (7 - len(sublist)) for sublist in update_attribute_array]
             update_padded_data = []
 
             for tmp_padded_data in padded_data:
@@ -266,6 +271,68 @@ class ns_cli_run():
 
             update_padded_data = sorted(padded_data, key=lambda x: (x[0]), reverse=False)
             return (update_padded_data)
+
+        if next_arg == 'l2_broadcast_domain' or 'l3_broadcast_domain':
+            import ns_def
+            return_get_l2_broadcast_domains = []
+            result_get_l2_broadcast_domains = ns_def.get_l2_broadcast_domains.run(self, master_file_path)  ## '[0] self.update_l2_table_array, [1] device_l2_boradcast_domain_array, [2] device_l2_directly_l3vport_array, [3] device_l2_other_array, [4] marged_l2_broadcast_group_array'
+            if next_arg == 'l2_broadcast_domain':
+                for tmp4_result_get_l2_broadcast_domains in result_get_l2_broadcast_domains[4]:
+                    kari_l2_array = []
+                    for tmp1_result_get_l2_broadcast_domains in result_get_l2_broadcast_domains[1]:
+                        if tmp1_result_get_l2_broadcast_domains != []:
+                            for tmp1_tmp1_result_get_l2_broadcast_domains in tmp1_result_get_l2_broadcast_domains:
+                                if tmp1_tmp1_result_get_l2_broadcast_domains[0] in tmp4_result_get_l2_broadcast_domains:
+                                    kari_l2_array.append([tmp1_tmp1_result_get_l2_broadcast_domains[1],tmp1_tmp1_result_get_l2_broadcast_domains[2]])
+                                    break
+                    return_get_l2_broadcast_domains.append([tmp4_result_get_l2_broadcast_domains,kari_l2_array])
+
+                return (return_get_l2_broadcast_domains)
+
+            if next_arg == 'l3_broadcast_domain':
+                retrun_target_l2_broadcast_group_array = []
+                for tmp_target_l2_broadcast_group_array in self.target_l2_broadcast_group_array:
+                    if tmp_target_l2_broadcast_group_array[1] != []:
+                        retrun_target_l2_broadcast_group_array.append(tmp_target_l2_broadcast_group_array)
+
+                return (self.target_l2_broadcast_group_array)
+
+        if next_arg == 'attribute' or 'attribute_color':
+            import ns_def
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data', master_file_path,'<<ATTRIBUTE>>')
+
+            update_attribute_array = []
+            for tmp_attribute_array in l2_attribute_array:
+                if tmp_attribute_array[0] != 1:
+                    update_attribute_array.append(tmp_attribute_array[1][1:])
+
+            update_padded_data = []
+
+            for tmp_padded_data in update_attribute_array:
+                del tmp_padded_data[-1]
+                update_padded_data.append(tmp_padded_data)
+
+            update_padded_data = sorted(update_attribute_array, key=lambda x: (x[0]), reverse=False)
+
+            if next_arg == 'attribute_color':
+                kari_return_attribute = []
+                for row in update_padded_data:
+                    transformed_row = [item.replace('<EMPTY>', '') for item in row]
+                    kari_return_attribute.append(transformed_row)
+                return (kari_return_attribute)
+
+            output_data = []
+            for line in update_padded_data:
+                if isinstance(line[0], str) and not line[0].startswith('['):
+                    # Add header directly to output
+                    output_data.append(line)
+                else:
+                    # Extract the first element from each formatted string and replace '<EMPTY>' with ''
+                    extracted_elements = [eval(element)[0] if eval(element)[0] != '<EMPTY>' else '' for element in line]
+                    output_data.append(extracted_elements)
+
+            if next_arg == 'attribute':
+                return (output_data)
 
 
 def get_next_arg(argv_array, target):
@@ -281,7 +348,7 @@ def get_next_next_arg(argv_array, target):
     except (ValueError, IndexError):
         return None
 
-def print_type(argv_array,source):
+def print_type(self, argv_array,source):
     if  '--one_msg' in argv_array:
         print(source)
     else:
@@ -312,4 +379,3 @@ def get_device_waypoint_array(master_file_path):
                 area_device_list_array.append([tmp_new_l2_table_array[1][0], tmp_new_l2_table_array[1][1]])
 
     return ([device_list_array,wp_list_array])
-
