@@ -32,8 +32,9 @@ class ns_front_run():
         #add cli flow at ver 2.3.1
         if len(sys.argv) > 1:
             import network_sketcher_cli
+            self.argv_array = []
             self.argv_array = sys.argv[1:]
-            network_sketcher_cli.ns_cli_run.__init__(self.argv_array)
+            network_sketcher_cli.ns_cli_run.__init__(self, self.argv_array)
             exit()
 
         self.click_value = ''
@@ -41,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.4.1")
+        self.root.title("Network Sketcher  ver 2.4.2")
         self.root.geometry("490x200+100+100")
         
         # Notebook
