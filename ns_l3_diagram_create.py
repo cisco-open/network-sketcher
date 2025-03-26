@@ -1362,19 +1362,6 @@ class  ns_l3_diagram_create():
         ### Kyuusai if len(target_position_shape_array) == 1
         outline_shape_hight += 0.2
 
-        if action_type == 'CREATE':
-            ### adjust outline width . add ver 2.3.3 ###
-            if (max_folder_left_width + 0.5) > (outline_shape_left + outline_shape_width):
-                outline_shape_width += max_folder_left_width - (outline_shape_left + outline_shape_width) + 0.5
-
-            self.shape = self.slide.shapes
-            ns_ddx_figure.extended.add_shape(self, outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, outline_shape_text)
-
-            # move shape to back layer when set 'OUTLINE_NORMAL' at ver 2.3.0
-            if outline_shape_type == 'OUTLINE_NORMAL':
-                self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
-                self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
-
         '''
         loop write l3segment
         '''
@@ -1589,6 +1576,24 @@ class  ns_l3_diagram_create():
 
 
         #print('#### self.all_written_line_position_array  | line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y \n'  ,self.all_written_line_position_array , len(self.all_written_line_position_array))
+
+        '''Write Outline was moved at ver 2.4.2a'''
+        if action_type == 'CREATE':
+            ### adjust outline width . add ver 2.3.3 ###
+            if (max_folder_left_width + 0.5) > (outline_shape_left + outline_shape_width):
+                outline_shape_width += max_folder_left_width - (outline_shape_left + outline_shape_width) + 0.5
+
+            #### fix at case 13 at ver 2.4.2a###
+            if (shape_hight + shape_top + 0.5) > (outline_shape_top + outline_shape_hight):
+                outline_shape_hight = outline_shape_hight + ((shape_hight + shape_top + 0.5) - (outline_shape_top + outline_shape_hight))
+
+            self.shape = self.slide.shapes
+            ns_ddx_figure.extended.add_shape(self, outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, outline_shape_text)
+
+            # move shape to back layer when set 'OUTLINE_NORMAL' at ver 2.3.0
+            if outline_shape_type == 'OUTLINE_NORMAL':
+                self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
+                self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
 
         '''write ip on L3 IF'''
         #print('--- self.mark_multi_ip_array ---  [tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top - tag_shape_hight - offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2],tmp_remake_array,shape_text ]')
