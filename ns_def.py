@@ -143,6 +143,12 @@ def check_file_type(full_filepath):
                 return_type_array = ['EXCEL_MASTER', ws_list]
             elif sheet_name == 'L1 Table':
                 return_type_array = ['EXCEL_DEVICE', ws_list]
+            elif sheet_name == 'Flow_List': #add ver 2.4.3
+                return_type_array = ['EXCEL_FLOW', ws_list]
+
+        # add ver 2.4.3
+        if '[MASTER]' not in full_filepath and '[DEVICE]' not in full_filepath and '[FLOW]' not in full_filepath:
+            return_type_array = ['ERROR', 'The Excel file name must start with [MASTER],[DEVICE],[FLOW]']
 
     elif full_filepath.endswith('.yaml'):
         return_type_array = ['ERROR', 'Please enter a backup file of CML']
