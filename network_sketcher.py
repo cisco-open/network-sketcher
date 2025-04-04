@@ -42,8 +42,8 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.4.2a")
-        self.root.geometry("490x200+100+100")
+        self.root.title("Network Sketcher  ver 2.4.3")
+        self.root.geometry("510x200+100+100")
         
         # Notebook
         nb = ttk.Notebook()
@@ -160,6 +160,11 @@ class ns_front_run():
                     return
 
                 #print(file_type_array)
+                self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
+                self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+                ns_front_run.sub_excel_device_1(self, file_type_array)
+
+            elif file_type_array[0] == 'EXCEL_FLOW': # add ver 2.4.3
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
                 ns_front_run.sub_excel_device_1(self, file_type_array)
@@ -577,28 +582,36 @@ class ns_front_run():
         self.sub2_0_label_2 = tk.Label(self.sub2_1, text='', font=("", 1))
         self.sub2_0_label_2 .grid(row=7, column=0, columnspan=7, sticky='W', padx=0, pady=0, ipadx=0, ipady=0)
 
-        self.sub2_5 = tk.LabelFrame(self.sub2_1, text='Export to the Device file', font=("", 14), height=1, background="#DFC9EF")
+        self.sub2_5 = tk.LabelFrame(self.sub2_1, text='Export', font=("", 14), height=1, background="#DFC9EF")
         self.sub2_5.grid(row=8, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=2)
 
         push_array = []
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
-        self.sub2_5_button_3.grid(row=10, column=1, sticky='WE', padx=50, pady=2, ipadx=15)
+        self.sub2_5_button_3.grid(row=10, column=0, sticky='WE', padx=10, pady=2, ipadx=5)
+
+        self.sub2_7_button_1 = tk.Button(self.sub2_5, text="Flow file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_7_button_1', push_array))
+        self.sub2_7_button_1.grid(row=10, column=1, sticky='WE', padx=10, pady=2, ipadx=8)
 
         '''
         Extensions
         '''
         self.sub3_3 = tk.LabelFrame(self.sub2_1, text='Extensions', font=("", 14), height=1, background="#C2E2EC")
-        self.sub3_3.grid(row=8, column=1, sticky='W', padx=1, pady=0, ipadx=5, ipady=5)
+        self.sub3_3.grid(row=8, column=1, sticky='W', padx=1, pady=0, ipadx=3, ipady=1)
+
+        #add at ver 2.4.3
+        self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Append Flows", font=("", 12), command=lambda: ns_front_run.sub_master_extention_3(self))
+        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=3, pady=2, ipadx=0)
 
         self.sub3_3_button_1 = tk.Button(self.sub3_3, text="Auto IP Addressing", font=("", 12), command=lambda: ns_front_run.sub_master_extention_1(self))
-        self.sub3_3_button_1.grid(row=0, column=0, sticky='WE', padx=15, pady=2, ipadx=5)
+        self.sub3_3_button_1.grid(row=0, column=1, sticky='WE', padx=3, pady=2, ipadx=5)
 
         self.sub3_3_button_2 = tk.Button(self.sub3_3, text="Report", font=("", 12), command=lambda: ns_front_run.sub_master_extention_2(self))
-        self.sub3_3_button_2.grid(row=0, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
+        self.sub3_3_button_2.grid(row=0, column=2, sticky='WE', padx=3, pady=2, ipadx=15)
 
     def on_combobox_select(self, event):
         self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(self.inFileTxt_L2_3_1.get(), self.comboATTR_1_1.get())
-    def sub_master_extention_1(self):
+
+    def sub_master_extention_1(self): # Auto IP Addressing Button
         local_filename = self.filename
         local_fullpath = self.full_filepath
         push_array = [self.filename,self.full_filepath]
@@ -688,7 +701,7 @@ class ns_front_run():
         self.sub3_4_button_1 = tk.Button(self.sub3_4_1, text=" Run IP Addressing ", font=("", 14), command=lambda: self.click_action_sub('self.sub3_4_button_1',self.combo3_4_1_1.get()))
         self.sub3_4_button_1.grid(row=6, column=0, sticky='W', padx=30, pady=10)
 
-    def sub_master_extention_2(self):
+    def sub_master_extention_2(self): # Report Button
         local_filename = self.filename
         local_fullpath = self.full_filepath
         push_array = [self.filename,self.full_filepath]
@@ -711,7 +724,114 @@ class ns_front_run():
         self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" IP Address table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
         self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=20, pady=5)
 
+    def sub_master_extention_3(self): # Append flow Button
+        local_filename = self.filename
+        local_fullpath = self.full_filepath
+        push_array = [self.filename,self.full_filepath]
+
+        self.sub3_7_0 = tk.Toplevel()
+        self.sub3_7_0.title('Drag and Drop')
+        self.root.update_idletasks()
+        #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
+        geo =  str(self.root.winfo_width() - 45) + 'x' + str(self.root.winfo_height() + 100) + '+' + str(self.root.winfo_x() +50) + '+' + str(self.root.winfo_y() + self.root.winfo_height() )
+        self.sub3_7_0.geometry(geo)
+
+        self.sub3_7_x = tk.LabelFrame(self.sub3_7_0, text='Append flows to the NW Diagram file', font=("", 16), height=1, background="#C2E2EC")
+        self.sub3_7_x.grid(row=0, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+
+        self.sub3_7_y = tk.Label(self.sub3_7_x, text='1. Select the target Flows                                         ', font=("", 14), background="#E8F4F8")
+        self.sub3_7_y.grid(row=0, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0, columnspan=5)
+
+        self.sub3_7_z_1 = tk.Label(self.sub3_7_x, text='  - Source Device Name:', font=("", 12), background="#C2E2EC")
+        self.sub3_7_z_1.grid(row=1, column=0, sticky='W', padx=5, pady=0, ipadx=0, ipady=0)
+
+        self.sub3_7_z_2 = tk.Label(self.sub3_7_x, text='  - Destination Device Name:', font=("", 12), background="#C2E2EC")
+        self.sub3_7_z_2.grid(row=2, column=0, sticky='W', padx=5, pady=0, ipadx=0, ipady=0)
+
+        self.sub3_7_z_3 = tk.Label(self.sub3_7_x, text='  - Service name(Port):', font=("", 12), background="#C2E2EC")
+        self.sub3_7_z_3.grid(row=3, column=0, sticky='W', padx=5, pady=0, ipadx=0, ipady=0)
+
+        get_flow_item_array = ns_extensions.flow.get_flow_item_list(self)
+        get_flow_item_array[0].insert(0, 'Any')
+        get_flow_item_array[1].insert(0, 'Any')
+        get_flow_item_array[3].insert(0, 'Any')
+
+        global variable3_7_y_1
+        variable3_7_y_1 = tk.StringVar()
+        self.combo3_7_y_1 = ttk.Combobox(self.sub3_7_x , values=get_flow_item_array[0], textvariable=variable3_7_y_1, font=("", 12), state='normal')
+        self.combo3_7_y_1.set("Any")
+        self.combo3_7_y_1.option_add("*TCombobox*Listbox.Font", ("", 12))
+        self.combo3_7_y_1.grid(row=1, column=1, sticky='WE', padx=5, pady=0, ipady=2, ipadx=3)
+
+        global variable3_7_y_2
+        variable3_7_y_2 = tk.StringVar()
+        self.combo3_7_y_2 = ttk.Combobox(self.sub3_7_x , values=get_flow_item_array[1], textvariable=variable3_7_y_2, font=("", 12), state='normal')
+        self.combo3_7_y_2.set("Any")
+        self.combo3_7_y_2.option_add("*TCombobox*Listbox.Font", ("", 12))
+        self.combo3_7_y_2.grid(row=2, column=1, sticky='WE', padx=5, pady=0, ipady=2, ipadx=3)
+
+        global variable3_7_y_3
+        variable3_7_y_3 = tk.StringVar()
+        self.combo3_7_y_3 = ttk.Combobox(self.sub3_7_x , values=get_flow_item_array[3], textvariable=variable3_7_y_3, font=("", 12), state='normal')
+        self.combo3_7_y_3.set("Any")
+        self.combo3_7_y_3.option_add("*TCombobox*Listbox.Font", ("", 12))
+        self.combo3_7_y_3.grid(row=3, column=1, sticky='WE', padx=5, pady=0, ipady=2, ipadx=3)
+
+
+        self.sub3_7 = tk.LabelFrame(self.sub3_7_x, text='2. Input the target NW diagram file', font=("", 14), height=1, background="#E5F4F7")
+        self.sub3_7.grid(row=10, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=0, columnspan=5)
+
+        self.text_sub3_7 = tk.StringVar()
+        self.text_sub3_7.set("      drag and drop here (*.pptx)")
+        self.sub3_7_label_4 = tk.Label(self.sub3_7, textvariable=self.text_sub3_7, font=("", 10), background="#E5F4F7")
+        self.sub3_7_label_4.grid(row=2, column=1, columnspan=4, sticky='W', padx=5, pady=20, ipady=10)
+
+        self.sub3_7_entry_1 = tk.Entry(self.sub3_7)
+        self.sub3_7_entry_1.grid(row=4, column=1, sticky="WE", padx=5, pady=3, ipadx=70)
+        self.sub3_7_button_1 = tk.Button(self.sub3_7, text="Browse ...", command=lambda: self.click_action_sub('self.sub3_7_button_2',push_array))
+        self.sub3_7_button_1.grid(row=4, column=2, sticky='W', padx=5, pady=2)
+        self.sub3_7_button_1 = tk.Button(self.sub3_7, text="Submit", command=lambda: self.click_action_sub('self.sub3_7_button_3',push_array))
+        self.sub3_7_button_1.grid(row=4, column=3, sticky='W', padx=0, pady=2)
+
+        #drag and drop
+        self.entry_name_sub3_7 = 'self.sub3_1_entry_1'
+        self.sub3_7.drop_target_register(DND_FILES)
+        self.sub3_7.dnd_bind("<<Drop>>", self.drop_sub3_7 ,self.entry_name_sub3_7)
+
+    def drop_sub3_7(self, event):
+        if event:
+            event.data = event.data.replace('{', '').replace('}', '')
+            if event.data.endswith('.pptx'):
+                self.pptx_filename = os.path.basename(event.data)
+                self.pptx_full_filepath = event.data
+                self.text_sub3_7.set(self.pptx_filename)
+                self.sub3_7_entry_1.delete(0, tkinter.END)
+                self.sub3_7_entry_1.insert(tk.END, self.pptx_full_filepath)
+                push_array = [self.pptx_filename, self.pptx_full_filepath]
+                self.click_action_sub('self.sub3_7_button_3',push_array)
+            else:
+                self.text_sub3_7.set('[ERROR] ' + 'Please input a file corresponding to NS')
+                self.sub3_7_label_4 = tk.Label(self.sub1_3, textvariable=self.text_sub1_3, font=("", 10), background="#FBE5D6")
+                self.sub3_7_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
+
     def click_action_sub(self, click_value, target_area_name):
+        if click_value == 'self.sub3_7_button_3':  # select Submit
+            ns_extensions.flow.append_flows_to_diagram(self,variable3_7_y_1,variable3_7_y_2,variable3_7_y_3)
+
+        if click_value == 'self.sub3_7_button_2':  # select browse
+            fTyp = [("","*.pptx")]
+            iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
+            self.pptx_full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
+            self.pptx_filename = os.path.basename(self.pptx_full_filepath)
+            self.sub3_7_entry_1.delete(0, tkinter.END)
+            self.sub3_7_entry_1.insert(tk.END, self.pptx_full_filepath)
+            self.text_sub3_7.set(self.pptx_filename)
+
+        if click_value == 'self.self.sub2_7_button_1':  # Export the flow file
+            ###Export the flow file
+            ns_extensions.flow.export_flow_file(self, target_area_name)
+            ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
+
         if click_value == 'self.sub3_5_button_1':  # select IP address table
             ###export_ip_report
             ns_extensions.ip_report.export_ip_report(self, target_area_name)
@@ -791,7 +911,7 @@ class ns_front_run():
         push_array = [self.filename,self.full_filepath]
 
         self.sub3_1 = tk.Toplevel()
-        self.sub3_1.title('Device Panel')
+        self.sub3_1.title('Device, Flow Panel') # update at ver 2.4.3
         self.root.update_idletasks()
         #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
         geo =  str(self.root.winfo_width() - 180) + 'x' + str(self.root.winfo_height() - 20) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y() + self.root.winfo_height() + 30)
@@ -816,6 +936,7 @@ class ns_front_run():
         self.sub3_1_button_1.grid(row=4, column=3, sticky='W', padx=0, pady=2)
 
         #drag and drop
+        self.pre_file_type_array = file_type_array #add at ver 2.4.3
         self.entry_name_sub3_1 = 'self.sub3_1_entry_1'
         self.sub3_1.drop_target_register(DND_FILES)
         self.sub3_1.dnd_bind("<<Drop>>", self.drop_sub3_1 ,self.entry_name_sub3_1)
@@ -824,19 +945,95 @@ class ns_front_run():
         if event:
             event.data = event.data.replace('{', '').replace('}', '')
             if event.data.endswith('.xlsx'):
-                exec(self.entry_name_sub3_1 + '.delete(0, tkinter.END)')
-                exec(self.entry_name_sub3_1 + '.insert(tk.END, event.data)')
-                self.filename = os.path.basename(event.data)
-                self.full_filepath = event.data
-                self.text_sub3_1.set(self.filename)
-                push_array = [self.filename, self.full_filepath]
-                self.click_action_sub3_1('self.sub3_1_button_3',push_array)
+                if self.pre_file_type_array[0] == 'EXCEL_FLOW': # add at ver 2.4.3
+                    exec(self.entry_name_sub3_1 + '.delete(0, tkinter.END)')
+                    exec(self.entry_name_sub3_1 + '.insert(tk.END, event.data)')
+                    self.filename = os.path.basename(event.data)
+                    self.full_filepath = event.data
+                    self.text_sub3_1.set(self.filename)
+                    push_array = [self.filename, self.full_filepath]
+                    self.click_action_sub3_1('self.sub3_1_button_4',push_array)
+                else:
+                    exec(self.entry_name_sub3_1 + '.delete(0, tkinter.END)')
+                    exec(self.entry_name_sub3_1 + '.insert(tk.END, event.data)')
+                    self.filename = os.path.basename(event.data)
+                    self.full_filepath = event.data
+                    self.text_sub3_1.set(self.filename)
+                    push_array = [self.filename, self.full_filepath]
+                    self.click_action_sub3_1('self.sub3_1_button_3',push_array)
             else:
                 self.text_sub3_1.set('[ERROR] ' + 'Please input a file corresponding to NS')
                 self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#FBE5D6")
                 self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
 
     def click_action_sub3_1(self, click_value,push_array):
+        if click_value == 'self.sub3_1_button_4':  # sync flow file to master file. add ver 2.4.3
+            file_type_array = ns_def.check_file_type(self.sub3_1_entry_1.get())
+            #print(file_type_array,self.sub3_1_entry_1.get())
+            if file_type_array[0] == 'ERROR':
+                self.text_sub3_1.set('[ERROR] ' + file_type_array[1])
+                self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#FBE5D6")
+                self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
+
+            elif file_type_array[0] == 'EXCEL_MASTER':
+                self.sub3_1_label_4 = tk.Label(self.sub3_1, textvariable=self.text_sub3_1, font=("", 10), background="#E5F4F7")
+                self.sub3_1_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
+                #ns_front_run.sub_excel_master_1(self, file_type_array)
+                print('--- Update to the Master file ---')
+
+                full_filepath_master = self.sub3_1_entry_1.get()
+                full_filepath_flow = self.main1_1_entry_1.get()
+                iDir_master = os.path.abspath(os.path.dirname(full_filepath_master))
+                iDir_flow = os.path.abspath(os.path.dirname(full_filepath_flow))
+                basename_without_ext = os.path.splitext(os.path.basename(full_filepath_master))[0]
+                basename_without_ext_flow= os.path.splitext(os.path.basename(full_filepath_flow))[0]
+
+                #print(basename_without_ext,basename_without_ext_flow)
+                input_excel_master = openpyxl.load_workbook(full_filepath_master)
+
+                # check ws name
+                ws_list_master = input_excel_master.sheetnames
+                input_excel_master.close()
+                #print(ws_list_master)
+
+                ### check file open
+                ns_def.check_file_open(full_filepath_master)
+
+                ###create backup master file
+                ns_def.get_backup_filename(full_filepath_master)
+
+                flow_sheet_name = 'Flow_Data'
+                if flow_sheet_name in ws_list_master:
+                    ns_def.remove_excel_sheet(full_filepath_master, flow_sheet_name)
+
+                # create Flow Table sheet
+                flow_list_array = []
+                flow_list_array = ns_def.convert_excel_to_array('Flow_List', full_filepath_flow, 1)
+                flow_list_array[0][1] = ['<<FLOW_LIST>>']
+                #print(flow_list_array)
+
+                #caluculate routing path
+                # TBD
+
+                #add last end mark
+                last_number = flow_list_array[-1][0]
+                new_number = last_number + 3
+                flow_list_array.append([new_number, ['<<END_MARK>>']])
+
+                flow_list_tuple = {}
+                flow_list_tuple = ns_def.convert_array_to_tuple(flow_list_array)
+
+                ns_def.create_excel_sheet(full_filepath_master, flow_sheet_name)
+                ns_def.write_excel_meta(flow_list_tuple, full_filepath_master, flow_sheet_name, '_template_', 0, 0)
+
+                print('--- Success. Re-export of the FLOW file is recommended. ---')
+
+                ### open master panel
+                file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
+                self.full_filepath = full_filepath_master
+                self.filename = os.path.basename(self.full_filepath)
+                ns_front_run.sub_excel_master_1(self, file_type_array)
+
         if click_value == 'self.sub3_1_button_2':  # select browse
             fTyp = [("","*.xlsx")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -966,7 +1163,10 @@ class ns_front_run():
                 print('--- Attribute sync ---')
                 ns_attribute_table_sync_master.ns_attribute_table_sync_master.__init__(self)
 
-                filename = os.path.basename(full_filepath_device)
+                print('--- Success. Re-export of the DEVICE file is recommended. ---')
+
+                #disable re-export the device file at ver 2.4.3
+                '''filename = os.path.basename(full_filepath_device)
                 ret = tkinter.messagebox.askyesno('Complete', 'Would you like to re-export the Device file?\n\n' + filename)
                 if ret == True:
                     ### check file open
@@ -976,7 +1176,7 @@ class ns_front_run():
                         self.click_value_2nd = ''
                         if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
                             #print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
-                            subprocess.Popen(full_filepath_device, shell=True)
+                            subprocess.Popen(full_filepath_device, shell=True)'''
 
                 ### open master panel
                 file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
