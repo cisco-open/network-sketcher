@@ -79,7 +79,7 @@ python network_sketcher.py
 ```bash
 python -m pip install tkinterdnd2-universal
 python -m pip install tkinterdnd2
-python -m pip install  "openpyxl>=3.1.3,<=3.1.5"
+python -m pip install "openpyxl>=3.1.3,<=3.1.5"
 python -m pip install python-pptx
 python -m pip install ipaddress
 python -m pip install numpy
@@ -100,8 +100,8 @@ sudo apt-get install python3-tk
 # User Guide
 | Language  | Link |
 | ------------- | ------------- |
-| English  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
-| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
+| English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D) |
+| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BJP%5D) |
  
 # How to create the exe file for Windows using pyinstaller
  ```bash
