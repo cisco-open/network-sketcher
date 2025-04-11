@@ -203,7 +203,7 @@ class  ns_l3_diagram_create():
                                 shape.fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1],tmp_rgp_color[2])
 
                                 if shape.adjustments:
-                                    shape.adjustments[0] = 0.2
+                                    shape.adjustments[0] = 0.2002
 
             #print(self.output_ppt_file)
             prs.save(self.output_ppt_file)

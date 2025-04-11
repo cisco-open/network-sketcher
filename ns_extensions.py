@@ -17,7 +17,7 @@ limitations under the License.
 '''
 from idlelib.debugobj_r import remote_object_tree_item
 
-import ns_def, ns_egt_maker
+import ns_def, ns_egt_maker, ns_ddx_figure
 from collections import Counter
 import tkinter as tk ,tkinter.ttk , openpyxl
 import ipaddress, sys, os, re, shutil
@@ -36,7 +36,7 @@ class  flow():
 
         # Exclude the last element (['<<END_MARK>>'])
         filtered_master_flow = master_flow_array[:-1]
-        print(filtered_master_flow)
+        #print(filtered_master_flow)
 
         # Exclude invalid lines
         filterd2_master_flow = []
@@ -45,7 +45,7 @@ class  flow():
             # Check if the second or third elements are not empty
             if sublist[1] and sublist[2]:
                 filterd2_master_flow.append(sublist)  # Append the sublist without the first number
-        print(filterd2_master_flow)
+        #print(filterd2_master_flow)
 
         # Filter lines by the target
         filtered_target_flow = []
@@ -58,8 +58,120 @@ class  flow():
 
         print(filtered_target_flow)
 
-        ###ここから開始　PPTを読み込んでフロー追加
+        '''read the pptx file and shapes data'''
+        self.shape_name_grid_array = []
 
+        from pptx import Presentation
+        from pptx.util import Inches
+        prs = Presentation(self.pptx_full_filepath)
+        for shape in prs.slides[0].shapes:
+            if shape.has_text_frame:
+                if hasattr(shape, "adjustments"):
+                    try:
+                        if shape.adjustments[0] not in [0.99445, 0.50444, 0.30045, 0.00046, 0.15005, 0.00057, 0.2007] and shape.text.strip() != '': #exclude not (device or wp) shape. 0.0001 device, 0.0008 L3 instance device , 0.2002 way point, 0.2007 l3 instance in device
+                            #print(shape.text.strip(), shape.adjustments[0] , shape.left, shape.top, shape.width, shape.height)
+                            self.shape_name_grid_array.append([shape.text.strip(), shape.left, shape.top, shape.width, shape.height])
+
+                    except IndexError:
+                        pass
+
+        print(self.shape_name_grid_array)
+
+        ''' deside routes and write flows '''
+        if os.path.isfile(self.pptx_full_filepath) == True:
+            self.active_ppt = Presentation(self.pptx_full_filepath)
+            self.slide = self.active_ppt.slides[0]
+
+        for tmp_filtered_target_flow in filtered_target_flow:
+
+            # select routing path is auto or static
+            selected_route_path = []
+            if tmp_filtered_target_flow[6] == '' and tmp_filtered_target_flow[7] == ' ':
+                selected_route_path = [tmp_filtered_target_flow[1], tmp_filtered_target_flow[2]]
+
+            elif tmp_filtered_target_flow[6] == '' and tmp_filtered_target_flow[7] != ' ':
+                selected_route_path = [element.strip().strip("'") for element in tmp_filtered_target_flow[7].split(',')]
+                selected_route_path.insert(0, tmp_filtered_target_flow[1])
+                selected_route_path.append(tmp_filtered_target_flow[2])
+
+            elif tmp_filtered_target_flow[6] != '':
+                selected_route_path = [element.strip().strip("'") for element in tmp_filtered_target_flow[6].split(',')]
+                selected_route_path.insert(0, tmp_filtered_target_flow[1])
+                selected_route_path.append(tmp_filtered_target_flow[2])
+
+            #print(tmp_filtered_target_flow,selected_route_path)
+
+            ''' write line'''
+            if len(selected_route_path) == 2:
+                # get source grid value
+                source_grid = next(
+                    (item for item in self.shape_name_grid_array if item[0] == tmp_filtered_target_flow[1]),
+                    None  # Returns None if no match is found.
+                )
+
+                destination_grid = next(
+                    (item for item in self.shape_name_grid_array if item[0] == tmp_filtered_target_flow[2]),
+                    None  # Returns None if no match is found.
+                )
+
+                if source_grid == None or destination_grid == None:
+                    continue
+
+                print(source_grid, destination_grid)
+
+                line_type = 'FLOW0'
+                inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.25) / 914400
+                inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.75) / 914400
+                inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5)  / 914400
+                ns_ddx_figure.extended.add_line(self,line_type,inche_from_connect_x,inche_from_connect_y,inche_to_connect_x,inche_to_connect_y)
+
+            elif len(selected_route_path) >= 3:
+                print(selected_route_path)
+                for i in range(len(selected_route_path) - 1):
+                    pair = [selected_route_path[i], selected_route_path[i + 1]]
+                    print(pair,i,len(selected_route_path) - 2 )
+
+                    # get source grid value
+                    source_grid = next(
+                        (item for item in self.shape_name_grid_array if item[0] == pair[0]),
+                        None  # Returns None if no match is found.
+                    )
+
+                    destination_grid = next(
+                        (item for item in self.shape_name_grid_array if item[0] == pair[1]),
+                        None  # Returns None if no match is found.
+                    )
+
+                    if source_grid == None or destination_grid == None:
+                        continue
+
+                    if i == 0:
+                        line_type = 'FLOW1'
+                        inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.25) / 914400
+                        inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                        inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.5) / 914400
+                        inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5) / 914400
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y,inche_to_connect_x, inche_to_connect_y)
+                    elif i == len(selected_route_path) - 2:
+                        line_type = 'FLOW2'
+                        inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.5) / 914400
+                        inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                        inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.75) / 914400
+                        inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5) / 914400
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y,inche_to_connect_x, inche_to_connect_y)
+                    else:
+                        line_type = 'FLOW3'
+                        inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.5) / 914400
+                        inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                        inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.5) / 914400
+                        inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5) / 914400
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y,inche_to_connect_x, inche_to_connect_y)
+
+        folder = os.path.dirname(self.pptx_full_filepath)
+        filename = os.path.basename(self.pptx_full_filepath)
+        modified_filepath = os.path.join(folder, f"Added_flows_{filename}")
+        self.active_ppt.save(modified_filepath)
 
     def get_flow_item_list(self): # add at ver 2.4.3
         #print('--- get_flow_item_list ---')
