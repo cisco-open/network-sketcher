@@ -45,14 +45,6 @@ class  ns_l2_table_sync_master():
             tkinter.messagebox.showwarning(title="L2 Table not in [L2_TABLE] file", message="Please check L2 Table sheet in [L2_TABLE] file.")
             return
 
-        #backup L2 Table Excel file
-        '''excel_maseter_file_backup = self.inFileTxt_L2_2_2_backup
-        if os.path.isfile(excel_maseter_file_backup) == True:
-            os.remove(excel_maseter_file_backup)
-            shutil.copy(excel_maseter_file, excel_maseter_file_backup)
-        else:
-            shutil.copy(excel_maseter_file, excel_maseter_file_backup)'''
-
         #get L2 Table Excel file
         l2_table_array = []
         l2_table_array = ns_def.convert_excel_to_array(l2_table_ws_name, l2_table_file, 3)

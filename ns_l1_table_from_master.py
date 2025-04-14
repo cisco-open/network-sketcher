@@ -240,7 +240,6 @@ class  ns_l1_table_from_master():
         overwrite_if_tuple = ns_def.convert_array_to_tuple(overwrite_if_array)
         #print('---- overwrite_if_tuple ----')
         #print(overwrite_if_tuple)
-
         ### Convert to tuple
         master_device_table_tuple = ns_def.convert_array_to_tuple(device_table_array)
         #print('---- master_device_table_tuple ----')
@@ -286,7 +285,6 @@ class  ns_l1_table_from_master():
         #Add Device table sheet
         input_excel_name = ppt_meta_file
         output_excel_name = self.outFileTxt_11_2.get().replace('[MASTER]', '')
-
         ### click sync file ###
         if self.click_value == '12-3':
             output_excel_name = self.inFileTxt_12_1.get()
