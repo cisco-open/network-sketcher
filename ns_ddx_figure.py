@@ -2766,7 +2766,7 @@ class extended():
             #line paramter
             shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(0.5)
-            self.shape.adjustments[0] = float(0.15)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.150051)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(112, 48, 160)
 
@@ -2798,7 +2798,7 @@ class extended():
             # line paramter
             shape_line.fill.background()
             shape_line.width = Pt(0.75)
-            self.shape.adjustments[0] = float(0.0)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.00046)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             #self.shape.text_frame.paragraphs[0].font.size = Pt(self.tag_font_large_size)
             self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
@@ -2811,7 +2811,7 @@ class extended():
             # line paramter
             shape_line.color.rgb = RGBColor(127, 127, 127)
             shape_line.width = Pt(0.5)
-            self.shape.adjustments[0] = float(0.15)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.150051)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(127, 127, 127)
 
@@ -2821,17 +2821,17 @@ class extended():
             # line paramter
             shape_line.color.rgb = RGBColor(0, 0, 0)
             shape_line.width = Pt(0.75)
-            self.shape.adjustments[0] = float(0.3)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.30045)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
 
         elif shape_type == 'L3_SEGMENT_VPN':
             #fill paramter
-            shape_fill.fore_color.rgb = RGBColor(251, 243, 243)
+            shape_fill.fore_color.rgb = RGBColor(248, 243, 251)
             # line paramter
-            shape_line.color.rgb = RGBColor(192, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(0.75)
-            self.shape.adjustments[0] = float(0.3)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.30045)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
 
@@ -2861,12 +2861,10 @@ class extended():
             #line paramter
             shape_line.color.rgb = RGBColor(0, 0, 0)
             shape_line.width = Pt(1.0)
-            self.shape.adjustments[0] = float(0.0)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.0001)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
             self.shape.text_frame.paragraphs[0].font.size = Pt(self.shae_font_large_size)
-
-
 
         elif shape_type == 'DEVICE_L3_INSTANCE':
             #fill paramter
@@ -2894,7 +2892,7 @@ class extended():
             #line paramter
             shape_line.color.rgb = RGBColor(0, 0, 0)
             shape_line.width = Pt(0.5)
-            self.shape.adjustments[0] = float(0.0)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.0008)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
             self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
@@ -2907,7 +2905,7 @@ class extended():
             #line paramter
             shape_line.color.rgb = RGBColor(0, 0, 0)
             shape_line.width = Pt(1.0)
-            self.shape.adjustments[0] = float(0.2)  # curve of ROUNDED_RECTANGLE 0.0~1.0
+            self.shape.adjustments[0] = float(0.2007)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
             #self.shape.text_frame.paragraphs[0].font.size = Pt(16.0)
@@ -2956,6 +2954,7 @@ class extended():
         elif shape_type == 'L2SEG_TEXT':
             shape_fill.background()
             shape_line.fill.background()
+            self.shape.adjustments[0] = float(0.00057)
             self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(163, 101, 209)
 
@@ -2975,7 +2974,7 @@ class extended():
             tmp_rgp_color = self.attribute_tuple1_1[self.shape.text]
             shape_fill.fore_color.rgb = RGBColor(tmp_rgp_color[0], tmp_rgp_color[1], tmp_rgp_color[2])
 
-            self.shape.adjustments[0] = 0.2
+            self.shape.adjustments[0] = 0.2002
             self.shape.text_frame.paragraphs[0].font.size = Pt(self.shae_font_large_size)
 
         else:
@@ -3021,7 +3020,7 @@ class extended():
              """))
 
         if line_type == 'L3_SEGMENT-VPN':
-            shape_line.color.rgb = RGBColor(192, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             line_elem = self.shape.line._get_or_add_ln()
             shape_line.width = Pt(0.7)
             line_elem.append(parse_xml("""
@@ -3035,7 +3034,7 @@ class extended():
         if line_type == 'VPN':
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(4.0)
             line_elem = self.shape.line._get_or_add_ln()
             line_elem.append(parse_xml("""
@@ -3048,13 +3047,54 @@ class extended():
         if line_type == 'VPN_curve':
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(4.0)
             #shape_line.dash_style = MSO_LINE.SQUARE_DOT
             line_elem = self.shape.line._get_or_add_ln()
             line_elem.append(parse_xml("""
                     <a:headEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
              """))
+
+        if line_type == 'FLOW0': #direct arrow
+            self.shape.shadow.inherit = True
+            shape_line.color.brightness = 0.3
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            line_elem = self.shape.line._get_or_add_ln()
+            line_elem.append(parse_xml("""
+                    <a:headEnd type="oval" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+            line_elem.append(parse_xml("""
+                    <a:tailEnd type="arrow" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+
+        if line_type == 'FLOW1': #start arrow
+            self.shape.shadow.inherit = True
+            shape_line.color.brightness = 0.3
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            line_elem = self.shape.line._get_or_add_ln()
+            line_elem.append(parse_xml("""
+                    <a:headEnd type="oval" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+
+        if line_type == 'FLOW2': #end arrow
+            self.shape.shadow.inherit = True
+            shape_line.color.brightness = 0.3
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            line_elem = self.shape.line._get_or_add_ln()
+            line_elem.append(parse_xml("""
+                    <a:tailEnd type="arrow" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+             """))
+
+        if line_type == 'FLOW3': #connect arrow
+            self.shape.shadow.inherit = True
+            shape_line.color.brightness = 0.3
+            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.width = Pt(4.0)
+            line_elem = self.shape.line._get_or_add_ln()
+
 
 
     def l2_device_materials(self,action_type,input_device_name,write_left_top_array,wp_list_array):

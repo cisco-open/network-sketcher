@@ -15,12 +15,415 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+from idlelib.debugobj_r import remote_object_tree_item
 
-import ns_def , ns_egt_maker
+import ns_def, ns_egt_maker, ns_ddx_figure, network_sketcher_cli
 from collections import Counter
 import tkinter as tk ,tkinter.ttk , openpyxl
-import ipaddress,sys, os, re, shutil
+import ipaddress, sys, os, re, shutil
 import numpy as np
+import networkx as nx
+
+class  flow():
+    def add_routing_path_to_flow(self,full_filepath_master,flow_list_array):
+        print('--- Routing path calculation ---')
+        argv_array = ['show', 'l3_broadcast_domain']
+        l3_broadcast_array = network_sketcher_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
+        #print(l3_broadcast_array)
+
+        G = nx.Graph()
+        # Add nodes and edges to the graph
+        for domain_info in l3_broadcast_array:
+            broadcast_domain, device_interfaces = domain_info
+            devices = [dev[0] for dev in device_interfaces]
+
+            # Connect all devices in the broadcast domain (full graph)
+            for i in range(len(devices)):
+                for j in range(i + 1, len(devices)):
+                    G.add_edge(devices[i], devices[j])
+
+        for row in flow_list_array[2:]:
+            data = row[1]
+            source = data[1]
+            target = data[2]
+
+            path = flow.get_shortest_path(G, source, target)
+            #print(path)
+            if 'is not in G' in path:
+                continue
+
+            if len(path) >= 2:
+                path = path[1:-1]
+            path2 = ', '.join([f"'{p}'" for p in path])
+            if path2 == '':
+                path2 = ' '
+
+            data[7] = path2
+
+        #print(flow_list_array)
+        return (flow_list_array)
+
+    def get_shortest_path(G,source, target):
+        try:
+            path = nx.shortest_path(G, source=source, target=target)
+            #print(source,target,path, G)
+            return path
+        except nx.NetworkXNoPath:
+            return f"The Path from {source} to {target} could not be found."
+        except nx.NodeNotFound as e:
+            return str(e)
+
+    def append_flows_to_diagram(self,variable3_7_y_1,variable3_7_y_2,variable3_7_y_3): #add at ver 2.4.3
+        print('--- append_flows_to_diagram ---')
+        #print(variable3_7_y_1.get(), variable3_7_y_2.get(), variable3_7_y_3.get())
+        #print(self.pptx_full_filepath)
+        #print(self.full_filepath)
+
+        ws_flow_name = 'Flow_Data'
+        excel_maseter_file = self.full_filepath
+        master_flow_array = ns_def.convert_excel_to_array(ws_flow_name, excel_maseter_file, 3)
+
+        # Exclude the last element (['<<END_MARK>>'])
+        filtered_master_flow = master_flow_array[:-1]
+        #print(filtered_master_flow)
+
+        # Exclude invalid lines
+        filterd2_master_flow = []
+        for element in filtered_master_flow:
+            sublist = element[1]  # Take the sublist
+            # Check if the second or third elements are not empty
+            if sublist[1] and sublist[2]:
+                filterd2_master_flow.append(sublist)  # Append the sublist without the first number
+        #print(filterd2_master_flow)
+
+        # Filter lines by the target
+        filtered_target_flow = []
+        for element in filterd2_master_flow:
+            # Check if the criteria are met
+            if (element[1] == variable3_7_y_1.get() or variable3_7_y_1.get() == 'Any') and \
+                    (element[2] == variable3_7_y_2.get() or variable3_7_y_2.get() == 'Any') and \
+                    (element[4] == variable3_7_y_3.get() or variable3_7_y_3.get() == 'Any'):
+                filtered_target_flow.append(element)
+
+        #print(filtered_target_flow)
+
+        '''read the pptx file and shapes data'''
+        self.shape_name_grid_array = []
+
+        from pptx import Presentation
+        from pptx.util import Inches
+        prs = Presentation(self.pptx_full_filepath)
+        for shape in prs.slides[0].shapes:
+            if shape.has_text_frame:
+                if hasattr(shape, "adjustments"):
+                    try:
+                        if shape.adjustments[0] not in [0.99445, 0.50444, 0.30045, 0.00046, 0.15005, 0.00057, 0.2007] and shape.text.strip() != '': #exclude not (device or wp) shape. 0.0001 device, 0.0008 L3 instance device , 0.2002 way point, 0.2007 l3 instance in device
+                            #print(shape.text.strip(), shape.adjustments[0] , shape.left, shape.top, shape.width, shape.height)
+                            self.shape_name_grid_array.append([shape.text.strip(), shape.left, shape.top, shape.width, shape.height])
+
+                    except IndexError:
+                        pass
+
+        #print(self.shape_name_grid_array)
+
+        ''' deside routes and write flows '''
+        if os.path.isfile(self.pptx_full_filepath) == True:
+            self.active_ppt = Presentation(self.pptx_full_filepath)
+            self.slide = self.active_ppt.slides[0]
+
+        for tmp_filtered_target_flow in filtered_target_flow:
+
+            # select routing path is auto or static
+            selected_route_path = []
+            if tmp_filtered_target_flow[6] == '' and tmp_filtered_target_flow[7] == ' ':
+                selected_route_path = [tmp_filtered_target_flow[1], tmp_filtered_target_flow[2]]
+
+            elif tmp_filtered_target_flow[6] == '' and tmp_filtered_target_flow[7] != ' ':
+                selected_route_path = [element.strip().strip("'") for element in tmp_filtered_target_flow[7].split(',')]
+                selected_route_path.insert(0, tmp_filtered_target_flow[1])
+                selected_route_path.append(tmp_filtered_target_flow[2])
+
+            elif tmp_filtered_target_flow[6] != '':
+                selected_route_path = [element.strip().strip("'") for element in tmp_filtered_target_flow[6].split(',')]
+                selected_route_path.insert(0, tmp_filtered_target_flow[1])
+                selected_route_path.append(tmp_filtered_target_flow[2])
+
+            #print(tmp_filtered_target_flow,selected_route_path)
+
+            ''' write line'''
+            if len(selected_route_path) == 2:
+                # get source grid value
+                source_grid = next(
+                    (item for item in self.shape_name_grid_array if item[0] == tmp_filtered_target_flow[1]),
+                    None  # Returns None if no match is found.
+                )
+
+                destination_grid = next(
+                    (item for item in self.shape_name_grid_array if item[0] == tmp_filtered_target_flow[2]),
+                    None  # Returns None if no match is found.
+                )
+
+                if source_grid == None or destination_grid == None:
+                    continue
+
+                #print(source_grid, destination_grid)
+
+                line_type = 'FLOW0'
+                inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.25) / 914400
+                inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.75) / 914400
+                inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5)  / 914400
+                ns_ddx_figure.extended.add_line(self,line_type,inche_from_connect_x,inche_from_connect_y,inche_to_connect_x,inche_to_connect_y)
+
+            elif len(selected_route_path) >= 3:
+                #print(selected_route_path)
+                for i in range(len(selected_route_path) - 1):
+                    pair = [selected_route_path[i], selected_route_path[i + 1]]
+                    #print(pair,i,len(selected_route_path) - 2 )
+
+                    # get source grid value
+                    source_grid = next(
+                        (item for item in self.shape_name_grid_array if item[0] == pair[0]),
+                        None  # Returns None if no match is found.
+                    )
+
+                    destination_grid = next(
+                        (item for item in self.shape_name_grid_array if item[0] == pair[1]),
+                        None  # Returns None if no match is found.
+                    )
+
+                    if source_grid == None or destination_grid == None:
+                        continue
+
+                    if i == 0:
+                        line_type = 'FLOW1'
+                        inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.25) / 914400
+                        inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                        inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.5) / 914400
+                        inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5) / 914400
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y,inche_to_connect_x, inche_to_connect_y)
+                    elif i == len(selected_route_path) - 2:
+                        line_type = 'FLOW2'
+                        inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.5) / 914400
+                        inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                        inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.75) / 914400
+                        inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5) / 914400
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y,inche_to_connect_x, inche_to_connect_y)
+                    else:
+                        line_type = 'FLOW3'
+                        inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.5) / 914400
+                        inche_from_connect_y = (source_grid[2] + source_grid[4] * 0.5) / 914400
+                        inche_to_connect_x = (destination_grid[1] + destination_grid[3] * 0.5) / 914400
+                        inche_to_connect_y = (destination_grid[2] + destination_grid[4] * 0.5) / 914400
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y,inche_to_connect_x, inche_to_connect_y)
+
+        folder = os.path.dirname(self.pptx_full_filepath)
+        filename = os.path.basename(self.pptx_full_filepath)
+        modified_filepath = os.path.join(folder, f"Added_flows_{filename}")
+        self.active_ppt.save(modified_filepath)
+
+        #file open
+        ns_def.messagebox_file_open(modified_filepath)
+
+    def get_flow_item_list(self): # add at ver 2.4.3
+        #print('--- get_flow_item_list ---')
+        excel_maseter_file = self.inFileTxt_L2_3_1.get()
+        ## check Flow_Data sheet exists in Master file
+        input_excel_master = openpyxl.load_workbook(excel_maseter_file)
+        ws_list_master = input_excel_master.sheetnames
+        input_excel_master.close()
+
+        ws_flow_name = 'Flow_Data'
+        if ws_flow_name in ws_list_master:
+            master_flow_array = ns_def.convert_excel_to_array(ws_flow_name, excel_maseter_file, 3)
+
+            # Exclude the last element (['<<END_MARK>>'])
+            filtered_master_flow = master_flow_array[:-1]
+
+            # Group elements from the 2nd, 3rd, 4th, and 5th positions into separate lists
+            category_wise_data = [[] for _ in range(4)]  # Prepare 4 category lists
+
+            for entry in filtered_master_flow:
+                data = entry[1]  # Extract the second element (list)
+                for i in range(4):  # Process the 2nd, 3rd, 4th, and 5th elements (index 1 to 4)
+                    value = data[i + 1].strip()
+                    if value and value not in category_wise_data[i]:  # Add only non-empty, non-duplicate values
+                        category_wise_data[i].append(value)
+
+            update_master_flow_array = category_wise_data
+
+            return(update_master_flow_array)
+
+        else:
+            print('--- Master file does not have Flow_Data sheet ---')
+
+
+    def export_flow_file(self,dummy):
+        print('--- export_flow_file ---')
+
+        excel_maseter_file = self.inFileTxt_L2_3_1.get()
+        iDir = os.path.abspath(os.path.dirname(excel_maseter_file))
+
+        basename_without_ext = os.path.splitext(os.path.basename(excel_maseter_file))[0]
+        self.outFileTxt_11_3.delete(0, tkinter.END)
+        self.outFileTxt_11_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[FLOW]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx')
+
+        ## check file open
+        ns_def.check_file_open(self.outFileTxt_11_3.get())
+
+        # remove exist flow file
+        if os.path.isfile(self.outFileTxt_11_3.get()) == True:
+            os.remove(self.outFileTxt_11_3.get())
+
+        self.excel_flow_file = self.outFileTxt_11_3.get()
+
+        ## check Flow_Data sheet exists in Master file
+        input_excel_master = openpyxl.load_workbook(excel_maseter_file)
+        ws_list_master = input_excel_master.sheetnames
+        input_excel_master.close()
+
+        ws_flow_name = 'Flow_Data'
+        flag_master_has_flow_sheet = False
+        if ws_flow_name in ws_list_master:
+            flag_master_has_flow_sheet = True
+            master_flow_array = []
+            master_flow_array = ns_def.convert_excel_to_array(ws_flow_name, excel_maseter_file, 3)
+            if '<<END_MARK>>' in master_flow_array[-1][1]:
+                master_flow_array = master_flow_array[:-1]
+            #print(master_flow_array)
+
+        '''
+        MAKE Flows List
+        '''
+        master_device_table_tuple = {}
+        flow_list_array = []
+        egt_maker_width_array = ['5','25', '25','15', '20', '25', '40', '40']  # for Network Sketcher Ver 2.0
+        flow_list_array.append([1, ['<RANGE>', '1','1', '1', '1', '1', '1', '1', '1', '<END>']])
+        flow_list_array.append([2, ['<HEADER>', 'No','Source Device Name', 'Destination Device Name','TCP/UDP/ICMP','Service name(Port)',  'Max. bandwidth(Mbps)', 'Manually rouging path settings', 'Automatic rouging path settings', '<END>']])
+
+        current_row_num = 3
+        all_empty = False
+        if flag_master_has_flow_sheet == True:
+            # check last ten column = empty
+            last_10_elements = [item[1] for item in master_flow_array[-1:]]
+            all_empty = all(all(element == '' for element in item[1:7]) for item in last_10_elements)
+
+            for tmp_master_flow_array in master_flow_array:
+                for i in range(1, 8):
+                    if tmp_master_flow_array[1][i] == '':
+                        tmp_master_flow_array[1][i] = '<EMPTY>'
+                print(tmp_master_flow_array[1][7])
+
+                flow_list_array.append([current_row_num, ['',str(current_row_num - 2), '>>' + str(tmp_master_flow_array[1][1]), '>>' + str(tmp_master_flow_array[1][2]), '>>' + str(tmp_master_flow_array[1][3]), '>>' + str(tmp_master_flow_array[1][4]), '>>' + str(tmp_master_flow_array[1][5]), '>>' + str(tmp_master_flow_array[1][6]),str(tmp_master_flow_array[1][7]), '<END>']])
+                current_row_num += 1
+
+        if flag_master_has_flow_sheet == True and all_empty == True:
+            add_column_num = 0
+        elif flag_master_has_flow_sheet == True and all_empty == False:
+            add_column_num = 10
+        else:
+            add_column_num = 100
+
+        current_row_max = add_column_num + current_row_num
+        for n in range(current_row_num, current_row_max):
+            flow_list_array.append([n, ['',str(n - 2), '<EMPTY>', '<EMPTY>', '<EMPTY>', '<EMPTY>', '<EMPTY>', '<EMPTY>',' ', '<END>']])
+
+        flow_list_array.append([current_row_max, ['<END>']])
+
+        #print(flow_list_array)
+        ### Convert to tuple
+        master_device_table_tuple = ns_def.convert_array_to_tuple(flow_list_array)
+
+        ''' 
+        Create temp input data file
+        '''
+        ### Create new data excel file
+        self.worksheet_name = 'Flow_List'
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.title = self.worksheet_name
+        wb.save(self.excel_flow_file)
+
+        '''
+        Create [FLOW] file
+        '''
+
+        tmp_master_data_array = []
+        tmp_master_data_array.append([1,[self.worksheet_name]])
+        #tmp_master_data_array.append([2,[self.worksheet_name]])
+        #print(tmp_master_data_array)
+
+
+        template_master_data_tuple = {}
+        template_master_data_tuple = ns_def.convert_array_to_tuple(tmp_master_data_array)
+
+        #print('Create --- template_master_data_tuple---')
+        #print(template_master_data_tuple)
+        offset_row = 0
+        offset_column = 0
+        write_to_section = '_template_'
+        ns_def.write_excel_meta(template_master_data_tuple, self.excel_flow_file, self.worksheet_name, write_to_section, offset_row, offset_column)
+
+        ###
+        input_excel_name = self.excel_flow_file
+        output_excel_name = self.outFileTxt_11_3.get()
+        NEW_OR_ADD = 'NEW'
+        ns_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
+
+        '''
+        Add FLOW_List table from meta
+        '''
+        # Write normal tuple to excel
+        tmp_ws_name = '_tmp_'
+        master_excel_meta = master_device_table_tuple
+        ppt_meta_file = output_excel_name
+        excel_file_path = ppt_meta_file
+        worksheet_name = tmp_ws_name
+        section_write_to = '<<N/A>>'
+        offset_row = 0
+        offset_column = 0
+        ns_def.create_excel_sheet(ppt_meta_file, tmp_ws_name)
+        ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+        #print(output_excel_name)
+        self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
+        worksheet_name = 'Flow_List'
+        start_row = 1
+        start_column = 0
+        custom_table_name = ppt_meta_file
+        self.input_tree_excel = ns_egt_maker.insert_custom_excel_table(self.input_tree_excel, worksheet_name, start_row, start_column, custom_table_name)
+        self.input_tree_excel.save(output_excel_name)
+
+        '''
+        Add Drop list
+        '''
+        from openpyxl.worksheet.datavalidation import DataValidation
+        # Load the Excel file
+        wb = openpyxl.load_workbook(output_excel_name)
+        ws = wb['Flow_List']  # Select the worksheet 'Flow_List'
+
+        # Create a dropdown list (Enable in-cell dropdown)
+        dv2 = DataValidation(type="list", formula1='"TCP,UDP,ICMP"', allow_blank=True, showDropDown=False)
+        dv3 = DataValidation(type="list", formula1='"Any,FTP Data(20),FTP Control(21),SSH(22),Telnet(23),SMTP(25),DNS(53),DHCP Server(67),DHCP Client(68),HTTP(80),NNTP(119),NTP(123),IMAP(143),SNMP(161),SNMP Trap(162),BGP(179),HTTPS(443),SMB(445),SMTPS(465),SMTP(587),IMAPS(993),RDP(3389)"', allow_blank=True, showDropDown=False)
+
+        # Apply data validation to cell C3
+        row = 3
+        for n in range(row, 103):
+            column = 4
+            ws.add_data_validation(dv2)
+            dv2.add(ws.cell(row=n, column=column))
+            column = 5
+            ws.add_data_validation(dv3)
+            dv3.add(ws.cell(row=n, column=column))
+
+        # Save the flow file
+        output_file = output_excel_name
+        wb.save(output_file)
+
+        print(f"Flow file is saved: {output_file}")
+
+        # Remove _tmp_ sheet from excel master
+        ns_def.remove_excel_sheet(ppt_meta_file, tmp_ws_name)
 
 class  ip_report():
     def export_ip_report(self,dummy):

@@ -782,7 +782,7 @@ def insert_custom_excel_table(input_excel, worksheet_name ,start_row, start_colu
 
                 ### check sub_title###
                 if input_custom_table.active.cell(custom_table_row, c).value != None:
-                    temp_first_character = input_custom_table.active.cell(custom_table_row, c).value[:1]
+                    temp_first_character = str(input_custom_table.active.cell(custom_table_row, c).value)[:1] # modify at ver 2.4.3
                     if temp_first_character != '>' and temp_first_character != '<':
                         cell_style = 'SUB_TITLE'
                 else:
@@ -818,7 +818,7 @@ def insert_custom_excel_table(input_excel, worksheet_name ,start_row, start_colu
                     #### sub main ####
                     write_excel_cell(input_excel, worksheet_name, current_row, temp_current_column, input_msg, input_num_column, cell_style, write_style)
                     temp_current_column = temp_current_column + input_num_column
-                    input_msg = input_custom_table.active.cell(custom_table_row, c + 1).value.replace('>>', '') # add replace >> for Network Sketcher
+                    input_msg = str(input_custom_table.active.cell(custom_table_row, c + 1).value).replace('>>', '') # add replace >> for Network Sketcher , modify at ver 2.4.3
 
                 elif input_custom_table.active.cell(custom_table_row, c+1).value == None:
                     input_num_column = int(input_custom_table.active.cell(Row_OF_Column_Range, c).value)
