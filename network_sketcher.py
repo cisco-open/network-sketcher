@@ -42,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.4.3")
+        self.root.title("Network Sketcher  ver 2.5.0")
         self.root.geometry("510x200+100+100")
         
         # Notebook
@@ -98,8 +98,11 @@ class ns_front_run():
         Help_1_button_1 = tk.Button(Help_1, text="Japanese", font=("", 14), command=lambda: self.click_action_main1_1('self.help_1_button_1'))
         Help_1_button_1.grid(row=1, column=2, sticky='W', padx=20, pady=2 , ipadx=5 ,ipady=0)
 
-        Help_1_1 = tk.Label(tab_x2, font=("", 10), text="Copyright 2023 Cisco Systems, Inc. and its affiliates  \n  SPDX-License-Identifier: Apache-2.0", background='#FFFFFF')
+        Help_1_1 = tk.Label(tab_x2, font=("", 10), text="Author: Yusuke Ogawa - Security Architect, Cisco | CCIE#17583", background='#FFFFFF')
         Help_1_1.grid(column=0, row=3)
+
+        Help_1_1 = tk.Label(tab_x2, font=("", 10), text="Copyright 2023 Cisco Systems, Inc. and its affiliates  \n  SPDX-License-Identifier: Apache-2.0", background='#FFFFFF')
+        Help_1_1.grid(column=0, row=4, pady=2)
 
         # main loop
         self.root.mainloop()
@@ -1013,7 +1016,8 @@ class ns_front_run():
                 #print(flow_list_array)
 
                 #caluculate routing path
-                # TBD
+                flow_list_array = ns_extensions.flow.add_routing_path_to_flow(self,full_filepath_master,flow_list_array)
+                #print(flow_list_array)
 
                 #add last end mark
                 last_number = flow_list_array[-1][0]

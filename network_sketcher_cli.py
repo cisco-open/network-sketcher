@@ -341,6 +341,7 @@ def get_next_arg(argv_array, target):
         return argv_array[index + 1]
     except (ValueError, IndexError):
         return None
+
 def get_next_next_arg(argv_array, target):
     try:
         index = argv_array.index(target)
