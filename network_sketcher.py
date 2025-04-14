@@ -185,10 +185,10 @@ class ns_front_run():
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
         if click_value == 'self.help_1_button_1':
-            webbrowser.open('https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D')
+            webbrowser.open('https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BJP%5D')
 
         if click_value == 'self.help_1_button_2':
-            webbrowser.open('https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BJP%5D')
+            webbrowser.open('https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D')
 
     '''
     Sketch Panel
