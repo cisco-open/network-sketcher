@@ -17,34 +17,8 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
-- Ver 2.4.2
-  - [Added 4 CLI show commands](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.4.2)
-- Ver 2.4.1
-  - [Optimized placement of segments in the Layer 3 overall configuration chart](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.4.1)
-- Ver 2.4.0
-  - [Attributes can be added to device files to reflect colors on diagrams  ](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/4-8.%20Attribute_settings.md)
-- Ver 2.3.4
-  - [Summary Diagram is automatically added in L1 All Areas](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.4)
-- Ver 2.3.3
-  - [Two patterns are created: area-oriented and connection-oriented](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.3)
-- Ver 2.3.2
-  - ["VPNs on L3” has been added to the VPN configuration diagram to reflect VPN segments in the Layer 3 logical configuration diagram.](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md)
-- Ver 2.3.1
-  - [Added the ability to output information in the master file via CLI](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/8-1.%20show%20commands.md)
-- Ver 2.3.0
-  - [Added the ability to create an overall L3 diagram (All Areas)](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.3.0)
-- Ver 2.2.2
-  - [Automated device placement adjustment in L1 diagram](https://github.com/user-attachments/assets/8014132b-4e38-422a-9ab0-3ee397e27b1e)
-- Ver 2.2.1
-  - [IP address table](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-3.%20Export%20IP%20address%20table.md) :[(Sample output file) ](https://github.com/user-attachments/files/15784654/IP_TABLE.Sample.figure5.xlsx)
-- Ver 2.2.0
-  - [Automatic IP address assignment](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-2.%20Automatic%20IP%20address%20assignment.md)
-- Ver 2.1.0
-  - [VPN Diagram](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-1.%20Generation%20of%20VPN%20Diagram%20.md) 
-  - [VPN Configuration](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/6-2.%20VPN%20setting.md) 
-  - [Cross-platform support (Windows, Linux, Mac OS)](https://github.com/user-attachments/assets/04ab332d-c876-44ff-83ef-b98d64d24b1f)
-  - [Drawing beyond maximum PowerPoint size](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/A-1.%20Procedure%20for%20pasting%20PPT%20figures%20that%20exceed%20the%20maximum%20paper%20size%20into%20Excel.md)
-  - [Import of yaml file from CML(Cisco Modeling Labs) diagrams](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/7-1.%20Convert%20CML%20configuration%20file%20(yaml)%20to%20Network%20Sketcher%20master%20file.md) 
+- Ver 2.5.0
+  - [Communication flow management functionality has been added.](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.5.0)
 
 # Limitations
 - IPv4 only. IPv6 is not supported.
@@ -79,12 +53,13 @@ python network_sketcher.py
 ```bash
 python -m pip install tkinterdnd2-universal
 python -m pip install tkinterdnd2
-python -m pip install  "openpyxl>=3.1.3,<=3.1.5"
+python -m pip install "openpyxl>=3.1.3,<=3.1.5"
 python -m pip install python-pptx
 python -m pip install ipaddress
 python -m pip install numpy
 python -m pip install pyyaml
 python -m pip install ciscoconfparse
+python -m pip install networkx
 ```
 
 * Mac OS requires the following additional installation.
@@ -100,8 +75,8 @@ sudo apt-get install python3-tk
 # User Guide
 | Language  | Link |
 | ------------- | ------------- |
-| English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D) |
-| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BJP%5D) |
+| English  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/English/User_Guide%5BEN%5D.md) |
+| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/blob/main/User_Guide/Japanese/User_Guide%5BJP%5D.md) |
  
 # How to create the exe file for Windows using pyinstaller
  ```bash
@@ -140,9 +115,7 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 
 # Author
  
-* Yusuke Ogawa
-* CCIE# 17583
-* Security Architect @ Cisco
+* Yusuke Ogawa - Security Architect, Cisco | CCIE#17583
  
 # License
 SPDX-License-Identifier: Apache-2.0
