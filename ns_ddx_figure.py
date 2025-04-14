@@ -2827,9 +2827,9 @@ class extended():
 
         elif shape_type == 'L3_SEGMENT_VPN':
             #fill paramter
-            shape_fill.fore_color.rgb = RGBColor(251, 243, 243)
+            shape_fill.fore_color.rgb = RGBColor(248, 243, 251)
             # line paramter
-            shape_line.color.rgb = RGBColor(192, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(0.75)
             self.shape.adjustments[0] = float(0.30045)  # curve of ROUNDED_RECTANGLE 0.0~1.0
             # text parameter
@@ -3020,7 +3020,7 @@ class extended():
              """))
 
         if line_type == 'L3_SEGMENT-VPN':
-            shape_line.color.rgb = RGBColor(192, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             line_elem = self.shape.line._get_or_add_ln()
             shape_line.width = Pt(0.7)
             line_elem.append(parse_xml("""
@@ -3034,7 +3034,7 @@ class extended():
         if line_type == 'VPN':
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(4.0)
             line_elem = self.shape.line._get_or_add_ln()
             line_elem.append(parse_xml("""
@@ -3047,7 +3047,7 @@ class extended():
         if line_type == 'VPN_curve':
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(255, 0, 0)
+            shape_line.color.rgb = RGBColor(112, 48, 160)
             shape_line.width = Pt(4.0)
             #shape_line.dash_style = MSO_LINE.SQUARE_DOT
             line_elem = self.shape.line._get_or_add_ln()
@@ -3055,10 +3055,10 @@ class extended():
                     <a:headEnd type="diamond" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
              """))
 
-        if line_type == 'FLOW0':
+        if line_type == 'FLOW0': #direct arrow
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(0, 112, 192)
+            shape_line.color.rgb = RGBColor(255, 0, 0)
             shape_line.width = Pt(4.0)
             line_elem = self.shape.line._get_or_add_ln()
             line_elem.append(parse_xml("""
@@ -3068,44 +3068,33 @@ class extended():
                     <a:tailEnd type="arrow" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
              """))
 
-        if line_type == 'FLOW1':
+        if line_type == 'FLOW1': #start arrow
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(0, 112, 192)
+            shape_line.color.rgb = RGBColor(255, 0, 0)
             shape_line.width = Pt(4.0)
             line_elem = self.shape.line._get_or_add_ln()
             line_elem.append(parse_xml("""
                     <a:headEnd type="oval" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
              """))
-            '''line_elem.append(parse_xml("""
-                    <a:tailEnd type="arrow" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
-             """))'''
 
-        if line_type == 'FLOW2':
+        if line_type == 'FLOW2': #end arrow
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(0, 112, 192)
+            shape_line.color.rgb = RGBColor(255, 0, 0)
             shape_line.width = Pt(4.0)
             line_elem = self.shape.line._get_or_add_ln()
-            '''line_elem.append(parse_xml("""
-                    <a:headEnd type="oval" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
-             """))'''
             line_elem.append(parse_xml("""
                     <a:tailEnd type="arrow" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
              """))
 
-        if line_type == 'FLOW3':
+        if line_type == 'FLOW3': #connect arrow
             self.shape.shadow.inherit = True
             shape_line.color.brightness = 0.3
-            shape_line.color.rgb = RGBColor(0, 112, 192)
+            shape_line.color.rgb = RGBColor(255, 0, 0)
             shape_line.width = Pt(4.0)
             line_elem = self.shape.line._get_or_add_ln()
-            '''line_elem.append(parse_xml("""
-                    <a:headEnd type="oval" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
-             """))
-            line_elem.append(parse_xml("""
-                    <a:tailEnd type="arrow" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
-             """))'''
+
 
 
     def l2_device_materials(self,action_type,input_device_name,write_left_top_array,wp_list_array):

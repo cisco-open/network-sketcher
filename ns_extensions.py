@@ -17,18 +17,67 @@ limitations under the License.
 '''
 from idlelib.debugobj_r import remote_object_tree_item
 
-import ns_def, ns_egt_maker, ns_ddx_figure
+import ns_def, ns_egt_maker, ns_ddx_figure, network_sketcher_cli
 from collections import Counter
 import tkinter as tk ,tkinter.ttk , openpyxl
 import ipaddress, sys, os, re, shutil
 import numpy as np
+import networkx as nx
 
 class  flow():
+    def add_routing_path_to_flow(self,full_filepath_master,flow_list_array):
+        print('--- Routing path calculation ---')
+        argv_array = ['show', 'l3_broadcast_domain']
+        l3_broadcast_array = network_sketcher_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
+        #print(l3_broadcast_array)
+
+        G = nx.Graph()
+        # Add nodes and edges to the graph
+        for domain_info in l3_broadcast_array:
+            broadcast_domain, device_interfaces = domain_info
+            devices = [dev[0] for dev in device_interfaces]
+
+            # Connect all devices in the broadcast domain (full graph)
+            for i in range(len(devices)):
+                for j in range(i + 1, len(devices)):
+                    G.add_edge(devices[i], devices[j])
+
+        for row in flow_list_array[2:]:
+            data = row[1]
+            source = data[1]
+            target = data[2]
+
+            path = flow.get_shortest_path(G, source, target)
+            #print(path)
+            if 'is not in G' in path:
+                continue
+
+            if len(path) >= 2:
+                path = path[1:-1]
+            path2 = ', '.join([f"'{p}'" for p in path])
+            if path2 == '':
+                path2 = ' '
+
+            data[7] = path2
+
+        #print(flow_list_array)
+        return (flow_list_array)
+
+    def get_shortest_path(G,source, target):
+        try:
+            path = nx.shortest_path(G, source=source, target=target)
+            #print(source,target,path, G)
+            return path
+        except nx.NetworkXNoPath:
+            return f"The Path from {source} to {target} could not be found."
+        except nx.NodeNotFound as e:
+            return str(e)
+
     def append_flows_to_diagram(self,variable3_7_y_1,variable3_7_y_2,variable3_7_y_3): #add at ver 2.4.3
         print('--- append_flows_to_diagram ---')
-        print(variable3_7_y_1.get(), variable3_7_y_2.get(), variable3_7_y_3.get())
-        print(self.pptx_full_filepath)
-        print(self.full_filepath)
+        #print(variable3_7_y_1.get(), variable3_7_y_2.get(), variable3_7_y_3.get())
+        #print(self.pptx_full_filepath)
+        #print(self.full_filepath)
 
         ws_flow_name = 'Flow_Data'
         excel_maseter_file = self.full_filepath
@@ -56,7 +105,7 @@ class  flow():
                     (element[4] == variable3_7_y_3.get() or variable3_7_y_3.get() == 'Any'):
                 filtered_target_flow.append(element)
 
-        print(filtered_target_flow)
+        #print(filtered_target_flow)
 
         '''read the pptx file and shapes data'''
         self.shape_name_grid_array = []
@@ -75,7 +124,7 @@ class  flow():
                     except IndexError:
                         pass
 
-        print(self.shape_name_grid_array)
+        #print(self.shape_name_grid_array)
 
         ''' deside routes and write flows '''
         if os.path.isfile(self.pptx_full_filepath) == True:
@@ -117,7 +166,7 @@ class  flow():
                 if source_grid == None or destination_grid == None:
                     continue
 
-                print(source_grid, destination_grid)
+                #print(source_grid, destination_grid)
 
                 line_type = 'FLOW0'
                 inche_from_connect_x = (source_grid[1] + source_grid[3] * 0.25) / 914400
@@ -127,10 +176,10 @@ class  flow():
                 ns_ddx_figure.extended.add_line(self,line_type,inche_from_connect_x,inche_from_connect_y,inche_to_connect_x,inche_to_connect_y)
 
             elif len(selected_route_path) >= 3:
-                print(selected_route_path)
+                #print(selected_route_path)
                 for i in range(len(selected_route_path) - 1):
                     pair = [selected_route_path[i], selected_route_path[i + 1]]
-                    print(pair,i,len(selected_route_path) - 2 )
+                    #print(pair,i,len(selected_route_path) - 2 )
 
                     # get source grid value
                     source_grid = next(
@@ -172,6 +221,9 @@ class  flow():
         filename = os.path.basename(self.pptx_full_filepath)
         modified_filepath = os.path.join(folder, f"Added_flows_{filename}")
         self.active_ppt.save(modified_filepath)
+
+        #file open
+        ns_def.messagebox_file_open(modified_filepath)
 
     def get_flow_item_list(self): # add at ver 2.4.3
         #print('--- get_flow_item_list ---')
@@ -260,8 +312,9 @@ class  flow():
                 for i in range(1, 8):
                     if tmp_master_flow_array[1][i] == '':
                         tmp_master_flow_array[1][i] = '<EMPTY>'
+                print(tmp_master_flow_array[1][7])
 
-                flow_list_array.append([current_row_num, ['',str(current_row_num - 2), '>>' + str(tmp_master_flow_array[1][1]), '>>' + str(tmp_master_flow_array[1][2]), '>>' + str(tmp_master_flow_array[1][3]), '>>' + str(tmp_master_flow_array[1][4]), '>>' + str(tmp_master_flow_array[1][5]), '>>' + str(tmp_master_flow_array[1][6]),' ', '<END>']])
+                flow_list_array.append([current_row_num, ['',str(current_row_num - 2), '>>' + str(tmp_master_flow_array[1][1]), '>>' + str(tmp_master_flow_array[1][2]), '>>' + str(tmp_master_flow_array[1][3]), '>>' + str(tmp_master_flow_array[1][4]), '>>' + str(tmp_master_flow_array[1][5]), '>>' + str(tmp_master_flow_array[1][6]),str(tmp_master_flow_array[1][7]), '<END>']])
                 current_row_num += 1
 
         if flag_master_has_flow_sheet == True and all_empty == True:
