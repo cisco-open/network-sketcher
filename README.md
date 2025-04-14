@@ -19,6 +19,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 # New Features
 - Ver 2.5.0
   - [Communication flow management functionality has been added.](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.5.0)
+![image](https://github.com/user-attachments/assets/8683c172-505e-4af8-a87a-dc1a1a86a121)
 
 # Limitations
 - IPv4 only. IPv6 is not supported.
