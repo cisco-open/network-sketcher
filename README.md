@@ -1,9 +1,10 @@
 
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/cc82082d-c4a5-4f13-90f5-adaf162202b2" alt="image" />
+</p>
 
 # Network Sketcher
 **Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel.**
-
 * Automatic generation of each configuration document by metadatization of network configuration information
 * Automated synchronization between documents
 * Minimize maintenance and training load by automatic generation of common formats
