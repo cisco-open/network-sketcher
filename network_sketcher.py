@@ -19,7 +19,7 @@ limitations under the License.
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from tkinterdnd2 import *
 import sys, os, subprocess ,webbrowser ,openpyxl
-import ns_def,network_sketcher_dev,ns_sync_between_layers,ns_attribute_table_sync_master
+import ns_def,network_sketcher_dev,ns_sync_between_layers,ns_attribute_table_sync_master, network_sketcher_cli
 import ns_extensions
 import ns_vpn_diagram_create
 
@@ -42,8 +42,10 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.0")
+        self.root.title("Network Sketcher  ver 2.5.1")
         self.root.geometry("510x200+100+100")
+        icon = tk.PhotoImage(file='ns_logo.png')
+        self.root.iconphoto(True, icon)
         
         # Notebook
         nb = ttk.Notebook()
@@ -90,7 +92,7 @@ class ns_front_run():
         #Help_1_label_1.grid(row=0, column=0, sticky='W', padx=5, pady=2)
 
         Help_1 = tk.LabelFrame(tab_x2, text="    Online User Guide     ", font=("", 14), height=1, background="#FFFFFF")
-        Help_1.grid(row=1, column=0, columnspan=3, sticky='W', padx=5, pady=5, ipadx=10, ipady=5)
+        Help_1.grid(row=0, column=0, sticky='W', padx=5, pady=5, ipadx=10, ipady=5)
 
         Help_1_button_2 = tk.Button(Help_1, text="English", font=("", 14), command=lambda: self.click_action_main1_1('self.help_1_button_2'))
         Help_1_button_2.grid(row=1, column=1, sticky='W', padx=20, pady=2 , ipadx=15,ipady=0)
@@ -713,19 +715,50 @@ class ns_front_run():
         self.sub3_5.title('Report')
         self.root.update_idletasks()
         #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
-        geo =  str(self.root.winfo_width() - 230) + 'x' + str(self.root.winfo_height() - 60) + '+' + str(self.root.winfo_x() + self.root.winfo_width() +150) + '+' + str(self.root.winfo_y() + 50 )
+        geo =  str(self.root.winfo_width() - 260) + 'x' + str(self.root.winfo_height() + 60) + '+' + str(self.root.winfo_x() + self.root.winfo_width() +150) + '+' + str(self.root.winfo_y() + 50 )
         self.sub3_5.geometry(geo)
 
         self.sub3_5_0 = tk.Label(self.sub3_5, text=local_filename, font=("", 12), background="#FFFFFF")
-        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=15)
+        self.sub3_5_0 .grid(row=0, column=0, columnspan=7, sticky='W', padx=5, pady=5, ipadx=30, ipady=5)
 
-        # IP Address report
-        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='Export', font=("", 14), height=1, background="#C2E2EC")
+        # Report frame
+        self.sub3_5_1 = tk.LabelFrame(self.sub3_5, text='Report', font=("", 14), height=1, background="#C2E2EC")
         self.sub3_5_1.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
 
-        # Export to the IP Address table
-        self.sub3_5_button_1 = tk.Button(self.sub3_5_1, text=" IP Address table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
+        # Report to the IP Address table
+        self.sub3_5_2 = tk.LabelFrame(self.sub3_5_1, text='IP Address', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_5_2.grid(row=1, column=0, columnspan=5, sticky='W', padx=5, pady=0, ipadx=3, ipady=0)
+
+        self.sub3_5_button_1 = tk.Button(self.sub3_5_2, text=" IP Address table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_1','dummy'))
         self.sub3_5_button_1.grid(row=6, column=0, sticky='W', padx=20, pady=5)
+
+        # Report to the IP Address table , add at ver 2.5.1
+        self.sub3_5_4 = tk.LabelFrame(self.sub3_5_1, text='Flow', font=("", 14), height=1, background="#E8F4F8")
+        self.sub3_5_4.grid(row=2, column=0, columnspan=5, sticky='W', padx=5, pady=4, ipadx=3, ipady=0)
+
+        argv_array = ['show', 'l3_interface']
+        full_filepath_master = self.inFileTxt_L2_3_1.get()
+        self.show_l3_interface = network_sketcher_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
+
+        unique_devices = set()
+        for item in self.show_l3_interface:
+            device_name = item[0]
+            unique_devices.add(device_name)
+
+        show_device_list = sorted(unique_devices, reverse=False)
+
+        optionFLOW_1_1 = show_device_list
+        global variableFLOW_1_1
+        variableFLOW_1_1 = tk.StringVar()
+        self.comboFLOW_1_1 = ttk.Combobox(self.sub3_5_4, values=optionFLOW_1_1, textvariable=variableFLOW_1_1, font=("", 12), state='readonly',width=10)
+        self.comboFLOW_1_1.set(str(optionFLOW_1_1[0]))
+        self.comboFLOW_1_1.option_add("*TCombobox*Listbox.Font", ("", 12))
+        self.comboFLOW_1_1.grid(row=0, column=0, sticky='N', padx=10, pady=10, ipady=0, ipadx=35)
+        self.comboFLOW_1_1.bind("<<ComboboxSelected>>", self.on_combobox_select)
+
+        self.sub3_5_button_6 = tk.Button(self.sub3_5_4, text=" Device Flow table ", font=("", 12), command=lambda: self.click_action_sub('self.sub3_5_button_6','dummy'))
+        self.sub3_5_button_6.grid(row=1, column=0, sticky='W', padx=10, ipadx=10, pady=1)
+
 
     def sub_master_extention_3(self): # Append flow Button
         local_filename = self.filename
@@ -818,6 +851,11 @@ class ns_front_run():
                 self.sub3_7_label_4.grid(row=2, column=1, columnspan=3, sticky='W', padx=5, pady=20)
 
     def click_action_sub(self, click_value, target_area_name):
+        if click_value == 'self.sub3_5_button_6':  # select device flow table
+            #print ('--- device flow table ---',variableFLOW_1_1.get())
+            ns_extensions.flow_report.create_device_flow_table(self, self.inFileTxt_L2_3_1.get(), variableFLOW_1_1.get())
+            ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
+
         if click_value == 'self.sub3_7_button_3':  # select Submit
             ns_extensions.flow.append_flows_to_diagram(self,variable3_7_y_1,variable3_7_y_2,variable3_7_y_3)
 
