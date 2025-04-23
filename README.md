@@ -18,9 +18,6 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
-- Ver 2.5.1
-  - [Added the ability to export flow communication information on a per-device basis](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.5.1)
-     ![image](https://github.com/user-attachments/assets/7d751a6e-3664-4014-a8fd-dc919584ae45)
 - Ver 2.5.0
   - [Communication flow management functionality has been added.](https://github.com/cisco-open/network-sketcher/wiki/9%E2%80%901.Exporting-Flow-files)
 ![image](https://github.com/user-attachments/assets/8683c172-505e-4af8-a87a-dc1a1a86a121)
@@ -40,8 +37,8 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 ```bash
 git clone https://github.com/cisco-open/network-sketcher/
 cd network-sketcher
-python -m pip install -r requirements.txt
-python network_sketcher.py
+python3 -m pip install -r requirements.txt
+python3 network_sketcher.py
 ```
 or
 ```bash
@@ -49,30 +46,29 @@ or
 https://github.com/cisco-open/network-sketcher/archive/refs/heads/main.zip
 
 #Unzip the ZIP file and execute the following in the prompt of the folder
-python -m pip install -r requirements.txt
-python network_sketcher.py
+python3 -m pip install -r requirements.txt
+python3 network_sketcher.py
 ```
 
 # Installation Supplement
  * Alternative to “python -m pip install -r requirements.txt”
 ```bash
-python -m pip install tkinterdnd2-universal
-python -m pip install tkinterdnd2
-python -m pip install "openpyxl>=3.1.3,<=3.1.5"
-python -m pip install python-pptx
-python -m pip install ipaddress
-python -m pip install numpy
-python -m pip install pyyaml
-python -m pip install ciscoconfparse
-python -m pip install networkx
+python3 -m pip install tkinterdnd2-universal
+python3 -m pip install tkinterdnd2
+python3 -m pip install "openpyxl>=3.1.3,<=3.1.5"
+python3 -m pip install python-pptx
+python3 -m pip install ipaddress
+python3 -m pip install numpy
+python3 -m pip install pyyaml
+python3 -m pip install ciscoconfparse
+python3 -m pip install networkx
 ```
 
 * Mac OS requires the following additional installation.
 ```bash
 brew install tcl-tk
 ```
-
-* Linux requires the following additional installation.
+* Ubuntu requires the following additional installation.
 ```bash
 sudo apt-get install python3-tk
 ```
