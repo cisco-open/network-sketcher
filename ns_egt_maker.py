@@ -296,6 +296,9 @@ def create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD,egt_make
         output_tree_excel = openpyxl.load_workbook(output_excel_name)
         number_of_sheets += 1
 
+    elif NEW_OR_ADD == 'ADD_OPTION1': # add at ver 2.5.1 for add device table sheets
+        output_tree_excel = openpyxl.load_workbook(output_excel_name)
+
     elif NEW_OR_ADD == 'PARA':
         number_of_add_modify_rows = -1
         output_tree_excel = openpyxl.load_workbook(output_excel_name)
