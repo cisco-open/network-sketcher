@@ -24,7 +24,185 @@ import ipaddress, sys, os, re, shutil
 import numpy as np
 import networkx as nx
 
-class  flow():
+class flow_report():
+    def create_device_flow_table(self,full_filepath_master,device_name):
+        print('--- create_device_flow_table ---',full_filepath_master,device_name)
+        ## check Flow_Data sheet exists in Master file
+        input_excel_master = openpyxl.load_workbook(full_filepath_master)
+        ws_list_master = input_excel_master.sheetnames
+        input_excel_master.close()
+
+        ws_flow_name = 'Flow_Data'
+        if ws_flow_name in ws_list_master:
+            master_flow_array = ns_def.convert_excel_to_array(ws_flow_name, full_filepath_master, 3)
+            master_flow_array = master_flow_array[:-1]
+            #print(master_flow_array)
+            target_flow_array = []
+            for tmp_master_flow_array in master_flow_array:
+                tmp_routing_path = ''
+                if tmp_master_flow_array[1][6] != '':
+                    tmp_routing_path = tmp_master_flow_array[1][6]
+                elif tmp_master_flow_array[1][6] == '' and tmp_master_flow_array[1][6] != ' ':
+                    tmp_routing_path = tmp_master_flow_array[1][7]
+
+                if tmp_master_flow_array[1][1] == device_name or tmp_master_flow_array[1][2] == device_name or device_name in tmp_routing_path:
+                    target_flow_array.append([tmp_master_flow_array[1][0],tmp_master_flow_array[1][1],tmp_master_flow_array[1][2],tmp_master_flow_array[1][3],tmp_master_flow_array[1][4],tmp_master_flow_array[1][5],tmp_routing_path])
+            #print(target_flow_array)
+
+
+            '''
+            export flow report
+            '''
+            excel_maseter_file = full_filepath_master
+            iDir = os.path.abspath(os.path.dirname(excel_maseter_file))
+
+            basename_without_ext = os.path.splitext(os.path.basename(excel_maseter_file))[0]
+            self.outFileTxt_11_3.delete(0, tkinter.END)
+            self.outFileTxt_11_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[FLOW_REPORT]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx')
+
+            ## check file open
+            ns_def.check_file_open(self.outFileTxt_11_3.get())
+
+            # flag exist flow file
+            flag_flow_table_exist = False
+            if os.path.isfile(self.outFileTxt_11_3.get()) == True:
+                #os.remove(self.outFileTxt_11_3.get())
+                flag_flow_table_exist = True
+
+            self.excel_flow_file = self.outFileTxt_11_3.get()
+
+            ## check Flow_Data sheet exists in Master file
+            input_excel_master = openpyxl.load_workbook(excel_maseter_file)
+            ws_list_master = input_excel_master.sheetnames
+            input_excel_master.close()
+
+            '''
+            MAKE Flows Table List
+            '''
+            master_device_table_tuple = {}
+            flow_list_array = []
+            egt_maker_width_array = ['5','25', '25','25', '25','15', '20', '25', '40']  # for Network Sketcher Ver 2.0
+            flow_list_array.append([1, ['<RANGE>', '1','1', '1', '1', '1', '1', '1', '1', '1', '<END>']])
+            flow_list_array.append([2, ['<HEADER>', 'No','Source Device Name', 'Destination Device Name','Source IP Address', 'Destination IP Address','TCP/UDP/ICMP','Service name(Port)',  'Max. bandwidth(Mbps)', 'Routing path settings', '<END>']])
+            current_row_num = 3
+
+            '''add flow table list'''
+            #print(self.show_l3_interface)
+            # Initialize a dictionary to hold devices and their IP addresses
+            device_ips = {}
+
+            # Iterate through the list of interfaces
+            for tmp_show_l3_interface in self.show_l3_interface:
+                tmp_device_name = tmp_show_l3_interface[0]
+                tmp_ip_address = tmp_show_l3_interface[3]
+
+                # Add the IP address to the corresponding device in the dictionary
+                if tmp_device_name not in device_ips:
+                    device_ips[tmp_device_name] = []
+                device_ips[tmp_device_name].append(tmp_ip_address)
+
+            for tmp_target_flow_array in target_flow_array:
+                tmp_target_flow_array = list(map(str, tmp_target_flow_array))
+                tmp_target_flow_array.insert(0, '')
+                tmp_target_flow_array.append('<END>')
+                source_ip_array = device_ips[tmp_target_flow_array[2]]
+                destination_ip_array = device_ips[tmp_target_flow_array[3]]
+                str_source_ip = ', '.join(map(str, source_ip_array ))
+                str_destination_ip = ', '.join(map(str, destination_ip_array))
+                tmp_target_flow_array.insert(4, str_source_ip)
+                tmp_target_flow_array.insert(5, str_destination_ip)
+                flow_list_array.append([current_row_num,tmp_target_flow_array])
+                current_row_num += 1
+
+            #add last <EMD>
+            flow_list_array.append([current_row_num, ['<END>']])
+            #print(flow_list_array)
+
+            #print(flow_list_array)
+            ### Convert to tuple
+            master_device_table_tuple = ns_def.convert_array_to_tuple(flow_list_array)
+
+            ''' 
+            Create temp input data file
+            '''
+            # List of characters not allowed in Excel worksheet names
+            forbidden_chars = [':', '\\', '/', '?', '*', '[', ']']
+            # Remove forbidden characters using a list comprehension
+            cleaned_device_name = ''.join(char for char in device_name if char not in forbidden_chars)
+
+
+            ### Create the flow table excel file or add sheet
+            self.worksheet_name = cleaned_device_name
+            if flag_flow_table_exist == False:
+                wb = openpyxl.Workbook()
+                sheet = wb.active
+                sheet.title = self.worksheet_name
+                wb.save(self.excel_flow_file)
+            else:
+                wb = openpyxl.load_workbook(self.excel_flow_file)
+                if self.worksheet_name in wb.sheetnames:
+                    # Remove the existing worksheet
+                    sheet_to_remove = wb[self.worksheet_name]
+                    wb.remove(sheet_to_remove)
+
+                wb.create_sheet(title=self.worksheet_name)
+                wb.save(self.excel_flow_file)
+
+            '''
+            Create [FLOW_REPORT] file
+            '''
+            tmp_master_data_array = []
+            tmp_master_data_array.append([1, [self.worksheet_name]])
+            #print(tmp_master_data_array)
+
+            template_master_data_tuple = {}
+            template_master_data_tuple = ns_def.convert_array_to_tuple(tmp_master_data_array)
+
+            #print('Create --- template_master_data_tuple---')
+            #print(template_master_data_tuple)
+            offset_row = 0
+            offset_column = 0
+            write_to_section = '_template_'
+            ns_def.write_excel_meta(template_master_data_tuple, self.excel_flow_file, self.worksheet_name, write_to_section, offset_row, offset_column)
+
+            ###
+            input_excel_name = self.excel_flow_file
+            output_excel_name = self.outFileTxt_11_3.get()
+            if flag_flow_table_exist == False:
+                NEW_OR_ADD = 'NEW'
+            else:
+                NEW_OR_ADD = 'ADD_OPTION1'
+            ns_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
+
+            '''
+            Add FLOW_List table from meta
+            '''
+            # Write normal tuple to excel
+            tmp_ws_name = '_tmp_'
+            master_excel_meta = master_device_table_tuple
+            ppt_meta_file = output_excel_name
+            excel_file_path = ppt_meta_file
+            worksheet_name = tmp_ws_name
+            section_write_to = '<<N/A>>'
+            offset_row = 0
+            offset_column = 0
+            ns_def.create_excel_sheet(ppt_meta_file, tmp_ws_name)
+            ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+            #print(output_excel_name)
+            self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
+            worksheet_name = cleaned_device_name
+            start_row = 1
+            start_column = 0
+            custom_table_name = ppt_meta_file
+            self.input_tree_excel = ns_egt_maker.insert_custom_excel_table(self.input_tree_excel, worksheet_name, start_row, start_column, custom_table_name)
+            self.input_tree_excel.save(output_excel_name)
+
+            # Remove _tmp_ sheet from excel master self.worksheet_name
+            ns_def.remove_excel_sheet(ppt_meta_file, tmp_ws_name)
+
+
+class flow():
     def add_routing_path_to_flow(self,full_filepath_master,flow_list_array):
         print('--- Routing path calculation ---')
         argv_array = ['show', 'l3_broadcast_domain']
@@ -434,13 +612,13 @@ class  ip_report():
         # SET IP Address report file patch
         basename_without_ext = os.path.splitext(os.path.basename(excel_maseter_file))[0]
         self.outFileTxt_11_3.delete(0, tkinter.END)
-        self.outFileTxt_11_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx')
-        self.excel_file_path = iDir + ns_def.return_os_slash() + '_template_[IP_TABLE]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx'
+        self.outFileTxt_11_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[IP_REPORT]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx') #change IP_TABLE to IP_REPORT at ver 2.5.1
+        self.excel_file_path = iDir + ns_def.return_os_slash() + '_template_[IP_REPORT]' + basename_without_ext.replace('[MASTER]', '') + '.xlsx'  #change IP_TABLE to IP_REPORT at ver 2.5.1
 
         ## check file open
         ns_def.check_file_open(self.outFileTxt_11_3.get())
 
-        # remove exist device file
+        # remove exist ip table file
         if os.path.isfile(self.outFileTxt_11_3.get()) == True:
             os.remove(self.outFileTxt_11_3.get())
 
