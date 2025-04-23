@@ -18,6 +18,10 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
+- Ver 2.5.1
+  - [Added the ability to export flow communication information on a per-device basis](https://github.com/cisco-open/network-sketcher/wiki/9%E2%80%905.export_per_device_flow_table)
+   ![image](https://github.com/user-attachments/assets/7d751a6e-3664-4014-a8fd-dc919584ae45)
+    
 - Ver 2.5.0
   - [Communication flow management functionality has been added.](https://github.com/cisco-open/network-sketcher/wiki/9%E2%80%901.Exporting-Flow-files)
 ![image](https://github.com/user-attachments/assets/8683c172-505e-4af8-a87a-dc1a1a86a121)
