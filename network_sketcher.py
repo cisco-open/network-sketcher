@@ -406,6 +406,15 @@ class ns_front_run():
                 if os.path.isfile(self.outFileTxt_11_2.get().replace('[MASTER]', '')) == True:
                     os.remove(self.outFileTxt_11_2.get().replace('[MASTER]', ''))
 
+                ###Create the device file , add at ver 2.5.1a
+                self.inFileTxt_11_1.delete(0, tkinter.END)
+                self.inFileTxt_11_1.insert(tk.END, self.full_filepath)
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END,iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
+                self.click_value_2nd = 'self.sub1_1_button_1'
+                self.click_action_sub('self.self.sub2_5_button_3', push_array)
+                self.click_value_2nd = ''
+
                 ### open master panel
                 file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
                 self.full_filepath = full_filepath_master
