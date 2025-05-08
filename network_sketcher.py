@@ -42,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.1")
+        self.root.title("Network Sketcher  ver 2.5.1a")
         self.root.geometry("510x200+100+100")
         icon = tk.PhotoImage(file='ns_logo.png')
         self.root.iconphoto(True, icon)
@@ -1205,20 +1205,17 @@ class ns_front_run():
                 print('--- Attribute sync ---')
                 ns_attribute_table_sync_master.ns_attribute_table_sync_master.__init__(self)
 
-                print('--- Success. Re-export of the DEVICE file is recommended. ---')
-
                 #disable re-export the device file at ver 2.4.3
-                '''filename = os.path.basename(full_filepath_device)
-                ret = tkinter.messagebox.askyesno('Complete', 'Would you like to re-export the Device file?\n\n' + filename)
-                if ret == True:
-                    ### check file open
-                    if ns_def.check_file_open(full_filepath_device) == False:
-                        self.click_value_2nd = 'self.sub3_1_button_3'
-                        self.click_action_sub('self.self.sub2_5_button_3', push_array)
-                        self.click_value_2nd = ''
-                        if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
-                            #print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
-                            subprocess.Popen(full_filepath_device, shell=True)'''
+                # re-enable re-export the device file at ver 2.5.1a
+                print('--- Re-export the device file ---')
+                ### check file open
+                if ns_def.check_file_open(full_filepath_device) == False:
+                    self.click_value_2nd = 'self.sub3_1_button_3'
+                    self.click_action_sub('self.self.sub2_5_button_3', push_array)
+                    self.click_value_2nd = ''
+                    if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
+                        #print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
+                        subprocess.Popen(full_filepath_device, shell=True)
 
                 ### open master panel
                 file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
