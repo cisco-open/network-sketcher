@@ -42,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.1b")
+        self.root.title("Network Sketcher  ver 2.5.1c")
         self.root.geometry("510x200+100+100")
         icon = tk.PhotoImage(file='ns_logo.png')
         self.root.iconphoto(True, icon)
@@ -383,6 +383,11 @@ class ns_front_run():
                 self.inFileTxt_92_2_2.delete(0, tkinter.END)
                 self.inFileTxt_92_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext + '_backup' + '.xlsx')
 
+                # backup attribute meta. Add at ver 2.5.1c
+                self.attribute_array = ns_def.convert_master_to_array('Master_Data', full_filepath_master, '<<ATTRIBUTE>>')
+                print(self.attribute_array)
+                self.attribute_tuple = ns_def.convert_array_to_tuple(self.attribute_array)
+
                 ###check Master file open
                 ns_def.check_file_open(full_filepath_master)
 
@@ -401,6 +406,13 @@ class ns_front_run():
                 ns_sync_between_layers.l1_master_device_and_line_sync_with_l2l3_master(self)
                 self.click_value_2nd = ''
                 self.click_value_3rd = ''
+
+                #restore attribute meta. Add at ver 2.5.1c
+                offset_row = 0
+                offset_column = 0
+                worksheet_name = 'Master_Data'
+                section_write_to = '<<ATTRIBUTE>>'
+                ns_def.overwrite_excel_meta(self.attribute_tuple, full_filepath_master, worksheet_name, section_write_to, offset_row, offset_column)
 
                 # remove exist L3/ file
                 if os.path.isfile(self.outFileTxt_11_2.get().replace('[MASTER]', '')) == True:
