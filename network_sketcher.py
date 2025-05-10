@@ -42,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.1c")
+        self.root.title("Network Sketcher  ver 2.5.1d")
         self.root.geometry("510x200+100+100")
         icon = tk.PhotoImage(file='ns_logo.png')
         self.root.iconphoto(True, icon)
@@ -385,7 +385,7 @@ class ns_front_run():
 
                 # backup attribute meta. Add at ver 2.5.1c
                 self.attribute_array = ns_def.convert_master_to_array('Master_Data', full_filepath_master, '<<ATTRIBUTE>>')
-                print(self.attribute_array)
+                #print(self.attribute_array)
                 self.attribute_tuple = ns_def.convert_array_to_tuple(self.attribute_array)
 
                 ###check Master file open
