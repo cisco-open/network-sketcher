@@ -42,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.1d")
+        self.root.title("Network Sketcher  ver 2.5.1e")
         self.root.geometry("510x200+100+100")
         icon = tk.PhotoImage(file='ns_logo.png')
         self.root.iconphoto(True, icon)
@@ -383,16 +383,14 @@ class ns_front_run():
                 self.inFileTxt_92_2_2.delete(0, tkinter.END)
                 self.inFileTxt_92_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext + '_backup' + '.xlsx')
 
-                # backup attribute meta. Add at ver 2.5.1c
-                self.attribute_array = ns_def.convert_master_to_array('Master_Data', full_filepath_master, '<<ATTRIBUTE>>')
-                #print(self.attribute_array)
-                self.attribute_tuple = ns_def.convert_array_to_tuple(self.attribute_array)
-
                 ###check Master file open
                 ns_def.check_file_open(full_filepath_master)
 
                 ###create backup master file
                 ns_def.get_backup_filename(full_filepath_master)
+
+                # backup attribute meta. Add at ver 2.5.1c
+                name_changed_before_attribute_array = ns_def.convert_master_to_array('Master_Data', full_filepath_master, '<<ATTRIBUTE>>')
 
                 '''Sketch file Sync to Master'''
                 ### run 92-3 for dev , l1_sketch sync with L1_master file
@@ -407,12 +405,64 @@ class ns_front_run():
                 self.click_value_2nd = ''
                 self.click_value_3rd = ''
 
+                # add bug fix at ver 2.5.1e
+                name_mapping = {old_name: new_name for old_name, new_name in self.updated_name_array}
+
+                for item in name_changed_before_attribute_array:
+                    if item[0] not in [1, 2]:
+                        current_name = item[1][0]
+                        if current_name in name_mapping:
+                            item[1][0] = name_mapping[current_name]
+
+                #print(self.attribute_array)
+                #print(name_changed_before_attribute_array)
+
+                # Step 1: Extract relevant data (filter out [0] == 1 or 2)
+                self_filtered = [row for row in self.attribute_array if row[0] not in (1, 2)]
+                name_changed_filtered = [row for row in name_changed_before_attribute_array if row[0] not in (1, 2)]
+
+                # Extract the device names for comparison
+                self_names = {row[1][0] for row in self_filtered}  # Set of device names in self
+                name_changed_names = {row[1][0] for row in name_changed_filtered}  # Set of device names in name_changed
+
+                # Step 2: Remove items from name_changed_before_attribute_array that do not exist in self_attribute_array
+                name_changed_filtered = [row for row in name_changed_filtered if row[1][0] in self_names]
+
+                # Step 3: Add items from self_attribute_array that do not exist in name_changed_before_attribute_array
+                for row in self_filtered:
+                    if row[1][0] not in name_changed_names:
+                        #name_changed_filtered.append(row)
+                        modified_row = row.copy()
+                        modified_row[1].append('<END>') 
+                        name_changed_filtered.append(modified_row)
+
+                        # Step 4: Sort by device name ([0][1]) in ascending order
+                name_changed_filtered.sort(key=lambda x: x[1][0])
+
+                # Step 5: Reassign [0] numbers in ascending order
+                for i, row in enumerate(name_changed_filtered, start=3):  # Start numbering from 3
+                    row[0] = i
+
+                # Step 6: Combine with unchanged [0] == 1 and 2 rows
+                last_before_attribute_array = [
+                    row for row in name_changed_before_attribute_array if row[0] in (1, 2)
+                ] + name_changed_filtered
+
+                # Output the final result
+                #print(last_before_attribute_array)
+
+                last_before_attribute_tuple = ns_def.convert_array_to_tuple(last_before_attribute_array)
                 #restore attribute meta. Add at ver 2.5.1c
                 offset_row = 0
                 offset_column = 0
                 worksheet_name = 'Master_Data'
                 section_write_to = '<<ATTRIBUTE>>'
-                ns_def.overwrite_excel_meta(self.attribute_tuple, full_filepath_master, worksheet_name, section_write_to, offset_row, offset_column)
+
+                before_attribute_array = ns_def.convert_master_to_array('Master_Data', full_filepath_master, '<<ATTRIBUTE>>')
+                before_attribute_tuple = ns_def.convert_array_to_tuple(before_attribute_array)
+                ns_def.clear_section_sheet('Master_Data', full_filepath_master, before_attribute_tuple)
+
+                ns_def.write_excel_meta(last_before_attribute_tuple, full_filepath_master, worksheet_name, section_write_to, offset_row, offset_column)
 
                 # remove exist L3/ file
                 if os.path.isfile(self.outFileTxt_11_2.get().replace('[MASTER]', '')) == True:

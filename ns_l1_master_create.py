@@ -171,11 +171,12 @@ class  ns_l1_master_create():
                 ### GET Shape
                 if 'AUTO_SHAPE' in str(shp.shape_type) and str(shp.text) != '':
                     # check updated device '/n' and append array     ver 1.1
-                    if '\n' in str(shp.text):
+                    if '\n' in str(shp.text) and self.click_value != '1-4':
                         idx = str(shp.text).find('\n')
                         self.updated_name_array.append([str(shp.text)[:idx],str(shp.text)[idx + 1:] ])
                         tmp_shape_array.append([str(shp.text)[idx + 1:], shp.left, shp.top, shp.width, shp.height, shp.rotation, i ])
                     else:
+                        shp.text = shp.text.replace('\n', '_')
                         tmp_shape_array.append([shp.text, shp.left, shp.top, shp.width, shp.height, shp.rotation, i])
 
                     ### Add multiple _AIR_   # Add Ver 1.11
