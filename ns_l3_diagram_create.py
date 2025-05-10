@@ -283,6 +283,9 @@ class  ns_l3_diagram_create():
             elif flag_match_folder == True and tmp_position_shape_array[1][0] != '':
                 break
 
+        # for bug fix. add at ver 2.5.1d
+        target_position_shape_array = [item for item in target_position_shape_array if not all(element == '_AIR_' for element in item)]
+
         #print('--- target_position_shape_array ---')
         #print(target_position_shape_array,len(target_position_shape_array))
 
