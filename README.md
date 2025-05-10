@@ -28,7 +28,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 # Limitations
 - IPv4 only. IPv6 is not supported.
-- The DEVICE file contains multiple sheets, but only one sheet should be updated. Synchronization of multiple sheet updates has not been tested.
+- A DEVICE file contains multiple sheets, but only one sheet should be updated at a time. Simultaneous synchronization of multiple sheet updates is not supported.
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
