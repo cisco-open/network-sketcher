@@ -1445,17 +1445,22 @@ class  get_l2_broadcast_domains():
                             tmp_opposite_if_array = get_l2_broadcast_domains.get_opposite_if(self,device_name,if_name)
                             #print('          + device_name,if_name -> ', device_name,if_name ,'    +++tmp_oppsite_if_array -> ',tmp_opposite_if_array)
 
-                            for now_device_l2_boradcast_domain_array in device_l2_boradcast_domain_array:
+                            #bug fix at ve 2.5.1b
+                            now2_device_l2_boradcast_domain_array = []
+                            for sublist in device_l2_boradcast_domain_array:
+                                now2_device_l2_boradcast_domain_array.extend(sublist)
+
+                            # bug fix at ve 2.5.1b
+                            for now_device_l2_boradcast_domain_array in now2_device_l2_boradcast_domain_array:
                                 if now_device_l2_boradcast_domain_array != []:
                                     #print(now_device_l2_boradcast_domain_array)
-                                    if now_device_l2_boradcast_domain_array[0][1] == tmp_opposite_if_array[0]:
-                                        for kyuusai_now_device_l2_boradcast_domain_array in now_device_l2_boradcast_domain_array:
-                                            for now_now_device_l2_boradcast_domain_array in kyuusai_now_device_l2_boradcast_domain_array[3]:
-                                                #print(now_now_device_l2_boradcast_domain_array[1] , tmp_opposite_if_array[1] , now_device_l2_boradcast_domain_array[0][2] , tmp_device_l2_boradcast_domain_array[0][2])
-                                                if now_now_device_l2_boradcast_domain_array[1] == tmp_opposite_if_array[1] and now_device_l2_boradcast_domain_array[0][2] == tmp_device_l2_boradcast_domain_array[0][2]:
-                                                    #print('               *MATCH OPPO L2***',kyuusai_now_device_l2_boradcast_domain_array[2],now_device_l2_boradcast_domain_array[0][0])
-                                                    tmp_l2_broadcast_group_array.append(now_device_l2_boradcast_domain_array[0][0])
-                                                    break
+                                    if now_device_l2_boradcast_domain_array[1] == tmp_opposite_if_array[0]:
+                                        for now_now_device_l2_boradcast_domain_array in now_device_l2_boradcast_domain_array[3]:
+                                            #print(now_now_device_l2_boradcast_domain_array[1] , tmp_opposite_if_array[1] , now_device_l2_boradcast_domain_array[2] , kyuusai_device_l2_boradcast_domain_array[2])
+                                            if now_now_device_l2_boradcast_domain_array[1] == tmp_opposite_if_array[1] and now_device_l2_boradcast_domain_array[2] == kyuusai_device_l2_boradcast_domain_array[2]:
+                                                #print('               *MATCH OPPO L2***',now_device_l2_boradcast_domain_array[2],now_device_l2_boradcast_domain_array[0])
+                                                tmp_l2_broadcast_group_array.append(now_device_l2_boradcast_domain_array[0])
+                                                break
 
                                                 '''Kyuusai a one-L2_SEG if connect to a one-L2_SEG if with difference name'''
                                                 tmp_num_1 = get_l2_broadcast_domains.get_l2seg_count_on_if(self,device_name,if_name)
