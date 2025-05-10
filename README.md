@@ -31,6 +31,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
+  - MAC OS may not display well in Dark mode.
 - __Python ver 3.x__
 - __Software that can edit .pptx and .xlsx files__
   - Microsoft Powerpoint and Excel are the best
