@@ -67,6 +67,7 @@ class  ns_l1_diagram_sync_master():
 
         #print('---- replace device name , self.source_position_line_tuple  ----')
         #print(self.source_position_line_tuple )
+        #print(self.target_position_line_tuple)
 
         used_source_array = []
         for tmp_target_position_line_tuple in self.target_position_line_tuple:
@@ -82,12 +83,11 @@ class  ns_l1_diagram_sync_master():
                                 str(self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1]+1]) == \
                                 str(self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1]+1]):
 
-                            #print('[match tuple]  ' + str(tmp_source_position_line_tuple) + str(self.source_position_line_tuple[tmp_source_position_line_tuple[0],tmp_source_position_line_tuple[1]])\
-                            #      + '  ' + str(self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1]+1])  + '  ' + str(tmp_source_position_line_tuple[1]))
+                            #print('[match tuple]  ' + str(tmp_source_position_line_tuple) + str(self.source_position_line_tuple[tmp_source_position_line_tuple[0],tmp_source_position_line_tuple[1]])+ '  ' + str(self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1]+1])  + '  ' + str(tmp_source_position_line_tuple[1]))
 
                             # make fix tuple for target
                             for num in range(20):
-                                if tmp_source_position_line_tuple[1] + num in [7, 8,9,10]:
+                                if tmp_source_position_line_tuple[1] + num in [5,6,7,8,9,10]: # Fixed a bug. at ve 2.5.1e
                                     self.target_position_line_tuple_fix[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num] = self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num]
                                 else:
                                     self.target_position_line_tuple_fix[tmp_target_position_line_tuple[0],tmp_target_position_line_tuple[1] + num] = self.source_position_line_tuple[tmp_source_position_line_tuple[0],tmp_source_position_line_tuple[1] + num]
@@ -102,8 +102,7 @@ class  ns_l1_diagram_sync_master():
                                 str(self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1]+1]) and \
                                 str(self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1]+1]) == \
                                 str(self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1]]):
-                            #print('[match oppsite]  ' + str(tmp_source_position_line_tuple)  +  str(self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1]]) + \
-                            #       '  '+str(self.target_position_line_tuple[tmp_target_position_line_tuple[0]+1, tmp_target_position_line_tuple[1]]) + '  ' + str(tmp_source_position_line_tuple[1]))
+                            #print('[match oppsite]  ' + str(tmp_source_position_line_tuple)  +  str(self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1]]) + '  '+str(self.target_position_line_tuple[tmp_target_position_line_tuple[0]+1, tmp_target_position_line_tuple[1]]) + '  ' + str(tmp_source_position_line_tuple[1]))
 
                             # make fix tuple for target
                             for num in range(20):
@@ -125,9 +124,13 @@ class  ns_l1_diagram_sync_master():
                                 if tmp_source_position_line_tuple[1] + num in [17, 18, 19, 20]:
                                     tmp_i = -4
                                     self.target_position_line_tuple_fix[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num + tmp_i] = self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1] + num]
-                                if tmp_source_position_line_tuple[1] + num in [1, 2,5, 6, 11, 12]:
+                                # bug fix. at ver 2.5.1e
+                                if tmp_source_position_line_tuple[1] + num in [1, 2, 11, 12]:
                                     tmp_i = 0
                                     self.target_position_line_tuple_fix[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num + tmp_i] = self.source_position_line_tuple[tmp_source_position_line_tuple[0], tmp_source_position_line_tuple[1] + num]
+                                if tmp_source_position_line_tuple[1] + num in [5, 6]:
+                                    tmp_i = 0
+                                    self.target_position_line_tuple_fix[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num + tmp_i] = self.target_position_line_tuple[tmp_target_position_line_tuple[0], tmp_target_position_line_tuple[1] + num]
 
                             # mark used line
                             used_source_array.append(tmp_source_position_line_tuple[0])
