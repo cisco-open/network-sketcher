@@ -90,7 +90,7 @@ class  ns_l2_table_sync_master():
                 tmp_new_l2_table_array[1].extend([str(ns_def.split_portname(tmp_new_l2_table_array[1][5])[0])])
 
             #replace ' ' to '' in l2segment description
-            tmp_new_l2_table_array[1][6] = tmp_new_l2_table_array[1][6].replace(' ','')
+            tmp_new_l2_table_array[1][6] = str(tmp_new_l2_table_array[1][6]).replace(' ','') #bug fix at ve 2.5.1f
 
             #if '\n' in vport name, change to changed name.
             if '\n' in tmp_new_l2_table_array[1][5]:
@@ -109,7 +109,7 @@ class  ns_l2_table_sync_master():
             tmp_new_l2_table_array[1][6] = tmp_str
 
             #replace ' ' to '' in Directory l2segment description
-            tmp_new_l2_table_array[1][7] = tmp_new_l2_table_array[1][7].replace(' ','')
+            tmp_new_l2_table_array[1][7] = str(tmp_new_l2_table_array[1][7]).replace(' ','') # bugfix at ver 2.5.1f
 
             #sort Direcotry l2segments
             tmp_array = tmp_new_l2_table_array[1][7].split(',')
