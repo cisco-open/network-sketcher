@@ -79,8 +79,8 @@ class  ns_l3_table_sync_master():
             tmp_new_l3_table_array[1].extend([str(ns_def.split_portname(tmp_new_l3_table_array[1][2])[0])])
 
             #replace ' ' to '' in L3 Instance Name , IP Address
-            tmp_new_l3_table_array[1][3] = tmp_new_l3_table_array[1][3].replace(' ','')
-            tmp_new_l3_table_array[1][4] = tmp_new_l3_table_array[1][4].replace(' ','')
+            tmp_new_l3_table_array[1][3] = str(tmp_new_l3_table_array[1][3]).replace(' ','') #bugfix at ver 2.5.1f
+            tmp_new_l3_table_array[1][4] = str(tmp_new_l3_table_array[1][4]).replace(' ','') #bugfix at ver 2.5.1f
 
             tmp_ip_address_array = []
             work_new_l3_table_array = tmp_new_l3_table_array[1][4].split(',')
