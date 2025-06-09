@@ -18,6 +18,10 @@
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
+- Ver 2.5.2
+  -  [Added ability to export AI Context to interact with LLM](https://github.com/cisco-open/network-sketcher/wiki/7%E2%80%904.-Export-AI-Context)
+![image](https://github.com/user-attachments/assets/14892ee6-edbe-44be-8849-09eba0309a6f)
+
 - Ver 2.5.1
   - [Added the ability to export flow communication information on a per-device basis](https://github.com/cisco-open/network-sketcher/wiki/9%E2%80%905.export_per_device_flow_table)
    ![image](https://github.com/user-attachments/assets/7d751a6e-3664-4014-a8fd-dc919584ae45)
