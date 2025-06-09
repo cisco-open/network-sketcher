@@ -42,7 +42,7 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.1f")
+        self.root.title("Network Sketcher  ver 2.5.2")
         self.root.geometry("510x200+100+100")
         icon = tk.PhotoImage(file='ns_logo.png')
         self.root.iconphoto(True, icon)
@@ -507,7 +507,7 @@ class ns_front_run():
         self.sub2_1.title('Master Panel')
         self.root.update_idletasks()
         #print(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_x(),self.root.winfo_y() )  # width, height , x , y
-        geo =  str(self.root.winfo_width() + 180) + 'x' + str(self.root.winfo_height() + 120) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
+        geo =  str(self.root.winfo_width() + 180) + 'x' + str(self.root.winfo_height() + 190) + '+' + str(self.root.winfo_x() + self.root.winfo_width()) + '+' + str(self.root.winfo_y())
         self.sub2_1.geometry(geo)
 
         self.sub2_0_label_1 = tk.Label(self.sub2_1, text=local_filename, font=("", 12), background="#FFFFFF")
@@ -663,10 +663,18 @@ class ns_front_run():
 
         push_array = []
         self.sub2_5_button_3 = tk.Button(self.sub2_5, text="Device file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_5_button_3', push_array))
-        self.sub2_5_button_3.grid(row=10, column=0, sticky='WE', padx=10, pady=2, ipadx=5)
+        self.sub2_5_button_3.grid(row=10, column=0, sticky='WE', padx=2, pady=2, ipadx=3)
 
         self.sub2_7_button_1 = tk.Button(self.sub2_5, text="Flow file", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_7_button_1', push_array))
-        self.sub2_7_button_1.grid(row=10, column=1, sticky='WE', padx=10, pady=2, ipadx=8)
+        self.sub2_7_button_1.grid(row=10, column=1, sticky='WE', padx=2, pady=2, ipadx=3)
+
+        #add ver 2.5.2
+        self.sub2_A = tk.LabelFrame(self.sub2_1, text='Lab', font=("", 14), height=1, background="#D9D9D9")
+        self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2)
+
+        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta1)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
+        self.sub2_9_button_1.grid(row=1, column=21, sticky='WE', padx=2, pady=2, ipadx=3)
+
 
         '''
         Extensions
@@ -943,6 +951,20 @@ class ns_front_run():
             ###Export the flow file
             ns_extensions.flow.export_flow_file(self, target_area_name)
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
+
+        #add ver 2.5.2
+        if click_value == 'self.self.sub2_9_button_1':  # Export the AI Context file
+            ###Export the AI Context file
+            result = tkinter.messagebox.askyesno("Warning", "The exported AI Context file contains data from the master file, which includes all configuration information for the network (NW). Please be aware that there is a risk of data leakage if the exported file is loaded into a Large Language Model (LLM). Do you fully understand and accept this risk before proceeding with the export?")
+
+            # Handle the user's choice
+            if result:  # If YES is selected
+                ns_extensions.ai_context.export_ai_context_file(self, target_area_name)
+                tkinter.messagebox.showinfo(title='Complete', message='[AI_Context] txt file has been exported')
+            else:  # If NO is selected
+                print("--- No action ---")
+
+
 
         if click_value == 'self.sub3_5_button_1':  # select IP address table
             ###export_ip_report
