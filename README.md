@@ -4,7 +4,7 @@
 </p>
 
 # Network Sketcher
-**Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. The new version supports AI Context Export, which allows users to interact with network devices from LLM, including configuration generation.**
+**Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. Additionally, exporting the AI ​​context can be used to generate config files using LLM.**
 * Automatic generation of each configuration document by metadatization of network configuration information
 * Automated synchronization between documents
 * Minimize maintenance and training load by automatic generation of common formats
