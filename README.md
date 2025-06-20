@@ -33,6 +33,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 # Limitations
 - IPv4 only. IPv6 is not supported.
 - A DEVICE file contains multiple sheets, but only one sheet should be updated at a time. Simultaneous synchronization of multiple sheet updates is not supported.
+- Since the other day, we have confirmed that if an Excel file name contains square brackets [], the file cannot be clicked and opened, but we are waiting for improvement as we recognize that this is a problem on the Excel side. Currently, when opening an Excel file in Network Sketcher, please open it by specifying the file from the “Menu” screen, or drag and drop it into the Excel window.
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
