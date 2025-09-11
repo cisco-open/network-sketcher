@@ -24,6 +24,15 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 # New Features
 - Ver 2.5.2
+Add the following CLI Add/Delete commands:
+[add ip_address](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-ip_address)
+[add l2_segment](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-l2_segment)
+[add virtual_port](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-virtual_port)
+[delete ip_address](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%903-Delete-Commands#delete-ip_address)
+[delete l2_segment](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%903-Delete-Commands#delete-l2_segment)
+[delete virtual_port](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%903-Delete-Commands#delete-virtual_port)
+
+- Ver 2.5.2
   -  [Added ability to export AI Context to interact with LLM](https://github.com/cisco-open/network-sketcher/wiki/7%E2%80%904.-Export-AI-Context)
 ![image](https://github.com/user-attachments/assets/14892ee6-edbe-44be-8849-09eba0309a6f)
 
@@ -149,5 +158,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
