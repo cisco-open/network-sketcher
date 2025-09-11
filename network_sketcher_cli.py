@@ -16,6 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
+import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
+import sys, os, subprocess ,webbrowser ,openpyxl
+
 class ns_cli_run():
     def __init__(self,argv_array):
         # GET file path of master
@@ -28,9 +31,448 @@ class ns_cli_run():
         if 'show' in argv_array:
             print_type(self,argv_array, ns_cli_run.cli_show(self, master_file_path,argv_array))
             exit()
+        elif 'add' in argv_array:
+            print_type(self,argv_array, ns_cli_run.cli_add(self, master_file_path,argv_array))
+            exit()
+        elif 'delete' in argv_array:
+            print_type(self, argv_array, ns_cli_run.cli_delete(self, master_file_path, argv_array))
+            exit()
         else:
             print('[ERROR] Supported commands are as follows')
-            print('show <sub-command>')
+            print('add')
+            print('delete')
+            print('show')
+
+    def cli_add(self, master_file_path, argv_array): # add at ver 2.5.3
+        next_arg = get_next_arg(argv_array, 'add')
+        add_command_list = [ \
+            'add ip_address', \
+            'add l2_segment', \
+            'add virtual_port', \
+            ]
+
+        if next_arg == None or '--' in next_arg or str('add ' + next_arg) not in add_command_list:
+            print(next_arg)
+            print('[ERROR] Supported commands are as follows')
+            for tmp_add_command_list in add_command_list:
+                print(tmp_add_command_list)
+            exit()
+
+        if next_arg == 'ip_address':
+            import ns_def
+            l3_attribute_array = ns_def.convert_master_to_array('Master_Data_L3', master_file_path,'<<L3_TABLE>>')
+
+            TARGET_LEN = 7
+            for row in l3_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            idx = argv_array.index('ip_address')
+            try:
+                # The element right after 'l2_segment' is the hostname
+                hostname = argv_array[idx + 1]
+                # The next element is the portname
+                portname = argv_array[idx + 2]
+                add_ipaddress_name = argv_array[idx + 3]
+            except IndexError:
+                # If there are not enough elements after 'l2_segment', print an error
+                print("Error: hostname or portname or ipaddress is missing")
+
+            # check IP Addresses
+            if ns_def.check_ip_format(add_ipaddress_name) != 'IPv4':
+                return ([f"Error: IP Address format is invalid: {add_ipaddress_name}"])
+
+            match_found = False
+            for row in l3_attribute_array[2:]:
+                values = row[1]
+                if len(values) > 1 and values[1] == hostname:
+                    if (len(values) > 3 and values[2] == portname):
+                        match_found = True
+                        break
+            if not match_found:
+                return ([f"Error: No matching entry found for hostname: {hostname} and portname: {portname}"])
+
+            add_ipaddress_name = add_ipaddress_name.replace(' ', '')
+
+            for entry in l3_attribute_array:
+                if entry == row:
+                    # Get the 5th element (index 4)
+                    current_value = entry[1][4]
+                    # Split by comma, remove extra spaces
+                    ips = [seg.strip() for seg in current_value.split(',')] if current_value else []
+                    # Only add if not already present
+                    if add_ipaddress_name not in ips:
+                        if current_value.strip() == '':
+                            entry[1][4] = add_ipaddress_name
+                        else:
+                            entry[1][4] = current_value + ',' + add_ipaddress_name
+                    else:
+                        return ([add_ipaddress_name + ' already exists in the ipaddress. No change made'])
+                    break
+
+            #write to Master file
+            excel_maseter_file = master_file_path
+            excel_master_ws_name_l3 = 'Master_Data_L3'
+            last_l3_table_tuple = {}
+            last_l3_table_tuple = ns_def.convert_array_to_tuple(l3_attribute_array)
+
+            # delete L2 Table sheet
+            ns_def.remove_excel_sheet(excel_maseter_file, excel_master_ws_name_l3)
+            # create L2 Table sheet
+            ns_def.create_excel_sheet(excel_maseter_file, excel_master_ws_name_l3)
+            # write tuple to excel master data
+            ns_def.write_excel_meta(last_l3_table_tuple, excel_maseter_file, excel_master_ws_name_l3, '_template_', 0,0)
+
+            return_text = '--- IP Address added --- ' + ' ' + hostname + ',' + portname + ',' + add_ipaddress_name
+
+            return ([return_text])
+
+        if next_arg == 'l2_segment' or 'virtual_port':
+            import ns_def
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path,'<<L2_TABLE>>')
+
+            TARGET_LEN = 9
+            for row in l2_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            #print(argv_array)
+            # Check if 'l2_segment' exists in argv_array
+            if 'l2_segment' in argv_array:
+                idx = argv_array.index('l2_segment')
+                try:
+                    # The element right after 'l2_segment' is the hostname
+                    hostname = argv_array[idx + 1]
+                    # The next element is the portname
+                    portname = argv_array[idx + 2]
+                    add_l2seg_name = argv_array[idx + 3]
+                except IndexError:
+                    # If there are not enough elements after 'l2_segment', print an error
+                    print("Error: hostname or portname is missing")
+
+            elif 'virtual_port' in argv_array:
+                idx = argv_array.index('virtual_port')
+                try:
+                    hostname = argv_array[idx + 1]
+                    add_vport_name = argv_array[idx + 2]
+                except IndexError:
+                    print("Error: hostname is missing")
+            else:
+                print("Not found in arguments")
+
+
+            match_found = False
+            if 'l2_segment' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        if (len(values) > 3 and values[3] == portname) or (len(values) > 5 and values[5] == portname):
+                            match_found = True
+                            break
+            elif 'virtual_port' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        match_found = True
+                        break
+
+            if not match_found:
+                if 'l2_segment' in argv_array:
+                    return ([f"No matching entry found for hostname: {hostname} and portname: {portname}"])
+                elif 'virtual_port' in argv_array:
+                    return ([f"No matching entry found for hostname: {hostname}"])
+
+            if 'l2_segment' in argv_array:
+                add_l2seg_name = add_l2seg_name.replace(' ', '')
+
+                for entry in l2_attribute_array:
+                    if entry == row:
+                        # Get the 7th element (index 6)
+                        current_value = entry[1][6]
+                        # Split by comma, remove extra spaces
+                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
+                        # Only add if not already present
+                        if add_l2seg_name not in segs:
+                            if current_value.strip() == '':
+                                entry[1][6] = add_l2seg_name
+                            else:
+                                entry[1][6] = current_value + ',' + add_l2seg_name
+                        else:
+                            #print(f"'{add_l2seg_name}' already exists in the l2 segments. No change made.")
+                            return ([add_l2seg_name + ' already exists in the l2 segments. No change made'])
+                        break
+
+            elif 'virtual_port' in argv_array:
+                if ns_def.get_if_value(add_vport_name) == -1:
+                    return ([f"Invalid virtual port name: {add_vport_name}"])
+                # Check if the virtual port name already exists for this hostname
+                for entry in l2_attribute_array:
+                    if entry[0] > 2 and entry[1][1] == hostname and entry[1][5] == add_vport_name:
+                        return ([f"{add_vport_name} already exists as virtual port for hostname: {hostname}"])
+
+                # Find the index of the first matching hostname row
+                insert_index = -1
+                for i, entry in enumerate(l2_attribute_array):
+                    if entry[0] > 2 and entry[1][1] == hostname:
+                        insert_index = i
+                        break
+
+                if insert_index != -1:
+                    # Create new entry with the same area and hostname
+                    new_entry = [0, [l2_attribute_array[insert_index][1][0], hostname, '', '', '', add_vport_name, '', '']]
+                    # Insert the new entry at the found index (before the existing entry)
+                    l2_attribute_array.insert(insert_index, new_entry)
+
+                    # Renumber all entries
+                    for i, entry in enumerate(l2_attribute_array):
+                        entry[0] = i + 1
+
+                return_text = '--- Virtual Port added --- ' + ' ' + hostname + ',' + add_vport_name
+
+            #write to Master file
+            excel_maseter_file = master_file_path
+            excel_master_ws_name_l2 = 'Master_Data_L2'
+            last_l2_table_tuple = {}
+            last_l2_table_tuple = ns_def.convert_array_to_tuple(l2_attribute_array)
+
+            # delete L2 Table sheet
+            ns_def.remove_excel_sheet(excel_maseter_file, excel_master_ws_name_l2)
+            # create L2 Table sheet
+            ns_def.create_excel_sheet(excel_maseter_file, excel_master_ws_name_l2)
+            # write tuple to excel master data
+            ns_def.write_excel_meta(last_l2_table_tuple, excel_maseter_file, excel_master_ws_name_l2, '_template_', 0,0)
+
+            if 'virtual_port' in argv_array:
+                # sync l2 sheet of Master file to L3 sheet
+                dummy_tk = tk.Toplevel()
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk )
+                self.inFileTxt_L3_1_1 .delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1 .insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk )
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk )
+                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name) == True:
+                    os.remove(tmp_delete_excel_name)
+
+                return ([return_text])
+            else:
+                return_text = '--- l2 Segment added --- ' + ' ' + hostname + ',' + portname + ',' + add_l2seg_name
+                return ([return_text])
+
+    def cli_delete(self, master_file_path, argv_array):
+        next_arg = get_next_arg(argv_array, 'delete')
+        delete_command_list = [
+            'delete ip_address', \
+            'delete l2_segment', \
+            'delete virtual_port', \
+        ]
+
+        if next_arg is None or '--' in next_arg or str('delete ' + next_arg) not in delete_command_list:
+            print(next_arg)
+            print('[ERROR] Supported commands are as follows')
+            for tmp_delete_command_list in delete_command_list:
+                print(tmp_delete_command_list)
+            exit()
+
+        if next_arg == 'ip_address':
+            import ns_def
+            l3_attribute_array = ns_def.convert_master_to_array('Master_Data_L3', master_file_path,'<<L3_TABLE>>')
+
+            TARGET_LEN = 7
+            for row in l3_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            idx = argv_array.index('ip_address')
+            try:
+                # The element right after 'l2_segment' is the hostname
+                hostname = argv_array[idx + 1]
+                # The next element is the portname
+                portname = argv_array[idx + 2]
+                delete_ipaddress_name = argv_array[idx + 3]
+            except IndexError:
+                # If there are not enough elements after 'l2_segment', print an error
+                print("Error: hostname or portname or ipaddress is missing")
+
+            # check IP Addresses
+            if ns_def.check_ip_format(delete_ipaddress_name) != 'IPv4':
+                return ([f"Error: IP Address format is invalid: {delete_ipaddress_name}"])
+
+            match_found = False
+            target_row = None
+            for row in l3_attribute_array[2:]:
+                values = row[1]
+                if len(values) > 1 and values[1] == hostname:
+                    if (len(values) > 3 and values[2] == portname):
+                        match_found = True
+                        target_row = row
+                        break
+            if not match_found:
+                return ([f"Error: No matching entry found for hostname: {hostname} and portname: {portname}"])
+
+            delete_ipaddress_name = delete_ipaddress_name.replace(' ', '')
+
+            for entry in l3_attribute_array:
+                if entry == target_row:
+                    current_value = entry[1][4]
+                    segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
+                    if delete_ipaddress_name in segs:
+                        segs.remove(delete_ipaddress_name)
+                        entry[1][4] = ','.join(segs)
+                    else:
+                        return ([f"{delete_ipaddress_name} does not exist in the ip address. No change made"])
+                    break
+
+            #write to Master file
+            excel_maseter_file = master_file_path
+            excel_master_ws_name_l3 = 'Master_Data_L3'
+            last_l3_table_tuple = {}
+            last_l3_table_tuple = ns_def.convert_array_to_tuple(l3_attribute_array)
+
+            # delete L2 Table sheet
+            ns_def.remove_excel_sheet(excel_maseter_file, excel_master_ws_name_l3)
+            # create L2 Table sheet
+            ns_def.create_excel_sheet(excel_maseter_file, excel_master_ws_name_l3)
+            # write tuple to excel master data
+            ns_def.write_excel_meta(last_l3_table_tuple, excel_maseter_file, excel_master_ws_name_l3, '_template_', 0,0)
+
+            return_text = '--- IP Address deleted--- ' + ' ' + hostname + ',' + portname + ',' + delete_ipaddress_name
+
+            return ([return_text])
+
+        if next_arg == 'l2_segment' or 'virtual_port':
+            import ns_def
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path, '<<L2_TABLE>>')
+
+            TARGET_LEN = 9
+            for row in l2_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            if 'l2_segment' in argv_array:
+                idx = argv_array.index('l2_segment')
+                try:
+                    hostname = argv_array[idx + 1]
+                    portname = argv_array[idx + 2]
+                    del_l2seg_name = argv_array[idx + 3]
+                except IndexError:
+                    print("Error: hostname or portname is missing")
+                    return
+            elif 'virtual_port' in argv_array:
+                idx = argv_array.index('virtual_port')
+                try:
+                    hostname = argv_array[idx + 1]
+                    del_vport_name = argv_array[idx + 2]
+                except IndexError:
+                    print("Error: hostname or virtual_port name is missing")
+                    return
+            else:
+                if next_arg == 'l2_segment':
+                    print("'l2_segment' not found in the argument array")
+                else:
+                    print("'virtual_port' not found in the argument array")
+                return
+
+            match_found = False
+            target_row = None
+            if 'l2_segment' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        if (len(values) > 3 and values[3] == portname) or (len(values) > 5 and values[5] == portname):
+                            match_found = True
+                            target_row = row
+                            break
+            elif 'virtual_port' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname and values[5] == del_vport_name:
+                        match_found = True
+                        target_row = row
+                        break
+
+            if not match_found:
+                if 'l2_segment' in argv_array:
+                    print(f"No matching entry found for hostname: {hostname} and portname: {portname}")
+                else:
+                    print(f"No matching entry found for hostname: {hostname} and virtual port: {del_vport_name}")
+                exit()
+
+            if 'l2_segment' in argv_array:
+                del_l2seg_name = del_l2seg_name.replace(' ', '')
+                for entry in l2_attribute_array:
+                    if entry == target_row:
+                        current_value = entry[1][6]
+                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
+                        if del_l2seg_name in segs:
+                            segs.remove(del_l2seg_name)
+                            entry[1][6] = ','.join(segs)
+                        else:
+                            return ([f"{del_l2seg_name} does not exist in the l2 segments. No change made"])
+                        break
+            elif 'virtual_port' in argv_array:
+                # Remove the entire row for virtual port
+                l2_attribute_array.remove(target_row)
+                # Renumber all entries
+                for i, entry in enumerate(l2_attribute_array):
+                    entry[0] = i + 1
+
+            #write to Master file
+            excel_maseter_file = master_file_path
+            excel_master_ws_name_l2 = 'Master_Data_L2'
+            last_l2_table_tuple = ns_def.convert_array_to_tuple(l2_attribute_array)
+            ns_def.remove_excel_sheet(excel_maseter_file, excel_master_ws_name_l2)
+            ns_def.create_excel_sheet(excel_maseter_file, excel_master_ws_name_l2)
+            ns_def.write_excel_meta(last_l2_table_tuple, excel_maseter_file, excel_master_ws_name_l2, '_template_', 0, 0)
+
+            if 'virtual_port' in argv_array:
+                return_text = '--- Virtual Port deleted--- ' + ' ' + hostname + ',' + del_vport_name
+
+                #sync l2 sheet of Master file to L3 sheet
+                dummy_tk = tk.Toplevel()
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name) == True:
+                    os.remove(tmp_delete_excel_name)
+
+            else:
+                return_text = '--- l2 Segment deleted --- ' + ' ' + hostname + ',' + portname + ',' + del_l2seg_name
+
+            return ([return_text])
 
     def cli_show(self, master_file_path, argv_array):
         next_arg = get_next_arg(argv_array, 'show')
