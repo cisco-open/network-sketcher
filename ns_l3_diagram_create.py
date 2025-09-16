@@ -1637,6 +1637,12 @@ class  ns_l3_diagram_create():
                 else:
                     for tmp_all_l3segment_l3_netowrk_list in all_l3segment_l3_netowrk_list:
                         if tmp_all_l3segment_l3_netowrk_list[1] == tmp_mark_multi_ip_array[9] and tmp_all_l3segment_l3_netowrk_list[0] == tmp_mark_multi_ip_array[6][1]:
+                            # If the index does not exist, expand the list and provide an empty string at index 2. Bug fix at Ver 2.5.3a
+                            if len(tmp_all_l3segment_l3_netowrk_list) <= 2:
+                                tmp_all_l3segment_l3_netowrk_list.extend(
+                                    [''] * (3 - len(tmp_all_l3segment_l3_netowrk_list)))
+                            ################################################################
+                                
                             tag_ip_text = tmp_all_l3segment_l3_netowrk_list[2] + tmp_mark_multi_ip_array[5]
                             tag_ip_width = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text)[0]
                             tag_ip_text_2 = tmp_all_l3segment_l3_netowrk_list[2]  + tmp_mark_multi_ip_array[6][0]
