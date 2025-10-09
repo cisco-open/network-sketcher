@@ -1024,7 +1024,6 @@ def check_file_open(file_fullpath):
 
 def adjust_portname(if_name):
     '''adjust port name to NS format.'''
-    return_array = []
     #Whether a number is included in portname
     if any(map(str.isdigit, if_name)) == True:
         if_name = if_name.replace(' ', '')
@@ -1044,10 +1043,12 @@ def adjust_portname(if_name):
             if_name_abbreviation = tmp_if_name
         elif tmp_if_name == 'GigabitEthernet':
             if_name_abbreviation = 'GE'
-        #elif tmp_if_name == 'eth':
-        #    if_name_abbreviation = 'E'
         elif tmp_if_name == 'Ethernet':
             if_name_abbreviation = 'E'
+        elif tmp_if_name == 'FastEthernet':
+            if_name_abbreviation = 'FE'
+        elif tmp_if_name == 'TenGigabitEthernet':
+            if_name_abbreviation = 'TE'
         else:
             if_name_abbreviation = tmp_if_name[:2]
 

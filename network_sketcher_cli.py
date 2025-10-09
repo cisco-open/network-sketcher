@@ -18,6 +18,7 @@ limitations under the License.
 
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os, subprocess ,webbrowser ,openpyxl
+import ns_def
 
 class ns_cli_run():
     def __init__(self,argv_array):
@@ -34,20 +35,290 @@ class ns_cli_run():
         elif 'add' in argv_array:
             print_type(self,argv_array, ns_cli_run.cli_add(self, master_file_path,argv_array))
             exit()
+        elif 'rename' in argv_array:
+            print_type(self,argv_array, ns_cli_run.cli_rename(self, master_file_path,argv_array))
+            exit()
         elif 'delete' in argv_array:
             print_type(self, argv_array, ns_cli_run.cli_delete(self, master_file_path, argv_array))
             exit()
         else:
+            print('[ERROR] Supported commands are as follows', 'add', 'delete', 'rename', 'show', sep='\n')
+
+    def cli_rename(self, master_file_path, argv_array): # add at ver 2.5.4
+        next_arg = get_next_arg(argv_array, 'rename')
+        rename_command_list = [ \
+            'rename device', \
+            'rename port', \
+            ]
+
+        if next_arg == None or '--' in next_arg or str('rename ' + next_arg) not in rename_command_list:
+            print(next_arg)
             print('[ERROR] Supported commands are as follows')
-            print('add')
-            print('delete')
-            print('show')
+            for tmp_add_command_list in rename_command_list:
+                print(tmp_add_command_list)
+            exit()
+
+        if next_arg == 'port':
+            idx = argv_array.index('port')
+            updated_name_array = [str(argv_array[idx + 1]), str(argv_array[idx + 2]),str(argv_array[idx + 3])]
+            updated_name_array.append(ns_def.adjust_portname(updated_name_array[1]))
+            updated_name_array.append(ns_def.adjust_portname(updated_name_array[2]))
+            flag_l1_port_name = False
+            flag_l2_port_name = False
+
+            if isinstance(updated_name_array[0], str) and updated_name_array[0].strip(' \u3000') == '':
+                return_text = '[ERROR] This device name is invalid.  --- ' + ' ' + updated_name_array[0]
+                return ([return_text])
+
+            if ns_def.get_if_value(str(updated_name_array[1])) == -1 or ns_def.get_if_value(str(updated_name_array[2])) == -1:
+                return_text = '[ERROR] The port name is invalid.  --- ' + ' ' + updated_name_array[1] + '  or  ' + updated_name_array[2]
+                return ([return_text])
+
+
+            '''
+            rename L1 port name in Master_Data
+            '''
+            ws_name = 'Master_Data'
+            ppt_meta_file = master_file_path
+
+            position_line_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_LINE>>')
+
+            # position_line_array: The first and second lines are not included. Only the first (0) and second (1) are replaced.
+            for row in position_line_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no not in (1, 2) and isinstance(fields, list):
+                        #print(fields)
+
+                        if fields[0] == updated_name_array[0]:
+                            if updated_name_array[4][1] == fields[12] and updated_name_array[4][2] == str(ns_def.split_portname(fields[2])[1]):
+                                return_text = '[ERROR] This port name is already exist.  --- ' + updated_name_array[0]  + ' ' + updated_name_array[2]
+                                return ([return_text])
+
+                            #print(updated_name_array[0] , fields[12],ns_def.split_portname(fields[2])[1])
+                            if updated_name_array[3][1] == fields[12] and updated_name_array[3][2] == str(ns_def.split_portname(fields[2])[1]):
+                                fields[2] = updated_name_array[4][0] + ' ' + updated_name_array[4][2]
+                                fields[12] = updated_name_array[4][1]
+                                flag_l1_port_name = True
+
+                        if fields[1] == updated_name_array[0]:
+                            if updated_name_array[4][1] == fields[16] and updated_name_array[4][2] == str(ns_def.split_portname(fields[3])[1]):
+                                return_text = '[ERROR] This port name is already exist.  --- ' + updated_name_array[0] + ' ' + updated_name_array[2]
+                                return ([return_text])
+
+                            #print(updated_name_array[0] , fields[16],ns_def.split_portname(fields[3])[1])
+                            if updated_name_array[3][1] == fields[16] and updated_name_array[3][2] == str(ns_def.split_portname(fields[3])[1]):
+                                fields[3] = updated_name_array[4][0] + ' ' + updated_name_array[4][2]
+                                fields[16] = updated_name_array[4][1]
+                                flag_l1_port_name = True
+
+            if flag_l1_port_name == True:
+                excel_file_path = ppt_meta_file
+                worksheet_name = ws_name
+                offset_row = 0
+                offset_column = 0
+
+                self.position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+                master_excel_meta = self.position_line_tuple
+                section_write_to = '<<POSITION_LINE>>'
+                ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+                '''rename portname in Master_Data_L2 and Master_Data_L3.'''
+                self.full_filepath = master_file_path
+                self.update_port_num_array = [[updated_name_array[0],updated_name_array[1],updated_name_array[2]]]
+                import ns_sync_between_layers
+                ns_sync_between_layers.l1_device_port_name_sync_with_l2l3_master(self)
+
+                return_text = '--- Physical Port Name renamed --- ' + updated_name_array[0] + ' ' + updated_name_array[1] + ' -> ' + updated_name_array[2]
+                return ([return_text])
+
+            '''
+            rename L2 port name in Master_Data
+            '''
+            ws_name = 'Master_Data_L2'
+            l2_table_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<L2_TABLE>>')
+            #print(l2_table_array)
+
+            # l2_table_array: The first and second lines are not included. Only the first (0) and second (1) are replaced.
+            for row in l2_table_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no not in (1, 2) and isinstance(fields, list):
+                        #print(fields)
+
+                        if fields[1] == updated_name_array[0]:
+                            #print(updated_name_array)
+                            if updated_name_array[2] == fields[5]:
+                                return_text = '[ERROR] This port name is already exist.  --- ' + updated_name_array[0]  + ' ' + updated_name_array[2]
+                                return ([return_text])
+
+                            #print(updated_name_array)
+                            if updated_name_array[1] == fields[5]:
+                                fields[5] = updated_name_array[2]
+                                flag_l2_port_name = True
+
+            if flag_l2_port_name == True:
+                excel_file_path = ppt_meta_file
+                worksheet_name = ws_name
+                offset_row = 0
+                offset_column = 0
+
+                self.l2_table_tuple = ns_def.convert_array_to_tuple(l2_table_array)
+                master_excel_meta = self.l2_table_tuple
+                section_write_to = '<<L2_TABLE>>'
+                ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+                '''rename Virtual port name in Master_Data_L3.'''
+                ws_name = 'Master_Data_L3'
+                l3_table_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<L3_TABLE>>')
+                #print(l3_table_array)
+
+                # l2_table_array: The first and second lines are not included. Only the first (0) and second (1) are replaced.
+                for row in l3_table_array:
+                    if isinstance(row, list) and len(row) == 2:
+                        line_no, fields = row
+                        if line_no not in (1, 2) and isinstance(fields, list):
+                            #print(fields)
+
+                            if fields[1] == updated_name_array[0]:
+                                #print(updated_name_array)
+                                if updated_name_array[1] == fields[2]:
+                                    fields[2] = updated_name_array[2]
+                                    break
+
+                self.l3_table_tuple = ns_def.convert_array_to_tuple(l3_table_array)
+                master_excel_meta = self.l3_table_tuple
+                section_write_to = '<<L3_TABLE>>'
+                worksheet_name = 'Master_Data_L3'
+                ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+                return_text = '--- Virtual Port Name renamed --- ' + updated_name_array[0] + ' ' + updated_name_array[1] + ' -> ' + updated_name_array[2]
+                return ([return_text])
+
+            return_text = '[ERROR]The port name did not exist. --- ' + updated_name_array[0] + ' ' + updated_name_array[1]
+            return ([return_text])
+
+        if next_arg == 'device':
+            idx = argv_array.index('device')
+            updated_name_array = [[str(argv_array[idx + 1]), str(argv_array[idx + 2]).replace(' ', '').replace('　', '')]]
+
+            if isinstance(updated_name_array[0][1], str) and updated_name_array[0][1].strip(' \u3000') == '':
+                return_text = '[ERROR] This device name is invalid.  --- ' + ' ' + updated_name_array[0][1]
+                return ([return_text])
+
+            self.updated_name_array = updated_name_array
+
+            '''rename device name in Master_Data.'''
+            ws_name = 'Master_Data'
+            ppt_meta_file = master_file_path
+
+            position_shape_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_SHAPE>>')
+            position_line_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_LINE>>')
+            position_style_shape_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<STYLE_SHAPE>>')
+            position_tag_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_TAG>>')
+            attribute_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<ATTRIBUTE>>')
+
+            mapping = {}
+            for pair in updated_name_array:
+                if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                    old, new = pair
+                    if isinstance(old, str) and isinstance(new, str) and old != '':
+                        mapping[old] = new
+
+            # position_shape_array: The first line is ignored, and all other string elements in the line are replaced.
+            for row in position_shape_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no != 1 and isinstance(fields, list):
+                        for i in range(len(fields)):
+                            v = fields[i]
+                            if isinstance(v, str) and v in mapping:
+                                fields[i] = mapping[v]
+
+            # position_line_array: The first and second lines are not included. Only the first (0) and second (1) are replaced.
+            for row in position_line_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no not in (1, 2) and isinstance(fields, list):
+                        if len(fields) > 0 and isinstance(fields[0], str) and fields[0] in mapping:
+                            fields[0] = mapping[fields[0]]
+                        if len(fields) > 1 and isinstance(fields[1], str) and fields[1] in mapping:
+                            fields[1] = mapping[fields[1]]
+
+            # position_style_shape_array: Lines 1, 2, and 3 are not included. For the others, only the first (0) is replaced.
+            flag_source_exist = False
+            for row in position_style_shape_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no not in (1, 2, 3) and isinstance(fields, list) and len(fields) > 0:
+                        if isinstance(fields[0], str) and fields[0] == updated_name_array[0][1]:
+                            return_text = '[ERROR] The device name already exists.  --- ' + ' ' + updated_name_array[0][1]
+                            return ([return_text])
+
+                        if isinstance(fields[0], str) and fields[0] in mapping:
+                            fields[0] = mapping[fields[0]]
+                            flag_source_exist = True
+            if flag_source_exist == False:
+                return_text = '[ERROR] This device name does not exist.  --- ' + ' ' + updated_name_array[0][0]
+                return ([return_text])
+
+            # position_tag_array: The first and second lines are not included. For the others, only the first (0) is replaced.
+            for row in position_tag_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no not in (1, 2) and isinstance(fields, list) and len(fields) > 0:
+                        if isinstance(fields[0], str) and fields[0] in mapping:
+                            fields[0] = mapping[fields[0]]
+
+            # attribute_array: The first line is not included. For the others, only the first (0) is replaced.
+            for row in attribute_array:
+                if isinstance(row, list) and len(row) == 2:
+                    line_no, fields = row
+                    if line_no != 1 and isinstance(fields, list) and len(fields) > 0:
+                        if isinstance(fields[0], str) and fields[0] in mapping:
+                            fields[0] = mapping[fields[0]]
+
+            self.position_shape_tuple = ns_def.convert_array_to_tuple(position_shape_array)
+            self.position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+            self.position_style_shape_tuple = ns_def.convert_array_to_tuple(position_style_shape_array)
+            self.position_tag_tuple = ns_def.convert_array_to_tuple(position_tag_array)
+            self.attribute_tuple = ns_def.convert_array_to_tuple(attribute_array)
+
+            excel_file_path = ppt_meta_file
+            worksheet_name = ws_name
+            offset_row = 0
+            offset_column = 0
+
+            master_excel_meta = self.position_shape_tuple
+            section_write_to = '<<POSITION_SHAPE>>'
+            ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+            master_excel_meta = self.position_line_tuple
+            section_write_to = '<<POSITION_LINE>>'
+            ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+            master_excel_meta = self.position_style_shape_tuple
+            section_write_to = '<<STYLE_SHAPE>>'
+            ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+            master_excel_meta = self.position_tag_tuple
+            section_write_to = '<<POSITION_TAG>>'
+            ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+            master_excel_meta = self.attribute_tuple
+            section_write_to = '<<ATTRIBUTE>>'
+            ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+            '''rename device name in Master_Data_L2 and Master_Data_L3.'''
+            self.full_filepath = master_file_path
+            import ns_sync_between_layers
+            ns_sync_between_layers.l1_sketch_device_name_sync_with_l2l3_master(self)
+
+            return_text = '--- Device Name renamed --- ' + ' ' + updated_name_array[0][0] + ' -> ' + updated_name_array[0][1]
+            return ([return_text])
 
     def cli_add(self, master_file_path, argv_array): # add at ver 2.5.3
         next_arg = get_next_arg(argv_array, 'add')
         add_command_list = [ \
             'add ip_address', \
             'add l2_segment', \
+            'add portchannel', \
             'add virtual_port', \
             ]
 
@@ -129,7 +400,7 @@ class ns_cli_run():
 
             return ([return_text])
 
-        if next_arg == 'l2_segment' or 'virtual_port':
+        if next_arg == 'l2_segment' or 'virtual_port' or 'portchannel':
             import ns_def
             l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path,'<<L2_TABLE>>')
 
@@ -141,7 +412,7 @@ class ns_cli_run():
                         vals += [''] * (TARGET_LEN - len(vals))
 
             #print(argv_array)
-            # Check if 'l2_segment' exists in argv_array
+            # Check if the input data exists in argv_array
             if 'l2_segment' in argv_array:
                 idx = argv_array.index('l2_segment')
                 try:
@@ -161,18 +432,40 @@ class ns_cli_run():
                     add_vport_name = argv_array[idx + 2]
                 except IndexError:
                     print("Error: hostname is missing")
+
+            elif 'portchannel' in argv_array:
+                idx = argv_array.index('portchannel')
+                try:
+                    # The element right after 'portchannel' is the hostname
+                    hostname = argv_array[idx + 1]
+                    # The next element is the portname
+                    portname = argv_array[idx + 2]
+                    add_portchannel_name = argv_array[idx + 3]
+                except IndexError:
+                    # If there are not enough elements after 'portchannel', print an error
+                    print("Error: hostname or portname is missing")
             else:
                 print("Not found in arguments")
 
 
             match_found = False
+            row_array = []
+            flag_l2_segment_vport = False
             if 'l2_segment' in argv_array:
                 for row in l2_attribute_array[2:]:
                     values = row[1]
                     if len(values) > 1 and values[1] == hostname:
-                        if (len(values) > 3 and values[3] == portname) or (len(values) > 5 and values[5] == portname):
+                        if len(values) > 3 and values[3] == portname:
                             match_found = True
                             break
+                        elif len(values) > 5 and values[5] == portname:
+                            #for virtual port
+                            match_found = True
+                            flag_l2_segment_vport = True
+                            row_array.append(row)
+                if flag_l2_segment_vport == True:
+                    row = []
+
             elif 'virtual_port' in argv_array:
                 for row in l2_attribute_array[2:]:
                     values = row[1]
@@ -180,15 +473,25 @@ class ns_cli_run():
                         match_found = True
                         break
 
+            elif 'portchannel' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        if (len(values) > 3 and values[3] == portname) or (len(values) > 5 and values[5] == portname):
+                            match_found = True
+                            break
+
             if not match_found:
                 if 'l2_segment' in argv_array:
                     return ([f"No matching entry found for hostname: {hostname} and portname: {portname}"])
                 elif 'virtual_port' in argv_array:
                     return ([f"No matching entry found for hostname: {hostname}"])
+                elif 'portchannel' in argv_array:
+                    return ([f"No matching entry found for hostname: {hostname} and portname: {portname}"])
+                exit()
 
             if 'l2_segment' in argv_array:
                 add_l2seg_name = add_l2seg_name.replace(' ', '')
-
                 for entry in l2_attribute_array:
                     if entry == row:
                         # Get the 7th element (index 6)
@@ -205,6 +508,22 @@ class ns_cli_run():
                             #print(f"'{add_l2seg_name}' already exists in the l2 segments. No change made.")
                             return ([add_l2seg_name + ' already exists in the l2 segments. No change made'])
                         break
+
+                    #for virtual port
+                    if entry in row_array:
+                        # Get the 7th element (index 6)
+                        current_value = entry[1][6]
+                        # Split by comma, remove extra spaces
+                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
+                        # Only add if not already present
+                        if add_l2seg_name not in segs:
+                            if current_value.strip() == '':
+                                entry[1][6] = add_l2seg_name
+                            else:
+                                entry[1][6] = current_value + ',' + add_l2seg_name
+                        else:
+                            #print(f"'{add_l2seg_name}' already exists in the l2 segments. No change made.")
+                            return ([add_l2seg_name + ' already exists in the l2 segments. No change made'])
 
             elif 'virtual_port' in argv_array:
                 if ns_def.get_if_value(add_vport_name) == -1:
@@ -233,6 +552,17 @@ class ns_cli_run():
 
                 return_text = '--- Virtual Port added --- ' + ' ' + hostname + ',' + add_vport_name
 
+            elif 'portchannel' in argv_array:
+                if ns_def.get_if_value(add_portchannel_name) == -1:
+                    return ([f"Invalid portchannel name: {add_portchannel_name}"])
+
+                for entry in l2_attribute_array:
+                    if entry == row:
+                        entry[1][5] = add_portchannel_name
+                        return_text = '--- portchannel added --- ' + ' ' + hostname + ',' + portname + ',' + add_portchannel_name
+                        break
+
+
             #write to Master file
             excel_maseter_file = master_file_path
             excel_master_ws_name_l2 = 'Master_Data_L2'
@@ -246,7 +576,7 @@ class ns_cli_run():
             # write tuple to excel master data
             ns_def.write_excel_meta(last_l2_table_tuple, excel_maseter_file, excel_master_ws_name_l2, '_template_', 0,0)
 
-            if 'virtual_port' in argv_array:
+            if 'virtual_port' in argv_array or 'portchannel' in argv_array:
                 # sync l2 sheet of Master file to L3 sheet
                 dummy_tk = tk.Toplevel()
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk )
@@ -279,6 +609,7 @@ class ns_cli_run():
         delete_command_list = [
             'delete ip_address', \
             'delete l2_segment', \
+            'delete portchannel', \
             'delete virtual_port', \
         ]
 
@@ -357,7 +688,7 @@ class ns_cli_run():
 
             return ([return_text])
 
-        if next_arg == 'l2_segment' or 'virtual_port':
+        if next_arg == 'l2_segment' or 'virtual_port' or 'portchannel':
             import ns_def
             l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path, '<<L2_TABLE>>')
 
@@ -385,16 +716,52 @@ class ns_cli_run():
                 except IndexError:
                     print("Error: hostname or virtual_port name is missing")
                     return
+            elif 'portchannel' in argv_array:
+                idx = argv_array.index('portchannel')
+                try:
+                    hostname = argv_array[idx + 1]
+                    portname = argv_array[idx + 2]
+                    #del_portchannel_name = argv_array[idx + 3]
+                except IndexError:
+                    print("Error: hostname or portname is missing")
+                    return
             else:
                 if next_arg == 'l2_segment':
                     print("'l2_segment' not found in the argument array")
+                elif next_arg == 'portchannel':
+                    print("'portchannel' not found in the argument array")
                 else:
                     print("'virtual_port' not found in the argument array")
                 return
 
             match_found = False
             target_row = None
+            row_array = []
+            flag_l2_segment_vport = False
             if 'l2_segment' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        if len(values) > 3 and values[3] == portname:
+                            match_found = True
+                            target_row = row
+                            break
+                        elif len(values) > 5 and values[5] == portname:
+                            # for virtual port
+                            match_found = True
+                            flag_l2_segment_vport = True
+                            row_array.append(row)
+                if flag_l2_segment_vport == True:
+                    row = []
+
+            elif 'virtual_port' in argv_array:
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname and values[5] == del_vport_name and values[3] == '':
+                        match_found = True
+                        target_row = row
+                        break
+            elif 'portchannel' in argv_array:
                 for row in l2_attribute_array[2:]:
                     values = row[1]
                     if len(values) > 1 and values[1] == hostname:
@@ -402,16 +769,11 @@ class ns_cli_run():
                             match_found = True
                             target_row = row
                             break
-            elif 'virtual_port' in argv_array:
-                for row in l2_attribute_array[2:]:
-                    values = row[1]
-                    if len(values) > 1 and values[1] == hostname and values[5] == del_vport_name:
-                        match_found = True
-                        target_row = row
-                        break
 
             if not match_found:
                 if 'l2_segment' in argv_array:
+                    print(f"No matching entry found for hostname: {hostname} and portname: {portname}")
+                elif 'portchannel' in argv_array:
                     print(f"No matching entry found for hostname: {hostname} and portname: {portname}")
                 else:
                     print(f"No matching entry found for hostname: {hostname} and virtual port: {del_vport_name}")
@@ -429,12 +791,38 @@ class ns_cli_run():
                         else:
                             return ([f"{del_l2seg_name} does not exist in the l2 segments. No change made"])
                         break
+
+                    #for virtual port
+                    if entry in row_array:
+                        # Get the 7th element (index 6)
+                        current_value = entry[1][6]
+                        # Split by comma, remove extra spaces
+                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
+                        # Only add if not already present
+                        print(del_l2seg_name,segs)
+                        if del_l2seg_name in segs:
+                            segs.remove(del_l2seg_name)
+                            entry[1][6] = ','.join(segs)
+                        else:
+                            return ([del_l2seg_name + ' does not exist in the l2 segments. No change made'])
+
+
             elif 'virtual_port' in argv_array:
                 # Remove the entire row for virtual port
                 l2_attribute_array.remove(target_row)
                 # Renumber all entries
                 for i, entry in enumerate(l2_attribute_array):
                     entry[0] = i + 1
+                    return_text = '--- Virtual Port deleted--- ' + ' ' + hostname + ',' + del_vport_name
+
+            elif 'portchannel' in argv_array:
+                for entry in l2_attribute_array:
+                    if entry == target_row:
+                        del_portchannel_name = entry[1][5]
+                        entry[1][5] = ''
+                        entry[1][6] = ''
+                        return_text = '--- portchannel deleted --- ' + ' ' + hostname + ',' + portname + ',' + del_portchannel_name
+                        break
 
             #write to Master file
             excel_maseter_file = master_file_path
@@ -444,9 +832,7 @@ class ns_cli_run():
             ns_def.create_excel_sheet(excel_maseter_file, excel_master_ws_name_l2)
             ns_def.write_excel_meta(last_l2_table_tuple, excel_maseter_file, excel_master_ws_name_l2, '_template_', 0, 0)
 
-            if 'virtual_port' in argv_array:
-                return_text = '--- Virtual Port deleted--- ' + ' ' + hostname + ',' + del_vport_name
-
+            if 'virtual_port' in argv_array or 'portchannel' in argv_array:
                 #sync l2 sheet of Master file to L3 sheet
                 dummy_tk = tk.Toplevel()
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)

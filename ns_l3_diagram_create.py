@@ -1642,7 +1642,7 @@ class  ns_l3_diagram_create():
                                 tmp_all_l3segment_l3_netowrk_list.extend(
                                     [''] * (3 - len(tmp_all_l3segment_l3_netowrk_list)))
                             ################################################################
-                                
+
                             tag_ip_text = tmp_all_l3segment_l3_netowrk_list[2] + tmp_mark_multi_ip_array[5]
                             tag_ip_width = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text)[0]
                             tag_ip_text_2 = tmp_all_l3segment_l3_netowrk_list[2]  + tmp_mark_multi_ip_array[6][0]

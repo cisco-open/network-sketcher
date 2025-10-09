@@ -52,6 +52,7 @@ class ai_context():
         content_to_append += '* Provide examples of relevant Cisco equipment configurations, if available. Examples of Network Sketcher configurations are not required.' + '\n'
         content_to_append += '* Please explain in ASCII format, including diagrams.' + '\n' + '\n'
 
+        '''
         content_to_append += '*** Explanation of show_area: Displays all area names.'+ '\n'
         content_to_append += '*** Explanation of show_area_device: Displays all device names in each area.'+ '\n'
         content_to_append += '*** Explanation of show_area_location: Displays area placement information. Relative location information.'+ '\n'
@@ -68,6 +69,7 @@ class ai_context():
         content_to_append += '*** Explanation of show_l3_interface: Displays detailed information about the L3 interface, exported from the input-ready information in the DEVICE file.'+ '\n'
         content_to_append += '*** Explanation of show_waypoint: Displays all waypoint names.'+ '\n'
         content_to_append += '*** Explanation of show_waypoint_interface: Displays all interface names for each waypoint.'+ '\n'+ '\n'
+        '''
 
         export_num = 0
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
@@ -101,7 +103,12 @@ class ai_context():
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
         content_to_append += '** show_waypoint' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_waypoint_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'
+        content_to_append += '** show_waypoint_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'+ '\n'
+
+        #add commands's guide
+        with open('./ns_extensions_cmd_list.txt', 'r', encoding='utf-8') as f:
+            content_to_append += f.read()
+
 
         try:
             # Open the file in append mode ('a'). If the file does not exist, it will be created automatically.
@@ -113,8 +120,6 @@ class ai_context():
         except Exception as e:
             # Handle any errors that occur during the file operation
             print(f"An error occurred: {e}")
-
-        '''ここから開始'''
 
 class flow_report():
     def create_device_flow_table(self,full_filepath_master,device_name):
