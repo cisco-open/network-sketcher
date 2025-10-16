@@ -106,7 +106,16 @@ class ai_context():
         content_to_append += '** show_waypoint_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'+ '\n'
 
         #add commands's guide
-        with open('./ns_extensions_cmd_list.txt', 'r', encoding='utf-8') as f:
+        def resource_path(relative_path):
+            try:
+                base_path = sys._MEIPASS
+            except Exception:
+                base_path = os.path.abspath(".")
+
+            return os.path.join(base_path, relative_path)
+
+        file_path = resource_path('ns_extensions_cmd_list.txt')
+        with open(file_path, 'r', encoding='utf-8') as f:
             content_to_append += f.read()
 
 
