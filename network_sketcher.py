@@ -42,9 +42,20 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.4")
+        self.root.title("Network Sketcher  ver 2.5.4a")
         self.root.geometry("510x200+100+100")
-        icon = tk.PhotoImage(file='ns_logo.png')
+
+        def resource_path(relative_path):
+            try:
+                base_path = sys._MEIPASS
+            except Exception:
+                base_path = os.path.abspath(".")
+
+            return os.path.join(base_path, relative_path)
+
+        file_path = resource_path('ns_logo.png')
+
+        icon = tk.PhotoImage(file=file_path)
         self.root.iconphoto(True, icon)
         
         # Notebook
