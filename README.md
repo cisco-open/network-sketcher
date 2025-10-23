@@ -23,13 +23,14 @@ Otologic (https://otologic.jp) CC BY 4.0
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
 # New Features
-- Ver 2.5.4<br>
+- Ver 2.5.5<br>
 
-  -  [Export AI Context (Beta 2)](https://github.com/cisco-open/network-sketcher/wiki/7%E2%80%904.-Export-AI-Context)
+  -  [Export AI Context (Beta 3)](https://github.com/cisco-open/network-sketcher/wiki/7%E2%80%904.-Export-AI-Context)
   
-  Support for generating commands to change data in master files has been added. Changes to areas, L3 instances, VPNs, and flows are not supported. Network Sketcher itself does not provide AI functionality, but rather utilizes general-purpose LLMs such as Chat GPT and Gemini. **Always make a backup of the master file before executing a command that changes the master file.**
+  Support for generating commands to change data in master files has been added. **Always make a backup of the master file before executing a command that changes the master file.**
 
-  <img width="978" height="357" alt="image" src="https://github.com/user-attachments/assets/0fe30b25-068f-4b5b-b939-3e1645d18141" />
+<img width="1095" height="398" alt="image" src="https://github.com/user-attachments/assets/2f84e038-1ef4-425e-b333-3ca3d2b5981e" />
+
 
 
 - Ver 2.5.2
@@ -158,6 +159,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
