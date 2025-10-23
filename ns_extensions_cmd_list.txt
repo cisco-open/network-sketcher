@@ -1,7 +1,6 @@
 '''
-Show Commands
+Show Commands reference
 '''
-
 ## What you can do with this procedure
 **The following show commands can be executed from the CLI**
 - [show area](https://github.com/cisco-open/network-sketcher/wiki/8-1.-show-commands#show-area)
@@ -36,7 +35,7 @@ python [file path]/network_sketcher.py --one_msg -master [master file path] [com
 ## show area
 Displays all area names.
  ```bash
-python [file path]/network_sketcher.py show area　--master [master file path] 
+python [file path]/network_sketcher.py show area　--master [master file path]
  ```
 
 * ex.<br>
@@ -48,7 +47,7 @@ DC-TOP3<br>
 ## show area_device
 Displays all device names in each area.
  ```bash
-python [file path]/network_sketcher.py show area_device　--master [master file path] 
+python [file path]/network_sketcher.py show area_device　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show area_device　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -58,7 +57,7 @@ python [file path]/network_sketcher.py show area_device　--master [master file 
 ## show area_location
 Displays area placement information. Relative location information.
  ```bash
-python [file path]/network_sketcher.py show area_location　--master [master file path] 
+python [file path]/network_sketcher.py show area_location　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show area_location　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -70,7 +69,7 @@ python [file path]/network_sketcher.py show area_location　--master [master fil
 Displays attributes for all devices.
 
  ```bash
-python [file path]/network_sketcher.py show attribute　--master [master file path] 
+python [file path]/network_sketcher.py show attribute　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show attribute　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -83,7 +82,7 @@ Displays attributes for all devices. It also displays the color of the cell spec
 The item following the device name displays the color of the cell for the device name with the value of [R,G,B]
 
  ```bash
-python [file path]/network_sketcher.py show attribute_color　--master [master file path] 
+python [file path]/network_sketcher.py show attribute_color　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show attribute_color　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -95,7 +94,7 @@ python [file path]/network_sketcher.py show attribute_color　--master [master f
 ## show device
 Displays all device names.
  ```bash
-python [file path]/network_sketcher.py show device　--master [master file path] 
+python [file path]/network_sketcher.py show device　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show device　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -107,7 +106,7 @@ DEVICE12<br>
 ## show device_interface
 Displays all interface names for all devices.
  ```bash
-python [file path]/network_sketcher.py show device_interface　--master [master file path] 
+python [file path]/network_sketcher.py show device_interface　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show device_interface　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -118,7 +117,7 @@ python [file path]/network_sketcher.py show device_interface　--master [master 
 ## show device_location
 Displays device placement information within each area. It is relative location information.' AIR' means blank.
  ```bash
-python [file path]/network_sketcher.py show device_location　--master [master file path] 
+python [file path]/network_sketcher.py show device_location　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show device_location　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -135,7 +134,7 @@ Device location:<br>
 ## show l1_interface
 Displays detailed information on all L1 interfaces for each device.
  ```bash
-python [file path]/network_sketcher.py show l1_interface　--master [master file path] 
+python [file path]/network_sketcher.py show l1_interface　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l1_interface　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -147,7 +146,7 @@ python [file path]/network_sketcher.py show l1_interface　--master [master file
 ## show L1_link
 Displays L1 wiring information.
  ```bash
-python [file path]/network_sketcher.py show l1_link　--master [master file path] 
+python [file path]/network_sketcher.py show l1_link　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l1_link　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -160,7 +159,7 @@ python [file path]/network_sketcher.py show l1_link　--master [master file path
 Displays the name of the Layer 2 segment included in each broadcast domain.
 
  ```bash
-python [file path]/network_sketcher.py show l2_boradcast_domain　--master [master file path] 
+python [file path]/network_sketcher.py show l2_boradcast_domain　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l2_broadcast_domain　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -174,7 +173,7 @@ The second line is similar. The broadcast domain with identifiers [2, 3, 4, 5] h
 ## show l2_interface
 Displays detailed information about the L2 interface, exported from the input-ready information in the DEVICE file.
  ```bash
-python [file path]/network_sketcher.py show l2_interface　--master [master file path] 
+python [file path]/network_sketcher.py show l2_interface　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l2_interface　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -188,7 +187,7 @@ python [file path]/network_sketcher.py show l2_interface　--master [master file
 Displays the Layer 3 interface names included in each broadcast domain.
 
  ```bash
-python [file path]/network_sketcher.py show l3_boradcast_domain　--master [master file path] 
+python [file path]/network_sketcher.py show l3_boradcast_domain　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l3_broadcast_domain　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -202,7 +201,7 @@ The second line is similar. The broadcast domain with the identifier [48, 55] ha
 ## show l3_interface
 Displays detailed information about the L3 interface, exported from the input-ready information in the DEVICE file.
  ```bash
-python [file path]/network_sketcher.py show l3_interface　--master [master file path] 
+python [file path]/network_sketcher.py show l3_interface　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l3_interface　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -216,7 +215,7 @@ python [file path]/network_sketcher.py show l3_interface　--master [master file
 ## show waypoint
 Displays all waypoint names.
  ```bash
-python [file path]/network_sketcher.py show waypoint　--master [master file path] 
+python [file path]/network_sketcher.py show waypoint　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show waypoint　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -226,7 +225,7 @@ WAN-Dum3<br>
 ## show waypoint_interface
 Displays all interface names for each waypoint.
  ```bash
-python [file path]/network_sketcher.py show waypoint_interface　--master [master file path] 
+python [file path]/network_sketcher.py show waypoint_interface　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show waypoint_interface　--master "C:\work\\[MASTER]test.xlsx"<br>
@@ -235,7 +234,7 @@ python [file path]/network_sketcher.py show waypoint_interface　--master [maste
 
 
 '''
-Add Commands
+Add Commands reference
 '''
 
 **Since this process will directly edit the master file, please be sure to back up the master file before proceeding.**<br>
@@ -245,6 +244,7 @@ Add Commands
 - [add l2_segment](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-l2_segment)
 - [add portchannel](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-portchannel)
 - [add virtual_port](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-virtual_port)
+- [add vport_l2_direct_binding](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-vport_l2_direct_binding)
 
 ## Basic syntax:
  ```bash
@@ -257,7 +257,7 @@ python [file path]/network_sketcher.py -master [master file path] [command]<br>
 ## add ip_address
 This process allows you to create an IP address for a Layer 3 interface. You can create one IP address at a time; by repeating the process, you can add multiple IP addresses.
  ```bash
-python [file path]/network_sketcher.py add ip_address [device name] [layer3_portname] [ip_address/subnetmask] --master [master file path] 
+python [file path]/network_sketcher.py add ip_address [device name] [layer3_portname] [ip_address/subnetmask] --master [master file path]
  ```
 
 * ex.<br>
@@ -277,7 +277,7 @@ python [file path]/network_sketcher.py add ip_address [device name] [layer3_port
 ## add l2_segment
 This feature allows you to create Layer 2 segments (such as VLANs) on the interface. You can create one Layer 2 segment at a time, and multiple Layer 2 segments can be created.
  ```bash
-python [file path]/network_sketcher.py add l2_segment [device name] [layer2_portname] [l2segment_name]　--master [master file path] 
+python [file path]/network_sketcher.py add l2_segment [device name] [layer2_portname] [l2segment_name]　--master [master file path]
  ```
 
 * ex.<br>
@@ -297,7 +297,7 @@ python [file path]/network_sketcher.py add l2_segment [device name] [layer2_port
 ## add portchannel
 Create a port channel (LAG) on the Layer 1 interface.
  ```bash
-python [file path]/network_sketcher.py add portchannel [device name] [layer1_portname] [portchannel_name]　--master [master file path] 
+python [file path]/network_sketcher.py add portchannel [device name] [layer1_portname] [portchannel_name]　--master [master file path]
  ```
 
 * ex.<br>
@@ -329,7 +329,7 @@ python [file path]/network_sketcher.py add portchannel [device name] [layer1_por
 ## add virtual_port
 Create Layer 3 virtual interfaces, such as VLAN interfaces (SVIs).After creating a virtual port, it will be in loopback address state, so if you want to connect to a layer 2 segment such as a VLAN, execute the add l2_segment command to connect the created virtual port to the l2_segment.
  ```bash
-python [file path]/network_sketcher.py add virtual_port [device name] [virtual_portname] --master [master file path] 
+python [file path]/network_sketcher.py add virtual_port [device name] [virtual_portname] --master [master file path]
  ```
 
 * ex.<br>
@@ -354,11 +354,206 @@ python [file path]/network_sketcher.py add virtual_port [device name] [virtual_p
 ['L3SW2', 'Vlan 300', '', '']<br>
 ['L3SW2', 'addvlan 999', '', '']<br>
 
+## add vport_l2_direct_binding
+This command allows a virtual port to directly send and receive Layer 2 data such as VLANs. Normally, a virtual port is connected to an l2_segment, and then that l2_segment is connected to a Layer 1 interface, thereby connecting the Layer 1 interface and the virtual port. However, this command directly connects a virtual port to a Layer 1 interface, allowing Layer 2 elements such as VLANs (l2_segment) to be sent and received. For example, this command is used when creating subinterfaces on a router and configuring dot1q tagging for each subinterface. It is also possible to configure a single virtual port to send and receive Layer 2 data such as multiple VLANs. Note that l2_segment and vport_l2_direct_binding cannot be registered simultaneously on the same virtual port.
+ ```bash
+python [file path]/network_sketcher.py add vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_binding] --master [master file path]
+ ```
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', '']<br>
+
+**+virtual_port added+ <br>**
+＃python .\network_sketcher.py dd vport_l2_direct_binding "Catalyst 3560" "GigabitEthernet 0/0.100" vlan100 --master "C:\work\\[MASTER]test.xlsx"<br>
+--- vport_l2_direct_binding added ---  Catalyst 3560,GigabitEthernet 0/0.100,vlan100<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', 'vlan100']<br>
+
+
+
+
+
+
+
+
+
+
 
 
 
 '''
-Delete Commands
+Add Commands reference
+'''
+**Since this process will directly edit the master file, please be sure to back up the master file before proceeding.**<br>
+## What you can do with these steps
+**You can execute the following "add" command from the CLI.**
+- [add ip_address](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-ip_address)
+- [add l2_segment](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-l2_segment)
+- [add portchannel](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-portchannel)
+- [add virtual_port](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-virtual_port)
+- [add vport_l1if_direct_binding](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-vport_l1if_direct_binding)
+- [add vport_l2_direct_binding](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%902-Add-Commands#add-vport_l2_direct_binding)
+
+## Basic syntax:
+ ```bash
+python [file path]/network_sketcher.py [command] --master [master file path]
+ ```
+* The part marked as [command] 、--master [master file path] below can be modified.<br>
+python [file path]/network_sketcher.py -master [master file path] [command]<br>
+
+
+## add ip_address
+This process allows you to create an IP address for a Layer 3 interface. You can create one IP address at a time; by repeating the process, you can add multiple IP addresses.
+ ```bash
+python [file path]/network_sketcher.py add ip_address [device name] [layer3_portname] [ip_address/subnetmask] --master [master file path]
+ ```
+
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', 'Vlan 100', '', '']<br>
+
+**+IP Address added+ <br>**
+＃python .\network_sketcher.py add ip_address 'L3SW2' 'Vlan 100' '192.168.100.100/24' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- IP Address added ---  L3SW2,Vlan 100,192.168.100.100/24<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', 'Vlan 100', '', '192.168.100.100/24']<br>
+
+## add l2_segment
+This feature allows you to create Layer 2 segments (such as VLANs) on the interface. You can create one Layer 2 segment at a time, and multiple Layer 2 segments can be created.
+ ```bash
+python [file path]/network_sketcher.py add l2_segment [device name] [layer2_portname] [l2segment_name]　--master [master file path]
+ ```
+
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300', '']<br>
+
+**+l2_segment added+ <br>**
+＃python .\network_sketcher.py add l2_segment 'L3SW2' 'GigabitEthernet 0/0' 'addvlan999' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- l2 Segment added ---  L3SW2,GigabitEthernet 0/0,addvlan999<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300,addvlan999', '']<br>
+
+## add portchannel
+Create a port channel (LAG) on the Layer 1 interface.
+ ```bash
+python [file path]/network_sketcher.py add portchannel [device name] [layer1_portname] [portchannel_name]　--master [master file path]
+ ```
+
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW1', 'GigabitEthernet 0/0', '', '', '']<br>
+['L3SW1', 'GigabitEthernet 0/1', '', '', '']<br>
+
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW1', 'GigabitEthernet 0/0', '', '']<br>
+['L3SW1', 'GigabitEthernet 0/1', '', '']<br>
+
+**+portchannel added+ <br>**
+＃python .\network_sketcher.py add portchannel 'L3SW1' 'GigabitEthernet 0/0' 'PortChannel 1' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- portchannel added ---  L3SW1,GigabitEthernet 0/0,PortChannel 1<br>
+＃python .\network_sketcher.py add portchannel 'L3SW1' 'GigabitEthernet 0/1' 'PortChannel 1' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- portchannel added ---  L3SW1,GigabitEthernet 0/1,PortChannel 1<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW1', 'GigabitEthernet 0/0', 'PortChannel 1', '', '']<br>
+['L3SW1', 'GigabitEthernet 0/1', 'PortChannel 1', '', '']<br>
+
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW1', 'PortChannel 1', '', '']<br>
+
+
+## add virtual_port
+Create Layer 3 virtual interfaces, such as VLAN interfaces (SVIs).After creating a virtual port, it will be in loopback address state, so if you want to connect to a layer 2 segment such as a VLAN, execute the add l2_segment command to connect the created virtual port to the l2_segment.
+ ```bash
+python [file path]/network_sketcher.py add virtual_port [device name] [virtual_portname] --master [master file path]
+ ```
+
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', '', 'Vlan 300', 'Vlan300', '']<br>
+
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', 'Vlan 300', '', '']<br>
+
+**+virtual_port added+ <br>**
+＃python .\network_sketcher.py add virtual_port 'L3SW2' 'addvlan 999' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- Virtual Port  added ---  L3SW2,addvlan 999<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', '', 'addvlan 999', '', '']<br>
+['L3SW2', '', 'Vlan 300', 'Vlan300', '']<br>
+
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['L3SW2', 'Vlan 300', '', '']<br>
+['L3SW2', 'addvlan 999', '', '']<br>
+
+## add vport_l1if_direct_binding
+This adds a virtual port that connects directly to a layer 1 interface. For example, this is used when creating subinterfaces on a router and configuring dot1q tagging for each subinterface. It is also possible to configure multiple virtual ports to be connected to a single layer 1 interface. This setting alone only creates a subinterface, so to send and receive layer 2 data, you must add add vport_l2_direct_binding to this setting and add layer 2 elements such as VLANs to the virtual port created.
+ ```bash
+python [file path]/network_sketcher.py add vport_l1if_direct_binding [device name] [Layer1 port] [vport_name_direct_binding] --master [master file path]
+ ```
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', '', '', '']<br>
+
+**+vport_l1if_direct_binding added+ <br>**
+＃python .\network_sketcher.py add vport_l1if_direct_binding "Catalyst 3560" "GigabitEthernet 0/0" "GigabitEthernet 0/0.100"  --master "C:\work\\[MASTER]test.xlsx"<br>
+--- vport_l1if_direct_binding added ---  Catalyst 3560,GigabitEthernet 0/0,GigabitEthernet 0/0.100<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', '']<br>
+
+## add vport_l2_direct_binding
+This command allows a virtual port to directly send and receive Layer 2 data such as VLANs. Normally, a virtual port is connected to an l2_segment, and then that l2_segment is connected to a Layer 1 interface, thereby connecting the Layer 1 interface and the virtual port. However, this command directly connects a virtual port to a Layer 1 interface, allowing Layer 2 elements such as VLANs (l2_segment) to be sent and received. For example, this command is used when creating subinterfaces on a router and configuring dot1q tagging for each subinterface. It is also possible to configure a single virtual port to send and receive Layer 2 data such as multiple VLANs. Note that l2_segment and vport_l2_direct_binding cannot be registered simultaneously on the same virtual port.
+ ```bash
+python [file path]/network_sketcher.py add vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_binding] --master [master file path]
+ ```
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', '']<br>
+
+**+virtual_port added+ <br>**
+＃python .\network_sketcher.py add vport_l2_direct_binding "Catalyst 3560" "GigabitEthernet 0/0.100" vlan100 --master "C:\work\\[MASTER]test.xlsx"<br>
+--- vport_l2_direct_binding added ---  Catalyst 3560,GigabitEthernet 0/0.100,vlan100<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', 'vlan100']<br>
+
+
+
+
+
+
+
+
+
+'''
+Delete Commands reference
 '''
 **Since this process will directly edit the master file, please be sure to back up the master file before proceeding.**<br>
 
@@ -368,6 +563,8 @@ Delete Commands
 - [delete l2_segment](https://github.com/cisco-open/network-sketcher/wiki/8‐3-Delete-Commands#delete-l2_segment)
 - [delete portchannel](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%903-Delete-Commands#delete-portchannel)
 - [delete virtual_port](https://github.com/cisco-open/network-sketcher/wiki/8‐3-Delete-Commands#delete-virtual_port)
+- [delete vport_l1if_direct_binding](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%903-Delete-Commands#delete-vport_l1if_direct_binding)
+- [delete vport_l2_direct_binding](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%903-Delete-Commands#delete-vport_l2_direct_binding)
 
 ## Basic syntax:
  ```bash
@@ -380,7 +577,7 @@ python [file path]/network_sketcher.py -master [master file path] [command]<br>
 ## delete ip_address
 This function deletes the IP address of a Layer 3 interface. You can delete one IP address at a time.
  ```bash
-python [file path]/network_sketcher.py delete ip_address [device name] [layer3_portname] [ip_address/subnetmask] --master [master file path] 
+python [file path]/network_sketcher.py delete ip_address [device name] [layer3_portname] [ip_address/subnetmask] --master [master file path]
  ```
 
 * ex.<br>
@@ -400,7 +597,7 @@ python [file path]/network_sketcher.py delete ip_address [device name] [layer3_p
 ## delete l2_segment
 This function deletes the Layer 2 segment (such as VLAN) configured on the interface. You can delete one Layer 2 segment at a time.
  ```bash
-python [file path]/network_sketcher.py delete ip_address [device name] [layer2_portname] [l2segment_name] --master [master file path] 
+python [file path]/network_sketcher.py delete ip_address [device name] [layer2_portname] [l2segment_name] --master [master file path]
  ```
 
 * ex.<br>
@@ -420,7 +617,7 @@ python [file path]/network_sketcher.py delete ip_address [device name] [layer2_p
 ## delete portchannel
 The port channel (LAG) configured on the Layer 1 interface will be deleted, along with the Layer 2 segment configured on the port channel.
  ```bash
-python [file path]/network_sketcher.py delete portchannel [device name] [layer1_portname] --master [master file path] 
+python [file path]/network_sketcher.py delete portchannel [device name] [layer1_portname] --master [master file path]
  ```
 
 * ex.<br>
@@ -453,7 +650,7 @@ python [file path]/network_sketcher.py delete portchannel [device name] [layer1_
 ## delete virtual_port
 This will delete Layer 3 interfaces such as VLAN interfaces (SVIs).This command cannot be used to delete a port channel.
  ```bash
-python [file path]/network_sketcher.py delete virtual_port [device name] [virtual_portname] --master [master file path] 
+python [file path]/network_sketcher.py delete virtual_port [device name] [virtual_portname] --master [master file path]
  ```
 
 * ex.<br>
@@ -467,8 +664,8 @@ python [file path]/network_sketcher.py delete virtual_port [device name] [virtua
 ['L3SW2', 'Vlan 300', '', '']<br>
 ['L3SW2', 'addvlan 999', '', '']<br>
 
-**+virtual_port added+ <br>**
-＃python .\network_sketcher.py delete l2_segment 'L3SW2' 'GigabitEthernet 0/0' 'addvlan999' --master "C:\work\\[MASTER]test.xlsx"<br>
+**+virtual_port deleted+ <br>**
+＃python .\network_sketcher.py delete virtual_port 'L3SW2' 'addvlan 999' --master "C:\work\\[MASTER]test.xlsx"<br>
 --- Virtual Port deleted ---  L3SW2,addvlan 999<br>
 
 **+AFTER+ <br>**
@@ -478,15 +675,69 @@ python [file path]/network_sketcher.py delete virtual_port [device name] [virtua
 #python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
 ['L3SW2', 'Vlan 300', '', '']<br>
 
+## delete vport_l1if_direct_binding
+This command deletes a virtual port connected to a layer 1 port. This command also deletes layer 2 elements such as VLANs connected to the virtual port.
+
+ ```bash
+python [file path]/network_sketcher.py delete vport_l1if_direct_binding [device name] [vport_name_direct_binding] --master [master file path]
+ ```
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', 'vlan100']<br>
+
+**+vport_l1if_direct_binding deleted+ <br>**
+＃python .\network_sketcher.py delete vport_l1if_direct_binding "Catalyst 3560" "GigabitEthernet 0/0.100" --master "C:\work\\[MASTER]test.xlsx"<br>
+--- vport_l1if_direct_binding deleted ---  Catalyst 3560,GigabitEthernet 0/0.100,vlan100<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', '', '', '']<br>
+
+
+## delete vport_l2_direct_binding
+Remove elements that send and receive layer 2 traffic, such as VLAN (l2_segment), directly from the virtual port.
+
+ ```bash
+python [file path]/network_sketcher.py delete vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_binding] --master [master file path]
+ ```
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', 'vlan100']<br>
+
+**+virtual_port deleted+ <br>**
+＃python .\network_sketcher.py delete vport_l2_direct_binding "Catalyst 3560" "GigabitEthernet 0/0.100" “vlan100” --master "C:\work\\[MASTER]test.xlsx"<br>
+--- vport_l2_direct_binding deleted ---  Catalyst 3560,GigabitEthernet 0/0.100,vlan100<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l2_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', '']<br>
+
+
+
+
+
+
+
+
+
+
+
+
 
 '''
-Rename Commands
+Rename Commands reference
 '''
 **Since you will be editing the Master file directly, be sure to back up the Master file before proceeding.**
 
 ## What you can do with this procedure
 **You can run the following rename command from the CLI**
+- [rename area](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%904.-Rename-Commands#rename-area)
 - [rename device](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%904.-Rename-Commands_jp#rename-device)
+- [rename l3_instance](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%904.-Rename-Commands#rename-l3_instance)
 - [rename port](https://github.com/cisco-open/network-sketcher/wiki/8%E2%80%904.-Rename-Commands_jp#rename-port)
 
 ## Basic Syntax
@@ -496,11 +747,34 @@ python [file path]/network_sketcher.py [command] --master [master file path]
 * The location of [command] 、--master [master file path] can be changed as follows:<br>
 python [file path]/network_sketcher.py -master [master file path] [command]<br>
 
+## rename area
+Change the area name.
+ ```bash
+python [file path]/network_sketcher.py rename area [Original area name] [Updated area name] --master [master file path]
+ ```
+
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show area --master "C:\work\\[MASTER]test.xlsx"<br>
+Area1<br>
+Area2<br>
+Area3<br>
+
+**+Device renamed+ <br>**
+＃python .\network_sketcher.py rename area 'Area3' 'Area99' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- Area renamed --- Area3 -> Area99<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show area --master "C:\work\\[MASTER]test.xlsx"<br>
+Area1<br>
+Area2<br>
+Area99<br>
 
 ## rename device
 Change the device name.
  ```bash
-python [file path]/network_sketcher.py rename device [Original device name] [Updated device name] --master [master file path] 
+python [file path]/network_sketcher.py rename device [Original device name] [Updated device name] --master [master file path]
  ```
 
 * ex.<br>
@@ -519,10 +793,31 @@ L3SW2<br>
 L3SW100<br>
 L3SW2<br>
 
+## rename l3_instance
+Change the l3_instance, such as the VRF to which the Layer 3 interface belongs. By default, all Layer 3 interfaces are set to blank'' which means "Default" If you change the l3_instance name of one Layer 3 interface, all other l3_instances that are set to blank"" are implicitly set to the "default" l3_instance.
+
+ ```bash
+python [file path]/network_sketcher.py rename l3_instance [device name] [layer3 port name] [Renamed l3_instance name] --master [master file path]
+ ```
+
+* ex.<br>
+
+**+BEFORE+ <br>**
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['devcie1', 'GigabitEthernet 0/0', '', '']<br>
+
+**+l3_interface renamed+ <br>**
+＃python .\network_sketcher.py rename l3_instance 'devcie1' 'GigabitEthernet 0/0' 'VRF-1' --master "C:\work\\[MASTER]test.xlsx"<br>
+--- l3 instance renamed ---  devcie1,GigabitEthernet 0/0,VRF-10<br>
+
+**+AFTER+ <br>**
+#python .\network_sketcher.py show l3_interface --master "C:\work\\[MASTER]test.xlsx"<br>
+['devcie1', 'GigabitEthernet 0/0', 'VRF-1', '']<br>
+
 ## rename port
 Change the port name and port number.
  ```bash
-python [file path]/network_sketcher.py rename port [device name] [Original port name] [Updated port name] --master [master file path] 
+python [file path]/network_sketcher.py rename port [device name] [Original port name] [Updated port name] --master [master file path]
  ```
 
 * ex.<br>
@@ -586,14 +881,21 @@ python [file path]/network_sketcher.py rename port [device name] [Original port 
 ['L3SW2', 'addvlan 999', '', '']<br>
 
 
+
+
 '''
 Mandatory rules for modifying master files using commands
 '''
 To modify the master file, execute the commands in the following order:　If you have a network configuration diagram in an image file, analyze it and use it to determine the physical interface connections and device names.
-1. Change the device name.Be sure to change the configuration file as correct. If the same device name already exists, renaming will not be possible and the command will terminate with an error, so if the destination already exists, change the order of the commands to avoid an error termination.(rename device command)
-2. Change the Layer 1 interface name.Be sure to change the configuration file as correct. It is not possible to rename to an interface name + number that already exists on the same device, and the command will terminate with an error. Therefore, if the destination already exists, change the order of the commands to avoid an error termination.(rename port command)
-3. Create a virtual port (add virtual_port command). Put a space between the port name and port number. Vlan1 is not allowed. It must be Vlan 1.
-4. Create a port channel (add portchannel command). Put a space between the port name and port number. PortChannel1 is not allowed. It must be PortChannel 1.
-5. Add an L2 segment (add l2_segment command)
-6. Connect the virtual port to the l2_segment.　When a virtual port is created, it is not connected to the l2_segment and is in loopback state. Even if you create a virtual port called Vlan 100, it will not automatically connect to Vlan100. (add l2_segment command)
-7. Add an IP address (add ip_address command)
+When changing a name, if an existing name cannot be used, you may need to change it to a temporary name. For example, if you want to exchange AAA and BBB, you must first change AAA to CCC, then change BBB to AAA, and finally change CCC to AAA.
+1. Changing the area name. You cannot change the name of an area to one that already exists. (rename area command)
+2. Change the device name.Be sure to change the configuration file as correct. If the same device name already exists, renaming will not be possible and the command will terminate with an error, so if the destination already exists, change the order of the commands to avoid an error termination.(rename device command)
+3. Change the Layer 1 interface name.Be sure to change the configuration file as correct. It is not possible to rename to an interface name + number that already exists on the same device, and the command will terminate with an error. Therefore, if the destination already exists, change the order of the commands to avoid an error termination.(rename port command)
+4. Create a virtual port (add virtual_port command). Put a space between the port name and port number. Vlan1 is not allowed. It must be Vlan 1. When configuring a subinterface on a router, etc., use the add vport_l1if_direct_binding command instead of this command.
+5. Create a virtual port that connects directly to a Layer 1 interface. (add vport_l1if_direct_binding)
+6. Create a port channel (add portchannel command). Put a space between the port name and port number. PortChannel1 is not allowed. It must be PortChannel 1.
+7. Add an L2 segment (add l2_segment command)
+8. Connect the virtual port to the l2_segment.　When a virtual port is created, it is not connected to the l2_segment and is in loopback state. Even if you create a virtual port called Vlan 100, it will not automatically connect to Vlan100. (add l2_segment command)
+9. Virtual ports allow direct transmission and reception of Layer 2 data such as VLANs.l2_segment and vport_l2_direct_binding cannot be registered at the same time for the same virtual port.(add vport_l2_direct_binding command)
+10. Change the name of the l3_instance (VRF, etc.) that belongs to the Layer 3 interface. The default is blank, but it is implicitly connected to the default l3_instance. (rename l3_instance command)
+11. Add an IP address (add ip_address command)
