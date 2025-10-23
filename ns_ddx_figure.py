@@ -94,8 +94,10 @@ class  ns_ddx_figure_run():
 
             ### add l2 material for l2 shape ###
             if self.click_value == 'L2-3-2':
+                self.if_tag_left_array = [] # bug fix at ver 2.5.5
                 ns_ddx_figure_run.add_l2_material(self)
                 ns_ddx_figure_run.add_l2_line(self)
+                extended.offset_device_width(self) # bug fix at ver 2.5.5
 
             ### add line between folder and shape
             if self.click_value != 'L2-3-2':
@@ -282,16 +284,14 @@ class  ns_ddx_figure_run():
                     self.shape.shadow.inherit = False  # disalbe dealut shadow effect
 
                     ### change folder coler when create summary diagram at ver 2.3.4
-                    if self.flag_second_page == True and self.click_value == '2-4-3':
+                    if (self.flag_second_page == True and self.click_value == '2-4-3') or (self.flag_second_page == True and self.click_value == '2-4-4'):
                         shape_fill = self.shape.fill
                         shape_fill.solid()
-                        shape_fill.fore_color.rgb = RGBColor(254, 246, 240)
-                        shape_line.color.rgb = RGBColor(251, 201, 159)
+                        shape_fill.fore_color.rgb = RGBColor(225, 254, 206)
+                        shape_line.color.rgb = RGBColor(0, 0, 0)
                         shape_line.width = Pt(2.0)
                         self.shape.adjustments[0] = 0.15
                         self.shape.text_frame.paragraphs[0].font.size = Pt(16)
-
-
 
 
                     '''change stlye from meta file'''
@@ -377,8 +377,8 @@ class  ns_ddx_figure_run():
                         temp_style_row += 1
 
                     ### change folder coler when create summary diagram at ver 2.3.4
-                    if self.flag_second_page == True and self.click_value == '2-4-3':
-                        self.shape.text_frame.paragraphs[0].font.size = Pt(16)
+                    if (self.flag_second_page == True and self.click_value == '2-4-3') or (self.flag_second_page == True and self.click_value == '2-4-4') :
+                        self.shape.text_frame.paragraphs[0].font.size = Pt(14)
                         self.shape.text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
 
                     '''run add shapes in own sub folder'''
@@ -795,12 +795,13 @@ class  ns_ddx_figure_run():
                     self.shape.shadow.inherit = False  # disalbe dealut shadow effect
 
                 '''Add line tag on the line'''
-                ### From side tag
-                if self.input_ppt_mata_excel.active.cell(temp_temp_line_row, 3).value != None:
-                    ns_ddx_figure_run.add_line_tag(self,'From', inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y,temp_temp_line_row,From_name)
-                ### To side tag
-                if self.input_ppt_mata_excel.active.cell(temp_temp_line_row, 4).value != None:
-                    ns_ddx_figure_run.add_line_tag(self,'To', inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y,temp_temp_line_row,To_name)
+                if self.flag_second_page == False: # add at ver 2.5.5
+                    ### From side tag
+                    if self.input_ppt_mata_excel.active.cell(temp_temp_line_row, 3).value != None:
+                        ns_ddx_figure_run.add_line_tag(self,'From', inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y,temp_temp_line_row,From_name)
+                    ### To side tag
+                    if self.input_ppt_mata_excel.active.cell(temp_temp_line_row, 4).value != None:
+                        ns_ddx_figure_run.add_line_tag(self,'To', inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y,temp_temp_line_row,To_name)
 
             '''last process, increment row num '''
             temp_temp_line_row += 1
@@ -1711,7 +1712,7 @@ class  ns_ddx_figure_run():
 
                     device_size_array = [l2seg_size_array[0][0], l2seg_size_array[0][1], l2seg_size_array[-1][0] + l2seg_size_array[-1][2] - l2seg_size_array[0][0] ,l2seg_size_array[-1][1] + l2seg_size_array[-1][3] - l2seg_size_array[0][1]  ]  # left, top  width, hight
 
-                    device_size_array = [device_size_array[0] - l2seg_size_margin, device_size_array[1 ] -l2seg_size_margin ,device_size_array[2] + l2seg_size_margin * 2,device_size_array[3] + l2seg_size_margin * 2]
+                    device_size_array = [device_size_array[0] - l2seg_size_margin, device_size_array[1 ] -l2seg_size_margin ,device_size_array[2] + l2seg_size_margin * 2 ,device_size_array[3] + l2seg_size_margin * 2]
 
                     #print('--- device_size_array (left, top , width, hight) at 1st ---  ')
                     #print(device_size_array)
@@ -2006,6 +2007,7 @@ class  ns_ddx_figure_run():
                             tmp_down_tag_distance_sum = l2seg_size_array[0][0] - tag_offset
                             device_size_array[0] -= tag_offset
                             device_size_array[2] += tag_offset
+
                         else:
                             tmp_down_tag_distance_sum = l2seg_size_array[0][0]
 
@@ -2118,6 +2120,13 @@ class  ns_ddx_figure_run():
                             tag_width = tmp_if_distance
                             tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
                             tag_name = tmp_if_name
+
+                            # bug fix at ver 2.5.5  ##
+                            if not any(row[0] == target_device_name for row in self.if_tag_left_array):
+                                device_left_offset_bugfix = device_size_array[0] + device_size_array[2] - (tmp_shapes_size_array[1][0] + tmp_shapes_size_array[1][2])
+                                if device_left_offset_bugfix > 0.01:
+                                    self.if_tag_left_array.append([target_device_name, device_left_offset_bugfix])
+                            ##########################
 
                             tag_type = 'GRAY_TAG'
                             for tmp_update_l2_table_array in update_l2_table_array:
@@ -4477,5 +4486,48 @@ class extended():
 
         return ()
 
+    def offset_device_width(self): #bug fix at ver 2.5.5
+        from pptx.util import Inches
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
+        # Use the already opened Presentation object `self.active_ppt` and match shapes by visible text for all pairs in `self.if_tag_left_array`.
+        # Build a map of target visible text -> width increment (inches), summing duplicates.
+        increments = {}
+        if hasattr(self, "if_tag_left_array") and self.if_tag_left_array:
+            for item in self.if_tag_left_array:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    key = str(item[0]).strip()
+                    try:
+                        val = float(item[1])
+                    except (TypeError, ValueError):
+                        val = 0.0
+                    if key and val:
+                        increments[key] = increments.get(key, 0.0) + val
 
+        # Apply width increments to any shape whose visible text matches keys in `increments`.
+        if increments and hasattr(self, "active_ppt") and self.active_ppt:
+            for slide in self.active_ppt.slides:
+                stack = list(slide.shapes)
+                while stack:
+                    shp = stack.pop()
+
+                    # Extract visible text from the shape.
+                    shape_text = None
+                    if hasattr(shp, "has_text_frame") and shp.has_text_frame:
+                        try:
+                            txt = []
+                            for p in shp.text_frame.paragraphs:
+                                if hasattr(p, "runs") and p.runs:
+                                    txt.append("".join(run.text for run in p.runs))
+                                else:
+                                    txt.append(p.text)
+                            shape_text = "".join(txt).strip()
+                        except Exception:
+                            if hasattr(shp, "text"):
+                                shape_text = (shp.text or "").strip()
+                    elif hasattr(shp, "text"):
+                        shape_text = (shp.text or "").strip()
+
+                    # If the shape's text matches, add the configured width increment.
+                    if shape_text in increments:
+                        shp.width = shp.width + Inches(increments[shape_text])
 

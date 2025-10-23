@@ -52,24 +52,11 @@ class ai_context():
         content_to_append += '* Provide examples of relevant Cisco equipment configurations, if available. Examples of Network Sketcher configurations are not required.' + '\n'
         content_to_append += '* Please explain in ASCII format, including diagrams.' + '\n' + '\n'
 
-        '''
-        content_to_append += '*** Explanation of show_area: Displays all area names.'+ '\n'
-        content_to_append += '*** Explanation of show_area_device: Displays all device names in each area.'+ '\n'
-        content_to_append += '*** Explanation of show_area_location: Displays area placement information. Relative location information.'+ '\n'
-        content_to_append += '*** Explanation of show_attribute: Displays attributes for all devices.'+ '\n'
-        content_to_append += '*** Explanation of show_attribute_color: Displays attributes for all devices. It also displays the color of the cell specified by the attribute. The item following the device name displays the color of the cell for the device name with the value of [R,G,B]'+ '\n'
-        content_to_append += '*** Explanation of show_device: Displays all device names.'+ '\n'
-        content_to_append += '*** Explanation of show_device_interface: Displays all interface names for all devices.'+ '\n'
-        content_to_append += '*** Explanation of show_device_location: Displays device placement information within each area. It is relative location information. AIR means blank.'+ '\n'
-        content_to_append += '*** Explanation of show_l1_interface: Displays detailed information on all L1 interfaces for each device.'+ '\n'
-        content_to_append += '*** Explanation of show_l1_link: Displays L1 wiring information.'+ '\n'
-        content_to_append += '*** Explanation of show_l2_broadcast_domain: Displays the name of the Layer 2 segment included in each broadcast domain.'+ '\n' + "Ex: [[[1], ['Sever-131', 'vlan300']]],[[2, 3, 4, 5], [['Sever-141', 'vlan800'], ['WAN-Dum3', 'L2SEGMENT']]]   **** The first element, [1], represents the identifier of the broadcast domain; the second element, ['Sever-13~1~', 'vlan300'], represents the name of the Layer 2 segment connected to that broadcast domain. On the left is the device name and on the right is the Layer 2 segment name.The second line is similar. The broadcast domain with identifiers [2, 3, 4, 5] has Layer 2 segments ['Sever-14~1~', 'vlan800'], ['WAN-Dum3', 'L2SEGMENT'] connected to it."+ '\n'
-        content_to_append += '*** Explanation of show_l2_interface: Displays detailed information about the L2 interface, exported from the input-ready information in the DEVICE file.'+ '\n'
-        content_to_append += '*** Explanation of show_l3_broadcast_domain: Displays the Layer 3 interface names included in each broadcast domain.' + '\n' + "Ex: [[45], [['Sever-141', 'Loopback 0']]], [[48, 55], [['FW-122', 'GigabitEthernet 0/24'], ['Sever-132', 'GigabitEthernet 0/24']]]   **** The first element, [45], represents the identifier of the broadcast domain; the second element, ['Sever-14~1~', 'Loopback 0'], represents the Layer 3 interface connected to that broadcast domain. On the left is the device name and on the right is the Layer 3 interface name.The second line is similar. The broadcast domain with the identifier [48, 55] has two Layer 3 interfaces connected to it, ['FW-12~2~', 'GigabitEthernet 0/24'] and ['Sever-13~2~', 'GigabitEthernet 0/24']."+ '\n'
-        content_to_append += '*** Explanation of show_l3_interface: Displays detailed information about the L3 interface, exported from the input-ready information in the DEVICE file.'+ '\n'
-        content_to_append += '*** Explanation of show_waypoint: Displays all waypoint names.'+ '\n'
-        content_to_append += '*** Explanation of show_waypoint_interface: Displays all interface names for each waypoint.'+ '\n'+ '\n'
-        '''
+        content_to_append += '\'\'\'' + '\n' + 'File path information used in the command reference'+ '\n' + '\'\'\'' + '\n'
+        content_to_append += '[file path]/network_sketcher.py = "' + os.path.dirname(os.path.abspath(__file__))+ '/network_sketcher.py"' +'\n'
+        content_to_append += '[master file path] = "'+ excel_maseter_file + '"'+'\n' + '\n'
+
+        content_to_append += '\'\'\'' + '\n' + 'All data in the master file'+ '\n' + '\'\'\'' + '\n'
 
         export_num = 0
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
