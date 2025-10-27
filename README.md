@@ -25,9 +25,10 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 # New Features
 - Ver 2.5.5<br>
 
-  -  [Export AI Context (Beta 3)](https://github.com/cisco-open/network-sketcher/wiki/7%E2%80%904.-Export-AI-Context)
-  
-  Support for generating commands to change data in master files has been added. **Always make a backup of the master file before executing a command that changes the master file.**
+  -  [Export AI Context (Beta 3)](https://github.com/cisco-open/network-sketcher/wiki/7%E2%80%904.-Export-AI-Context)<br>
+  -  [Network Sketcher AI Guide_Beta3_EN.pdf](https://github.com/user-attachments/files/23157146/Network.Sketcher.AI.Guide_Beta3_EN.pdf)
+
+  Sub-interfaces and VRFs have been added to the function that loads AI Context, configuration, and configuration diagrams into General-Purpose AI (LLM) and updates the master file.
 
 <img width="1095" height="398" alt="image" src="https://github.com/user-attachments/assets/2f84e038-1ef4-425e-b333-3ca3d2b5981e" />
 
@@ -155,6 +156,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
