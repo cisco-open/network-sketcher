@@ -7,3 +7,4 @@ tkinterdnd2 >= 0.3.0
 pyyaml >= 5.4.0
 ciscoconfparse >= 1.9.0
 networkx >= 3.4.2
+svg.path
