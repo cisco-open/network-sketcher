@@ -705,7 +705,7 @@ def insert_custom_excel_table(input_excel, worksheet_name ,start_row, start_colu
             max_num_row = n-1
             break
         elif n == 9999:
-            tkinter.messagebox.showerror('error', 'Uneble to find <END> on row 1 in the meta_excel_table_file or number of row over 9999')
+            print('[WARN] Uneble to find <END> on row 1 in the meta_excel_table_file or number of row over 9999')
             return ('Uneble to find <END> on row 1')
 
     ##### Insert empty rows #####
@@ -727,7 +727,7 @@ def insert_custom_excel_table(input_excel, worksheet_name ,start_row, start_colu
             if input_custom_table.active.cell(custom_table_row, temp_column_end + 1).value == '<END>':
                 temp_flag_end = True
             elif temp_column_end == 9999:
-                tkinter.messagebox.showerror('error', 'Uneble to find <END> on any coulmn in the meta_excel_table_file or number of column over 9999')
+                print('[WARN] Uneble to find <END> on any coulmn in the meta_excel_table_file or number of column over 9999')
                 break
 
         #### Change to rows to new Column range#####
@@ -743,6 +743,12 @@ def insert_custom_excel_table(input_excel, worksheet_name ,start_row, start_colu
             temp_size_column = 0
 
             for c in range(2, temp_column_end+1):
+                #add at ver 2.6.0 for no line
+                # <END>check
+                current_range_value = input_custom_table.active.cell(Row_OF_Column_Range, c).value
+                if current_range_value == '<END>':
+                    break
+
                 if input_custom_table.active.cell(custom_table_row, c+1).value != None or input_custom_table.active.cell(custom_table_row, c+1).value == '<END>':
                     input_num_column = int(input_custom_table.active.cell(Row_OF_Column_Range, c).value) + temp_size_column
                     write_excel_cell(input_excel, worksheet_name, current_row, temp_current_column, input_msg, input_num_column, 'TABLE_HEADER', 'NONE')
@@ -763,6 +769,12 @@ def insert_custom_excel_table(input_excel, worksheet_name ,start_row, start_colu
         else:
             input_msg = input_custom_table.active.cell(custom_table_row, 2).value
             for c in range(2, temp_column_end + 1):
+                # add at ver 2.6.0 for no line
+                #End Check
+                current_range_value = input_custom_table.active.cell(Row_OF_Column_Range, c).value
+                if current_range_value == '<END>':
+                    break
+
                 #### Check cell_style     - >buttom border line is covert to White ####
                 cell_style = 'TABLE_NORMAL'
                 write_style = 'NONE'

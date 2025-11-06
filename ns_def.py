@@ -160,6 +160,22 @@ def check_file_type(full_filepath):
             if tmp_config == 'lab':
                 return_type_array = ['YAML_CML', config]
 
+    elif full_filepath.endswith('.svg'):
+        return_type_array = ['SVG', 'dummy']
+
+    elif full_filepath.endswith('.csv'):
+        import csv
+        def check_csv_headers(full_filepath):
+            required_headers = {"Device", "Interface", "Connection"}
+            with open(full_filepath, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                headers = next(reader)
+                return required_headers.issubset(headers)
+
+        if check_csv_headers(full_filepath) == True:
+            return_type_array = ['CSV', 'dummy']
+        else:
+            return_type_array = ['ERROR', 'This is not a supported CSV file.']
     else:
         return_type_array = ['ERROR', 'Please enter a file compatible with NS']
 
@@ -530,7 +546,7 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
                                         break
                         current_level +=1
                         #print(current_level,tmp_width,tmp_hight,tmp_count_shape)
-                        current_level_inches_width = min_tag_inches * 18 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 4 )) # ver2.2.1(a) chage ,  min_tag_inches * 2 ->18
+                        current_level_inches_width = min_tag_inches * 18 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 7 )) # ver2.2.1(a)  min_tag_inches * 2 ->18 , Ver 2.6.0 (min_tag_inches * 4 ) -> (min_tag_inches * 7 )
                         #print('----current_level_inches_hight ----  ',master_folder_tuple[tmp_master_folder_tuple],master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3],current_level,current_max_hight)
                         tmp_hight += current_max_hight
                         if current_max_width < current_level_inches_width:
@@ -967,33 +983,83 @@ def get_shape_folder_tuple(position_shape_tuple):
     return (return_tuple)
 
 ### convert value from interface name  . exsample Gigabit Ethernet 0/0 -> 1001000
+import re
+
 def get_if_value(if_name):
     sum_num = 0
-    if_name = if_name.rstrip()
+    # Strip trailing whitespace from the original interface name
+    original_if_name_stripped = if_name.rstrip()
+
+    processed_if_name = original_if_name_stripped
+
+    # Pre-processing: Insert a space if the name does not already contain one,
+    # specifically between the interface type and the number part.
+    # This handles cases like 'GigabitEthernet0/1' -> 'GigabitEthernet 0/1'
+    # and '4921:TerminationZ9333' -> '4921:TerminationZ 9333'.
+    if ' ' not in original_if_name_stripped:
+        # Find the first occurrence where a non-slash, non-dot, non-whitespace, non-digit character
+        # is immediately followed by a digit.
+        # Group 1: The character before the digit (e.g., 't', 'Z', 'l')
+        # Group 2: The digit itself
+        match = re.search(r'([^/\.\s\d])(\d)', original_if_name_stripped)
+        if match:
+            # Insert a space at the position of the digit
+            idx = match.start(2) # Get the starting index of the digit (Group 2)
+            processed_if_name = original_if_name_stripped[:idx] + ' ' + original_if_name_stripped[idx:]
+
+    if_name = processed_if_name
+
+    # Original function logic starts here
     if ' ' in if_name:
+        # Assumes the split_portname function is defined elsewhere or imported.
+        # If not defined, a NameError will occur.
+        # Example definition:
+        # def split_portname(name_str):
+        #     parts = name_str.split(' ', 1)
+        #     return parts if len(parts) > 1 else [name_str, '']
+
         split_if_name = split_portname(if_name)
+
+        # Basic handling if split_portname does not return the expected format
+        if len(split_if_name) < 2:
+            print(f"Warning: split_portname did not return enough parts for '{if_name}'. Returning -1.")
+            return -1
+
         if '/' in split_if_name[1] or '.' in split_if_name[1]:          #update  replace '.' to '/' for Network Sketcher ver 2.0
             split_if_name[1] = split_if_name[1].replace('.','/')
             each_num = split_if_name[1].split('/')
-            #print(split_if_name[1],len(each_num))
+            #print(split_if_name[1],len(each_num)) # Debug print
             tmp_add_value = '1'
             for i in range(0,int(len(each_num))):
                 tmp_add_value += '000'
             tmp_num = int(tmp_add_value)
-            #print('tmp_num  ', tmp_num)
+            #print('tmp_num  ', tmp_num) # Debug print
             for n in range(0,int(len(each_num))):
-                sum_num += (int(each_num[n]) + 1) * tmp_num
+                try:
+                    sum_num += (int(each_num[n]) + 1) * tmp_num
+                except ValueError:
+                    # Handle cases where a part of the interface path cannot be converted to an integer
+                    print(f"Error: Could not convert '{each_num[n]}' to integer in interface path part. Input: '{if_name}'. Returning -1.")
+                    return -1
                 tmp_num = tmp_num/1000
-            #print(split_if_name[1],sum_num)
+            #print(split_if_name[1],sum_num) # Debug print
             if_value = sum_num
 
         else:
             if_value = split_if_name[1]
 
     else:
+        # If no space was found even after pre-processing (e.g., regex didn't match)
         if_value = -1
 
-    return (int(if_value))
+    # Ensure the final return value is an integer.
+    # It's recommended to wrap this in a try-except block to prevent ValueError
+    # if if_value somehow ends up as a non-convertible string.
+    try:
+        return int(if_value)
+    except ValueError:
+        print(f"Error: Cannot convert final if_value '{if_value}' to integer. Input: '{if_name}'. Returning -1.")
+        return -1
 
 def split_portname(if_name):
     #reduce space' ' in if name

@@ -315,6 +315,8 @@ class flow():
 
         for row in flow_list_array[2:]:
             data = row[1]
+            while len(data) <= 7:
+                data.append('')
             source = data[1]
             target = data[2]
 
@@ -363,8 +365,9 @@ class flow():
         for element in filtered_master_flow:
             sublist = element[1]  # Take the sublist
             # Check if the second or third elements are not empty
-            if sublist[1] and sublist[2]:
-                filterd2_master_flow.append(sublist)  # Append the sublist without the first number
+            if len(sublist) >= 2:
+                if sublist[1] and sublist[2]:
+                    filterd2_master_flow.append(sublist)  # Append the sublist without the first number
         #print(filterd2_master_flow)
 
         # Filter lines by the target
@@ -517,9 +520,10 @@ class flow():
             for entry in filtered_master_flow:
                 data = entry[1]  # Extract the second element (list)
                 for i in range(4):  # Process the 2nd, 3rd, 4th, and 5th elements (index 1 to 4)
-                    value = data[i + 1].strip()
-                    if value and value not in category_wise_data[i]:  # Add only non-empty, non-duplicate values
-                        category_wise_data[i].append(value)
+                    if len(data) >= 4:
+                        value = data[i + 1].strip()
+                        if value and value not in category_wise_data[i]:  # Add only non-empty, non-duplicate values
+                            category_wise_data[i].append(value)
 
             update_master_flow_array = category_wise_data
 
@@ -581,9 +585,11 @@ class flow():
 
             for tmp_master_flow_array in master_flow_array:
                 for i in range(1, 8):
+                    while len(tmp_master_flow_array[1]) <= 7:
+                        tmp_master_flow_array[1].append('')
+
                     if tmp_master_flow_array[1][i] == '':
                         tmp_master_flow_array[1][i] = '<EMPTY>'
-                print(tmp_master_flow_array[1][7])
 
                 flow_list_array.append([current_row_num, ['',str(current_row_num - 2), '>>' + str(tmp_master_flow_array[1][1]), '>>' + str(tmp_master_flow_array[1][2]), '>>' + str(tmp_master_flow_array[1][3]), '>>' + str(tmp_master_flow_array[1][4]), '>>' + str(tmp_master_flow_array[1][5]), '>>' + str(tmp_master_flow_array[1][6]),str(tmp_master_flow_array[1][7]), '<END>']])
                 current_row_num += 1
