@@ -61,12 +61,12 @@ class  ns_l1_master_create():
             self.excel_file_path = self.inFileTxt_92_2.get()
 
 
-        elif self.click_value == '1-4a':
-            self.input_sketch_ppt = Presentation("./_tmp_tmp_tmp_.pptx")
+        elif self.click_value == '1-4a' or self.click_value == '1-4c':
+            self.input_sketch_ppt = Presentation(self.tmp_pptx_file_path)
             self.output_diagram_path = self.outFileTxt_1a_1.get()
             self.excel_file_path = self.outFileTxt_1a_2.get()
         elif self.click_value == '1-4b':
-            self.input_sketch_ppt = Presentation("./_tmp_tmp_tmp_.pptx")
+            self.input_sketch_ppt = Presentation(self.tmp_pptx_file_path)
             #self.output_diagram_path = self.outFileTxt_1b_1.get()
             #self.excel_file_path = self.outFileTxt_1b_2.get()
         else:
@@ -1805,7 +1805,7 @@ class  ns_l1_master_create():
         #### GET best width size ####
         master_folder_size_array = ns_def.get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_shape_tuple,min_tag_inches)
         #print('-----master_folder_size_array-----  ',master_folder_size_array)  #[slide_max_width_inches, master_width_size_y_grid ,master_folder_size,slide_max_hight_inches,master_hight_size_y_grid]
-
+        ori_master_folder_size_array = master_folder_size_array # add ver 2.6.0
         #print(master_folder_tuple)
         update_master_folder_tuple = {}
         for tmp_master_width_size_y_grid in master_folder_size_array[1]:
@@ -1927,8 +1927,8 @@ class  ns_l1_master_create():
 
         self.root_left = 0.28
         self.root_top  = 1.42
-        self.root_width = math.ceil(master_folder_size_array[0] * 9) / 10   #ver 2.2.1(a) chenged 10 - > 9
-        self.root_hight = math.ceil(master_folder_size_array[3] * 10) / 10
+        self.root_width = math.ceil(ori_master_folder_size_array[0])  #change at ver 2.6.0
+        self.root_hight = math.ceil(ori_master_folder_size_array[3])  #change at ver 2.6.0
 
         # width inches of root folder ( ver 1.1)
         if (self.root_width + self.root_left * 2) > ppt_max_width:

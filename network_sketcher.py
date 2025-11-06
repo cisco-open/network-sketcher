@@ -42,7 +42,9 @@ class ns_front_run():
         self.click_value_3rd = ''
         self.click_value_VPN = ''
         self.root = TkinterDnD.Tk()
-        self.root.title("Network Sketcher  ver 2.5.5")
+        style = ttk.Style(self.root)
+        style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
+        self.root.title("Network Sketcher  ver 2.6.0")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
@@ -64,22 +66,24 @@ class ns_front_run():
         # create Tabs
         tab_x1 = tk.Frame(nb)
         tab_x2 = tk.Frame(nb)
+        tab_x3 = tk.Frame(nb)
 
         nb.add(tab_x1, text='  Main Panel  ', padding=5)
+        nb.add(tab_x3, text='  External Systems  ', padding=5)
         nb.add(tab_x2, text='  Help  ', padding=5)
         nb.pack(expand=1, fill='both')
 
         '''
         tab_x1  <<Main Panel>>
         '''
-        self.main1_1 = tk.LabelFrame(tab_x1, text="    Please input a file for Network Sketcher     ", font=("", 14), height=1, background="#F2FDE3")
+        self.main1_1 = tk.LabelFrame(tab_x1, text="    Select a file for use with Network Sketcher     ", font=("", 14), height=1, background="#F2FDE3",labelanchor="n")
         self.main1_1.grid(row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.main1_1_label_1 = tk.Label(self.main1_1, text="", background="#F2FDE3")
         self.main1_1_label_1 .grid(row=1, column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.text = tk.StringVar()
-        self.text.set("              drag and drop here (*.pptx;*.xlsx;*.yaml)")
+        self.text.set("              drag and drop here (*.pptx; *.xlsx)")
         self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
         self.main1_1_label_4.grid(row=4, column=1, columnspan=3, sticky='W', padx=5, pady=2)
 
@@ -98,11 +102,10 @@ class ns_front_run():
         self.main1_1.drop_target_register(DND_FILES)
         self.main1_1.dnd_bind("<<Drop>>", self.drop_main1_1 ,self.entry_name_main1_1)
 
-        ### Help
-        #Help_1_label_1 = tk.Label(tab_x2, text="Version 2.1.0", background="#FFFFFF")
-        #Help_1_label_1.grid(row=0, column=0, sticky='W', padx=5, pady=2)
-
-        Help_1 = tk.LabelFrame(tab_x2, text="    Online User Guide     ", font=("", 14), height=1, background="#FFFFFF")
+        '''
+        tab_x2  <<Help>>
+        '''
+        Help_1 = tk.LabelFrame(tab_x2, text="    Online User Guide     ", font=("", 14), height=1, background="#FFFFFF",labelanchor="n")
         Help_1.grid(row=0, column=0, sticky='W', padx=5, pady=5, ipadx=10, ipady=5)
 
         Help_1_button_2 = tk.Button(Help_1, text="English", font=("", 14), command=lambda: self.click_action_main1_1('self.help_1_button_2'))
@@ -116,6 +119,45 @@ class ns_front_run():
 
         Help_1_1 = tk.Label(tab_x2, font=("", 10), text="Copyright 2023 Cisco Systems, Inc. and its affiliates  \n  SPDX-License-Identifier: Apache-2.0", background='#FFFFFF')
         Help_1_1.grid(column=0, row=4, pady=2)
+
+        '''
+        tab_x3  <<External Systems>>
+        '''
+        self.external_systems1_1 = tk.LabelFrame(tab_x3, text="    Select a file from an external system. \n   CML(yaml), Visio(svg), draw.io(svg), NetBox(csv)     ", font=("", 14), height=1, background="#B8E7A7",labelanchor="n")
+        self.external_systems1_1.grid(row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+
+        self.external_systems1_1_label_1 = tk.Label(self.external_systems1_1, text="", background="#B8E7A7", font=("", 6))
+        self.external_systems1_1_label_1 .grid(row=1, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
+
+        self.text2 = tk.StringVar()
+        self.text2.set("              drag and drop here (*.yaml; *.svg; *.csv)")
+        self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#B8E7A7")
+        self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=3, sticky='W', padx=5, pady=2)
+
+        self.external_systems1_1_label_6 = tk.Label(self.external_systems1_1, text="", background="#B8E7A7")
+        self.external_systems1_1_label_6.grid(row=5, column=1, sticky='W', padx=5, pady=2)
+
+        self.external_systems1_1_entry_1 = tk.Entry(self.external_systems1_1)
+        self.external_systems1_1_entry_1.grid(row=7, column=1, sticky="WE", pady=3, ipadx=90)
+        self.external_systems1_1_button_1 = tk.Button(self.external_systems1_1, text="Browse ...", command=lambda: self.click_action_external_systems1_1('self.external_systems1_1_button_1'))
+        self.external_systems1_1_button_1.grid(row=7, column=2, sticky='W', padx=5, pady=2)
+        self.external_systems1_1_button_2 = tk.Button(self.external_systems1_1, text="Submit", command=lambda: self.click_action_external_systems1_1('self.external_systems1_1_button_2'))
+        self.external_systems1_1_button_2.grid(row=7, column=3, sticky='W', padx=0, pady=2)
+
+        self.inFileTxt_2_1 = tk.Entry(self.external_systems1_1)
+        self.outFileTxt_2_1 = tk.Entry(self.external_systems1_1)
+        self.outFileTxt_2_2 = tk.Entry(self.external_systems1_1)
+        self.outFileTxt_2_3 = tk.Entry(self.external_systems1_1)
+        self.outFileTxt_2_4 = tk.Entry(self.external_systems1_1)
+        self.outFileTxt_1a_1 = tk.Entry(self.external_systems1_1)
+        self.outFileTxt_1a_2 = tk.Entry(self.external_systems1_1)
+        self.inFileTxt_1a_1 = tk.Entry(self.external_systems1_1)
+        self.inFileTxt_1a_2 = tk.Entry(self.external_systems1_1)
+
+        #drag and drop
+        self.entry_name_external_systems1_1 = 'self.external_systems1_1_entry_1'
+        self.external_systems1_1.drop_target_register(DND_FILES)
+        self.external_systems1_1.dnd_bind("<<Drop>>", self.drop_external_systems1_1 ,self.entry_name_external_systems1_1)
 
         # main loop
         self.root.mainloop()
@@ -185,13 +227,6 @@ class ns_front_run():
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
                 ns_front_run.sub_excel_device_1(self, file_type_array)
 
-            elif file_type_array[0] == 'YAML_CML':
-                #print(file_type_array)
-                self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
-                self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
-
-                network_sketcher_dev.ns_front_run.click_action(self,'1-4b')
-
             else:
                 self.text.set('[ERROR] Please enter a file compatible with NS')
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#FBE5D6")
@@ -202,6 +237,61 @@ class ns_front_run():
 
         if click_value == 'self.help_1_button_2':
             webbrowser.open('https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D')
+
+    def drop_external_systems1_1(self, event):
+        if event:
+            event.data = event.data.replace('{', '').replace('}', '')
+            if event.data.endswith('.svg') or event.data.endswith('.yaml') or event.data.endswith('.csv'):
+                exec(self.entry_name_external_systems1_1 + '.delete(0, tkinter.END)')
+                exec(self.entry_name_external_systems1_1 + '.insert(tk.END, event.data)')
+                self.filename = os.path.basename(event.data)
+                self.full_filepath = event.data
+                self.text2.set(self.filename)
+                self.click_action_external_systems1_1('self.external_systems1_1_button_2')
+            else:
+                self.text2.set('[ERROR] ' + 'Please input a file compatible with NS')
+                self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#FBE5D6")
+                self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+    def click_action_external_systems1_1(self,click_value):
+        if click_value == 'self.external_systems1_1_button_1': # select browse
+            fTyp = [("", "*.yaml;*.svg;*.csv")]
+            iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
+            self.full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
+            self.filename = os.path.basename(self.full_filepath)
+            exec(self.entry_name_external_systems1_1 + '.delete(0, tkinter.END)')
+            exec(self.entry_name_external_systems1_1 + '.insert(tk.END, self.full_filepath)')
+            self.text2.set(self.filename)
+
+        if click_value == 'self.external_systems1_1_button_2': # run submit on External Systems
+            file_type_array = ns_def.check_file_type(self.external_systems1_1_entry_1.get())
+
+            if file_type_array[0] == 'ERROR':
+                self.text2.set('[ERROR] ' + file_type_array[1])
+                self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#FBE5D6")
+                self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+            elif file_type_array[0] == 'YAML_CML':
+                #print(file_type_array)
+                self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
+                self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+                network_sketcher_dev.ns_front_run.click_action(self,'1-4b')
+
+            elif file_type_array[0] == 'SVG':
+                #print(file_type_array)
+                self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
+                self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+                network_sketcher_dev.ns_front_run.click_action(self,'1-4a')
+
+
+            elif file_type_array[0] == 'CSV':
+                #print(file_type_array)
+                self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
+                self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+                network_sketcher_dev.ns_front_run.click_action(self,'1-4c')
 
     '''
     Sketch Panel

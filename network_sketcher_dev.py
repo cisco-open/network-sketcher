@@ -592,19 +592,133 @@ class ns_front_run():
             self.outFileTxt_11_2.delete(0, tkinter.END)
             self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
 
-            #view complete
-            #tkinter.messagebox.showinfo('info', 'successfully completed')
+        if click_value == '1-4c':  # select convert to master data file from CSV
+            # check file open
+            if ns_def.check_file_open(self.full_filepath) == True:
+                return ()
+
+            #fTyp = [("", ".svg")]
+            iDir = os.path.abspath(os.path.dirname(self.full_filepath))
+            #full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
+            full_filepath = self.full_filepath
+            self.inFileTxt_1a_1.delete(0, tkinter.END)
+            self.inFileTxt_1a_1.insert(tk.END, full_filepath)
+
+            basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
+            self.outFileTxt_1a_1.delete(0, tkinter.END)
+            self.outFileTxt_1a_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext  + '.pptx')
+            #print(self.outFileTxt_1_1.get())
+            self.outFileTxt_1a_2.delete(0, tkinter.END)
+            self.outFileTxt_1a_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext  + '.xlsx')
+            #print(self.outFileTxt_1_2.get())
+            self.tmp_pptx_file_path = iDir + "./_tmp_tmp_tmp_.pptx"
+
+            self.click_value = '1-4c'
+            # import module
+            import ns_option_convert_to_master
+            converter = ns_option_convert_to_master.ns_option_convert_to_master_csv()
+            converter.process(self.full_filepath, self.tmp_pptx_file_path)
+
+            # import module
+            import ns_l1_master_create
+            ns_l1_master_create.ns_l1_master_create.__init__(self)
+
+            # remove exist ppt file
+            if os.path.isfile(self.tmp_pptx_file_path) == True:
+                os.remove(self.tmp_pptx_file_path)
+
+            # input master excel file path to 2-1  , ver 1.1
+            iDir = os.path.abspath(os.path.dirname(self.full_filepath))
+            self.inFileTxt_2_1 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_1 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_2 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_3 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_4 = tk.Entry(self.external_systems1_1)
+
+            self.inFileTxt_2_1.delete(0, tkinter.END)
+            self.inFileTxt_2_1.insert(tk.END, self.full_filepath)
+
+            basename_without_ext = os.path.splitext(os.path.basename(self.full_filepath))[0]
+            self.outFileTxt_2_1.delete(0, tkinter.END)
+            self.outFileTxt_2_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]PerArea_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+            self.outFileTxt_2_2.delete(0, tkinter.END)
+            self.outFileTxt_2_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]PerAreaTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+            self.outFileTxt_2_3.delete(0, tkinter.END)
+            self.outFileTxt_2_3.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+            self.outFileTxt_2_4.delete(0, tkinter.END)
+            self.outFileTxt_2_4.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+
+            ### run L2-1-2 in network_sketcher_dev ,  add l2 master sheet
+            self.inFileTxt_L2_1_1 = tk.Entry(self.external_systems1_1)
+            self.inFileTxt_L3_1_1 = tk.Entry(self.external_systems1_1)
+            self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+            self.inFileTxt_L2_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
+            self.inFileTxt_L3_1_1.delete(0, tkinter.END)
+            self.inFileTxt_L3_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
+
+            self.click_value = 'L2-1-2'
+            ns_front_run.click_action(self,'L2-1-2')
+
+            # remove exist L2/ file
+            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')) == True:
+                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]'))
+
+            ### run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
+            self.click_value = 'L3-1-2'
+            ns_front_run.click_action(self,'L3-1-2')
+
+            # remove exist L3/ file
+            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
+                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]'))
+
+            '''rename port'''
+            import network_sketcher_cli
+            self.full_filepath_csv = self.full_filepath
+            self.full_filepath = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx'
+            self.filename = os.path.basename(self.full_filepath)
+            self.l1_connection_csv = network_sketcher_cli.ns_cli_run.cli_show(self, self.full_filepath, ['show', 'l1_link'])
+            #print(self.l1_connection_csv )
+            ns_option_convert_to_master.ns_option_convert_to_master_csv.rename_port(self)
+
+            '''open master panel'''
+            file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
+
+            import network_sketcher
+            network_sketcher.ns_front_run.sub_excel_master_1(self, file_type_array)
+
+            '''export Device file'''
+            push_array = []
+            self.click_value_2nd = 'self.sub3_1_button_3'
+            self.click_action_sub('self.self.sub2_5_button_3', push_array)
+            self.click_value_2nd = ''
+
+            print("\n" + "=" * 70)
+            print("Process Complete! (Phase2)")
+            print("=" * 70)
+
+
+
 
         if click_value == '1-4a':  # select convert to master data file from SVG
             # check file open
-            if ns_def.check_file_open(self.outFileTxt_1a_1.get()) == True:
-                return ()
-            if ns_def.check_file_open(self.outFileTxt_1a_2.get()) == True:
+            if ns_def.check_file_open(self.full_filepath) == True:
                 return ()
 
-            # remove exist ppt file
-            if os.path.isfile(self.outFileTxt_1a_1.get()) == True:
-                os.remove(self.outFileTxt_1a_1.get())
+            #fTyp = [("", ".svg")]
+            iDir = os.path.abspath(os.path.dirname(self.full_filepath))
+            #full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
+            full_filepath = self.full_filepath
+            self.inFileTxt_1a_1.delete(0, tkinter.END)
+            self.inFileTxt_1a_1.insert(tk.END, full_filepath)
+
+            basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
+            self.outFileTxt_1a_1.delete(0, tkinter.END)
+            self.outFileTxt_1a_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext  + '.pptx')
+            #print(self.outFileTxt_1_1.get())
+            self.outFileTxt_1a_2.delete(0, tkinter.END)
+            self.outFileTxt_1a_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext  + '.xlsx')
+            #print(self.outFileTxt_1_2.get())
+            self.tmp_pptx_file_path = iDir + "./_tmp_tmp_tmp_.pptx"
 
             self.click_value = '1-4a'
             # import module
@@ -616,15 +730,21 @@ class ns_front_run():
             ns_l1_master_create.ns_l1_master_create.__init__(self)
 
             # remove exist ppt file
-            if os.path.isfile("./_tmp_tmp_tmp_.pptx") == True:
-                os.remove("./_tmp_tmp_tmp_.pptx")
+            if os.path.isfile(self.tmp_pptx_file_path) == True:
+                os.remove(self.tmp_pptx_file_path)
 
             # input master excel file path to 2-1  , ver 1.1
-            iDir = os.path.abspath(os.path.dirname(self.outFileTxt_1a_2.get()))
-            self.inFileTxt_2_1.delete(0, tkinter.END)
-            self.inFileTxt_2_1.insert(tk.END, self.outFileTxt_1a_2.get())
+            iDir = os.path.abspath(os.path.dirname(self.full_filepath))
+            self.inFileTxt_2_1 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_1 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_2 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_3 = tk.Entry(self.external_systems1_1)
+            self.outFileTxt_2_4 = tk.Entry(self.external_systems1_1)
 
-            basename_without_ext = os.path.splitext(os.path.basename(self.outFileTxt_1a_2.get()))[0]
+            self.inFileTxt_2_1.delete(0, tkinter.END)
+            self.inFileTxt_2_1.insert(tk.END, self.full_filepath)
+
+            basename_without_ext = os.path.splitext(os.path.basename(self.full_filepath))[0]
             self.outFileTxt_2_1.delete(0, tkinter.END)
             self.outFileTxt_2_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]PerArea_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
             self.outFileTxt_2_2.delete(0, tkinter.END)
@@ -634,22 +754,57 @@ class ns_front_run():
             self.outFileTxt_2_4.delete(0, tkinter.END)
             self.outFileTxt_2_4.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
 
-            #view complete
-            tkinter.messagebox.showinfo('info', 'successfully completed')
+            ### run L2-1-2 in network_sketcher_dev ,  add l2 master sheet
+            self.inFileTxt_L2_1_1 = tk.Entry(self.external_systems1_1)
+            self.inFileTxt_L3_1_1 = tk.Entry(self.external_systems1_1)
+            self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+            self.inFileTxt_L2_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
+            self.inFileTxt_L3_1_1.delete(0, tkinter.END)
+            self.inFileTxt_L3_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
+
+            self.click_value = 'L2-1-2'
+            ns_front_run.click_action(self,'L2-1-2')
+
+            # remove exist L2/ file
+            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')) == True:
+                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]'))
+
+            ### run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
+            self.click_value = 'L3-1-2'
+            ns_front_run.click_action(self,'L3-1-2')
+
+            # remove exist L3/ file
+            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
+                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]'))
+
+            ### open master panel
+            file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
+            self.full_filepath = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx'
+            self.filename = os.path.basename(self.full_filepath)
+            import network_sketcher
+            network_sketcher.ns_front_run.sub_excel_master_1(self, file_type_array)
+
+            '''export Device file'''
+            push_array = []
+            self.click_value_2nd = 'self.sub3_1_button_3'
+            self.click_action_sub('self.self.sub2_5_button_3', push_array)
+            self.click_value_2nd = ''
+
+
+
 
         if click_value == '1-4b':  # select convert to master data file from YAML
             # check file open
-            print(self.full_filepath)
+            #print(self.full_filepath)
             self.yaml_full_filepath = self.full_filepath
-
             self.click_value = '1-4b'
 
             # input master excel file path  , ver 2.1.0
             iDir = os.path.abspath(os.path.dirname(self.full_filepath))
             basename_without_ext = os.path.splitext(os.path.basename(self.full_filepath))[0]
             self.excel_file_path = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext.replace('.yaml', '') + '.xlsx'
-            print(self.excel_file_path )
-
+            #print(self.excel_file_path )
+            self.tmp_pptx_file_path = iDir + "./_tmp_tmp_tmp_.pptx"
 
             # import module and create a tmp powerpoint figure
             import ns_option_convert_to_master
@@ -663,8 +818,8 @@ class ns_front_run():
             ns_option_convert_to_master.ns_overwrite_line_to_master_yaml.__init__(self)
 
             # remove exist ppt file
-            if os.path.isfile("./_tmp_tmp_tmp_.pptx") == True:
-                os.remove("./_tmp_tmp_tmp_.pptx")
+            if os.path.isfile(self.tmp_pptx_file_path) == True:
+                os.remove(self.tmp_pptx_file_path)
 
             ### run L2-1-2 in network_sketcher_dev ,  add l2 master sheet
             self.inFileTxt_L2_1_1 = tk.Entry(self.main1_1)
@@ -702,6 +857,11 @@ class ns_front_run():
             '''add L3 config in yaml to Master file'''
             ns_option_convert_to_master.ns_l3_config_to_master_yaml.__init__(self)
 
+            '''export Device file'''
+            push_array = []
+            self.click_value_2nd = 'self.sub3_1_button_3'
+            self.click_action_sub('self.self.sub2_5_button_3', push_array)
+            self.click_value_2nd = ''
 
         if click_value == '2-1': # select browse
             fTyp = [("", ".xlsx")]
