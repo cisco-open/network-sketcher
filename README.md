@@ -84,6 +84,7 @@ python3 -m pip install numpy
 python3 -m pip install pyyaml
 python3 -m pip install ciscoconfparse
 python3 -m pip install networkx
+python3 -m pip install svg.path
 ```
 
 * Mac OS requires the following additional installation.
@@ -156,6 +157,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
