@@ -27,7 +27,8 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
 [Network Sketcher Ver 2.6.0 now supports master file conversion from Visio, draw.io, NetBox, and CML data to Network Sketcher.](https://github.com/cisco-open/network-sketcher/wiki/1%E2%80%904.-Convert-data-from-other-systems-into-master-files-(Visio,-draw.io,-NetBox-and-CML)_en)
 
-<img width="1672" height="724" alt="image" src="https://github.com/user-attachments/assets/436a1462-bdf7-49cf-bc4f-235be6cb7d42" />
+<img alt="image" src="https://github.com/user-attachments/assets/436a1462-bdf7-49cf-bc4f-235be6cb7d42" />
+Although Network Sketcher now supports multiple formats, it is not intended to replace the main drawing tool, but rather aims for mutually beneficial development.
 
 - Ver 2.5.5<br>
 
@@ -36,7 +37,7 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 
   Sub-interfaces and VRFs have been added to the function that loads AI Context, configuration, and configuration diagrams into General-Purpose AI (LLM) and updates the master file.
 
-<img width="1095" height="398" alt="image" src="https://github.com/user-attachments/assets/2f84e038-1ef4-425e-b333-3ca3d2b5981e" />
+<img alt="image" src="https://github.com/user-attachments/assets/2f84e038-1ef4-425e-b333-3ca3d2b5981e" />
     
 - Ver 2.5.0
   - [Communication flow management functionality has been added.](https://github.com/cisco-open/network-sketcher/wiki/9%E2%80%901.Exporting-Flow-files)
@@ -157,6 +158,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
