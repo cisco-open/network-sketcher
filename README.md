@@ -46,7 +46,7 @@ Although Network Sketcher now supports multiple formats, it is not intended to r
 # Limitations
 - IPv4 only. IPv6 is not supported.
 - A DEVICE file contains multiple sheets, but only one sheet should be updated at a time. Simultaneous synchronization of multiple sheet updates is not supported.
-- Do not operate Network Sketcher master files in the One Drive folder.
+- Do not use Network Skecher on master files in your One Drive folder.
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
@@ -159,6 +159,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
