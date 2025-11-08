@@ -611,7 +611,7 @@ class ns_front_run():
             self.outFileTxt_1a_2.delete(0, tkinter.END)
             self.outFileTxt_1a_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext  + '.xlsx')
             #print(self.outFileTxt_1_2.get())
-            self.tmp_pptx_file_path = iDir + "./_tmp_tmp_tmp_.pptx"
+            self.tmp_pptx_file_path = iDir + "/_tmp_tmp_tmp_.pptx" #Bug fix #54 at ver 2.6.0b
 
             self.click_value = '1-4c'
             # import module
@@ -718,7 +718,7 @@ class ns_front_run():
             self.outFileTxt_1a_2.delete(0, tkinter.END)
             self.outFileTxt_1a_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext  + '.xlsx')
             #print(self.outFileTxt_1_2.get())
-            self.tmp_pptx_file_path = iDir + "./_tmp_tmp_tmp_.pptx"
+            self.tmp_pptx_file_path = iDir + "/_tmp_tmp_tmp_.pptx" #Bug fix #54 at ver 2.6.0b
 
             self.click_value = '1-4a'
             # import module
@@ -804,7 +804,7 @@ class ns_front_run():
             basename_without_ext = os.path.splitext(os.path.basename(self.full_filepath))[0]
             self.excel_file_path = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext.replace('.yaml', '') + '.xlsx'
             #print(self.excel_file_path )
-            self.tmp_pptx_file_path = iDir + "./_tmp_tmp_tmp_.pptx"
+            self.tmp_pptx_file_path = iDir + "/_tmp_tmp_tmp_.pptx" #Bug fix #54 at ver 2.6.0b
 
             # import module and create a tmp powerpoint figure
             import ns_option_convert_to_master
