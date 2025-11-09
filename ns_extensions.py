@@ -15,8 +15,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
-from idlelib.debugobj_r import remote_object_tree_item
-
 import ns_def, ns_egt_maker, ns_ddx_figure, network_sketcher_cli
 from collections import Counter
 import tkinter as tk ,tkinter.ttk , openpyxl
