@@ -2081,7 +2081,7 @@ class  ns_option_convert_to_master_svg():
                         break
 
             if bbox_element is None:
-                print(f"  No bounding <rect> found")
+                #print(f"  No bounding <rect> found")
                 continue
 
             # Extract bounding box from rect
@@ -2219,7 +2219,7 @@ class  ns_option_convert_to_master_svg():
                         break
 
             if bbox_element is None:
-                print(f"  No bounding <rect> found")
+                #print(f"  No bounding <rect> found")
                 continue
 
             # Extract bounding box from rect
@@ -2383,6 +2383,148 @@ class  ns_option_convert_to_master_svg():
             existing_names.add(name)
 
         # ... (rest of the code continues with standalone <rect> processing, etc.)
+
+        # ============================================================
+        # NEW SECTION: Process draw.io shapes from data-cell-id groups
+        # Handles ellipse (WAN) and complex paths (Router-line2)
+        # ============================================================
+
+        # Find all <g> elements with data-cell-id (draw.io format)
+        drawio_cell_groups = []
+        for g in root.iter():
+            if local_name(g.tag) == 'g':
+                cell_id = get_attr(g, 'data-cell-id')
+                if cell_id and cell_id not in ('0', '1'):
+                    # Skip if already processed via groupContext='shape'
+                    if get_attr(g, 'groupContext') == 'shape':
+                        continue
+                    drawio_cell_groups.append((cell_id, g))
+
+        if drawio_cell_groups:
+            print(f"\n Processing {len(drawio_cell_groups)} draw.io cell groups...")
+
+        for cell_id, cell_group in drawio_cell_groups:
+            # Extract label from foreignObject
+            label = None
+            for elem in cell_group.iter():
+                if local_name(elem.tag) == 'foreignObject':
+                    for div in elem.iter():
+                        if div.tag.endswith('}div') or div.tag == 'div':
+                            if div.text and div.text.strip():
+                                label = div.text.strip()
+                                break
+                    if label:
+                        break
+
+            if not label or not is_valid_label(label):
+                continue
+
+            if label in existing_names:
+                continue
+
+            # Find bounding box
+            bbox_x = bbox_y = bbox_w = bbox_h = None
+            shape_type = MSO_AUTO_SHAPE_TYPE.RECTANGLE
+            transform_elem = None
+
+            # Check for ellipse
+            for elem in cell_group.iter():
+                if local_name(elem.tag) == 'ellipse':
+                    try:
+                        cx = float(elem.attrib.get('cx', 0))
+                        cy = float(elem.attrib.get('cy', 0))
+                        rx = float(elem.attrib.get('rx', 0))
+                        ry = float(elem.attrib.get('ry', 0))
+                        bbox_x = cx - rx
+                        bbox_y = cy - ry
+                        bbox_w = rx * 2
+                        bbox_h = ry * 2
+                        shape_type = MSO_AUTO_SHAPE_TYPE.OVAL
+                        transform_elem = elem
+                        break
+                    except:
+                        pass
+
+            # Check for path (complex shapes like Router-line2)
+            if bbox_x is None:
+                all_x = []
+                all_y = []
+
+                for elem in cell_group.iter():
+                    if local_name(elem.tag) == 'path':
+                        d = elem.attrib.get('d', '')
+                        if not d:
+                            continue
+
+                        stroke = elem.attrib.get('stroke', '')
+                        fill = elem.attrib.get('fill', '')
+
+                        # Accept if has stroke or fill
+                        if (stroke and stroke != 'none') or (fill and fill != 'none'):
+                            nums = re.findall(r'[-\d.]+', d)
+                            try:
+                                coords = [float(n) for n in nums]
+                                if len(coords) >= 2:
+                                    xs = coords[0::2]
+                                    ys = coords[1::2]
+                                    all_x.extend(xs)
+                                    all_y.extend(ys)
+                            except:
+                                pass
+
+                if all_x and all_y:
+                    bbox_x = min(all_x)
+                    bbox_y = min(all_y)
+                    bbox_w = max(all_x) - min(all_x)
+                    bbox_h = max(all_y) - min(all_y)
+                    transform_elem = cell_group
+
+            # Skip if no geometry
+            if bbox_x is None or bbox_w is None or bbox_h is None:
+                continue
+
+            if bbox_w <= 0 or bbox_h <= 0:
+                continue
+
+            # Apply transforms
+            M = mat_identity()
+            if transform_elem is not None:
+                M = cumulative_matrix(transform_elem)
+
+            absx, absy = apply_mat(M, bbox_x, bbox_y)
+            sx, sy = extract_scale(M)
+            eff_w = bbox_w * sx
+            eff_h = bbox_h * sy
+
+            # Create shape
+            left = Inches(pt_to_inches(absx))
+            top = Inches(pt_to_inches(absy))
+            width = Inches(pt_to_inches(eff_w))
+            height = Inches(pt_to_inches(eff_h))
+
+            try:
+                shape = slide.shapes.add_shape(shape_type, left, top, width, height)
+                shape.fill.solid()
+                shape.fill.fore_color.rgb = RGBColor(255, 255, 255)
+                shape.line.color.rgb = RGBColor(0, 0, 0)
+
+                tf = shape.text_frame
+                tf.clear()
+                tf.paragraphs[0].text = label
+                tf.paragraphs[0].alignment = 1  # Center
+                set_text_black(tf)
+
+                shape.name = label
+                existing_names.add(label)
+
+                print(f"    draw.io shape: {label}")
+
+            except Exception as e:
+                print(f"    Failed: {label} - {e}")
+
+        # ============================================================
+        # END OF NEW SECTION
+        # ============================================================
 
         # ============================================================
         # NEW SECTION: Process standalone <rect> elements (like Router-line1)
@@ -2704,7 +2846,43 @@ class  ns_option_convert_to_master_svg():
                 processed_texts.add(t)
 
         # Draw single straight connectors for ALL <path> elements by consolidating endpoints.
+        # Filter out lines that are completely inside shapes
         seen = set()
+        connector_count = 0
+        filtered_count = 0
+
+        # Build a list of all created shapes with their bounding boxes
+        shape_bounds = []
+        for shape_name in existing_names:
+            # Find the shape by name
+            for shape in slide.shapes:
+                if hasattr(shape, 'name') and shape.name == shape_name:
+                    shape_bounds.append({
+                        'name': shape_name,
+                        'left': shape.left,
+                        'top': shape.top,
+                        'right': shape.left + shape.width,
+                        'bottom': shape.top + shape.height
+                    })
+                    break
+
+        def point_inside_shape(x, y, shape_bound):
+            """Check if point (x, y) is inside shape bounds"""
+            # Convert point coordinates to EMU (914400 EMU = 1 inch)
+            x_emu = x / 72.0 * 914400
+            y_emu = y / 72.0 * 914400
+
+            return (shape_bound['left'] <= x_emu <= shape_bound['right'] and
+                    shape_bound['top'] <= y_emu <= shape_bound['bottom'])
+
+        def both_endpoints_inside_any_shape(x1, y1, x2, y2, shape_bounds_list):
+            """Check if both endpoints of a line are inside the same shape"""
+            for shape_bound in shape_bounds_list:
+                if (point_inside_shape(x1, y1, shape_bound) and
+                        point_inside_shape(x2, y2, shape_bound)):
+                    return True, shape_bound['name']
+            return False, None
+
         for p in [e for e in root.iter() if local_name(e.tag) == 'path']:
             d = p.attrib.get('d', '')
 
@@ -2728,63 +2906,11 @@ class  ns_option_convert_to_master_svg():
             if (x1, y1) == (x2, y2):
                 continue
 
-            key = canonical_line_key(x1, y1, x2, y2)
-            if key in seen:
-                continue
-            seen.add(key)
-
-            conn = slide.shapes.add_connector(
-                MSO_CONNECTOR.STRAIGHT,
-                Inches(pt_to_inches(x1)),
-                Inches(pt_to_inches(y1)),
-                Inches(pt_to_inches(x2)),
-                Inches(pt_to_inches(y2)),
-            )
-
-            stroke = p.attrib.get('stroke')
-            if stroke:
-                try:
-                    if stroke.startswith('#') and len(stroke) in (4, 7):
-                        if len(stroke) == 7:
-                            r = int(stroke[1:3], 16)
-                            g = int(stroke[3:5], 16)
-                            b = int(stroke[5:7], 16)
-                        else:
-                            r = int(stroke[1] * 2, 16)
-                            g = int(stroke[2] * 2, 16)
-                            b = int(stroke[3] * 2, 16)
-                        conn.line.color.rgb = RGBColor(r, g, b)
-                    elif stroke.startswith('rgb'):
-                        nums = [int(v) for v in re.findall(r'\d+', stroke)[:3]]
-                        if len(nums) == 3:
-                            conn.line.color.rgb = RGBColor(nums[0], nums[1], nums[2])
-                        else:
-                            conn.line.color.rgb = RGBColor(0, 0, 0)
-                    else:
-                        conn.line.color.rgb = RGBColor(0, 0, 0)
-                except Exception:
-                    conn.line.color.rgb = RGBColor(0, 0, 0)
-            else:
-                conn.line.color.rgb = RGBColor(0, 0, 0)
-
-            sw = p.attrib.get('stroke-width')
-            if sw:
-                try:
-                    conn.line.width = Pt(float(sw))
-                except Exception:
-                    pass
-
-            start, end = path_endpoints_prefer_lines(d)
-            if not start or not end:
-                continue
-
-            M = cumulative_matrix(p)
-            x1, y1 = apply_mat(M, start[0], start[1])
-            x2, y2 = apply_mat(M, end[0], end[1])
-
-            if not all(map(math.isfinite, [x1, y1, x2, y2])):
-                continue
-            if (x1, y1) == (x2, y2):
+            # NEW: Check if both endpoints are inside the same shape
+            is_inside, shape_name = both_endpoints_inside_any_shape(x1, y1, x2, y2, shape_bounds)
+            if is_inside:
+                filtered_count += 1
+                print(f"  -> Filtered line inside {shape_name}: ({x1:.0f},{y1:.0f}) to ({x2:.0f},{y2:.0f})")
                 continue
 
             key = canonical_line_key(x1, y1, x2, y2)
@@ -2832,6 +2958,12 @@ class  ns_option_convert_to_master_svg():
                     conn.line.width = Pt(float(sw))
                 except Exception:
                     pass
+
+            connector_count += 1
+
+        print(f"\n--- Connector Summary ---")
+        print(f"Total connectors created: {connector_count}")
+        print(f"Lines filtered (inside shapes): {filtered_count}")
 
         # Draw shapes from standalone <text> elements (labels) not consolidated in groups.
         for t in [e for e in root.iter() if local_name(e.tag) == 'text']:
