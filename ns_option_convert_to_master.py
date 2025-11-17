@@ -36,6 +36,7 @@ from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 
+
 class ns_option_convert_to_master_csv():
     def rename_port(self):
         print('--- Rename port ---')
@@ -394,8 +395,6 @@ class ns_option_convert_to_master_csv():
 
         return
 
-
-
     def __init__(self):
         """
         Network topology visualizer that converts CSV network data to PowerPoint diagrams.
@@ -456,7 +455,6 @@ class ns_option_convert_to_master_csv():
             output_path: Path where the PowerPoint file will be saved
         """
         self.tmp_pptx_file_path = output_path
-        # print(f"Output path set to: {output_path}")
 
     def set_configuration(self, min_spacing: float = 3.0, rect_width: float = 1.5,
                           rect_height: float = 0.8, show_legend: bool = True,
@@ -762,53 +760,52 @@ class ns_option_convert_to_master_csv():
         # Tier 0: Internet/WAN - Highest priority for external networks
         wan_keywords = {'mpls', 'wan', 'inet', 'isp', 'carr', 'prov',
                         'trans', 'peer', 'upstr', 'bckbn',
-                        'extnet', 'pubcld', 'cldgw', 'egress', 'brdwan'}  # 15 keywords
+                        'extnet', 'pubcld', 'cldgw', 'egress', 'brdwan'}
 
         # Tier 1: Edge Router - Routers connected to WAN/MPLS
         edge_router_base_keywords = {'rtr', 'router', 'rt',
                                      'brdrtr', 'bdrrtr', 'perimr', 'branch', 'siter',
                                      'cer', 'vpnedg', 'inetedg', 'dmzrtr', 'ingres',
-                                     'egres', 'mplsed'}  # 15 keywords
+                                     'egres', 'mplsed'}
 
         # Tier 2: Core Layer
         core_keywords = {'core',
                          'spine', 'fabric', 'bckbn', 'centr', 'dccore',
                          'mainc', 'hspeed', 'routco', 'superc', 'netwco',
-                         'enterc', 'distco', 'nxos', 'iosxe'}  # Removed 'junos', now 15 keywords
+                         'enterc', 'distco', 'nxos', 'iosxe'}
 
         # Tier 4: Distribution Layer
         distribution_keywords = {'dist', 'agg', 'distrib',
                                  'agglay', 'campdi', 'bldist', 'flrdst', 'accagg',
                                  'l3dist', 'l3d', 'routdi', 'ivlr', 'policy',
-                                 'catalyst', 'nexus'}  # Removed 'summit', adjusted to 15 keywords
+                                 'catalyst', 'nexus'}
 
         # Tier 5: Aggregation switches
         aggregation_sw_base_keywords = {'sw', 'switch',
                                         'aggsw', 'stkmst', 'stkmem', 'clstagg', 'idfagg',
                                         'mdfagg', 'uplink', 'intsw', 'bldsw', 'flrsw',
-                                        'dataagg', 'netagg', 'mlagg'}  # Adjusted to 15 keywords
+                                        'dataagg', 'netagg', 'mlagg'}
 
         # Tier 2: Security/Gateway devices
         security_keywords = {'fw', 'firewall', 'lb', 'vpn', 'gw', 'gateway',
                              'secapp', 'utm', 'ids', 'ips', 'proxy',
-                             'wlc', 'asa', 'webgw',
-                             'emailgw'}  # Removed non-Cisco/generic vendor keywords, now 15 keywords
+                             'wlc', 'asa', 'webgw', 'emailgw'}
 
         # Tier 6: Access Layer
         access_keywords = {'edge', 'acc', 'access',
                            'accsw', 'client', 'user', 'wkstat', 'poe',
                            'desksw', 'flracc', 'clstac', 'portac', 'endpt',
-                           'datapt', 'cubicl'}  # Adjusted to 15 keywords
+                           'datapt', 'cubicl'}
 
         # Tier 3: Internal Router
         internal_router_keywords = {'intrt', 'camprt', 'ospf', 'eigrp', 'bgpint',
                                     'vlanrt', 'l3int', 'dcint', 'segmnt', 'zone',
-                                    'privat', 'infra', 'servic', 'corefb', 'introu'}  # 15 keywords
+                                    'privat', 'infra', 'servic', 'corefb', 'introu'}
 
         # Tier 7: Endpoints (low connectivity)
         endpoint_keywords = {'host', 'server', 'pc', 'wkstat', 'print',
                              'ipphon', 'camera', 'iot', 'ap', 'client',
-                             'term', 'vm', 'vmhost', 'sensor', 'hmi'}  # 15 keywords
+                             'term', 'vm', 'vmhost', 'sensor', 'hmi'}
 
         # Tier 0: Internet/WAN - Highest priority for external networks
         if any(keyword in name_lower for keyword in wan_keywords):
@@ -817,7 +814,6 @@ class ns_option_convert_to_master_csv():
         # Tier 1: Edge Router - Routers connected to WAN/MPLS
         if any(keyword in name_lower for keyword in edge_router_base_keywords):
             neighbors = list(self.G.neighbors(node))
-            # Check if connected to MPLS or WAN devices using the comprehensive wan_keywords
             has_external = any(
                 any(wan_kw in str(self.G[node][n].get('links', [{}])[0].get('connection', '')).lower()
                     for wan_kw in wan_keywords)
@@ -825,7 +821,7 @@ class ns_option_convert_to_master_csv():
             )
             if has_external:
                 return 1
-            return 3  # Fallback for routers not connected to WAN
+            return 3
 
         # Tier 2: Core Layer
         if any(keyword in name_lower for keyword in core_keywords):
@@ -837,12 +833,11 @@ class ns_option_convert_to_master_csv():
 
         # Tier 5: Aggregation switches
         if any(keyword in name_lower for keyword in aggregation_sw_base_keywords):
-            if any(keyword in name_lower for keyword in
-                   access_keywords):  # If it's an aggregation switch but also an access keyword
+            if any(keyword in name_lower for keyword in access_keywords):
                 return 6
-            elif degree <= 3:  # Low degree switches often imply access
+            elif degree <= 3:
                 return 6
-            return 5  # Default for aggregation switches
+            return 5
 
         # Tier 2: Security/Gateway devices
         if any(kw in name_lower for kw in security_keywords):
@@ -851,18 +846,14 @@ class ns_option_convert_to_master_csv():
         # Tier 7: Endpoints (low connectivity)
         if degree == 1 or any(keyword in name_lower for keyword in endpoint_keywords):
             return 7
-        # Tier 3: Internal Router (high degree, not explicitly core/dist)
         elif degree >= 8:
             return 3
-        # Tier 4: Distribution Layer (medium-high degree)
         elif degree >= 4:
             return 4
-        # Tier 6: Access Layer (default for remaining switches or devices)
         else:
-            # If it contains access keywords and wasn't caught by the specific switch logic
             if any(keyword in name_lower for keyword in access_keywords):
                 return 6
-            return 6  # Default to access layer if not caught by other rules and not endpoint
+            return 6
 
     def calculate_integrated_tier(self) -> Dict[str, int]:
         """Calculate tiers with emphasis on separating different device types."""
@@ -981,14 +972,74 @@ class ns_option_convert_to_master_csv():
         """Calculate layout quality score."""
         horizontal_conn = self.count_horizontal_connections()
         crossings = self.count_edge_crossings()
-        nodes_on_edges = 0  # Simplified
+        nodes_on_edges = 0
 
         return horizontal_conn, crossings, nodes_on_edges
 
+    def calculate_vertical_alignment_score(self) -> float:
+        """
+        Calculate how well nodes are vertically aligned with their neighbors.
+        Lower score is better (0 = perfect vertical alignment).
+
+        Returns:
+            Total horizontal distance between connected nodes
+        """
+        total_distance = 0.0
+        edge_count = 0
+
+        for u, v in self.G.edges():
+            if u not in self.pos or v not in self.pos:
+                continue
+
+            ux, uy = self.pos[u]
+            vx, vy = self.pos[v]
+
+            # Only consider edges between different tiers (vertical connections)
+            if abs(uy - vy) > 0.1:
+                horizontal_distance = abs(ux - vx)
+                total_distance += horizontal_distance
+                edge_count += 1
+
+        return total_distance / max(edge_count, 1)
+
+    def calculate_combined_score(self, alpha=0.2, beta=0.2, gamma=0.6) -> Tuple[float, Dict[str, float]]:
+        """
+        Calculate combined score with PRIORITY on vertical alignment.
+
+        Args:
+            alpha: Weight for crossings (default 0.2) - reduced
+            beta: Weight for horizontal connections (default 0.2) - reduced
+            gamma: Weight for vertical alignment (default 0.6) - HIGHEST priority
+
+        Returns:
+            Tuple of (combined_score, score_details)
+        """
+        horiz, crossings, on_edges = self.calculate_layout_score()
+        vertical_alignment = self.calculate_vertical_alignment_score()
+
+        # Dramatically increase alignment score weight
+        crossing_score = crossings * 20000  # Reduced from 30000
+        horizontal_score = horiz * 30000  # Reduced from 50000
+        alignment_score = vertical_alignment * 50000  # GREATLY increased from 15000
+
+        combined = alpha * crossing_score + beta * horizontal_score + gamma * alignment_score
+
+        details = {
+            'crossings': crossings,
+            'horizontal': horiz,
+            'alignment': vertical_alignment,
+            'crossing_score': crossing_score,
+            'horizontal_score': horizontal_score,
+            'alignment_score': alignment_score,
+            'combined': combined
+        }
+
+        return combined, details
+
     def optimize_tier_positions(self, tier_nodes: List[str], base_y: float):
         """
-        Optimize positions for nodes in a single tier.
-        Vertically separates ONLY redundant device pairs (clusters) with same-tier connections.
+        Optimize positions - VERTICAL ALIGNMENT PRIORITY.
+        Places child nodes directly below their parents whenever possible.
 
         Args:
             tier_nodes: List of nodes in the tier
@@ -997,179 +1048,476 @@ class ns_option_convert_to_master_csv():
         if len(tier_nodes) <= 1:
             return
 
-        # Step 1: Identify which nodes belong to redundant clusters
+        # Step 1: Identify clusters
         cluster_members = set()
         for cluster_devices in self.clusters.values():
             cluster_members.update(cluster_devices & set(tier_nodes))
 
-        # Step 2: Detect same-tier connections ONLY within clusters
         same_tier_cluster_edges = []
         for u, v in self.G.edges():
             if (u in tier_nodes and v in tier_nodes and
                     u in cluster_members and v in cluster_members):
-                # Check if they're in the same cluster
                 for cluster_devices in self.clusters.values():
                     if u in cluster_devices and v in cluster_devices:
                         same_tier_cluster_edges.append((u, v))
                         break
 
-        # Step 3: Create subgroups ONLY for cluster connections
         subgroups = []
         processed = set()
 
         if same_tier_cluster_edges:
-            # Build graph only with cluster connections
             cluster_subgraph = nx.Graph()
             cluster_subgraph.add_nodes_from(cluster_members)
             cluster_subgraph.add_edges_from(same_tier_cluster_edges)
 
-            # Find connected components within clusters
             for component in nx.connected_components(cluster_subgraph):
                 if len(component) > 1:
                     subgroups.append(component)
                     processed.update(component)
 
-        # All other nodes (non-cluster or cluster without same-tier connections)
         standard_nodes = [n for n in tier_nodes if n not in processed]
 
-        # Step 4: Assign Y coordinates
-        y_offset = 0.5  # Vertical spacing for cluster separation
+        # Step 2: Assign Y coordinates
+        y_offset = 0.5
         node_y_assignments = {}
 
         if len(subgroups) > 1:
-            # Multiple cluster subgroups - distribute vertically
             for i, group in enumerate(subgroups):
                 y_adjustment = (i - (len(subgroups) - 1) / 2) * y_offset
                 for node in group:
                     node_y_assignments[node] = base_y + y_adjustment
         elif len(subgroups) == 1:
-            # Single cluster subgroup - slightly offset
             for node in subgroups[0]:
                 node_y_assignments[node] = base_y + y_offset / 2
 
-        # Standard nodes stay at base_y (including cluster members without same-tier connections)
         for node in standard_nodes:
             node_y_assignments[node] = base_y
 
-        # Step 5: Optimize X coordinates using simulated annealing
-        current_pos = self.pos.copy()
+        # Step 3: Calculate target positions based on vertical neighbors
+        def get_vertical_neighbor_avg(node):
+            """Get average X position of vertical neighbors."""
+            neighbors = [n for n in self.G.neighbors(node)
+                         if n not in tier_nodes and n in self.pos]
+            if not neighbors:
+                return None
 
-        # Update Y coordinates based on assignments
+            weighted_sum = 0
+            total_weight = 0
+            for neighbor in neighbors:
+                edge_data = self.G[node][neighbor]
+                weight = len(edge_data.get('links', [1]))
+                weighted_sum += self.pos[neighbor][0] * weight
+                total_weight += weight
+
+            return weighted_sum / total_weight if total_weight > 0 else None
+
+        # Group by Y-level
+        y_groups = defaultdict(list)
         for node in tier_nodes:
-            if node in current_pos:
-                x, _ = current_pos[node]
-                current_pos[node] = (x, node_y_assignments.get(node, base_y))
+            y = node_y_assignments.get(node, base_y)
+            y_groups[y].append(node)
 
-        temperature = 50.0
-        cooling_rate = 0.975
-        min_temperature = 0.01
+        # Step 4: DIRECT PLACEMENT - Place each node at its target position
+        print(f"      Direct vertical alignment...")
 
-        best_pos = current_pos.copy()
-        self.pos = current_pos
-        best_horiz, best_crossings, best_on_edges = self.calculate_layout_score()
-        best_score = best_horiz * 100000 + best_crossings * 50000 + best_on_edges * 30000
+        for y_level, nodes_at_level in y_groups.items():
+            # Calculate ideal X position for each node
+            node_ideal_positions = []
 
-        iteration = 0
-        no_improvement_count = 0
+            for node in nodes_at_level:
+                target_x = get_vertical_neighbor_avg(node)
 
-        while temperature > min_temperature and iteration < self.max_iterations:
-            iteration += 1
+                if target_x is not None:
+                    node_ideal_positions.append((node, target_x, True))  # Has vertical neighbor
+                else:
+                    current_x = self.pos.get(node, (0, y_level))[0]
+                    node_ideal_positions.append((node, current_x, False))  # No vertical neighbor
 
-            method = random.random()
+            # Sort by ideal X position
+            node_ideal_positions.sort(key=lambda x: x[1])
 
-            # Method 1: Swap two nodes (35% probability)
-            if method < 0.35 and len(tier_nodes) >= 2:
-                node_i, node_j = random.sample(tier_nodes, 2)
-                xi, yi = current_pos[node_i]
-                xj, yj = current_pos[node_j]
-                # Swap X coordinates but preserve Y assignments
-                current_pos[node_i] = (xj, yi)
-                current_pos[node_j] = (xi, yj)
+            # Place nodes with proper spacing, preserving relative order
+            total_width = (len(node_ideal_positions) - 1) * (self.rect_width + self.min_spacing)
+            start_x = -total_width / 2
 
-            # Method 2: Move node toward neighbors (20% probability)
-            elif method < 0.55:
-                node = random.choice(tier_nodes)
-                neighbors = [n for n in self.G.neighbors(node)
-                             if n not in tier_nodes and n in current_pos]
+            for i, (node, ideal_x, has_neighbor) in enumerate(node_ideal_positions):
+                x = start_x + i * (self.rect_width + self.min_spacing)
+                self.pos[node] = (x, y_level)
 
-                if neighbors:
-                    avg_x = sum(current_pos[n][0] for n in neighbors) / len(neighbors)
-                    current_x, current_y = current_pos[node]
-                    new_x = current_x * 0.2 + avg_x * 0.8
-                    current_pos[node] = (new_x, current_y)
+        # Step 5: Calculate how well we're aligned
+        alignments_before = {}
+        for node in tier_nodes:
+            target_x = get_vertical_neighbor_avg(node)
+            if target_x is not None:
+                current_x = self.pos[node][0]
+                alignments_before[node] = abs(current_x - target_x)
 
-            # Method 3: Random shift (45% probability)
-            else:
-                node = random.choice(tier_nodes)
-                current_x, current_y = current_pos[node]
-                shift = random.uniform(-2.5, 2.5)
-                current_pos[node] = (current_x + shift, current_y)
+        # Step 6: Try to improve alignment by shifting entire groups
+        print(f"      Adjusting group positions for better alignment...")
 
-            # Step 6: Enforce horizontal spacing while preserving Y coordinates
-            y_groups = defaultdict(list)
+        best_layout = self.pos.copy()
+        best_alignment_score = self.calculate_vertical_alignment_score()
+        best_crossings = self.count_edge_crossings()
+
+        # Try different shift amounts for the entire tier
+        for shift in [-9.0, -6.75, -4.5, -2.25, 0, 2.25, 4.5, 6.75, 9.0]:
+            test_pos = self.pos.copy()
+
+            # Shift all nodes in this tier
             for node in tier_nodes:
-                _, y = current_pos[node]
-                y_groups[y].append(node)
+                x, y = test_pos[node]
+                test_pos[node] = (x + shift, y)
 
-            # Enforce spacing within each Y-level
-            for y_level, nodes_at_level in y_groups.items():
-                if len(nodes_at_level) <= 1:
-                    continue
+            # Evaluate
+            self.pos = test_pos
+            new_alignment = self.calculate_vertical_alignment_score()
+            new_crossings = self.count_edge_crossings()
 
-                tier_x_positions = [(n, current_pos[n][0]) for n in nodes_at_level]
-                tier_x_positions.sort(key=lambda x: x[1])
+            # Accept if alignment improves and crossings don't increase too much
+            if new_alignment < best_alignment_score and new_crossings <= best_crossings + 2:
+                best_layout = test_pos.copy()
+                best_alignment_score = new_alignment
+                best_crossings = new_crossings
+                print(f"        Shift {shift:+.2f}: Alignment improved to {new_alignment:.2f}")
 
-                adjusted_positions = []
-                for i, (node, x) in enumerate(tier_x_positions):
-                    if i == 0:
-                        adjusted_positions.append((node, x))
-                    else:
-                        prev_node, prev_x = adjusted_positions[-1]
-                        required_spacing = self.rect_width + self.min_spacing
-                        if x - prev_x < required_spacing:
-                            x = prev_x + required_spacing
-                        adjusted_positions.append((node, x))
+        self.pos = best_layout.copy()
 
-                for node, new_x in adjusted_positions:
-                    current_pos[node] = (new_x, y_level)
-
-            # Evaluate new layout
-            self.pos = current_pos
-            horiz, crossings, on_edges = self.calculate_layout_score()
-            score = horiz * 100000 + crossings * 50000 + on_edges * 30000
-
-            delta = score - best_score
-            if delta < 0 or random.random() < math.exp(-delta / temperature):
-                if delta < 0:
-                    no_improvement_count = 0
-                best_pos = current_pos.copy()
-                best_score = score
-                best_horiz = horiz
-                best_crossings = crossings
-            else:
-                current_pos = best_pos.copy()
-                no_improvement_count += 1
-
-            temperature *= cooling_rate
-
-            if no_improvement_count > 200:
-                break
-
-        # Step 7: Center the tier
-        self.pos = best_pos
-        x_coords = [self.pos[node][0] for node in tier_nodes]
-        x_center = (min(x_coords) + max(x_coords)) / 2
+        # Step 7: Try individual node shifts
+        print(f"      Fine-tuning individual node positions...")
 
         for node in tier_nodes:
-            x, y = self.pos[node]
-            self.pos[node] = (x - x_center, y)
+            target_x = get_vertical_neighbor_avg(node)
+            if target_x is None:
+                continue
 
-        # Print debug info
+            current_x, y = self.pos[node]
+            y_level = y
+            nodes_at_level = [n for n in tier_nodes if abs(self.pos[n][1] - y_level) < 0.01]
+
+            # Try moving this node closer to target
+            for shift_factor in [0.9, 0.7, 0.5, 0.3]:  # Try different amounts
+                shifted_x = current_x * (1 - shift_factor) + target_x * shift_factor
+
+                # Create test position
+                test_pos = self.pos.copy()
+                test_pos[node] = (shifted_x, y)
+
+                # Re-sort and enforce spacing
+                nodes_with_x = [(n, test_pos[n][0]) for n in nodes_at_level]
+                nodes_with_x.sort(key=lambda x: x[1])
+
+                total_width = (len(nodes_with_x) - 1) * (self.rect_width + self.min_spacing)
+                start_x = -total_width / 2
+
+                for i, (n, _) in enumerate(nodes_with_x):
+                    x = start_x + i * (self.rect_width + self.min_spacing)
+                    test_pos[n] = (x, y_level)
+
+                # Evaluate
+                self.pos = test_pos
+                new_alignment = self.calculate_vertical_alignment_score()
+                new_crossings = self.count_edge_crossings()
+
+                # Accept if improves alignment without adding crossings
+                if new_alignment < best_alignment_score and new_crossings <= best_crossings:
+                    best_layout = test_pos.copy()
+                    best_alignment_score = new_alignment
+                    best_crossings = new_crossings
+                    print(f"        {node}: Moved {shift_factor * 100:.0f}% toward parent")
+                    break  # Found improvement for this node
+
+        self.pos = best_layout.copy()
+
+        # Step 8: Final score
+        final_score, final_details = self.calculate_combined_score()
+
+        print(f"    Final - Crossings: {final_details['crossings']}, "
+              f"Horizontal: {final_details['horizontal']}, "
+              f"Alignment: {final_details['alignment']:.2f}")
+
+        # Debug output
+        print(f"    Vertical alignment details:")
+        improvements_count = 0
+        for node in tier_nodes:
+            target_x = get_vertical_neighbor_avg(node)
+            if target_x is not None:
+                node_x = self.pos[node][0]
+                offset = abs(node_x - target_x)
+                before_offset = alignments_before.get(node, offset)
+
+                if offset > 0.5:
+                    improvement = before_offset - offset
+                    if improvement > 0.1:
+                        print(f"      {node}: offset={offset:.2f} (improved by {improvement:.2f})")
+                        improvements_count += 1
+                    else:
+                        print(f"      {node}: offset={offset:.2f}")
+
+        if improvements_count > 0:
+            print(f"    Improved alignment for {improvements_count} nodes")
+
         if same_tier_cluster_edges:
             print(f"    Found {len(same_tier_cluster_edges)} same-tier cluster connections")
-            print(f"    Created {len(subgroups)} cluster subgroups with vertical separation")
 
 
+    def detect_network_groups(self) -> List[Set[str]]:
+        """
+        Detect separate network groups (connected components).
+
+        Returns:
+            List of sets, where each set contains device names in a group
+        """
+        print("\n=== Detecting Network Groups ===")
+
+        if self.G.number_of_nodes() == 0:
+            print("  No nodes in graph")
+            return []
+
+        # Find connected components
+        components = list(nx.connected_components(self.G))
+
+        print(f"Found {len(components)} network group(s):")
+        for i, component in enumerate(components, 1):
+            print(f"  Group {i}: {len(component)} devices")
+            sample_devices = list(component)[:5]
+            print(f"    Sample devices: {', '.join(sample_devices)}")
+            if len(component) > 5:
+                print(f"    ... and {len(component) - 5} more")
+
+        return components
+
+    def calculate_positions_for_group(self, group_nodes: Set[str]):
+        """
+        Calculate hierarchical positions using BOTTOM-UP approach.
+        Places parent nodes above their children for better vertical alignment.
+
+        Args:
+            group_nodes: Set of node names in the group
+        """
+        print(f"\n=== Calculating Layout for Group ({len(group_nodes)} nodes) ===")
+
+        if len(group_nodes) == 0:
+            print("  ERROR: No nodes in group")
+            return
+
+        # Create subgraph for this group
+        subgraph = self.G.subgraph(group_nodes).copy()
+
+        # Temporarily replace self.G with subgraph for calculations
+        original_graph = self.G
+        self.G = subgraph
+
+        # Detect clusters within this group
+        self.clusters = self.detect_device_clusters()
+
+        # Calculate tiers for this group
+        self.node_tiers = self.calculate_integrated_tier()
+
+        # Group nodes by tier
+        tiers = defaultdict(list)
+        for node, tier in self.node_tiers.items():
+            tiers[tier].append(node)
+
+        for tier in tiers:
+            tiers[tier].sort(key=lambda x: (self.extract_device_number(x), x))
+
+        self.pos = {}
+        y_spacing = 3.0
+        max_tier = max(tiers.keys()) if tiers else 0
+
+        print("  Using BOTTOM-UP placement for better vertical alignment...")
+
+        tier_order = sorted(tiers.keys())
+
+        # Helper function to get child positions
+        def get_child_x_position(node):
+            """Get average X position of already-placed child nodes."""
+            neighbors = [n for n in self.G.neighbors(node) if n in self.pos]
+            if not neighbors:
+                return None
+
+            weighted_sum = 0
+            total_weight = 0
+            for neighbor in neighbors:
+                edge_data = self.G[node][neighbor]
+                weight = len(edge_data.get('links', [1]))
+                weighted_sum += self.pos[neighbor][0] * weight
+                total_weight += weight
+
+            return weighted_sum / total_weight if total_weight > 0 else None
+
+        # STRATEGY: Place bottom tiers first, then place parents above their children
+
+        # Find the bottom-most tier (highest tier number)
+        bottom_tier = max(tier_order)
+
+        # Place bottom tier evenly
+        nodes = tiers[bottom_tier]
+        y = (max_tier - bottom_tier) * y_spacing
+
+        num_nodes = len(nodes)
+        if num_nodes == 1:
+            self.pos[nodes[0]] = (0, y)
+        else:
+            total_width = (num_nodes - 1) * (self.rect_width + self.min_spacing)
+            start_x = -total_width / 2
+            for i, node in enumerate(nodes):
+                x = start_x + i * (self.rect_width + self.min_spacing)
+                self.pos[node] = (x, y)
+                print(f"    {node}: placed at x={x:.2f} (bottom tier)")
+
+        # Now place remaining tiers from bottom to top
+        for tier in reversed(tier_order[:-1]):  # Exclude the bottom tier we just placed
+            nodes = tiers[tier]
+            y = (max_tier - tier) * y_spacing
+
+            # For each node, try to place it above its children
+            node_positions = []
+
+            for node in nodes:
+                child_x = get_child_x_position(node)
+                if child_x is not None:
+                    node_positions.append((node, child_x, True))
+                    print(f"    {node}: target (above children) = {child_x:.2f}")
+                else:
+                    # No children placed yet - use center
+                    node_positions.append((node, 0, False))
+
+            # Sort by target position
+            node_positions.sort(key=lambda x: x[1])
+
+            # Place with spacing
+            num_nodes = len(node_positions)
+            total_width = (num_nodes - 1) * (self.rect_width + self.min_spacing)
+            start_x = -total_width / 2
+
+            for i, (node, target_x, has_children) in enumerate(node_positions):
+                x = start_x + i * (self.rect_width + self.min_spacing)
+                self.pos[node] = (x, y)
+
+                if has_children:
+                    actual_offset = abs(x - target_x)
+                    print(f"    {node}: placed at x={x:.2f}, offset from children={actual_offset:.2f}")
+
+        # Calculate initial score
+        initial_horiz, initial_crossings, initial_on_edges = self.calculate_layout_score()
+        initial_alignment = self.calculate_vertical_alignment_score()
+        print(f"\n  After bottom-up placement:")
+        print(f"    Crossings: {initial_crossings}, Horizontal: {initial_horiz}, Alignment: {initial_alignment:.2f}")
+
+        # Refinement: Try to improve alignment further
+        print("\n=== Refinement Optimization ===")
+
+        best_pos = self.pos.copy()
+        best_score, best_details = self.calculate_combined_score()
+
+        for refinement_pass in range(3):
+            print(f"\n  Refinement Pass {refinement_pass + 1}/3:")
+            improved_this_pass = False
+
+            # Go through each tier (except top and bottom)
+            for tier in tier_order[1:-1]:
+                nodes = tiers[tier]
+                if len(nodes) <= 1:
+                    continue
+
+                y = (max_tier - tier) * y_spacing
+
+                for node in nodes:
+                    child_x = get_child_x_position(node)
+                    if child_x is None:
+                        continue
+
+                    current_x, current_y = self.pos[node]
+                    current_offset = abs(current_x - child_x)
+
+                    # Skip if already well-aligned
+                    if current_offset < 1.0:
+                        continue
+
+                    # Try moving toward children
+                    for factor in [0.9, 0.7, 0.5]:
+                        new_x = current_x * (1 - factor) + child_x * factor
+
+                        test_pos = self.pos.copy()
+                        test_pos[node] = (new_x, current_y)
+
+                        # Re-sort tier to maintain spacing
+                        tier_nodes_with_x = [(n, test_pos[n][0]) for n in nodes]
+                        tier_nodes_with_x.sort(key=lambda x: x[1])
+
+                        total_width = (len(tier_nodes_with_x) - 1) * (self.rect_width + self.min_spacing)
+                        start_x = -total_width / 2
+
+                        for i, (n, _) in enumerate(tier_nodes_with_x):
+                            x = start_x + i * (self.rect_width + self.min_spacing)
+                            test_pos[n] = (x, current_y)
+
+                        # Evaluate
+                        self.pos = test_pos
+                        new_score, new_details = self.calculate_combined_score()
+
+                        # Accept if improves
+                        if new_score < best_score:
+                            best_pos = test_pos.copy()
+                            best_score = new_score
+                            best_details = new_details
+                            improved_this_pass = True
+                            new_offset = abs(test_pos[node][0] - child_x)
+                            print(f"    {node}: Improved alignment {current_offset:.2f} -> {new_offset:.2f}")
+                            break
+                        else:
+                            self.pos = best_pos.copy()
+
+            if not improved_this_pass:
+                print(f"    No improvements in pass {refinement_pass + 1}")
+                break
+
+        # Apply best layout
+        self.pos = best_pos.copy()
+
+        # Final score
+        final_score, final_details = self.calculate_combined_score()
+
+        print(f"\n  Final Results:")
+        print(f"    Crossings: {final_details['crossings']} (was {initial_crossings})")
+        print(f"    Horizontal connections: {final_details['horizontal']} (was {initial_horiz})")
+        print(f"    Vertical alignment: {final_details['alignment']:.2f} (was {initial_alignment:.2f})")
+
+        alignment_improvement = initial_alignment - final_details['alignment']
+        if alignment_improvement > 0:
+            print(
+                f"    Alignment improved by: {alignment_improvement:.2f} ({alignment_improvement / max(initial_alignment, 0.01) * 100:.1f}%)")
+        elif alignment_improvement < 0:
+            print(f"    Alignment decreased by: {-alignment_improvement:.2f}")
+
+        # Show final alignment details for significant offsets
+        print(f"\n  Final vertical alignment (showing offsets > 2.0):")
+
+        def get_neighbor_avg(node):
+            neighbors = [n for n in self.G.neighbors(node) if n in self.pos and n not in tiers[self.node_tiers[node]]]
+            if not neighbors:
+                return None
+            return sum(self.pos[n][0] for n in neighbors) / len(neighbors)
+
+        significant_offsets = []
+        for tier in tier_order:
+            for node in tiers[tier]:
+                neighbor_avg = get_neighbor_avg(node)
+                if neighbor_avg is not None:
+                    node_x = self.pos[node][0]
+                    offset = abs(node_x - neighbor_avg)
+                    if offset > 2.0:
+                        significant_offsets.append((node, offset, neighbor_avg, node_x))
+
+        if significant_offsets:
+            for node, offset, target, actual in significant_offsets:
+                print(f"    {node}: offset={offset:.2f} (target={target:.2f}, actual={actual:.2f})")
+        else:
+            print(f"    All nodes well-aligned (offsets < 2.0)")
+
+        # Restore original graph
+        self.G = original_graph
 
     def calculate_positions(self):
         """Calculate hierarchical positions for all nodes."""
@@ -1239,7 +1587,6 @@ class ns_option_convert_to_master_csv():
                 for row in reader:
                     rows_processed += 1
 
-                    # Only use 'Device', 'Interface', and 'Connection' columns
                     device = self.normalize_text(row.get("Device", ""))
                     if not device:
                         continue
@@ -1250,23 +1597,19 @@ class ns_option_convert_to_master_csv():
                     if not connection_str:
                         continue
 
-                    # Parse the 'Connection' column to extract peer device and interface
                     peer_device, peer_port = self.parse_connection_field(connection_str)
 
                     if not peer_device:
                         continue
 
-                    # Add nodes to graph
                     self.G.add_node(device)
                     self.G.add_node(peer_device)
 
-                    # Get other metadata
                     reachable = self.str_to_bool(row.get("Reachable", ""))
                     idval = self.normalize_text(row.get("ID", ""))
                     cable = self.normalize_text(row.get("Cable", ""))
                     cable_color = self.normalize_text(row.get("Cable Color", ""))
 
-                    # Create link detail
                     link_detail = {
                         "src_device": device,
                         "src_port": interface,
@@ -1279,7 +1622,6 @@ class ns_option_convert_to_master_csv():
                         "cable_color": cable_color,
                     }
 
-                    # Add or merge edge
                     if self.G.has_edge(device, peer_device):
                         links: List[Dict[str, Any]] = self.G[device][peer_device].setdefault("links", [])
                         merged = False
@@ -1303,147 +1645,194 @@ class ns_option_convert_to_master_csv():
             print(f"  ERROR: {str(e)}")
 
     def create_powerpoint(self):
-        """Create PowerPoint presentation."""
-        # print("\n=== Creating PowerPoint ===")
+        """Create PowerPoint presentation with separate slides for each network group."""
+        print("\n=== Creating PowerPoint ===")
 
         if self.G.number_of_nodes() == 0:
             print("  ERROR: No nodes")
-            return False
-
-        if not self.pos:
-            print("  ERROR: No positions")
             return False
 
         if not self.tmp_pptx_file_path:
             print("  ERROR: Output path not set")
             return False
 
+        # Detect network groups
+        network_groups = self.detect_network_groups()
+
+        if not network_groups:
+            print("  ERROR: No network groups found")
+            return False
+
+        # Create presentation
         prs = Presentation()
         prs.slide_width = Inches(16)
         prs.slide_height = Inches(9)
-
         blank_layout = prs.slide_layouts[6]
-        slide = prs.slides.add_slide(blank_layout)
 
-        # Calculate transformation
-        all_x = [x for x, y in self.pos.values()]
-        all_y = [y for x, y in self.pos.values()]
+        # Process each group
+        for group_idx, group_nodes in enumerate(network_groups, 1):
+            print(f"\n=== Processing Group {group_idx}/{len(network_groups)} ===")
 
-        min_x, max_x = min(all_x), max(all_x)
-        min_y, max_y = min(all_y), max(all_y)
+            # Calculate positions for this group
+            self.calculate_positions_for_group(group_nodes)
 
-        margin_x = self.rect_width * 2
-        margin_y = self.rect_height * 2
-
-        range_x = max_x - min_x + margin_x * 2
-        range_y = max_y - min_y + margin_y * 2
-
-        slide_width_in = prs.slide_width / 914400.0
-        slide_height_in = prs.slide_height / 914400.0
-
-        scale_in = min(slide_width_in / range_x, slide_height_in / range_y) * 0.85
-
-        if range_x > 20 or range_y > 15:
-            scale_in = 0.4
-
-        def to_ppt_coords_in(x, y):
-            px_in = (x - min_x + margin_x) * scale_in
-            py_in = (max_y - y + margin_y) * scale_in
-            return px_in, py_in
-
-        # Draw nodes
-        for node in self.G.nodes():
-            if node not in self.pos:
+            if not self.pos:
+                print(f"  WARNING: No positions calculated for group {group_idx}")
                 continue
 
-            x, y = self.pos[node]
-            px_in, py_in = to_ppt_coords_in(x, y)
+            # Create slide for this group
+            slide = prs.slides.add_slide(blank_layout)
 
-            shape_w_in = self.rect_width * scale_in
-            shape_h_in = self.rect_height * scale_in
+            # Calculate transformation for this group
+            group_pos = {node: pos for node, pos in self.pos.items() if node in group_nodes}
 
-            shape = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE,
-                Inches(px_in - shape_w_in / 2),
-                Inches(py_in - shape_h_in / 2),
-                Inches(shape_w_in),
-                Inches(shape_h_in)
+            if not group_pos:
+                continue
+
+            all_x = [x for x, y in group_pos.values()]
+            all_y = [y for x, y in group_pos.values()]
+
+            min_x, max_x = min(all_x), max(all_x)
+            min_y, max_y = min(all_y), max(all_y)
+
+            margin_x = self.rect_width * 2
+            margin_y = self.rect_height * 2
+
+            range_x = max_x - min_x + margin_x * 2
+            range_y = max_y - min_y + margin_y * 2
+
+            slide_width_in = prs.slide_width / 914400.0
+            slide_height_in = prs.slide_height / 914400.0
+
+            scale_in = min(slide_width_in / range_x, slide_height_in / range_y) * 0.85
+
+            if range_x > 20 or range_y > 15:
+                scale_in = 0.4
+
+            def to_ppt_coords_in(x, y):
+                px_in = (x - min_x + margin_x) * scale_in
+                py_in = (max_y - y + margin_y) * scale_in
+                return px_in, py_in
+
+            # Draw nodes for this group
+            for node in group_nodes:
+                if node not in self.pos:
+                    continue
+
+                x, y = self.pos[node]
+                px_in, py_in = to_ppt_coords_in(x, y)
+
+                shape_w_in = self.rect_width * scale_in
+                shape_h_in = self.rect_height * scale_in
+
+                shape = slide.shapes.add_shape(
+                    MSO_SHAPE.RECTANGLE,
+                    Inches(px_in - shape_w_in / 2),
+                    Inches(py_in - shape_h_in / 2),
+                    Inches(shape_w_in),
+                    Inches(shape_h_in)
+                )
+
+                tier = self.node_tiers.get(node, 7)
+                fill_color = self.color_map.get(tier, RGBColor(52, 73, 94))
+                shape.fill.solid()
+                shape.fill.fore_color.rgb = fill_color
+
+                shape.line.color.rgb = RGBColor(44, 62, 80)
+                shape.line.width = Pt(2)
+
+                text_frame = shape.text_frame
+                text_frame.clear()
+                text_frame.word_wrap = True
+                text_frame.margin_left = Pt(5)
+                text_frame.margin_right = Pt(5)
+                text_frame.margin_top = Pt(5)
+                text_frame.margin_bottom = Pt(5)
+
+                p = text_frame.paragraphs[0]
+                p.text = node
+                p.font.size = Pt(10)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 255, 255)
+                p.alignment = PP_ALIGN.CENTER
+
+                text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+            # Draw edges for this group
+            for u, v, data in self.G.edges(data=True):
+                # Only draw edges where both nodes are in this group
+                if u not in group_nodes or v not in group_nodes:
+                    continue
+
+                if u not in self.pos or v not in self.pos:
+                    continue
+
+                ux, uy = self.pos[u]
+                vx, vy = self.pos[v]
+
+                px1_in, py1_in = to_ppt_coords_in(ux, uy)
+                px2_in, py2_in = to_ppt_coords_in(vx, vy)
+
+                connector = slide.shapes.add_connector(
+                    MSO_CONNECTOR.STRAIGHT,
+                    Inches(px1_in),
+                    Inches(py1_in),
+                    Inches(px2_in),
+                    Inches(py2_in)
+                )
+
+                links = data.get("links", [])
+                reachable = any(link.get("reachable", False) for link in links)
+
+                line = connector.line
+                if reachable:
+                    line.color.rgb = RGBColor(39, 174, 96)
+                    line.dash_style = MSO_LINE_DASH_STYLE.SOLID
+                else:
+                    line.color.rgb = RGBColor(231, 76, 60)
+                    line.dash_style = MSO_LINE_DASH_STYLE.DASH
+
+                line_width_pt = min(1.5 + len(links) * 0.5, 5)
+                line.width = Pt(line_width_pt)
+
+            # Add title to slide
+            title_box = slide.shapes.add_textbox(
+                Inches(0.5), Inches(0.3),
+                Inches(10), Inches(0.5)
             )
-
-            tier = self.node_tiers.get(node, 7)
-            fill_color = self.color_map.get(tier, RGBColor(52, 73, 94))
-            shape.fill.solid()
-            shape.fill.fore_color.rgb = fill_color
-
-            shape.line.color.rgb = RGBColor(44, 62, 80)
-            shape.line.width = Pt(2)
-
-            text_frame = shape.text_frame
-            text_frame.clear()
-            text_frame.word_wrap = True
-            text_frame.margin_left = Pt(5)
-            text_frame.margin_right = Pt(5)
-            text_frame.margin_top = Pt(5)
-            text_frame.margin_bottom = Pt(5)
-
+            text_frame = title_box.text_frame
             p = text_frame.paragraphs[0]
-            p.text = node
-            p.font.size = Pt(10)
-            p.font.bold = True
-            p.font.color.rgb = RGBColor(255, 255, 255)
-            p.alignment = PP_ALIGN.CENTER
 
-            text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
-
-        # Draw edges
-        for u, v, data in self.G.edges(data=True):
-            if u not in self.pos or v not in self.pos:
-                continue
-
-            ux, uy = self.pos[u]
-            vx, vy = self.pos[v]
-
-            px1_in, py1_in = to_ppt_coords_in(ux, uy)
-            px2_in, py2_in = to_ppt_coords_in(vx, vy)
-
-            connector = slide.shapes.add_connector(
-                MSO_CONNECTOR.STRAIGHT,
-                Inches(px1_in),
-                Inches(py1_in),
-                Inches(px2_in),
-                Inches(py2_in)
-            )
-
-            links = data.get("links", [])
-            reachable = any(link.get("reachable", False) for link in links)
-
-            line = connector.line
-            if reachable:
-                line.color.rgb = RGBColor(39, 174, 96)
-                line.dash_style = MSO_LINE_DASH_STYLE.SOLID
+            # Create descriptive title based on group devices
+            sample_devices = sorted(list(group_nodes))[:3]
+            if len(network_groups) > 1:
+                p.text = f"Network Topology - Group {group_idx} ({len(group_nodes)} devices)"
             else:
-                line.color.rgb = RGBColor(231, 76, 60)
-                line.dash_style = MSO_LINE_DASH_STYLE.DASH
+                p.text = "Network Topology Diagram"
 
-            line_width_pt = min(1.5 + len(links) * 0.5, 5)
-            line.width = Pt(line_width_pt)
+            p.font.size = Pt(24)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(44, 62, 80)
 
-        # Title
-        title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.3),
-            Inches(10), Inches(0.5)
-        )
-        text_frame = title_box.text_frame
-        p = text_frame.paragraphs[0]
-        p.text = "Network Topology Diagram"
-        p.font.size = Pt(24)
-        p.font.bold = True
-        p.font.color.rgb = RGBColor(44, 62, 80)
+            # Add group info subtitle
+            if len(network_groups) > 1:
+                subtitle_box = slide.shapes.add_textbox(
+                    Inches(0.5), Inches(0.7),
+                    Inches(10), Inches(0.3)
+                )
+                text_frame = subtitle_box.text_frame
+                p = text_frame.paragraphs[0]
+                p.text = f"Devices: {', '.join(sample_devices)}" + (
+                    f" and {len(group_nodes) - 3} more" if len(group_nodes) > 3 else ""
+                )
+                p.font.size = Pt(12)
+                p.font.color.rgb = RGBColor(100, 100, 100)
 
-        # Save
+        # Save presentation
         try:
             prs.save(self.tmp_pptx_file_path)
-            # print(f"  Saved: {self.tmp_pptx_file_path}")
+            #print(f"\n  Saved: {self.tmp_pptx_file_path}")
+            print(f"  Total slides created: {len(network_groups)}")
             return True
         except Exception as e:
             print(f"  ERROR: {str(e)}")
@@ -1478,10 +1867,7 @@ class ns_option_convert_to_master_csv():
             print("\nERROR: No nodes loaded")
             return False
 
-        # Calculate positions
-        self.calculate_positions()
-
-        # Create PowerPoint
+        # Create PowerPoint (now handles multiple groups automatically)
         success = self.create_powerpoint()
 
         if success:
