@@ -224,8 +224,8 @@ class  ns_l1_master_create():
                 tkinter.messagebox.showwarning("Warning","Only one area is allowed per page.")
 
             if tmp_count_include_shape == 0:
-                tmp_shape_array.append(['_tmp_', 1, 1, 999999999999, 999999999999, 0.0, i])
-                current_folder_array = ['_tmp_','_tmp_', 1, 1, 999999999999, 999999999999, 0.0, i]
+                tmp_shape_array.append(['_tmp_', -999999999, -999999999, 999999999999, 999999999999, 0.0, i]) # bug fix ver 2.6.0f
+                current_folder_array = ['_tmp_','_tmp_', -999999999, -999999999, 999999999999, 999999999999, 0.0, i] # bug fix ver 2.6.0f
 
             '''### duplicate folder name check ###'''  #update ver 1.1
             duplicate_num = 1
