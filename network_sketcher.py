@@ -19,7 +19,7 @@ limitations under the License.
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from tkinterdnd2 import *
 import sys, os, subprocess ,webbrowser ,openpyxl
-import ns_def,network_sketcher_dev,ns_sync_between_layers,ns_attribute_table_sync_master, network_sketcher_cli
+import ns_def,ns_dev,ns_sync_between_layers,ns_attribute_table_sync_master, ns_cli
 import ns_extensions
 import ns_vpn_diagram_create
 
@@ -31,10 +31,10 @@ class ns_front_run():
     def __init__(self):
         #add cli flow at ver 2.3.1
         if len(sys.argv) > 1:
-            import network_sketcher_cli
+            import ns_cli
             self.argv_array = []
             self.argv_array = sys.argv[1:]
-            network_sketcher_cli.ns_cli_run.__init__(self, self.argv_array)
+            ns_cli.ns_cli_run.__init__(self, self.argv_array)
             exit()
 
         self.click_value = ''
@@ -276,14 +276,14 @@ class ns_front_run():
                 self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
                 self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
-                network_sketcher_dev.ns_front_run.click_action(self,'1-4b')
+                ns_dev.ns_front_run.click_action(self,'1-4b')
 
             elif file_type_array[0] == 'SVG':
                 #print(file_type_array)
                 self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
                 self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
-                network_sketcher_dev.ns_front_run.click_action(self,'1-4a')
+                ns_dev.ns_front_run.click_action(self,'1-4a')
 
 
             elif file_type_array[0] == 'CSV':
@@ -291,7 +291,7 @@ class ns_front_run():
                 self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
                 self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
-                network_sketcher_dev.ns_front_run.click_action(self,'1-4c')
+                ns_dev.ns_front_run.click_action(self,'1-4c')
 
     '''
     Sketch Panel
@@ -397,31 +397,23 @@ class ns_front_run():
             self.outFileTxt_11_2.delete(0, tkinter.END)
             self.outFileTxt_11_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
 
-            ### run 1-4 in network_sketcher_dev ,  create l1 master file and sheet
+            ### run 1-4 in ns_dev ,  create l1 master file and sheet
             if self.click_value_2nd != 'self.sub1_1_button_3':
                 self.click_value = '1-4'
-                network_sketcher_dev.ns_front_run.click_action(self,'1-4')
+                ns_dev.ns_front_run.click_action(self,'1-4')
             else:
                 self.inFileTxt_L2_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_1_1.insert(tk.END, self.full_filepath)
                 self.inFileTxt_L3_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_1_1.insert(tk.END, self.full_filepath)
 
-            ### run L2-1-2 in network_sketcher_dev ,  add l2 master sheet
+            ### run L2-1-2 in ns_dev ,  add l2 master sheet
             self.click_value = 'L2-1-2'
-            network_sketcher_dev.ns_front_run.click_action(self,'L2-1-2')
+            ns_dev.ns_front_run.click_action(self,'L2-1-2')
 
-            # remove exist L2/ file
-            #if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')) == True:  # fixed ns-005 at 2.2.1(b)
-            #    os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]'))  # fixed ns-005 at 2.2.1(b)
-
-            ### run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
+            ### run L3-1-2 in ns_dev ,  add l3 master sheet
             self.click_value = 'L3-1-2'
-            network_sketcher_dev.ns_front_run.click_action(self,'L3-1-2')
-
-            # remove exist L3/ file
-            #if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:  # fixed ns-005 at 2.2.1(b)
-            #    os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) # fixed ns-005 at 2.2.1(b)
+            ns_dev.ns_front_run.click_action(self,'L3-1-2')
 
             ###Create the device file
             self.click_value_2nd = 'self.sub1_1_button_1'
@@ -496,7 +488,7 @@ class ns_front_run():
                 '''Sketch file Sync to Master'''
                 ### run 92-3 for dev , l1_sketch sync with L1_master file
                 self.click_value = '92-3'
-                network_sketcher_dev.ns_front_run.click_action(self, '92-3')
+                ns_dev.ns_front_run.click_action(self, '92-3')
 
                 ### device name that is updated in l1_sketch sync with master file
                 ns_sync_between_layers.l1_sketch_device_name_sync_with_l2l3_master(self)
@@ -688,13 +680,13 @@ class ns_front_run():
         self.sub2_2 = tk.LabelFrame(self.sub2_2x, text='Layer1 Diagram', font=("", 14), height=1, background="#FEF6F0")
         self.sub2_2.grid(row=1, column=0, columnspan=7, sticky='W', padx=2, pady=2, ipadx=5, ipady=2)
 
-        self.sub2_2_button_3 = tk.Button(self.sub2_2, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-3'))
+        self.sub2_2_button_3 = tk.Button(self.sub2_2, text="All Areas", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'2-4-3'))
         self.sub2_2_button_3.grid(row=2, column=1, sticky='WE', padx=5, pady=2, ipadx=15)
-        self.sub2_2_button_4 = tk.Button(self.sub2_2, text="All Areas with IF Tag", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-4'))
+        self.sub2_2_button_4 = tk.Button(self.sub2_2, text="All Areas with IF Tag", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'2-4-4'))
         self.sub2_2_button_4.grid(row=2, column=2, sticky='WE', padx=5, pady=2)
-        self.sub2_2_button_1 = tk.Button(self.sub2_2, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-1'))
+        self.sub2_2_button_1 = tk.Button(self.sub2_2, text="Per Area", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'2-4-1'))
         self.sub2_2_button_1.grid(row=2, column=3, sticky='WE', padx=5, pady=2, ipadx=15)
-        self.sub2_2_button_2 = tk.Button(self.sub2_2, text="Per Area with IF Tag", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'2-4-2'))
+        self.sub2_2_button_2 = tk.Button(self.sub2_2, text="Per Area with IF Tag", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'2-4-2'))
         self.sub2_2_button_2.grid(row=2, column=4, sticky='WE', padx=5, pady=2)
 
         ### run L2-3-x for dev , Create L2 diagram
@@ -710,7 +702,7 @@ class ns_front_run():
         self.comboL2_3_6.option_add("*TCombobox*Listbox.Font", 12)
         self.comboL2_3_6.grid(row=0, column=0, sticky='WE', padx=1, pady=5, ipady=0, ipadx=8, columnspan=3)
 
-        self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L2-3-2'))
+        self.sub2_3_button_1 = tk.Button(self.sub2_3, text="Per Area", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'L2-3-2'))
         self.sub2_3_button_1.grid(row=6, column=1, sticky='WE', padx=0, pady=2, ipadx=0)
 
         ### run L3-3-x for dev , Create L3 diagram
@@ -720,10 +712,10 @@ class ns_front_run():
         self.sub2_4_empty1 = tk.LabelFrame(self.sub2_4, text='', font=("", 14), width=10)
         self.sub2_4_empty1 .grid(row=1, column=1, sticky='WE', padx=0, pady=0, ipadx=1)
 
-        self.sub2_4_button_1 = tk.Button(self.sub2_4, text="All Areas", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-4-1')) # add button at ver 2.3.0
+        self.sub2_4_button_1 = tk.Button(self.sub2_4, text="All Areas", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'L3-4-1')) # add button at ver 2.3.0
         self.sub2_4_button_1.grid(row=1, column=2, sticky='WE', padx=1, pady=2, ipadx=20)
 
-        self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: network_sketcher_dev.ns_front_run.click_action(self,'L3-3-2'))
+        self.sub2_4_button_1 = tk.Button(self.sub2_4, text="Per Area", font=("", 12), command=lambda: ns_dev.ns_front_run.click_action(self,'L3-3-2'))
         self.sub2_4_button_1.grid(row=2, column=2, sticky='WE', padx=1, pady=2, ipadx=20)
 
         ### run xx-xx for dev , Create VPN diagram
@@ -918,7 +910,7 @@ class ns_front_run():
 
         argv_array = ['show', 'l3_interface']
         full_filepath_master = self.inFileTxt_L2_3_1.get()
-        self.show_l3_interface = network_sketcher_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
+        self.show_l3_interface = ns_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
 
         unique_devices = set()
         for item in self.show_l3_interface:
@@ -1096,17 +1088,17 @@ class ns_front_run():
 
             ### create device file and L1 Table
             self.click_value = '11-4'
-            network_sketcher_dev.ns_front_run.click_action(self, '11-4')
+            ns_dev.ns_front_run.click_action(self, '11-4')
             # run x-x for dev , Create L2 Table
             self.click_value = 'L2-1-2'
-            network_sketcher_dev.ns_front_run.click_action(self, 'L2-1-2')
+            ns_dev.ns_front_run.click_action(self, 'L2-1-2')
             # run x-x for dev , Create L3 Table
             self.click_value = 'L3-1-2'
-            network_sketcher_dev.ns_front_run.click_action(self, 'L3-1-2')
+            ns_dev.ns_front_run.click_action(self, 'L3-1-2')
 
             # run x-x for dev , Create Attribute Table add to ver 2.4.0
             self.click_value = 'ATTR-1-1'
-            network_sketcher_dev.ns_front_run.click_action(self, 'ATTR-1-1')
+            ns_dev.ns_front_run.click_action(self, 'ATTR-1-1')
 
             if self.click_value_2nd != 'self.sub1_1_button_1' and self.click_value_2nd != 'self.sub3_1_button_3':
                 ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]',''))
@@ -1115,7 +1107,7 @@ class ns_front_run():
             #print('--- Click "VPNs on L1" ---')
             ### create L1 Table with [VPNs_on_L1]]
             self.click_value = 'VPN-1-1'
-            network_sketcher_dev.ns_front_run.click_action(self, '2-4-3')
+            ns_dev.ns_front_run.click_action(self, '2-4-3')
 
             ### Write VPNs on L1 ###
             ns_vpn_diagram_create.ns_write_vpns_on_l1.__init__(self)
@@ -1131,7 +1123,7 @@ class ns_front_run():
             #ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
 
             ### Create L3 All Areas with l3vpn master file ###
-            network_sketcher_dev.ns_front_run.click_action(self, 'L3-4-1')
+            ns_dev.ns_front_run.click_action(self, 'L3-4-1')
 
             ### reset initial value
             self.click_value_VPN = ''
@@ -1371,17 +1363,17 @@ class ns_front_run():
                 ### l1_device_port_name_sync_with_l1_master
                 print('--- Layer1 sync ---')
                 self.click_value = '12-3'
-                network_sketcher_dev.ns_front_run.click_action(self, '12-3')
+                ns_dev.ns_front_run.click_action(self, '12-3')
 
                 ### l2_device_table_sync_with_l2_master
                 print('--- Layer2 sync ---')
                 self.click_value = 'L2-2-3'
-                network_sketcher_dev.ns_front_run.click_action(self, 'L2-2-3')
+                ns_dev.ns_front_run.click_action(self, 'L2-2-3')
 
                 ### l3_device_table_sync_with_l3_master
                 print('--- Layer3 sync ---')
                 self.click_value = 'L3-2-3'
-                network_sketcher_dev.ns_front_run.click_action(self, 'L3-2-3')
+                ns_dev.ns_front_run.click_action(self, 'L3-2-3')
 
                 ### l1_device_port_name_sync_with_l2l3_master
                 print('--- Port sync(1/3) ---')

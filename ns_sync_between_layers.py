@@ -22,7 +22,7 @@ import numpy as np
 import math,shutil
 import openpyxl
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
-import ns_def ,ns_ddx_figure , network_sketcher,network_sketcher_dev
+import ns_def ,ns_ddx_figure , network_sketcher,ns_dev
 
 def l2_device_table_sync_with_l3_master(self):
     #print('--- l2_device_table_sync_with_l3_master ---')
@@ -57,9 +57,9 @@ def l2_device_table_sync_with_l3_master(self):
     ns_def.remove_excel_sheet(ppt_meta_file, copy_sheet_name)
 
     ### re-create Master L3 sheet
-    #run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
+    #run L3-1-2 in ns_dev ,  add l3 master sheet
     self.click_value = 'L3-1-2'
-    network_sketcher_dev.ns_front_run.click_action(self, 'L3-1-2')
+    ns_dev.ns_front_run.click_action(self, 'L3-1-2')
 
     # remove exist L3/ file
     if os.path.isfile(self.full_filepath.replace('[MASTER]', '[L3_TABLE]')) == True and ns_def.check_file_locked(self.full_filepath.replace('[MASTER]', '[L3_TABLE]')) == False:
@@ -483,11 +483,11 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     ### Master sheet L3 re create from L1L2 sheet
     ns_def.remove_excel_sheet(excel_maseter_file, ws_l3_name)
 
-    ### run L3-1-2 in network_sketcher_dev ,  add l3 master sheet
+    ### run L3-1-2 in ns_dev ,  add l3 master sheet
     self.click_value = 'L3-1-2'
     self.inFileTxt_L3_1_1.delete(0, tkinter.END)
     self.inFileTxt_L3_1_1.insert(tk.END, excel_maseter_file)
-    network_sketcher_dev.ns_front_run.click_action(self, 'L3-1-2')
+    ns_dev.ns_front_run.click_action(self, 'L3-1-2')
 
     ### get re-created Master sheet L2/L3
     recreate_master_l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
