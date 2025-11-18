@@ -1879,6 +1879,8 @@ class ns_option_convert_to_master_csv():
 
 
 
+
+
 class  ns_option_convert_to_master_svg():
     def __init__(self):
         #convert svg to rough sketch with pptx
@@ -3262,10 +3264,24 @@ class  ns_option_convert_to_master_svg():
                     shape_bound['top'] <= y_emu <= shape_bound['bottom'])
 
         def both_endpoints_inside_any_shape(x1, y1, x2, y2, shape_bounds_list):
-            """Check if both endpoints of a line are inside the same shape"""
+            """Check if both endpoints of a line (shortened by 10%) are inside the same shape at ver 2.6.0f """
+    
+            # Calculate line vector
+            dx = x2 - x1
+            dy = y2 - y1
+    
+            # Shorten line by 10% (5% from each end)
+            # Move start point 5% toward end point
+            shortened_x1 = x1 + dx * 0.05
+            shortened_y1 = y1 + dy * 0.05
+    
+            # Move end point 5% toward start point
+            shortened_x2 = x2 - dx * 0.05
+            shortened_y2 = y2 - dy * 0.05
+    
             for shape_bound in shape_bounds_list:
-                if (point_inside_shape(x1, y1, shape_bound) and
-                        point_inside_shape(x2, y2, shape_bound)):
+                if (point_inside_shape(shortened_x1, shortened_y1, shape_bound) and
+                        point_inside_shape(shortened_x2, shortened_y2, shape_bound)):
                     return True, shape_bound['name']
             return False, None
 
@@ -3651,6 +3667,8 @@ class  ns_option_convert_to_master_svg():
         #print(f"\nProcessing complete: Saved to {out_path}")
 
 
+
+
 class  ns_option_convert_to_master_yaml():
     def __init__(self):
 
@@ -3948,7 +3966,6 @@ class  ns_l3_config_to_master_yaml():
         offset_row = 2
         offset_column = 0
         ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
-
 
 
 
