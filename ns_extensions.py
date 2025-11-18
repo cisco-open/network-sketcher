@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
-import ns_def, ns_egt_maker, ns_ddx_figure, network_sketcher_cli
+import ns_def, ns_egt_maker, ns_ddx_figure, ns_cli
 from collections import Counter
 import tkinter as tk ,tkinter.ttk , openpyxl
 import ipaddress, sys, os, re, shutil
@@ -58,37 +58,37 @@ class ai_context():
 
         export_num = 0
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_area' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area'])) + '\n'
+        content_to_append += '** show_area' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_area_device' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_device'])) + '\n'
+        content_to_append += '** show_area_device' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_device'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_area_location' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_location'])) + '\n'
+        content_to_append += '** show_area_location' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_location'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_attribute' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute'])) + '\n'
+        content_to_append += '** show_attribute' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_attribute_color' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute_color'])) + '\n'
+        content_to_append += '** show_attribute_color' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute_color'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_device' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device'])) + '\n'
+        content_to_append += '** show_device' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_device_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_interface'])) + '\n'
+        content_to_append += '** show_device_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_interface'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_device_location' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_location'])) + '\n'
+        content_to_append += '** show_device_location' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_location'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_l1_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_interface'])) + '\n'
+        content_to_append += '** show_l1_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_interface'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_l1_link' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_link'])) + '\n'
+        content_to_append += '** show_l1_link' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_link'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_l2_broadcast_domain' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_broadcast_domain'])) + '\n'
+        content_to_append += '** show_l2_broadcast_domain' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_broadcast_domain'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_l2_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_interface'])) + '\n'
+        content_to_append += '** show_l2_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_interface'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_l3_broadcast_domain' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_broadcast_domain'])) + '\n'
+        content_to_append += '** show_l3_broadcast_domain' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_broadcast_domain'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_l3_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_interface'])) + '\n'
+        content_to_append += '** show_l3_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_interface'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_waypoint' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint'])) + '\n'
+        content_to_append += '** show_waypoint' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint'])) + '\n'
         print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_waypoint_interface' + '\n' + str(network_sketcher_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'+ '\n'
+        content_to_append += '** show_waypoint_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'+ '\n'
 
         #add commands's guide
         def resource_path(relative_path):
@@ -297,7 +297,7 @@ class flow():
     def add_routing_path_to_flow(self,full_filepath_master,flow_list_array):
         print('--- Routing path calculation ---')
         argv_array = ['show', 'l3_broadcast_domain']
-        l3_broadcast_array = network_sketcher_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
+        l3_broadcast_array = ns_cli.ns_cli_run.cli_show(self, full_filepath_master, argv_array)
         #print(l3_broadcast_array)
 
         G = nx.Graph()

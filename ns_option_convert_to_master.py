@@ -375,7 +375,7 @@ class ns_option_convert_to_master_csv():
             args_str = ', '.join([f"'{arg}'" for arg in processed_args])
 
             # Generate final output
-            output = f"network_sketcher_cli.ns_cli_run.cli_rename(self, self.full_filepath, [{args_str}])"
+            output = f"ns_cli.ns_cli_run.cli_rename(self, self.full_filepath, [{args_str}])"
             parts_with_quotes = args_str.split(', ')
             stripped_parts = [part.strip("'") for part in parts_with_quotes]
             desired_parts = stripped_parts[2:]
@@ -386,7 +386,7 @@ class ns_option_convert_to_master_csv():
                 count_interfaces -= 1
 
                 # run the command
-                import network_sketcher_cli
+                import ns_cli
                 exec(output)
             else:
                 print('[ERROR]   ' + str(count_interfaces) + '.   ' + desired_parts[0] + '    ' + desired_parts[
@@ -1876,9 +1876,6 @@ class ns_option_convert_to_master_csv():
             print("=" * 70)
 
         return success
-
-
-
 
 
 class  ns_option_convert_to_master_svg():
@@ -3665,9 +3662,6 @@ class  ns_option_convert_to_master_svg():
         prs = remove_overlapping_shapes(prs, tolerance=100000, area_threshold_percent=50)  # Remove overlapping shapes
         prs.save(out_path)  # Save again with overlapping shapes removed
         #print(f"\nProcessing complete: Saved to {out_path}")
-
-
-
 
 class  ns_option_convert_to_master_yaml():
     def __init__(self):
