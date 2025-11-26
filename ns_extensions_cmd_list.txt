@@ -597,7 +597,7 @@ python [file path]/network_sketcher.py delete ip_address [device name] [layer3_p
 ## delete l2_segment
 This function deletes the Layer 2 segment (such as VLAN) configured on the interface. You can delete one Layer 2 segment at a time.
  ```bash
-python [file path]/network_sketcher.py delete ip_address [device name] [layer2_portname] [l2segment_name] --master [master file path]
+python [file path]/network_sketcher.py delete l2_segment [device name] [layer2_portname] [l2segment_name] --master [master file path]
  ```
 
 * ex.<br>
@@ -898,4 +898,5 @@ When changing a name, if an existing name cannot be used, you may need to change
 8. Connect the virtual port to the l2_segment.　When a virtual port is created, it is not connected to the l2_segment and is in loopback state. Even if you create a virtual port called Vlan 100, it will not automatically connect to Vlan100. (add l2_segment command)
 9. Virtual ports allow direct transmission and reception of Layer 2 data such as VLANs.l2_segment and vport_l2_direct_binding cannot be registered at the same time for the same virtual port.(add vport_l2_direct_binding command)
 10. Change the name of the l3_instance (VRF, etc.) that belongs to the Layer 3 interface. The default is blank, but it is implicitly connected to the default l3_instance. (rename l3_instance command)
+
 11. Add an IP address (add ip_address command)
