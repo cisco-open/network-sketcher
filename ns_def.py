@@ -24,6 +24,26 @@ from pptx import *
 import platform
 from openpyxl.styles import PatternFill
 
+def check_data_exists(excel_master_file):
+    """
+    Check if data exists in self.folder_wp_name_array
+
+    Returns:
+        bool: True if data exists, False if no data exists
+    """
+    ws_name = 'Master_Data'
+
+    # GET Folder and wp name List
+    folder_wp_name_array = get_folder_wp_array_from_master(ws_name, excel_master_file)
+    # Check if folder_wp_name_array exists and is not empty
+
+    try:
+        return bool(folder_wp_name_array and
+                   len(folder_wp_name_array) > 0 and
+                   len(folder_wp_name_array[0]) > 0)
+    except (AttributeError, IndexError, TypeError):
+        return False
+
 def get_l3_segments(self):
     '''get values of Master Data'''
     # parameter
@@ -483,32 +503,45 @@ def return_shape_tuple(current_shape_array ,start_row):
 
     return(tuple_grid_array)
 
-### return width size of each folder ###
-def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_shape_tuple,min_tag_inches):
-    #add parameter at ver2.1 for large size
-    folder_width_ratio = 0.5  # add at ver 2.1 for large size
+
+def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_shape_tuple, min_tag_inches):
+    # print(master_shape_tuple)
+    # add parameter at ver2.1 for large size
+    folder_width_ratio = 0.5  # add at ver 2.1 for large size (applied at output only)
+    air_fixed_width = 0.5  # FIXED width for _AIR_ in master_shape_tuple only
+
+    # Helper function to apply ratio and round up to prevent value degradation
+    import math
+    def apply_ratio_and_round(value, ratio, decimal_places=4):
+        """
+        Apply ratio to value and round up to specified decimal places.
+        This prevents value degradation over repeated calculations.
+        """
+        result = value * ratio
+        multiplier = 10 ** decimal_places
+        return math.ceil(result * multiplier) / multiplier
 
     master_width_size_folder = []
     master_width_size_y_grid = []
     master_hight_size_y_grid = []
     master_folder_size = []
     folder_num_list = []
+
     for tmp_master_folder_tuple in master_folder_tuple:
         if tmp_master_folder_tuple[1] == 1 and master_folder_tuple[tmp_master_folder_tuple] != '<SET_WIDTH>':
             folder_num_list.append(tmp_master_folder_tuple[0])
 
-    #print(master_folder_tuple)
     current_folder_start_row = 1
     current_folder_end_row = 1
+
     for folder_num in folder_num_list:
-        #print('------------' , folder_num)
         i = 0
         for tmp_master_folder_tuple in master_folder_tuple:
             if tmp_master_folder_tuple[0] == folder_num and tmp_master_folder_tuple[1] != 1:
                 if master_folder_tuple[tmp_master_folder_tuple] == '':
-                    master_width_size_folder.append([folder_num, [['_empty_']]])
-                    master_folder_size.append([folder_num, [['_empty_']]])
-                    #print([folder_num, [['_empty_']]])
+                    # Empty folder (not _AIR_ in shape) - will use average width later
+                    master_width_size_folder.append([folder_num, [['_EMPTY_FOLDER_', 0]]])
+                    master_folder_size.append([folder_num, [['_EMPTY_FOLDER_', 0]]])
                     i += 1
                 else:
                     i += 1
@@ -520,80 +553,146 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
                         if tmp_master_shape_tuple[1] == 1 and master_folder_tuple[tmp_master_folder_tuple] == master_shape_tuple[tmp_master_shape_tuple]:
                             current_folder_start_row = tmp_master_shape_tuple[0]
                             flag_shape_start = True
-                    #print(master_folder_tuple[tmp_master_folder_tuple],current_folder_start_row,current_folder_end_row)
 
-                    tmp_folder_size =[]
+                    # ===== Added: Pre-calculate average width for entire folder =====
+                    folder_total_width = 0
+                    folder_total_count = 0
+
+                    for r in range(current_folder_start_row, current_folder_end_row + 1):
+                        for tmp_master_shape_tuple in master_shape_tuple:
+                            if tmp_master_shape_tuple[0] == r and tmp_master_shape_tuple[1] != 1:
+                                shape_name = master_shape_tuple[tmp_master_shape_tuple]
+
+                                # Count only non-AIR shapes for average calculation
+                                if shape_name != '_AIR_' and shape_name != '<END>':
+                                    for tmp_master_style_shape_tuple in master_style_shape_tuple:
+                                        if master_style_shape_tuple[tmp_master_style_shape_tuple[0], 1] == shape_name:
+                                            folder_total_width += master_style_shape_tuple[tmp_master_style_shape_tuple[0], 2]
+                                            folder_total_count += 1
+                                            break
+
+                    # Calculate average width for the entire folder (excluding _AIR_)
+                    if folder_total_count > 0:
+                        folder_average_width = folder_total_width / folder_total_count
+                    else:
+                        folder_average_width = 0.5
+
+                    # print(f"Folder: {master_folder_tuple[tmp_master_folder_tuple]}, Average width: {folder_average_width}, Device count: {folder_total_count}")
+                    # ===== End of pre-calculation =====
+
+                    tmp_folder_size = []
                     current_level = 0
                     current_max_width = 0
                     current_max_hight = 0
                     tmp_hight = 0
-                    for r in range(current_folder_start_row,current_folder_end_row+1):
-                        tmp_width = 0
 
+                    for r in range(current_folder_start_row, current_folder_end_row + 1):
+                        tmp_width = 0
                         tmp_count_shape = 0
+                        tmp_count_air = 0  # Count _AIR_ in master_shape_tuple
                         current_max_hight = 0
+
                         for tmp_master_shape_tuple in master_shape_tuple:
                             if tmp_master_shape_tuple[0] == r and tmp_master_shape_tuple[1] != 1:
-                                for tmp_master_style_shape_tuple in master_style_shape_tuple:
-                                    if master_style_shape_tuple[tmp_master_style_shape_tuple[0],1] == master_shape_tuple[tmp_master_shape_tuple]:
-                                        # sum width in a level in a folder
-                                        tmp_width += master_style_shape_tuple[tmp_master_style_shape_tuple[0], 2]
-                                        tmp_count_shape += 1
+                                shape_name = master_shape_tuple[tmp_master_shape_tuple]
 
-                                        #get max value in a level in a folder
-                                        if current_max_hight < (master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3] + (min_tag_inches * 2.5)):
-                                            current_max_hight = (master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3] + (min_tag_inches * 2.5))
-                                        break
-                        current_level +=1
-                        #print(current_level,tmp_width,tmp_hight,tmp_count_shape)
-                        current_level_inches_width = min_tag_inches * 18 + tmp_width + ((tmp_count_shape-1) * (min_tag_inches * 7 )) # ver2.2.1(a)  min_tag_inches * 2 ->18 , Ver 2.6.0 (min_tag_inches * 4 ) -> (min_tag_inches * 7 )
-                        #print('----current_level_inches_hight ----  ',master_folder_tuple[tmp_master_folder_tuple],master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3],current_level,current_max_hight)
+                                # ===== Modified: Count _AIR_ separately and use FIXED width =====
+                                if shape_name == '_AIR_':
+                                    tmp_count_air += 1  # Count _AIR_ from master_shape_tuple
+                                elif shape_name != '<END>':
+                                    for tmp_master_style_shape_tuple in master_style_shape_tuple:
+                                        if master_style_shape_tuple[tmp_master_style_shape_tuple[0], 1] == shape_name:
+                                            # sum width in a level in a folder
+                                            tmp_width += master_style_shape_tuple[tmp_master_style_shape_tuple[0], 2]
+                                            tmp_count_shape += 1
+
+                                            # get max value in a level in a folder
+                                            if current_max_hight < (master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3] + (min_tag_inches * 2.5)):
+                                                current_max_hight = (master_style_shape_tuple[tmp_master_style_shape_tuple[0], 3] + (min_tag_inches * 2.5))
+                                            break
+
+                        # ===== MODIFIED: Use FIXED width for _AIR_ from master_shape_tuple =====
+                        air_total_width = air_fixed_width * tmp_count_air
+                        tmp_width += air_total_width
+
+                        # Total count includes both real shapes and _AIR_
+                        total_count = tmp_count_shape + tmp_count_air
+                        # ===== End of modification =====
+
+                        current_level += 1
+                        # print(f"  Row {r}: Devices={tmp_count_shape}, _AIR_={tmp_count_air}, Total={total_count}, Width={tmp_width}")
+
+                        current_level_inches_width = min_tag_inches * 2 + tmp_width + ((total_count - 1) * (min_tag_inches * 7))
                         tmp_hight += current_max_hight
+
                         if current_max_width < current_level_inches_width:
                             current_max_width = current_level_inches_width
 
-                    tmp_hight += 1.0 # add up down buffer for a hight in a folder
-                    #print(master_folder_tuple[tmp_master_folder_tuple],current_max_width,tmp_hight)
-                    tmp_folder_size.append([master_folder_tuple[tmp_master_folder_tuple],current_max_width * folder_width_ratio,tmp_hight]) # add folder_width_ratio at ver 2.1 for large size
-                master_width_size_folder.append([folder_num,tmp_folder_size])
-                #print([folder_num,tmp_folder_size])
-                master_folder_size.append([folder_num,tmp_folder_size])
+                    tmp_hight += 1.0  # add up down buffer for a hight in a folder
+
+                    # Store ONLY actual width (NO ratio applied during calculation)
+                    # Format: [name, actual_width, height]
+                    tmp_folder_size.append([
+                        master_folder_tuple[tmp_master_folder_tuple],
+                        current_max_width,  # Actual width (for calculations)
+                        tmp_hight
+                    ])
+
+                master_width_size_folder.append([folder_num, tmp_folder_size])
+                master_folder_size.append([folder_num, tmp_folder_size])
 
         if i == 0:
-            master_width_size_folder.append([folder_num, [['_empty_']]])
-            master_folder_size.append([folder_num, [['_empty_']]])
-            #print([folder_num, [['_empty_']]])
+            # No folders in this row - use fixed width
+            master_width_size_folder.append([folder_num, [['_EMPTY_FOLDER_', air_fixed_width, 0]]])
+            master_folder_size.append([folder_num, [['_EMPTY_FOLDER_', air_fixed_width, 0]]])
 
-    #Add _empty_ value
+    # Modified: Calculate widths
+    # _EMPTY_FOLDER_ (from master_folder_tuple '') uses average width
+    # _AIR_ width is already included in calculations above
     for folder_num in folder_num_list:
         tmp_sum_width = 0
-        empty_count = 0
-        shape_count = 0
-        for tmp_master_min_size_folder in master_width_size_folder:
-            if tmp_master_min_size_folder[0] == folder_num and tmp_master_min_size_folder[1][0][0] != '_empty_':
-                tmp_sum_width += tmp_master_min_size_folder[1][0][1]
-            elif tmp_master_min_size_folder[0] == folder_num and tmp_master_min_size_folder[1][0][0] == '_empty_':
-                empty_count += 1
-            shape_count += 1
-        master_width_size_y_grid.append([folder_num,(tmp_sum_width + (((tmp_sum_width / shape_count) * 0.1) *empty_count)),((tmp_sum_width / shape_count) * 0.2)])
-        #print('---- empty -----',((((tmp_sum_width / shape_count) * 0.1) *empty_count)))
+        empty_folder_count = 0
+        non_empty_count = 0
 
-    #GET best width of slide (inches)
+        # First pass: calculate sum of non-empty folder widths
+        for tmp_master_min_size_folder in master_width_size_folder:
+            if tmp_master_min_size_folder[0] == folder_num:
+                if tmp_master_min_size_folder[1][0][0] != '_EMPTY_FOLDER_':
+                    tmp_sum_width += tmp_master_min_size_folder[1][0][1]  # Use actual width
+                    non_empty_count += 1
+                else:
+                    empty_folder_count += 1
+
+        # Calculate average width of non-empty folders
+        if non_empty_count > 0:
+            average_width = tmp_sum_width / non_empty_count
+        else:
+            average_width = 0.5  # Default if no shapes exist
+
+        # Calculate total width: actual folders + (average × empty_folder_count)
+        # Empty folders from master_folder_tuple use average width
+        final_width = tmp_sum_width + (average_width * empty_folder_count)
+        air_width_each = average_width * 0.2 if non_empty_count > 0 else 0.1
+
+        # Store actual widths (NO ratio applied yet)
+        master_width_size_y_grid.append([folder_num, final_width, air_width_each])
+
+    # GET best width of slide (inches) using ACTUAL width
     slide_max_width_inches = 0
     for tmp_master_min_size_y_grid in master_width_size_y_grid:
         if slide_max_width_inches < tmp_master_min_size_y_grid[1]:
             slide_max_width_inches = tmp_master_min_size_y_grid[1]
 
-    #GET best hight of slide (inches)
+    # GET best height of slide (inches)
     slide_max_hight_inches = 0
 
-    #print('---master_folder_size--- ', master_folder_size)
     for tmp_master_min_size_y_grid in master_width_size_y_grid:
         tmp_max_hight_y_grid = 0
         flag_only_wp = True
-        #print('----tmp_master_min_size_y_grid----',tmp_master_min_size_y_grid)
+
         for tmp_master_folder_size in master_folder_size:
-            if tmp_master_min_size_y_grid[0] == tmp_master_folder_size[0] and tmp_master_folder_size[1][0][0] != '_empty_':
+            if tmp_master_min_size_y_grid[0] == tmp_master_folder_size[0] and tmp_master_folder_size[1][0][0] != '_EMPTY_FOLDER_':
+                # Use height (index [2])
                 if tmp_max_hight_y_grid < tmp_master_folder_size[1][0][2]:
                     tmp_max_hight_y_grid = tmp_master_folder_size[1][0][2]
                 if '_wp_' not in str(tmp_master_folder_size[1][0][0]):
@@ -603,19 +702,55 @@ def get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_sh
             tmp_max_hight_y_grid = tmp_max_hight_y_grid * 1  # Change hight ratio Ver 1.1
 
         if tmp_max_hight_y_grid == 0:
-            tmp_max_hight_y_grid = 0.5 # only empty level is 0.5 inches
+            tmp_max_hight_y_grid = 0.5  # only empty level is 0.5 inches
 
-        #print('tmp_max_hight_y_grid ----- ',tmp_max_hight_y_grid )
-        master_hight_size_y_grid.append([tmp_master_min_size_y_grid[0],tmp_max_hight_y_grid])
+        master_hight_size_y_grid.append([tmp_master_min_size_y_grid[0], tmp_max_hight_y_grid])
         slide_max_hight_inches += tmp_max_hight_y_grid
 
-    #print('----slide_max_width_inches----',slide_max_width_inches)
-    #print('----master_width_size_y_grid----',master_width_size_y_grid)
-    #print('----master_folder_size----',master_folder_size)
-    #print('----slide_max_hight_inches----',slide_max_hight_inches)
-    #print('----master_hight_size_y_gri----',master_hight_size_y_grid)
+    # print('----slide_max_width_inches----', slide_max_width_inches)
 
-    return([slide_max_width_inches, master_width_size_y_grid, master_folder_size, slide_max_hight_inches, master_hight_size_y_grid])
+    # ===== APPLY RATIO AND ROUND UP AT OUTPUT STAGE =====
+    # This ensures ratio is only applied once and rounding up prevents value degradation
+
+    # Apply ratio to slide max width
+    output_slide_max_width = apply_ratio_and_round(slide_max_width_inches, folder_width_ratio)
+
+    # Apply ratio to master_width_size_y_grid
+    output_master_width_size_y_grid = []
+    for item in master_width_size_y_grid:
+        output_master_width_size_y_grid.append([
+            item[0],  # folder_num
+            apply_ratio_and_round(item[1], folder_width_ratio),  # final_width with ratio
+            apply_ratio_and_round(item[2], folder_width_ratio)  # air_width_each with ratio
+        ])
+
+    # Apply ratio to master_folder_size
+    output_master_folder_size = []
+    for folder in master_folder_size:
+        folder_num = folder[0]
+        folder_data = folder[1]
+        if folder_data[0][0] == '_EMPTY_FOLDER_':
+            # For empty folder, apply ratio
+            output_master_folder_size.append([folder_num, [['_EMPTY_FOLDER_', apply_ratio_and_round(folder_data[0][1], folder_width_ratio), 0]]])
+        else:
+            output_master_folder_size.append([
+                folder_num,
+                [[
+                    folder_data[0][0],  # Name
+                    apply_ratio_and_round(folder_data[0][1], folder_width_ratio),  # Width with ratio and round up
+                    folder_data[0][2]  # Height (unchanged)
+                ]]
+            ])
+
+    # Return with ratio applied and rounded up
+    return ([
+        output_slide_max_width,
+        output_master_width_size_y_grid,
+        output_master_folder_size,
+        slide_max_hight_inches,
+        master_hight_size_y_grid
+    ])
+
 
 def get_root_folder_tuple(self,master_folder_size_array,tmp_folder_name):
     self.root_left = 0.28
@@ -897,6 +1032,122 @@ def convert_excel_to_array(ws_name, excel_file, start_row):
     input_ppt_mata_excel.close()
     return(return_array)
 
+
+def remove_rows_under_section(tmp_ws_name, ppt_meta_file, clear_section_tuple):  # add at ver 2.6.1
+    """
+    Remove rows from Excel where values match the input tuple under a specific section.
+    Rows with section markers (<<...>>) are excluded from deletion.
+    Additionally, clears all cells to the right of section markers in the header row.
+
+    Args:
+        tmp_ws_name: Worksheet name
+        ppt_meta_file: Excel file path
+        clear_section_tuple: Tuple containing section name and values to match for row deletion
+
+    Returns:
+        String indicating completion
+    """
+    wb = openpyxl.load_workbook(ppt_meta_file)
+    wb.active = wb[tmp_ws_name]
+
+    # GET section row and column
+    section_name = 'N/A'
+    for tmp_clear_section_tuple in clear_section_tuple:
+        if '<<' in str(clear_section_tuple[tmp_clear_section_tuple]) and '>>' in str(clear_section_tuple[tmp_clear_section_tuple]):
+            section_name = clear_section_tuple[tmp_clear_section_tuple]
+            break
+
+    # Find section start row with max row limit
+    flag_get_section = False
+    max_search_rows = 1000000
+    i = 1
+    start_row = None
+
+    while i <= max_search_rows:
+        if wb.active.cell(i, 1).value == section_name:
+            start_row = i
+            flag_get_section = True
+            break
+        i += 1
+
+    # If section not found, close workbook and return
+    if not flag_get_section or start_row is None:
+        wb.close()
+        return f'remove_rows_under_section: Section not found - no rows deleted'
+
+    # ★★★ NEW: Clear all cells to the right of section marker in header row ★★★
+    section_marker_row = start_row
+    section_marker_value = wb.active.cell(section_marker_row, 1).value
+
+    # Check if first cell contains section marker (<<...>>)
+    if section_marker_value and '<<' in str(section_marker_value) and '>>' in str(section_marker_value):
+        # Clear all cells from column 2 onwards in this row
+        for col_num in range(2, wb.active.max_column + 1):
+            cell_value = wb.active.cell(section_marker_row, col_num).value
+            if cell_value is not None:
+                wb.active.cell(section_marker_row, col_num).value = None
+
+    # Find section end row (next section or end of data)
+    end_row = start_row + 1
+    while end_row <= wb.active.max_row:
+        cell_value = wb.active.cell(end_row, 1).value
+        # Check if next section is found
+        if cell_value and '<<' in str(cell_value) and '>>' in str(cell_value):
+            break
+        end_row += 1
+
+    # Collect rows to delete (process in reverse to avoid index shifting)
+    rows_to_delete = []
+
+    for row_num in range(start_row + 1, end_row):  # Skip section header row
+        # Check if current row is a section marker (exclude from deletion)
+        first_cell_value = wb.active.cell(row_num, 1).value
+        if first_cell_value and '<<' in str(first_cell_value) and '>>' in str(first_cell_value):
+            # ★★★ NEW: Also clear trailing cells for sub-section markers like <SET_WIDTH> ★★★
+            for col_num in range(2, wb.active.max_column + 1):
+                cell_value = wb.active.cell(row_num, col_num).value
+                if cell_value is not None:
+                    wb.active.cell(row_num, col_num).value = None
+            continue
+
+        # Check if any value in this row matches values in clear_section_tuple
+        should_delete = False
+        for col_num in range(1, wb.active.max_column + 1):
+            cell_value = wb.active.cell(row_num, col_num).value
+
+            # Skip empty cells
+            if cell_value is None or cell_value == '':
+                continue
+
+            # Check if this value exists in clear_section_tuple
+            for tmp_clear_section_tuple in clear_section_tuple:
+                tuple_value = clear_section_tuple[tmp_clear_section_tuple]
+
+                # Skip section markers in tuple
+                if '<<' in str(tuple_value) and '>>' in str(tuple_value):
+                    continue
+
+                # If value matches, mark row for deletion
+                if str(cell_value) == str(tuple_value):
+                    should_delete = True
+                    break
+
+            if should_delete:
+                break
+
+        if should_delete:
+            rows_to_delete.append(row_num)
+
+    # Delete rows in reverse order (to avoid index shifting issues)
+    for row_num in sorted(rows_to_delete, reverse=True):
+        wb.active.delete_rows(row_num, 1)
+
+    wb.save(ppt_meta_file)
+    wb.close()
+
+    return f'remove_rows_under_section: {len(rows_to_delete)} rows deleted'
+
+
 def clear_section_sheet(tmp_ws_name, ppt_meta_file, clear_section_taple):
     wb = openpyxl.load_workbook(ppt_meta_file)
     wb.active = wb[tmp_ws_name]
@@ -1104,7 +1355,6 @@ def adjust_portname(if_name):
                 tmp_if_name += per_char
             else:
                 tmp_if_num += per_char
-
         if len(tmp_if_name) <= 1:
             if_name_abbreviation = tmp_if_name
         elif tmp_if_name == 'GigabitEthernet':

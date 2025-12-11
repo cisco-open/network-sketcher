@@ -52,6 +52,24 @@ class  ns_l1_diagram_create():
         self.position_tag_tuple = ns_def.convert_array_to_tuple(self.position_tag_array)
         self.root_folder_tuple = ns_def.convert_array_to_tuple(self.root_folder_array)
 
+        # Preserve existing value on any failure. add at ver 2.6.1
+        try:
+            # Validate all required components exist
+            if (hasattr(self, 'inFileTxt_L2_3_1') and
+                    hasattr(self, 'comboATTR_1_1') and
+                    hasattr(self.inFileTxt_L2_3_1, 'get') and
+                    hasattr(self.comboATTR_1_1, 'get')):
+
+                # Get values
+                file_path = self.inFileTxt_L2_3_1.get()
+                combo_value = self.comboATTR_1_1.get()
+
+                # Update only if both values are valid
+                if file_path and combo_value and file_path.strip() and combo_value.strip():
+                    self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(file_path, combo_value)
+        except Exception:
+            # Silent fail - preserve existing self.attribute_tuple1_1
+            pass
 
         #print('---- self.position_folder_tuple ----')
         #print(self.position_folder_array)
@@ -106,6 +124,7 @@ class  ns_l1_diagram_create():
                 current_row = 1
                 flag_start_row = False
                 flag_end_row = False
+                self.tmp_folder_name = tmp_folder_name
 
                 while flag_end_row == False:
                     if str(self.position_shape_tuple[current_row, 1]) == tmp_folder_name:
@@ -278,10 +297,26 @@ class  ns_l1_diagram_create():
                 clear_section_tuple[1, 1] = '<<POSITION_LINE>>'
                 ns_def.clear_tag_in_position_line(tmp_ws_name, ppt_meta_file, clear_section_tuple)
 
-            self.root_left = self.root_folder_tuple[2,5]
-            self.root_top =  self.root_folder_tuple[2,6]
-            self.root_width = self.root_folder_tuple[2,7]
-            self.root_hight = self.root_folder_tuple[2,8]
+            min_tag_inches = 0.3
+            master_folder_size_array = ns_def.get_folder_width_size(self.position_folder_tuple, self.position_style_shape_tuple, self.position_shape_tuple, min_tag_inches)
+
+            #Modified at ver 2.6.1
+            self.root_left = 0.28
+            self.root_top =  1.42
+
+            self.root_width = float(master_folder_size_array[0]) + 1.0
+            self.root_hight = float(master_folder_size_array[3]) + 1.0
+
+            if self.flag_summary_diagram == False:
+                self.keep_root_width = self.root_width
+                self.keep_root_hight = self.root_hight
+
+            if self.flag_summary_diagram == True:
+                ratio_summary_width = 0.5
+                ratio_summary_hight = 0.5
+                self.root_width = self.keep_root_width * ratio_summary_width
+                self.root_hight = self.keep_root_hight * ratio_summary_hight
+
 
             ### Create ppt
             self.excel_file_path = ppt_meta_file

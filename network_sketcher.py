@@ -29,11 +29,27 @@ class ns_front_run():
     Main Panel
     '''
     def __init__(self):
+        self.cli_flag_no_export = False # Added at Ver 2.6.1
+        self.flag_summary_diagram = False # Added at Ver 2.6.1
+        self.keep_root_width = 0.0 # Added at Ver 2.6.1
+        self.keep_root_hight = 0.0 # Added at Ver 2.6.1
+
         #add cli flow at ver 2.3.1
         if len(sys.argv) > 1:
             import ns_cli
             self.argv_array = []
             self.argv_array = sys.argv[1:]
+
+            ### dummy data for cli -> add l1 link ###
+            self.sub1_1 = tk.Toplevel()
+            self.click_value_2nd = 'self.sub1_1_button_3'
+            self.click_value_3rd = 'self.sub1_1_button_3'
+            nb = ttk.Notebook()
+            tab_x1 = tk.Frame(nb)
+            self.main1_1 = tk.LabelFrame(tab_x1, text="dummy",font=("", 14), height=1, background="#F2FDE3", labelanchor="n")
+            self.main1_1_entry_1 = tk.Entry(self.main1_1)
+            #######################################
+
             ns_cli.ns_cli_run.__init__(self, self.argv_array)
             exit()
 
@@ -44,7 +60,7 @@ class ns_front_run():
         self.root = TkinterDnD.Tk()
         style = ttk.Style(self.root)
         style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
-        self.root.title("Network Sketcher  ver 2.6.0f")
+        self.root.title("Network Sketcher  ver 2.6.1")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
@@ -207,6 +223,11 @@ class ns_front_run():
                 #print(file_type_array)
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
+
+                if ns_def.check_data_exists(self.full_filepath) == False: # Added at Ver 2.6.1 for no_data
+                    print('[ERROR] Master file does not contain any data')
+                    return ()
+
                 ns_front_run.sub_excel_master_1(self, file_type_array)
 
             elif file_type_array[0] == 'EXCEL_DEVICE':
@@ -765,7 +786,7 @@ class ns_front_run():
         self.sub2_A = tk.LabelFrame(self.sub2_1, text='Lab', font=("", 14), height=1, background="#D9D9D9")
         self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2)
 
-        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta3)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
+        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta4)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
         self.sub2_9_button_1.grid(row=1, column=21, sticky='WE', padx=2, pady=2, ipadx=3)
 
 
@@ -1081,7 +1102,7 @@ class ns_front_run():
             ### messagebox
             tkinter.messagebox.showinfo(title='Complete', message='[MASTER] file has been updated.')
 
-        if click_value == 'self.self.sub2_5_button_3':  # Create Device file
+        if click_value == 'self.self.sub2_5_button_3' and self.cli_flag_no_export == False:  # Create Device file
             ### check file open
             if ns_def.check_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]','')) == True:
                 return ()
