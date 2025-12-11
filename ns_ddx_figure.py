@@ -139,28 +139,26 @@ class  ns_ddx_figure_run():
 
 
     def add_root_folder(self):
-        temp_rootfolder_row = 0
-        temp_rootfolder_flag = False
-        temp_row = 1
-        self.root_folder = [0.28, 1.42, 9.45, 5.75]  # Defalut setting.  left , top , width , hight(Inches)  / EMU is 914400‬
-
-        while temp_rootfolder_row < 50000 and temp_rootfolder_flag == False:
-            temp_rootfolder_row += 1
-            if str(self.input_ppt_mata_excel.active.cell(temp_rootfolder_row, 1).value) == '<<ROOT_FOLDER>>':
-                temp_rootfolder_flag = True
-                temp_row = temp_rootfolder_row
-
         ### input page title text and input root holder values
+        self.root_folder = [0.28, 1.42, 9.45, 5.75]  # Defalut setting.  left , top , width , hight(Inches)  / EMU is 914400‬
         self.shape = self.slide.shapes
-        self.shape.title.text = str(self.input_ppt_mata_excel.active.cell(temp_row+1, 2).value)
-        self.root_folder[0] = float(self.input_ppt_mata_excel.active.cell(temp_row+1, 5).value)
-        self.root_folder[1] = float(self.input_ppt_mata_excel.active.cell(temp_row+1, 6).value)
-        self.root_folder[2] = float(self.input_ppt_mata_excel.active.cell(temp_row+1, 7).value) * float(self.input_ppt_mata_excel.active.cell(temp_row+1, 3).value)
-        self.root_folder[3] = float(self.input_ppt_mata_excel.active.cell(temp_row+1, 8).value) * float(self.input_ppt_mata_excel.active.cell(temp_row+1, 4).value)
 
-        ### change ppt title , add ver 2.1 ###
+        #Modified at ver 2.6.1
+        self.root_folder[0] = float(self.root_left)
+        self.root_folder[1] = float(self.root_top)
+        self.root_folder[2] = float(self.root_width + (self.outline_margin_root_folder*2))
+        self.root_folder[3] = float(self.root_hight + (self.outline_margin_root_folder*2))
+
+        ### change ppt title , add ver 2.1 . Modified at ver 2.6.1 ###
+        if self.root_folder_tuple[(2, 2)] == 'Summary Diagram':
+            self.shape.title.text = 'Summary Diagram'
+        else:
+            self.shape.title.text = '[L1] All Areas'
+
         if self.click_value == 'VPN-1-1':
             self.shape.title.text = '[VPNs on L1] All Areas'
+        elif self.click_value == '2-4-1' or self.click_value == '2-4-2' :
+            self.shape.title.text = '[L1] ' + str(self.tmp_folder_name)
 
         # style size,outline
         self.shape = self.shape.add_shape(MSO_SHAPE.RECTANGLE, Inches(self.root_folder[0]), Inches(self.root_folder[1]), Inches(self.root_folder[2]), Inches(self.root_folder[3]))
@@ -892,10 +890,12 @@ class  ns_ddx_figure_run():
                 temp_degree = math.degrees(math.atan2(temp_y, temp_x))
 
                 ### change position tag
+                tag_offet_inche = 0.02  # in <<POSITION_TAG>> inches of per char count in shape
+                from_offset_line = len(temp_tag_text) * tag_offet_inche
                 if str(self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 1).value) == Target_name and self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 5).value != None:
                     temp_tag_flag = True
-                    tag_left += (math.cos(math.radians(temp_degree)) * self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 5).value)
-                    tag_top += (math.sin(math.radians(temp_degree)) * self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 5).value)
+                    tag_left += (math.cos(math.radians(temp_degree)) * from_offset_line) #Modified at ver 2.6.1
+                    tag_top += (math.sin(math.radians(temp_degree)) * from_offset_line) #Modified at ver 2.6.1
 
                 if str(self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 1).value) == Target_name and self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 6).value == 'YES':
                     temp_tag_degree = temp_degree
@@ -914,10 +914,12 @@ class  ns_ddx_figure_run():
                 temp_degree = math.degrees(math.atan2(temp_y, temp_x))
 
                 ### change position tag
+                tag_offet_inche = 0.02  # in <<POSITION_TAG>> inches of per char count in shape
+                to_offset_line = len(temp_tag_text) * tag_offet_inche
                 if str(self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 1).value) == Target_name and self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 5).value != None:
                     temp_tag_flag = True
-                    tag_left -= (math.cos(math.radians(temp_degree)) * self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 5).value)
-                    tag_top -= (math.sin(math.radians(temp_degree))*self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 5).value)
+                    tag_left -= (math.cos(math.radians(temp_degree)) * to_offset_line) #Modified at ver 2.6.1
+                    tag_top -= (math.sin(math.radians(temp_degree)) * to_offset_line) #Modified at ver 2.6.1
 
                 if str(self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 1).value) == Target_name and self.input_ppt_mata_excel.active.cell(temp_temp_temp_line_row, 6).value == 'YES':
                     temp_tag_degree = temp_degree

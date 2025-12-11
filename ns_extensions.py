@@ -44,15 +44,15 @@ class ai_context():
         print(self.ai_context_file)
 
         content_to_append = ''
-        content_to_append += '* You are a network specialist and technical consultant for Cisco.' + '\n'
-        content_to_append += '* You have been presented by a customer with a show command from an OSS called Network Sketcher that provides.' + '\n'
-        content_to_append += '* You advise a specific and logical answer to a broad and technical question or consultation, with reasoning, while possessing a high level of reasoning.' + '\n'
-        content_to_append += '* Provide examples of relevant Cisco equipment configurations, if available. Examples of Network Sketcher configurations are not required.' + '\n'
-        content_to_append += '* Please explain in ASCII format, including diagrams.' + '\n' + '\n'
 
         content_to_append += '\'\'\'' + '\n' + 'File path information used in the command reference'+ '\n' + '\'\'\'' + '\n'
         content_to_append += '[file path]/network_sketcher.py = "' + os.path.dirname(os.path.abspath(__file__))+ '/network_sketcher.py"' +'\n'
         content_to_append += '[master file path] = "'+ excel_maseter_file + '"'+'\n' + '\n'
+
+        content_to_append += '\'\'\'' + '\n' + 'Basic response policy'+ '\n' + '\'\'\'' + '\n'
+        content_to_append += '* You are a network specialist and technical consultant at Cisco.' + '\n'
+        content_to_append += '* You provide specific, logical answers to broad and technical questions or consultations, including your reasoning, and you possess a high level of analytical ability.' + '\n'
+        content_to_append += '* A customer has provided output from the OSS tool “Network Sketcher” using a show command.' + '\n' + '\n'
 
         content_to_append += '\'\'\'' + '\n' + 'All data in the master file'+ '\n' + '\'\'\'' + '\n'
 
@@ -1311,6 +1311,7 @@ class  auto_ip_addressing():
         ns_def.write_excel_meta(last_l3_table_tuple, excel_maseter_file, excel_master_ws_name_l3, '_template_', 0, 0)
 
 class  summary_diagram():
+
     def export_summary_diagram(self,dummy): # add at ver 2.3.4
         print('--- export_summary_diagram ---')
         iDir = os.path.abspath(os.path.dirname(self.full_filepath ))

@@ -32,14 +32,14 @@ class  ns_l1_master_create():
         line_offset_value = 0.2  # in <<POSITION_LINE>> inches
         wp_roundness = 0.5 # in <<STYLE_SHAPE>> 0.0-1.0 * 100(%)
         wp_roundness_right_left = 0.2 # in <<STYLE_SHAPE>> 0.0-1.0 * 100(%)   Ver2.0 add fix wp roundness when right or left pattern
-        shape_width_min = 0.5 # in <<STYLE_SHAPE>> inches
+        shape_width_min = 0.4 # in <<STYLE_SHAPE>> inches , Modified at ver 2.6.1
         shape_hight_min = 0.2 # in <<STYLE_SHAPE>> inches
         per_char_inchi = 0.16 # inches of per char count in shape
         color_wp = 'BLUE'  # in <<STYLE_SHAPE>>  ORANGE , BLUE , GREEN ,GRAY, empty is ''
         color_shape = 'GREEN' # in <<STYLE_SHAPE>>  ORANGE , BLUE , GREEN ,GRAY, empty is ''
         color_atmark = ''  # in <<STYLE_SHAPE>>  ORANGE , BLUE , GREEN ,GRAY, empty is ''
         tag_offet_inche = 0.02 # in <<POSITION_TAG>> inches of per char count in shape
-        tag_name_prefix = 'GE 0/' # in <<POSITION_LINE>> TAG name prefix
+        tag_name_prefix = 'GE 9/' # in <<POSITION_LINE>> TAG name prefix, Modified  0/ -> 9/ at ver 2.6.1
         port_name_prefix = 'GigabitEthernet' # in <<POSITION_LINE>> port name prefix
         port_speed = 'Auto'  # in <<POSITION_LINE>> port speed
         port_duplex = 'Auto'  # in <<POSITION_LINE>> port speed
@@ -1418,6 +1418,7 @@ class  ns_l1_master_create():
         change line offset values
         '''
         ### count connected lines on up down left right. ###
+        ### MODIFIED: Separate UP/DOWN connections from LEFT/RIGHT for width calculation
         finish_shape_list = []
         num_line = 0
 
@@ -1426,36 +1427,84 @@ class  ns_l1_master_create():
                 num_line += 1
 
         full_line_array = []
-        for tmp_num_line in range (1,num_line + 1):
+        full_line_array_updown = []  # NEW: Array for UP/DOWN connections only
+
+        for tmp_num_line in range(1, num_line + 1):
             tmp_target_list = []
-            tmp_current_shape = master_line_tuple[tmp_num_line,1]
-            for tmp_tmp_num_line in range (1,num_line + 1):
-                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line,1] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line,2] and master_line_tuple[tmp_tmp_num_line,1] not in finish_shape_list:
-                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line,2])
-                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line,2] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line,1] and master_line_tuple[tmp_tmp_num_line,2] not in finish_shape_list:
-                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line,1])
+            tmp_target_list_updown = []  # NEW: For UP/DOWN only
+            tmp_current_shape = master_line_tuple[tmp_num_line, 1]
+
+            for tmp_tmp_num_line in range(1, num_line + 1):
+                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line, 1] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line, 2] and master_line_tuple[tmp_tmp_num_line, 1] not in finish_shape_list:
+                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line, 2])
+
+                    # NEW: Check if connection is NOT LEFT/RIGHT (meaning UP/DOWN)
+                    if (tmp_tmp_num_line, 5) in master_line_tuple:
+                        if master_line_tuple[(tmp_tmp_num_line, 5)] not in ['LEFT', 'RIGHT']:
+                            tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 2])
+                    else:
+                        # If no direction specified, assume UP/DOWN
+                        tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 2])
+
+                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line, 2] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line, 1] and master_line_tuple[tmp_tmp_num_line, 2] not in finish_shape_list:
+                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line, 1])
+
+                    # NEW: Check if connection is NOT LEFT/RIGHT (meaning UP/DOWN)
+                    if (tmp_tmp_num_line, 6) in master_line_tuple:
+                        if master_line_tuple[(tmp_tmp_num_line, 6)] not in ['LEFT', 'RIGHT']:
+                            tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 1])
+                    else:
+                        # If no direction specified, assume UP/DOWN
+                        tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 1])
+
             finish_shape_list.append(tmp_current_shape)
 
             if tmp_target_list != []:
                 full_line_array.append([tmp_current_shape, tmp_target_list])
-                #print(tmp_current_shape, tmp_target_list)
 
-        for tmp_num_line in range (1,num_line + 1):
+            # NEW: Store UP/DOWN connections separately
+            if tmp_target_list_updown != []:
+                full_line_array_updown.append([tmp_current_shape, tmp_target_list_updown])
+
+        for tmp_num_line in range(1, num_line + 1):
             tmp_target_list = []
-            tmp_current_shape = master_line_tuple[tmp_num_line,2]
-            for tmp_tmp_num_line in range (1,num_line + 1):
-                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line,1] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line,2] and master_line_tuple[tmp_tmp_num_line,1] not in finish_shape_list:
-                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line,2])
-                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line,2] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line,1] and master_line_tuple[tmp_tmp_num_line,2] not in finish_shape_list:
-                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line,1])
+            tmp_target_list_updown = []  # NEW: For UP/DOWN only
+            tmp_current_shape = master_line_tuple[tmp_num_line, 2]
+
+            for tmp_tmp_num_line in range(1, num_line + 1):
+                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line, 1] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line, 2] and master_line_tuple[tmp_tmp_num_line, 1] not in finish_shape_list:
+                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line, 2])
+
+                    # NEW: Check if connection is NOT LEFT/RIGHT
+                    if (tmp_tmp_num_line, 5) in master_line_tuple:
+                        if master_line_tuple[(tmp_tmp_num_line, 5)] not in ['LEFT', 'RIGHT']:
+                            tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 2])
+                    else:
+                        tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 2])
+
+                if tmp_current_shape == master_line_tuple[tmp_tmp_num_line, 2] and tmp_current_shape != master_line_tuple[tmp_tmp_num_line, 1] and master_line_tuple[tmp_tmp_num_line, 2] not in finish_shape_list:
+                    tmp_target_list.append(master_line_tuple[tmp_tmp_num_line, 1])
+
+                    # NEW: Check if connection is NOT LEFT/RIGHT
+                    if (tmp_tmp_num_line, 6) in master_line_tuple:
+                        if master_line_tuple[(tmp_tmp_num_line, 6)] not in ['LEFT', 'RIGHT']:
+                            tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 1])
+                    else:
+                        tmp_target_list_updown.append(master_line_tuple[tmp_tmp_num_line, 1])
+
             finish_shape_list.append(tmp_current_shape)
 
             if tmp_target_list != []:
                 full_line_array.append([tmp_current_shape, tmp_target_list])
-                #print(tmp_current_shape, tmp_target_list , '   Second')
 
-        #print('---- full_line_array ----')
-        #print(full_line_array)
+            # NEW: Store UP/DOWN connections separately
+            if tmp_target_list_updown != []:
+                full_line_array_updown.append([tmp_current_shape, tmp_target_list_updown])
+
+        # print('---- full_line_array (all directions) ----')
+        # print(full_line_array)
+        # print('---- full_line_array_updown (UP/DOWN only) ----')
+        # print(full_line_array_updown)
 
         ### mark to up down left right ###
         master_udlr_array = []
@@ -1654,8 +1703,11 @@ class  ns_l1_master_create():
         #print(master_line_tuple)
 
         ### increse offset value for WP , ver 1.12
+        ### MODIFIED: Only count UP/DOWN connections for waypoint width calculation
         wp_name_array = []
         wp_width_offset_inche_array = []
+        wp_updown_offset_array = []  # NEW: Store UP/DOWN offsets separately
+
         for i_wp_array in wp_array:
             wp_name_array.append(i_wp_array[1])
 
@@ -1663,20 +1715,51 @@ class  ns_l1_master_create():
         for tmp_i_master_line_tuple in i_master_line_tuple:
             if ns_def.check_tuple_num_exist(i_master_line_tuple, tmp_i_master_line_tuple[0], 1) == True or \
                     ns_def.check_tuple_num_exist(i_master_line_tuple, tmp_i_master_line_tuple[0], 2) == True:
-                if tmp_i_master_line_tuple[1] == 1 and i_master_line_tuple[tmp_i_master_line_tuple[0],1] in wp_name_array:
+                if tmp_i_master_line_tuple[1] == 1 and i_master_line_tuple[tmp_i_master_line_tuple[0], 1] in wp_name_array:
+                    # MODIFIED: Only apply X-offset for UP/DOWN connections
                     if ns_def.check_tuple_num_exist(i_master_line_tuple, tmp_i_master_line_tuple[0], 7) == True:
-                        wp_width_offset_inche_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 1],i_master_line_tuple[tmp_i_master_line_tuple[0], 7] * (line_offset_ratio_wp - 1.0)])
-                        master_line_tuple[tmp_i_master_line_tuple[0], 7] = i_master_line_tuple[tmp_i_master_line_tuple[0], 7] * line_offset_ratio_wp
+                        # Check if this line's direction is UP/DOWN (not LEFT/RIGHT)
+                        is_updown = False
+                        if (tmp_i_master_line_tuple[0], 5) in i_master_line_tuple:
+                            direction = i_master_line_tuple[(tmp_i_master_line_tuple[0], 5)]
+                            if direction not in ['LEFT', 'RIGHT']:
+                                is_updown = True
+                        else:
+                            # If no direction specified, assume UP/DOWN
+                            is_updown = True
+
+                        if is_updown:
+                            # Only add to array if it's UP/DOWN direction
+                            wp_updown_offset_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 1], i_master_line_tuple[tmp_i_master_line_tuple[0], 7] * (line_offset_ratio_wp - 1.0)])
+                            master_line_tuple[tmp_i_master_line_tuple[0], 7] = i_master_line_tuple[tmp_i_master_line_tuple[0], 7] * line_offset_ratio_wp
+
                     if ns_def.check_tuple_num_exist(i_master_line_tuple, tmp_i_master_line_tuple[0], 8) == True:
-                        wp_width_offset_inche_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 1],i_master_line_tuple[tmp_i_master_line_tuple[0], 8] ])
-                        master_line_tuple[tmp_i_master_line_tuple[0], 8] = i_master_line_tuple[tmp_i_master_line_tuple[0],8]
-                elif tmp_i_master_line_tuple[1] == 2 and i_master_line_tuple[tmp_i_master_line_tuple[0],2] in wp_name_array:
+                        # Y-offset: keep original (not used for width)
+                        wp_width_offset_inche_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 1], i_master_line_tuple[tmp_i_master_line_tuple[0], 8]])
+                        master_line_tuple[tmp_i_master_line_tuple[0], 8] = i_master_line_tuple[tmp_i_master_line_tuple[0], 8]
+
+                elif tmp_i_master_line_tuple[1] == 2 and i_master_line_tuple[tmp_i_master_line_tuple[0], 2] in wp_name_array:
+                    # MODIFIED: Only apply X-offset for UP/DOWN connections
                     if ns_def.check_tuple_num_exist(i_master_line_tuple, tmp_i_master_line_tuple[0], 9) == True:
-                        wp_width_offset_inche_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 2],i_master_line_tuple[tmp_i_master_line_tuple[0], 9] * (line_offset_ratio_wp - 1.0)])
-                        master_line_tuple[tmp_i_master_line_tuple[0], 9] = i_master_line_tuple[tmp_i_master_line_tuple[0],9] * line_offset_ratio_wp
+                        # Check if this line's direction is UP/DOWN (not LEFT/RIGHT)
+                        is_updown = False
+                        if (tmp_i_master_line_tuple[0], 6) in i_master_line_tuple:
+                            direction = i_master_line_tuple[(tmp_i_master_line_tuple[0], 6)]
+                            if direction not in ['LEFT', 'RIGHT']:
+                                is_updown = True
+                        else:
+                            # If no direction specified, assume UP/DOWN
+                            is_updown = True
+
+                        if is_updown:
+                            # Only add to array if it's UP/DOWN direction
+                            wp_updown_offset_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 2], i_master_line_tuple[tmp_i_master_line_tuple[0], 9] * (line_offset_ratio_wp - 1.0)])
+                            master_line_tuple[tmp_i_master_line_tuple[0], 9] = i_master_line_tuple[tmp_i_master_line_tuple[0], 9] * line_offset_ratio_wp
+
                     if ns_def.check_tuple_num_exist(i_master_line_tuple, tmp_i_master_line_tuple[0], 10) == True:
-                        wp_width_offset_inche_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 2],i_master_line_tuple[tmp_i_master_line_tuple[0], 10] ])
-                        master_line_tuple[tmp_i_master_line_tuple[0], 10] = i_master_line_tuple[tmp_i_master_line_tuple[0],10]
+                        # Y-offset: keep original (not used for width)
+                        wp_width_offset_inche_array.append([i_master_line_tuple[tmp_i_master_line_tuple[0], 2], i_master_line_tuple[tmp_i_master_line_tuple[0], 10]])
+                        master_line_tuple[tmp_i_master_line_tuple[0], 10] = i_master_line_tuple[tmp_i_master_line_tuple[0], 10]
 
         write_to_section = '<<POSITION_LINE>>'
         offset_row = 2
@@ -1684,26 +1767,31 @@ class  ns_l1_master_create():
         offset_row = 0
 
         '''
-        Write <<STYLE_SHAPE>>
+        Write <<STYLE_SHAPE>> Modified at ve 2.6.1
         '''
         master_style_shape_tuple = {}
         line_wh_array = []
         tmp_tuple_row = 1
+        processed_hostnames = set()  # Track processed hostnames
+
+        # Process hostnames from master_udlr_array
         for tmp_master_udlr_array in master_udlr_array:
             for tmp_tmp_master_udlr_array in tmp_master_udlr_array[0]:
-                if len(tmp_tmp_master_udlr_array) < 4: # Modify Ver 1.1
+                if len(tmp_tmp_master_udlr_array) < 4:  # Modify Ver 1.1
                     continue
                 len_up = len(tmp_tmp_master_udlr_array[0])
                 len_down = len(tmp_tmp_master_udlr_array[1])
                 len_left = len(tmp_tmp_master_udlr_array[2])
                 len_right = len(tmp_tmp_master_udlr_array[3])
 
+            # MODIFIED: Only use UP/DOWN for width calculation
             if len_up >= len_down:
                 line_width = len_up
             else:
                 line_width = len_down
             line_width = ((line_width - 1) * line_offset_value) * (1 + wp_roundness)
 
+            # Height uses LEFT/RIGHT (unchanged)
             if len_left >= len_right:
                 line_hight = len_left
             else:
@@ -1711,7 +1799,10 @@ class  ns_l1_master_create():
             line_hight = ((line_hight - 1) * line_offset_value) * (1 + wp_roundness)
 
             #### get num char
-            num_char = ns_def.get_description_width_hight(self.shae_font_size,tmp_master_udlr_array[0][0])[0]
+            hostname = tmp_master_udlr_array[0][0]
+            processed_hostnames.add(hostname)  # Track processed hostname
+
+            num_char = ns_def.get_description_width_hight(self.shae_font_size, hostname)[0]
             if num_char > line_width:
                 line_width = num_char
             if shape_width_min > line_width:
@@ -1725,56 +1816,109 @@ class  ns_l1_master_create():
 
             # change color, way point
             for tmp_wp_array in wp_array:
-                if tmp_wp_array[1] == tmp_master_udlr_array[0][0]:
+                if tmp_wp_array[1] == hostname:
                     tmp_roundness = wp_roundness
                     tmp_color = color_wp
                     if tmp_wp_array[2] == 'RIGHT' or tmp_wp_array[2] == 'LEFT':  # ver 2.0  fixed wp roundness when RIGHT or LEFT
                         tmp_roundness = wp_roundness_right_left
 
             # change color, @Icon@
-            if '@Icon@' in str(tmp_master_udlr_array[0][0]):
+            if '@Icon@' in str(hostname):
                 tmp_color = color_atmark
 
-            line_wh_array.append([tmp_master_udlr_array[0][0],line_width,line_hight,tmp_roundness])
+            line_wh_array.append([hostname, line_width, line_hight, tmp_roundness])
 
-            master_style_shape_tuple[(tmp_tuple_row ,1)] = tmp_master_udlr_array[0][0]
+            master_style_shape_tuple[(tmp_tuple_row, 1)] = hostname
             master_style_shape_tuple[(tmp_tuple_row, 2)] = line_width
             master_style_shape_tuple[(tmp_tuple_row, 3)] = line_hight
             master_style_shape_tuple[(tmp_tuple_row, 4)] = tmp_roundness
             master_style_shape_tuple[(tmp_tuple_row, 5)] = tmp_color
             tmp_tuple_row += 1
 
-        ### increse offset value for WP , ver 1.12
+        # Add hostnames from shape_array that are not in master_udlr_array
+        for shape_item in shape_array:
+            hostname = shape_item[1]  # Extract hostname (2nd element)
+
+            # Skip special hostnames and already processed hostnames
+            if hostname in ['_tmp_', '_AIR_', '<END>', '<<POSITION_SHAPE>>', ''] or hostname in processed_hostnames:
+                continue
+
+            # Calculate default dimensions for new hostname
+            num_char = ns_def.get_description_width_hight(self.shae_font_size, hostname)[0]
+            line_width = num_char if num_char > shape_width_min else shape_width_min
+            line_hight = shape_hight_min
+
+            # Default roundness and color
+            tmp_roundness = 0
+            tmp_color = color_shape
+
+            # Check if it's a waypoint
+            for tmp_wp_array in wp_array:
+                if tmp_wp_array[1] == hostname:
+                    tmp_roundness = wp_roundness
+                    tmp_color = color_wp
+                    if tmp_wp_array[2] == 'RIGHT' or tmp_wp_array[2] == 'LEFT':
+                        tmp_roundness = wp_roundness_right_left
+
+            # Check if it's an icon
+            if '@Icon@' in str(hostname):
+                tmp_color = color_atmark
+
+            # Add to master_style_shape_tuple
+            master_style_shape_tuple[(tmp_tuple_row, 1)] = hostname
+            master_style_shape_tuple[(tmp_tuple_row, 2)] = line_width
+            master_style_shape_tuple[(tmp_tuple_row, 3)] = line_hight
+            master_style_shape_tuple[(tmp_tuple_row, 4)] = tmp_roundness
+            master_style_shape_tuple[(tmp_tuple_row, 5)] = tmp_color
+
+            line_wh_array.append([hostname, line_width, line_hight, tmp_roundness])
+
+            processed_hostnames.add(hostname)
+            tmp_tuple_row += 1
+
+        ### MODIFIED: Apply width increase using ONLY UP/DOWN offsets
         i_master_style_shape_tuple = master_style_shape_tuple
         for tmp_i_master_style_shape_tuple in i_master_style_shape_tuple:
             tmp_max_offset_width = 0
             if tmp_i_master_style_shape_tuple[1] == 1 and i_master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 1] in wp_name_array:
-                for tmp_wp_width_offset_inche_array in wp_width_offset_inche_array:
-                    if tmp_wp_width_offset_inche_array[0] == i_master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 1] and tmp_max_offset_width < tmp_wp_width_offset_inche_array[1]:
-                        tmp_max_offset_width = tmp_wp_width_offset_inche_array[1]
+                # Use wp_updown_offset_array instead of wp_width_offset_inche_array
+                for tmp_wp_updown_offset in wp_updown_offset_array:
+                    if tmp_wp_updown_offset[0] == i_master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 1] and tmp_max_offset_width < tmp_wp_updown_offset[1]:
+                        tmp_max_offset_width = tmp_wp_updown_offset[1]
 
+                # Apply width increase based on UP/DOWN connections only
                 master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 2] = i_master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 2] + (tmp_max_offset_width * 2) + 0.2
-                master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 3] = i_master_style_shape_tuple[ tmp_i_master_style_shape_tuple[0], 3] + shape_hight_offset_inches_wp
+                master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 3] = i_master_style_shape_tuple[tmp_i_master_style_shape_tuple[0], 3] + shape_hight_offset_inches_wp
 
-        #print('---- master_style_shape_tuple ---- ')
-        #print(master_style_shape_tuple)
+        # print('---- master_style_shape_tuple ---- ')
+        # print(master_style_shape_tuple)
 
         write_to_section = '<<STYLE_SHAPE>>'
         offset_row = 3
         ns_def.write_excel_meta(master_style_shape_tuple, self.excel_file_path, self.worksheet_name, write_to_section, offset_row, offset_column)
         offset_row = 0
 
+
+
+
+
         '''
-        Write <<POSITION_TAG>>
+        Write <<POSITION_TAG>> , Modified at ve 2.6.1
         '''
         master_line_tag_tuple = {}
         if flag_put_line_tag == True:
+            processed_hostnames = set()
+
+            # Process hostnames from master_style_shape_tuple
             for tmp_master_style_shape_tuple in master_style_shape_tuple:
                 if tmp_master_style_shape_tuple[1] == 1:
+                    hostname = master_style_shape_tuple[tmp_master_style_shape_tuple]
+                    processed_hostnames.add(hostname)
+
                     ### check max char num of shape's tag name
                     max_len_num = 1
                     for tmp_master_line_tuple in master_line_tuple:
-                        if master_line_tuple[tmp_master_line_tuple] == master_style_shape_tuple[tmp_master_style_shape_tuple]:
+                        if master_line_tuple[tmp_master_line_tuple] == hostname:
                             if tmp_master_line_tuple[1] == 1:
                                 tmp_len_char = len(master_line_tuple[tmp_master_line_tuple[0], 3])
                             elif tmp_master_line_tuple[1] == 2:
@@ -1782,17 +1926,18 @@ class  ns_l1_master_create():
                             if max_len_num < tmp_len_char:
                                 max_len_num = tmp_len_char
 
-                    master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 1)] = master_style_shape_tuple[tmp_master_style_shape_tuple]
+                    master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 1)] = hostname
                     master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 2)] = 'LINE'
-                    master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 5)] = max_len_num * tag_offet_inche
+                    master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 5)] = max_len_num * tag_offet_inche #From version 2.6.1, this value is no longer used.
                     master_line_tag_tuple[(tmp_master_style_shape_tuple[0], 6)] = 'YES'
 
-            #print('---- master_line_tag_tuple ---- ')
-            #print(master_line_tag_tuple)
+            # print('---- master_line_tag_tuple ---- ')
+            # print(master_line_tag_tuple)
             write_to_section = '<<POSITION_TAG>>'
             offset_row = 2
             ns_def.write_excel_meta(master_line_tag_tuple, self.excel_file_path, self.worksheet_name, write_to_section, offset_row, offset_column)
             offset_row = 0
+
 
         '''
         Calculate the best size of a Slide 
@@ -1803,114 +1948,28 @@ class  ns_l1_master_create():
         min_tag_inches = 0.3  # inches,  between side of folder and eghe shape. left and right.
 
         #### GET best width size ####
-        master_folder_size_array = ns_def.get_folder_width_size(master_folder_tuple,master_style_shape_tuple,master_shape_tuple,min_tag_inches)
-        #print('-----master_folder_size_array-----  ',master_folder_size_array)  #[slide_max_width_inches, master_width_size_y_grid ,master_folder_size,slide_max_hight_inches,master_hight_size_y_grid]
-        ori_master_folder_size_array = master_folder_size_array # add ver 2.6.0
-        #print(master_folder_tuple)
-        update_master_folder_tuple = {}
-        for tmp_master_width_size_y_grid in master_folder_size_array[1]:
-            for tmp_master_folder_size in master_folder_size_array[2]:
-                if tmp_master_width_size_y_grid[0] == tmp_master_folder_size[0]:
-                    if master_folder_size_array[0] == tmp_master_width_size_y_grid[1]: # check max width in the slide
-                        for tmp_master_folder_tuple in master_folder_tuple:
-                            if tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and master_folder_tuple[tmp_master_folder_tuple] == tmp_master_folder_size[1][0][0]:
-                                update_master_folder_tuple[tmp_master_folder_tuple[0]-1,tmp_master_folder_tuple[1]] = tmp_master_folder_size[1][0][1]
-                                update_master_folder_tuple[tmp_master_folder_tuple[0], tmp_master_folder_tuple[1]] = master_folder_tuple[tmp_master_folder_tuple]
-                            elif tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and master_folder_tuple[tmp_master_folder_tuple] == '':
-                                update_master_folder_tuple[tmp_master_folder_tuple[0] - 1, tmp_master_folder_tuple[1]] = tmp_master_width_size_y_grid[2]
-                                update_master_folder_tuple[tmp_master_folder_tuple[0], tmp_master_folder_tuple[1]] = ''
-                            elif tmp_master_folder_tuple[1] == 1: # write ALL column =1
-                                update_master_folder_tuple[tmp_master_folder_tuple] = master_folder_tuple[tmp_master_folder_tuple]
+        #### MODIFIED: Use common function from ns_cli instead of duplicating code
+        import ns_cli
 
-                    else: # insert empty folder to left and right side
-                        #print('-insert empty folder to left and right side - ', tmp_master_folder_size)
-                        tmp_max_row = 0
-                        tmp_max_column = 0
+        # Call the common function
+        update_master_folder_tuple = ns_cli.def_common.make_position_folder_tuple(
+            master_folder_tuple,
+            master_style_shape_tuple,
+            master_shape_tuple
+        )
 
-                        tmp_bothside_empty = (master_folder_size_array[0] - tmp_master_width_size_y_grid[1]) * 0.25
-                        #print('tmp_bothside_empty----  ',tmp_master_min_size_y_grid)
+        # Get original folder size array for root folder calculation
+        master_folder_size_array = ns_def.get_folder_width_size(
+            master_folder_tuple,
+            master_style_shape_tuple,
+            master_shape_tuple,
+            min_tag_inches
+        )
+        ori_master_folder_size_array = master_folder_size_array
 
-                        for tmp_master_folder_tuple in master_folder_tuple:
-                            ### set first column
-                            if tmp_master_folder_tuple[0] == tmp_master_folder_size[0]:
+        # print('--- update_master_folder_tuple ---  <<POSITION_FOLDER>> ')
+        # print(update_master_folder_tuple)
 
-                                #check to exist tuble 'master_folder_tuple[tmp_master_folder_tuple[0]-1,tmp_master_folder_tuple[1]-1]' # for bux fix 001
-                                flag_exist_POSITION_FOLDER = False
-                                flag_exist_SET_WIDTH = False
-                                for tmp_bug_fix_tuple in master_folder_tuple:
-                                    if tmp_bug_fix_tuple[0] == tmp_master_folder_tuple[0]-1 and tmp_bug_fix_tuple[1] == tmp_master_folder_tuple[1]-1:
-                                        if master_folder_tuple[tmp_master_folder_tuple[0]-1,tmp_master_folder_tuple[1]-1] == '<<POSITION_FOLDER>>':
-                                            flag_exist_POSITION_FOLDER = True
-                                        if master_folder_tuple[tmp_master_folder_tuple[0]-1,tmp_master_folder_tuple[1]-1] == '<SET_WIDTH>':
-                                            flag_exist_SET_WIDTH = True
-
-
-                                if tmp_master_folder_tuple[0] != 1 and tmp_master_folder_tuple[1] == 2 and (flag_exist_SET_WIDTH == True or flag_exist_POSITION_FOLDER == True):
-                                    update_master_folder_tuple[tmp_master_folder_tuple[0]-1, tmp_master_folder_tuple[1]] = tmp_bothside_empty
-                                elif tmp_master_folder_tuple[0] != 1 and tmp_master_folder_tuple[1] == 2 and flag_exist_SET_WIDTH == True and flag_exist_POSITION_FOLDER == True:
-                                    update_master_folder_tuple[tmp_master_folder_tuple[0], tmp_master_folder_tuple[1]] = ''
-
-                            ### set body
-                            if tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and tmp_master_folder_tuple[1] != 1:
-                                if tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and master_folder_tuple[tmp_master_folder_tuple] == tmp_master_folder_size[1][0][0]:
-                                    update_master_folder_tuple[tmp_master_folder_tuple[0] - 1, tmp_master_folder_tuple[1]+1] = tmp_master_folder_size[1][0][1]
-                                    update_master_folder_tuple[tmp_master_folder_tuple[0], tmp_master_folder_tuple[1]+1] = master_folder_tuple[tmp_master_folder_tuple]
-                                elif tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and master_folder_tuple[tmp_master_folder_tuple] == '':
-                                    update_master_folder_tuple[tmp_master_folder_tuple[0] - 1, tmp_master_folder_tuple[1]+1] = tmp_master_width_size_y_grid[2]
-                                    update_master_folder_tuple[tmp_master_folder_tuple[0], tmp_master_folder_tuple[1]+1] = ''
-
-                            ### set last coumn
-                            if tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and tmp_master_folder_tuple[0] > tmp_max_row:
-                                tmp_max_row = tmp_master_folder_tuple[0]
-                            if tmp_master_folder_tuple[0] == tmp_master_folder_size[0] and tmp_master_folder_tuple[1] > tmp_max_column:
-                                tmp_max_column = tmp_master_folder_tuple[1]
-
-                        if (tmp_max_column + 2) == 3:
-                            #kyusai only empty row
-                            update_master_folder_tuple[tmp_max_row -1, tmp_max_column + 1] = 10
-                        else:
-                            update_master_folder_tuple[tmp_max_row - 1, tmp_max_column + 2] = tmp_bothside_empty
-                            update_master_folder_tuple[tmp_max_row, tmp_max_column + 2] = ''
-
-        flag_wp_only = True
-        for tmp_master_folder_size in master_folder_size_array[2]:
-            if tmp_master_width_size_y_grid[0] == tmp_master_folder_size[0]:
-                if '_wp_' not in str(tmp_master_folder_size[1][0][0]):
-                    flag_wp_only = False
-                    break
-
-        ####only way point
-        if flag_wp_only == True:
-            for tmp_tmp_master_folder_tuple in master_folder_tuple:
-                if tmp_master_width_size_y_grid[0] == tmp_tmp_master_folder_tuple[0] and tmp_tmp_master_folder_tuple[1] != 1:
-                    #update_master_folder_tuple[tmp_tmp_master_folder_tuple ] = master_folder_tuple[tmp_tmp_master_folder_tuple]
-                    if ns_def.check_tuple_num_exist(update_master_folder_tuple,tmp_tmp_master_folder_tuple[0]-1, tmp_tmp_master_folder_tuple[1]+2) == True:
-                        update_master_folder_tuple[tmp_tmp_master_folder_tuple[0]-1,tmp_tmp_master_folder_tuple[1]] = update_master_folder_tuple[tmp_tmp_master_folder_tuple[0]-1,tmp_tmp_master_folder_tuple[1]+2]
-                    else:
-                        update_master_folder_tuple[tmp_tmp_master_folder_tuple[0] - 1, tmp_tmp_master_folder_tuple[1]] = 0.999
-                elif master_folder_tuple[tmp_tmp_master_folder_tuple] == 0.999: ###bug fix 001###
-                    update_master_folder_tuple[tmp_tmp_master_folder_tuple] = master_folder_tuple[tmp_tmp_master_folder_tuple]
-
-
-
-        #### update best hight size ####
-        pre_update_master_folder_tuple = update_master_folder_tuple
-        update_master_folder_tuple = {}
-        for tmp_pre_update_master_folder_tuple in pre_update_master_folder_tuple:
-            if tmp_pre_update_master_folder_tuple[1] != 1 or pre_update_master_folder_tuple[tmp_pre_update_master_folder_tuple] == '<SET_WIDTH>':
-                update_master_folder_tuple[tmp_pre_update_master_folder_tuple] = pre_update_master_folder_tuple[tmp_pre_update_master_folder_tuple]
-            else:
-                for tmp_master_folder_size_array in master_folder_size_array[4]:
-                    if tmp_master_folder_size_array[0] == tmp_pre_update_master_folder_tuple[0]:
-                        update_master_folder_tuple[tmp_pre_update_master_folder_tuple] = tmp_master_folder_size_array[1]
-
-        #print('--- update_master_folder_tuple ---  <<POSITION_FOLDER>> ')
-        #print(update_master_folder_tuple)
-
-        ''' Additional fix related to bug 1~3 at ver 2.3.4'''
-        if (1, 2) not in update_master_folder_tuple and (2, 3) in update_master_folder_tuple and (1, 4) in update_master_folder_tuple:
-            if isinstance(update_master_folder_tuple[(2, 3)], str) and '_wp_' in update_master_folder_tuple[(2, 3)]:
-                update_master_folder_tuple[1, 2] = update_master_folder_tuple[1, 4]
 
         ### write excel meta ###
         write_to_section = '<<POSITION_FOLDER>>'
@@ -1925,6 +1984,7 @@ class  ns_l1_master_create():
         ppt_max_width = 5600  #  inches  , change 56->5600 at ver 2.1 for large size
         ppt_max_hight = 5600   #  inches  , change 56->5600 at ver 2.1 for large size
 
+        #These values have been changed to be unused at ver 2.6.1
         self.root_left = 0.28
         self.root_top  = 1.42
         self.root_width = math.ceil(ori_master_folder_size_array[0])  #change at ver 2.6.0
@@ -1963,12 +2023,19 @@ class  ns_l1_master_create():
         #print(master_root_folder_tuple)
 
         '''
-        Write <<ATTRIBUTE>> at ver 2.4.0
+        Write <<ATTRIBUTE>> at ver 2.4.0. Modified at Ver 2.6.1
         '''
+        # Create master_attribute_tuple from master_style_shape_tuple
         master_attribute_tuple = {}
+        processed_hostnames = set()  # Track processed hostnames
+
         for tmp_master_style_shape_tuple in master_style_shape_tuple:
             if tmp_master_style_shape_tuple[1] == 1:
-                master_attribute_tuple[(tmp_master_style_shape_tuple[0], 1)] = master_style_shape_tuple[tmp_master_style_shape_tuple]
+                hostname = master_style_shape_tuple[tmp_master_style_shape_tuple]
+                processed_hostnames.add(hostname)
+
+                master_attribute_tuple[(tmp_master_style_shape_tuple[0], 1)] = hostname
+
                 if master_style_shape_tuple[(tmp_master_style_shape_tuple[0], 5)] == 'GREEN':
                     # SET 'GREEN'
                     master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'DEVICE\',[235, 241, 222]]'
@@ -1979,8 +2046,33 @@ class  ns_l1_master_create():
                     # Others
                     master_attribute_tuple[(tmp_master_style_shape_tuple[0], 2)] = '[\'<EMPTY>\', [232, 232, 232]]'
 
+                for i in range(3, 11):
+                    master_attribute_tuple[(tmp_master_style_shape_tuple[0], i)] = '[\'<EMPTY>\', [255, 255, 255]]'
+
+        # Get the next available row number
+        if master_attribute_tuple:
+            next_row = max(key[0] for key in master_attribute_tuple.keys() if key[1] == 1) + 1
+        else:
+            next_row = 1
+
+        # Add hostnames from shape_array that are not in master_style_shape_tuple
+        for shape_item in shape_array:
+            hostname = shape_item[1]  # Extract hostname (2nd element)
+
+            # Skip special hostnames and already processed hostnames
+            if hostname in ['_tmp_', '_AIR_', '<END>', '<<POSITION_SHAPE>>', ''] or hostname in processed_hostnames:
+                continue
+
+            # Add as DEVICE with GREEN color
+            master_attribute_tuple[(next_row, 1)] = hostname
+            master_attribute_tuple[(next_row, 2)] = '[\'DEVICE\',[235, 241, 222]]'
+
+            # Set remaining columns (3-10) as EMPTY
             for i in range(3, 11):
-                master_attribute_tuple[(tmp_master_style_shape_tuple[0], i)] = '[\'<EMPTY>\', [255, 255, 255]]'
+                master_attribute_tuple[(next_row, i)] = '[\'<EMPTY>\', [255, 255, 255]]'
+
+            processed_hostnames.add(hostname)
+            next_row += 1
 
         write_to_section = '<<ATTRIBUTE>>'
         offset_row = 2

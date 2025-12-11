@@ -954,9 +954,10 @@ class ns_front_run():
             # create l1 summary_diagram, Add at Ver 2.3.4
             if self.click_value == '2-4-3':
                 import ns_extensions
+                self.flag_summary_diagram = True
                 ns_extensions.summary_diagram.export_summary_diagram(self,'Dummy')
-
                 ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+                self.flag_summary_diagram = False
 
                 # remove exist ppt file
                 if os.path.isfile(self.excel_maseter_file_backup) == True and ns_def.check_file_locked(self.excel_maseter_file_backup) == False:
@@ -997,9 +998,10 @@ class ns_front_run():
             # create l1 summary_diagram, Add at Ver 2.5.5
             if self.click_value == '2-4-4':
                 import ns_extensions
+                self.flag_summary_diagram = True
                 ns_extensions.summary_diagram.export_summary_diagram(self,'Dummy')
-
                 ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+                self.flag_summary_diagram = False
 
                 # remove exist ppt file
                 if os.path.isfile(self.excel_maseter_file_backup) == True and ns_def.check_file_locked(self.excel_maseter_file_backup) == False:
