@@ -7,8 +7,8 @@
 '''
 File path information used in the command reference
 '''
-[file path]/network_sketcher.py = "<Input your file path>/network_sketcher.py"
-[master file path] = "<Input your file path>/\[MASTER]no_data.xlsx"
+[file path]/network_sketcher.py = "<Input your file path>\network_sketcher.py"
+[master file path] = "<Input your file path>\[MASTER]no_data.xlsx"
 
 '''
 All data in the master file
@@ -1915,3 +1915,4 @@ Before generating commands, verify:
 - ✅ **Right-side devices are in right columns**
 - ✅ **_AIR_ is used to preserve spacing and symmetry**
 - ✅ **Vertical relationships match diagram (top-bottom)**
+
