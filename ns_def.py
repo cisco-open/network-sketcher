@@ -507,7 +507,7 @@ def return_shape_tuple(current_shape_array ,start_row):
 def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_shape_tuple, min_tag_inches):
     # print(master_shape_tuple)
     # add parameter at ver2.1 for large size
-    folder_width_ratio = 0.5  # add at ver 2.1 for large size (applied at output only)
+    folder_width_ratio = 0.8  # add at ver 2.1 for large size (applied at output only). 0.5 -> 0.8 changed at ver 2.6.1a
     air_fixed_width = 0.5  # FIXED width for _AIR_ in master_shape_tuple only
 
     # Helper function to apply ratio and round up to prevent value degradation
