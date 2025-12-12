@@ -112,7 +112,7 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 
 # Performance Measurement Summary
 
-| Item                                               | 16 Devices (4x4)) | 64 Devices (8x8) | 256 Devices (16x16) | 1024 Devices (32x32) |
+| Item                                               | 16 Devices (4x4) | 64 Devices (8x8) | 256 Devices (16x16) | 1024 Devices (32x32) |
 |----------------------------------------------------|-----------:|-----------:|------------:|-------------:|
 | Master file creation (Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.)                               | 1m55s      | 7m36s      | 50m31s      | TBD          |
 | Layer 1 diagram generation (All Areas with tags)   | 2s         | 5s         | 27s         | TBD          |
@@ -176,6 +176,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
