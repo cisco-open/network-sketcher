@@ -121,9 +121,9 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
 | Device file export                                 | 5s         | 14s        | 51s         | TBD          |
 
 ---
-Network Skecher Ver: 2.6.1a
 Status: Python code not yet optimized; code optimization, multi-processor support, and GPU support are not yet implemented. <br>
-Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise
+Network Skecher Ver: 2.6.1a <br>
+Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise <br>
 
 
 # SAMPLE
@@ -176,6 +176,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
