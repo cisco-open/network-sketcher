@@ -127,7 +127,7 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 
 # GUI vs. CLI Feature Support Matrix
 
-| Feature Item | GUI | CLI |
+| Feature Item | GUI | CLI (AI Context) |
 | --- | --- | --- |
 | Create master file from PowerPoint rough sketch | ✅ | ❌ |
 | Convert master files from Visio, Draw.io, NetBox, CML | ✅ | ❌ |
@@ -201,6 +201,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
