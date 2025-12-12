@@ -102,11 +102,29 @@ sudo apt-get install python3-tk
 | ------------- | ------------- |
 | English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D) |
 | Japanese  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BJP%5D) |
+<br>
  
 # How to create the exe file for Windows using pyinstaller
  ```bash
 pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinterdnd2 --additional-hooks-dir  [file path] --clean --add-data "./ns_extensions_cmd_list.txt;." --add-data "./ns_logo.png;."
  ```
+<br>
+
+# Performance Measurement Summary
+
+| Item                                               | 16 Devices (4x4)) | 64 Devices (8x8) | 256 Devices (16x16) | 1024 Devices (32x32) |
+|----------------------------------------------------|-----------:|-----------:|------------:|-------------:|
+| Master file creation (Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.)                               | 1m55s      | 7m36s      | 50m31s      | TBD          |
+| Layer 1 diagram generation (All Areas with tags)   | 2s         | 5s         | 27s         | TBD          |
+| Layer 2 diagram generation                         | 3s         | 14s        | 9m22s       | TBD          |
+| Layer 3 diagram generation (All Areas)             | 13s        | 29s        | 2m42s       | TBD          |
+| Device file export                                 | 5s         | 14s        | 51s         | TBD          |
+
+---
+
+Status: Python code not yet optimized; code optimization, multi-processor support, and GPU support are not yet implemented. <br>
+Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise
+
 
 # SAMPLE
 ## Input ppt file (rough sketch)
@@ -158,6 +176,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
