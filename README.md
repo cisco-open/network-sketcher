@@ -46,6 +46,7 @@ Although Network Sketcher now supports multiple formats, it is not intended to r
 - A DEVICE file contains multiple sheets, but only one sheet should be updated at a time. Simultaneous synchronization of multiple sheet updates is not supported.
 - Do not use Network Skecher on master files in your One Drive folder.
 - Deleting Layer 1 links using the GUI cannot identify individual interfaces and will delete more Layer 2 data than intended. Use the CLI command (delete l1_link) to delete Layer 1 links.
+- GUI drag and drop doesn't work on Ubuntu, you need to compile tkdnd from source or use "Browse" and "Submit".
  
 # Requirement
 - __Network Sketcher supports cross-platform. Works with Windows, Mac OS, and Linux.__
@@ -76,7 +77,6 @@ python3 network_sketcher.py
 # Installation Supplement
  * Alternative to “python -m pip install -r requirements.txt”
 ```bash
-python3 -m pip install tkinterdnd2-universal
 python3 -m pip install tkinterdnd2
 python3 -m pip install "openpyxl>=3.1.3,<=3.1.5"
 python3 -m pip install python-pptx
@@ -91,6 +91,7 @@ python3 -m pip install svg.path
 * Mac OS requires the following additional installation.
 ```bash
 brew install tcl-tk
+brew install tkdnd
 ```
 * Ubuntu requires the following additional installation.
 ```bash
@@ -201,6 +202,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
