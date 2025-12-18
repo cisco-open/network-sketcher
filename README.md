@@ -77,6 +77,7 @@ python3 network_sketcher.py
  * Alternative to “python -m pip install -r requirements.txt”
 ```bash
 python3 -m pip install tkinterdnd2-universal
+python3 -m pip install tkinterdnd2
 python3 -m pip install "openpyxl>=3.1.3,<=3.1.5"
 python3 -m pip install python-pptx
 python3 -m pip install ipaddress
@@ -200,6 +201,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
