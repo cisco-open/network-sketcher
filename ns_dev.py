@@ -20,6 +20,7 @@ import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os
 import ns_def, ns_vpn_diagram_create
 import openpyxl
+import time
 
 class ns_front_run():
     def __init__(self):
@@ -1361,105 +1362,106 @@ class ns_front_run():
             self.inFileTxt_L3_3_1.insert(tk.END, full_filepath)
 
         if click_value == 'L3-3-2' or click_value == 'L3-3-3':  # select create from master
-            full_filepath = self.inFileTxt_L3_3_1.get()
-            iDir = os.path.dirname(full_filepath)
-            basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
+            _t0 = time.perf_counter()
+            try:
+                full_filepath = self.inFileTxt_L3_3_1.get()
+                iDir = os.path.dirname(full_filepath)
+                basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
 
-            self.y_grid_segment_array = []
-            self.flag_second_page = False
-            self.flag_re_create = False
-            self.per_index2_before_array = [0.0]
-            self.per_index2_after_array  = [0.0]
-            self.last_case_offset = 0.0
+                self.y_grid_segment_array = []
+                self.flag_second_page = False
+                self.flag_re_create = False
+                self.per_index2_before_array = [0.0]
+                self.per_index2_after_array = [0.0]
+                self.last_case_offset = 0.0
 
-            if click_value == 'L3-3-2':
-                self.click_value = 'L3-3-2'
-                self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
-                self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L3_DIAGRAM]PerArea_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
-                self.output_ppt_file = self.outFileTxt_L3_3_4_1.get()
+                if click_value == 'L3-3-2':
+                    self.click_value = 'L3-3-2'
+                    self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
+                    self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L3_DIAGRAM]PerArea_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+                    self.output_ppt_file = self.outFileTxt_L3_3_4_1.get()
 
-                # check : file is being opened
-                if ns_def.check_file_open(self.outFileTxt_L3_3_4_1.get()) == True:
-                    return ()
+                    if ns_def.check_file_open(self.outFileTxt_L3_3_4_1.get()) == True:
+                        return ()
 
-                # remove exist L3 file
-                if os.path.isfile(self.outFileTxt_L3_3_4_1.get()) == True:
-                    os.remove(self.outFileTxt_L3_3_4_1.get())
+                    if os.path.isfile(self.outFileTxt_L3_3_4_1.get()) == True:
+                        os.remove(self.outFileTxt_L3_3_4_1.get())
 
-            # check Master_Data_L3 sheet already exits in Excel Master data file
-            import ns_l3_diagram_create
-            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                import ns_l3_diagram_create
+                ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
-            # view complete
+            finally:
+                print(f"\n{'=' * 40}")
+                print(f"[TOTAL TIME] : {time.perf_counter() - _t0:.3f}s")
+                print(f"{'=' * 40}")
+
             ns_def.messagebox_file_open(self.output_ppt_file)
 
         if click_value == 'L3-4-1':  # For All Areas L3 Diagram at ver 2.3.0
-            import ns_l3_diagram_create
-            self.add_shape_array = []  # add parameter at Ver 2.3.3
-            self.add_shape_write_array = []  # add parameter at Ver 2.3.3
+            _t0 = time.perf_counter()
+            try:
+                import ns_l3_diagram_create
+                self.add_shape_array = []
+                self.add_shape_write_array = []
 
-            full_filepath = self.inFileTxt_L3_3_1.get()
-            iDir = os.path.dirname(full_filepath)
-            basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
+                full_filepath = self.inFileTxt_L3_3_1.get()
+                iDir = os.path.dirname(full_filepath)
+                basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
 
-            self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
-            self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L3_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
-
-            # Modify Master file for L3 VPN. add ver 2.3.2
-            if self.click_value_VPN == 'VPN-1-3':
                 self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
-                self.outFileTxt_L3_3_4_1.insert(tk.END,iDir + ns_def.return_os_slash() + '[VPNs_on_L3]' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
+                self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L3_DIAGRAM]AllAreas_' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
 
-            self.outFileTxt_L3_3_5_1.delete(0, tkinter.END)
-            self.outFileTxt_L3_3_5_1.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext.replace('[MASTER]', '__TMP__[MASTER]') + '.xlsx')
-            self.output_ppt_file = self.outFileTxt_L3_3_4_1.get()
-            self.excel_maseter_file_backup = self.outFileTxt_L3_3_5_1.get()
+                if self.click_value_VPN == 'VPN-1-3':
+                    self.outFileTxt_L3_3_4_1.delete(0, tkinter.END)
+                    self.outFileTxt_L3_3_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[VPNs_on_L3]' + basename_without_ext.replace('[MASTER]', '') + '.pptx')
 
-            # check : file is being opened
-            if ns_def.check_file_open(self.outFileTxt_L3_3_4_1.get()) == True:
-                return ()
+                self.outFileTxt_L3_3_5_1.delete(0, tkinter.END)
+                self.outFileTxt_L3_3_5_1.insert(tk.END, iDir + ns_def.return_os_slash() + basename_without_ext.replace('[MASTER]', '__TMP__[MASTER]') + '.xlsx')
+                self.output_ppt_file = self.outFileTxt_L3_3_4_1.get()
+                self.excel_maseter_file_backup = self.outFileTxt_L3_3_5_1.get()
 
-            # remove exist L3 file and backup xlsx file
-            if os.path.isfile(self.outFileTxt_L3_3_4_1.get()) == True:
-                os.remove(self.outFileTxt_L3_3_4_1.get())
+                if ns_def.check_file_open(self.outFileTxt_L3_3_4_1.get()) == True:
+                    return ()
 
-            if os.path.isfile(self.outFileTxt_L3_3_5_1.get()) == True:
-                os.remove(self.outFileTxt_L3_3_5_1.get())
+                if os.path.isfile(self.outFileTxt_L3_3_4_1.get()) == True:
+                    os.remove(self.outFileTxt_L3_3_4_1.get())
 
-            # Create a master file that merges multiple areas into one area
-            ns_l3_diagram_create.create_master_file_one_area.__init__(self)
+                if os.path.isfile(self.outFileTxt_L3_3_5_1.get()) == True:
+                    os.remove(self.outFileTxt_L3_3_5_1.get())
 
-            # Modify Master file for L3 VPN. add ver 2.3.2
-            self.vpn_hostname_if_list = []
-            if self.click_value_VPN == 'VPN-1-3':
-                ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
+                ns_l3_diagram_create.create_master_file_one_area.__init__(self)
 
-            # Create a one ppt page of file containing all areas of the L3 diagram
-            self.click_value = 'L3-3-2'
-            self.click_value_l3 = 'L3-4-1'
-            self.global_wp_array = []
-            self.update_start_area_array = []
-            self.y_grid_segment_array = []
+                self.vpn_hostname_if_list = []
+                if self.click_value_VPN == 'VPN-1-3':
+                    ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
 
-            self.flag_second_page = False
-            self.flag_re_create = False
-            self.per_index2_before_array = [0.0]
-            self.per_index2_after_array  = [0.0]
+                self.click_value = 'L3-3-2'
+                self.click_value_l3 = 'L3-4-1'
+                self.global_wp_array = []
+                self.update_start_area_array = []
+                self.y_grid_segment_array = []
 
-            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                self.flag_second_page = False
+                self.flag_re_create = False
+                self.per_index2_before_array = [0.0]
+                self.per_index2_after_array = [0.0]
 
-            ### add re-create for y-grid offset at ver 2.4.1
-            self.flag_re_create = True
-            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
-            self.flag_second_page = True
-            ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                self.flag_re_create = True
+                ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
-            # remove exist L3 file and backup xlsx file
-            if os.path.isfile(self.outFileTxt_L3_3_5_1.get()) == True:
-                os.remove(self.outFileTxt_L3_3_5_1.get())
+                #self.flag_second_page = True
+                #ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
 
-            # view complete
+                if os.path.isfile(self.outFileTxt_L3_3_5_1.get()) == True:
+                    os.remove(self.outFileTxt_L3_3_5_1.get())
+
+            finally:
+                print(f"\n{'=' * 40}")
+                print(f"[TOTAL TIME] : {time.perf_counter() - _t0:.3f}s")
+                print(f"{'=' * 40}")
+
             ns_def.messagebox_file_open(self.output_ppt_file)
 
         if click_value == 'ATTR-1-1':  # add Attribute table to device file at ver 2.4.0

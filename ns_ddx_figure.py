@@ -28,6 +28,8 @@ import sys, os
 import openpyxl
 import math
 import unicodedata
+import time
+import json
 
 class  ns_ddx_figure_run():
     def __init__(self):
@@ -67,7 +69,7 @@ class  ns_ddx_figure_run():
             else:
                 self.active_ppt.slide_height = Inches(self.root_hight + self.root_top * 1.5)
 
-        self.input_ppt_mata_excel = openpyxl.load_workbook(ppt_meta_file)
+        self.input_ppt_mata_excel = openpyxl.load_workbook(ppt_meta_file, data_only=True)
 
         ### shared open setting values
         self.coord_list = []  # coord list of folders and shapes
@@ -78,59 +80,44 @@ class  ns_ddx_figure_run():
         self.shape_font_type = 'Calibri'
         self.shae_font_size = 6  # Pt
 
+        self._section_row_cache = {}
+
         '''main'''
         if self.ws_name_PPT_META != '<ALL_Worksheets>':
-            ### select active worksheet
             self.input_ppt_mata_excel.active = self.input_ppt_mata_excel[self.ws_name_PPT_META]
 
-            ### add new slide
             ns_ddx_figure_run.add_slide(self)
-
-            ### add root folder and get location
             ns_ddx_figure_run.add_root_folder(self)
-
-            ### add sub folders from excel also shapes
             ns_ddx_figure_run.add_sub_folder(self)
 
-            ### add l2 material for l2 shape ###
             if self.click_value == 'L2-3-2':
-                self.if_tag_left_array = [] # bug fix at ver 2.5.5
+                ns_ddx_figure_run.prepare_l2_shared_data(self)
+                self.new_direction_if_2_array = self.shared_new_direction_if_array
+                self.if_tag_left_array = []
                 ns_ddx_figure_run.add_l2_material(self)
                 ns_ddx_figure_run.add_l2_line(self)
-                extended.offset_device_width(self) # bug fix at ver 2.5.5
+                extended.offset_device_width(self)
 
-            ### add line between folder and shape
             if self.click_value != 'L2-3-2':
                 ns_ddx_figure_run.add_line(self)
 
-            ### last, save_pptx
             ns_ddx_figure_run.save_pptx(self)
 
         else:
-            print('<ALL_Worksheets>  selected')
+            print('<ALL_Worksheets> selected')
             ws_list = self.input_ppt_mata_excel.sheetnames
 
             for ws_name in ws_list:
-                ### select active worksheet
                 self.input_ppt_mata_excel.active = self.input_ppt_mata_excel[ws_name]
+                self.coord_list = []
 
-                ### clear coord_list
-                self.coord_list = []  # coord list of folders and shapes
+                self._section_row_cache = {}
 
-                ### add new slide
                 ns_ddx_figure_run.add_slide(self)
-
-                ### add root folder and get location
                 ns_ddx_figure_run.add_root_folder(self)
-
-                ### add sub folders from excel also shapes
                 ns_ddx_figure_run.add_sub_folder(self)
-
-                ### add line between folder and shape
                 ns_ddx_figure_run.add_line(self)
 
-
-            ### last, save_pptx
             ns_ddx_figure_run.save_pptx(self)
 
     def add_slide(self):
@@ -1252,1373 +1239,1342 @@ class  ns_ddx_figure_run():
     def save_pptx(self):
         self.active_ppt.save(self.output_ppt_file)
 
+    def prepare_l2_shared_data(self):
+        """
+        Prepare shared L2 data structures once
+        This dramatically speeds up processing for large device counts
+        """
+        import ns_def
+
+        #print("\n" + "=" * 70)
+        #print("Preparing Shared L2 Data Structures")
+        #print("=" * 70)
+
+        prep_start = time.time()
+
+        # ===== Prepare new_l2_table_array =====
+        #print("  Phase 1: Processing L2 table...")
+        self.shared_new_l2_table_array = []
+        for tmp_l2_table_array in self.l2_table_array:
+            if tmp_l2_table_array[0] != 1 and tmp_l2_table_array[0] != 2:
+                tmp_l2_table_array[1].extend(['', '', '', '', '', '', '', ''])
+                del tmp_l2_table_array[1][8:]
+                self.shared_new_l2_table_array.append(tmp_l2_table_array)
+
+        self.shared_new_l2_table_tuple = ns_def.convert_array_to_tuple(self.shared_new_l2_table_array)
+
+        # ===== Prepare update_l2_table_array =====
+        #print("  Phase 2: Updating L2 table with interface types...")
+        self.shared_update_l2_table_array = []
+
+        for tmp_tmp_new_l2_table_array in self.shared_new_l2_table_array:
+            offset_excel = 2
+            tmp_new_l2_table_array = tmp_tmp_new_l2_table_array[1]
+
+            if tmp_new_l2_table_array[offset_excel + 3] == "":
+                if tmp_new_l2_table_array[offset_excel + 4] == "":
+                    if tmp_new_l2_table_array[offset_excel + 1] == "":
+                        tmp_new_l2_table_array[offset_excel] = ''
+                    else:
+                        tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+                else:
+                    if tmp_new_l2_table_array[offset_excel + 1] == "":
+                        tmp_new_l2_table_array[offset_excel] = ''
+                    else:
+                        tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
+            else:
+                if tmp_new_l2_table_array[offset_excel + 1] == "":
+                    tmp_new_l2_table_array[offset_excel] = ''
+                else:
+                    tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
+
+            offset_excel = 4
+            if tmp_new_l2_table_array[offset_excel + 1] == "":
+                if tmp_new_l2_table_array[offset_excel + 1] == "":
+                    tmp_new_l2_table_array[offset_excel] = ''
+                else:
+                    tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+            else:
+                if tmp_new_l2_table_array[offset_excel + 2] == "":
+                    if tmp_new_l2_table_array[offset_excel - 1] == "":
+                        tmp_new_l2_table_array[offset_excel] = 'Loopback (L3)'
+                    else:
+                        tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+                else:
+                    if tmp_new_l2_table_array[offset_excel - 1] == "":
+                        tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+                    else:
+                        tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
+
+            self.shared_update_l2_table_array.append(tmp_new_l2_table_array)
+
+        # ===== Prepare device L2 segment names =====
+        #print("  Phase 3: Extracting L2 segment names...")
+        self.shared_device_l2name_array = []
+        self.shared_unique_l2name_array = []
+
+        for tmp_new_l2_table_array in self.shared_new_l2_table_array:
+            if tmp_new_l2_table_array[1][6] != '':
+                tmp_l2seg = []
+                for tmp_char in tmp_new_l2_table_array[1][6].split(','):
+                    tmp_char = tmp_char.replace(' ', '')
+                    tmp_l2seg.append(tmp_char.strip())
+                    for tmp_tmp_char in tmp_l2seg:
+                        if tmp_tmp_char not in self.shared_unique_l2name_array:
+                            self.shared_unique_l2name_array.append(tmp_tmp_char)
+
+                self.shared_device_l2name_array.append([tmp_new_l2_table_array[1][1], tmp_l2seg])
+
+        self.shared_unique_l2name_array.sort()
+
+        # ===== Prepare device and WP lists =====
+        #print("  Phase 4: Building device and waypoint lists...")
+        self.shared_device_list_array = []
+        self.shared_wp_list_array = []
+
+        for tmp_new_l2_table_array in self.shared_new_l2_table_array:
+            device_name = tmp_new_l2_table_array[1][1]
+            if device_name not in self.shared_device_list_array and device_name not in self.shared_wp_list_array:
+                if tmp_new_l2_table_array[1][0] == 'N/A':
+                    self.shared_wp_list_array.append(device_name)
+                else:
+                    self.shared_device_list_array.append(device_name)
+
+        self.shared_shape_list_array = self.shared_device_list_array[:]
+        self.shared_shape_list_array.extend(self.shared_wp_list_array)
+
+        # ===== Prepare shape_if_array =====
+        #print("  Phase 5: Building interface arrays...")
+        self.shared_shape_if_array = []
+        for tmp_shape_list_array in self.shared_shape_list_array:
+            tmp_shape_if_array = []
+            for tmp_new_l2_table_array in self.shared_new_l2_table_array:
+                if tmp_shape_list_array == tmp_new_l2_table_array[1][1] and tmp_new_l2_table_array[1][3] != '':
+                    tmp_shape_if_array.append(tmp_new_l2_table_array[1][3])
+            self.shared_shape_if_array.append([tmp_shape_list_array, tmp_shape_if_array])
+
+        # ===== Prepare modify_position arrays =====
+        #print("  Phase 6: Processing position arrays...")
+        self.shared_modify_position_shape_array = []
+        for tmp_position_shape_array in self.position_shape_array:
+            if tmp_position_shape_array[0] != 1 and tmp_position_shape_array[1][0] != '<END>':
+                if tmp_position_shape_array[1][0] != '':
+                    tmp_folder_name = tmp_position_shape_array[1][0]
+                else:
+                    tmp_position_shape_array[1][0] = tmp_folder_name
+                self.shared_modify_position_shape_array.append(tmp_position_shape_array)
+
+        self.shared_modify_position_folder_array = []
+        for tmp_position_folder_array in self.position_folder_array:
+            if tmp_position_folder_array[0] != 1 and tmp_position_folder_array[1][0] != '<SET_WIDTH>':
+                tmp_position_folder_array[1][0] = ''
+                self.shared_modify_position_folder_array.append(tmp_position_folder_array)
+
+        # ===== Calculate direction arrays for ALL devices =====
+        #print("  Phase 7: Calculating interface directions (this may take a moment)...")
+        direction_if_array = []
+
+        for shape_idx, tmp_shape_if_array in enumerate(self.shared_shape_if_array):
+            #if (shape_idx + 1) % 50 == 0:
+            #    print(f"    Processing device {shape_idx + 1}/{len(self.shared_shape_if_array)}...")
+
+            tmp_direction_if_array = [tmp_shape_if_array[0], [], [], [], []]
+
+            for tmp_tmp_shape_if_array in tmp_shape_if_array[1]:
+                for tmp_position_line_tuple in self.position_line_tuple:
+                    if tmp_position_line_tuple[0] != 1 and tmp_position_line_tuple[0] != 2 and (tmp_position_line_tuple[1] == 1 or tmp_position_line_tuple[1] == 2):
+                        if tmp_position_line_tuple[1] == 1:
+                            offet_column = 0
+                        elif tmp_position_line_tuple[1] == 2:
+                            offet_column = 1
+
+                        if self.position_line_tuple[tmp_position_line_tuple[0], tmp_position_line_tuple[1]] == tmp_shape_if_array[0]:
+                            tmp_tag = self.position_line_tuple[tmp_position_line_tuple[0], 3 + offet_column]
+                            target = ' '
+                            idx = tmp_tag.find(target)
+                            modify_if_name = self.position_line_tuple[tmp_position_line_tuple[0], 13 + offet_column * 4] + ' ' + tmp_tag[idx + 1:]
+
+                            if tmp_tmp_shape_if_array == modify_if_name:
+                                if self.position_line_tuple[tmp_position_line_tuple[0], 5 + offet_column] == 'RIGHT':
+                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2] if self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2] != '' else 0.0
+                                    tmp_direction_if_array[3].extend([[modify_if_name, tmp_tag_offset]])
+                                elif self.position_line_tuple[tmp_position_line_tuple[0], 5 + offet_column] == 'LEFT':
+                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2] if self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2] != '' else 0.0
+                                    tmp_direction_if_array[4].extend([[modify_if_name, tmp_tag_offset]])
+                                else:
+                                    if offet_column == 0:
+                                        opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0], tmp_position_line_tuple[1] + 1]
+                                    else:
+                                        opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0], tmp_position_line_tuple[1] - 1]
+
+                                    if tmp_shape_if_array[0] in self.shared_wp_list_array or opposite_device_name in self.shared_wp_list_array:
+                                        origin_folder_name = ''
+                                        opposite_folder_name = ''
+                                        for tmp_modify_position_shape_array in self.shared_modify_position_shape_array:
+                                            update_tmp_modify_position_shape_array = tmp_modify_position_shape_array[1]
+                                            for index_31, tmp_update_tmp_modify_position_shape_array in enumerate(update_tmp_modify_position_shape_array):
+                                                if index_31 != 0:
+                                                    if tmp_shape_if_array[0] == tmp_update_tmp_modify_position_shape_array:
+                                                        origin_folder_name = update_tmp_modify_position_shape_array[0]
+                                                    if opposite_device_name == tmp_update_tmp_modify_position_shape_array:
+                                                        opposite_folder_name = update_tmp_modify_position_shape_array[0]
+
+                                        origin_folder_num = 0
+                                        opposite_folder_num = 0
+                                        for tmp_modify_position_folder_array in self.shared_modify_position_folder_array:
+                                            if origin_folder_name in tmp_modify_position_folder_array[1]:
+                                                origin_folder_num = tmp_modify_position_folder_array[0]
+                                            if opposite_folder_name in tmp_modify_position_folder_array[1]:
+                                                opposite_folder_num = tmp_modify_position_folder_array[0]
+
+                                        tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] != '' else 0.0
+
+                                        if origin_folder_num > opposite_folder_num:
+                                            tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])
+                                        else:
+                                            tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])
+
+                                    else:
+                                        origin_device_num = 0
+                                        opposite_device_num = 0
+                                        for tmp_modify_position_shape_array in self.shared_modify_position_shape_array:
+                                            if tmp_shape_if_array[0] in tmp_modify_position_shape_array[1]:
+                                                origin_device_num = tmp_modify_position_shape_array[0]
+                                            if opposite_device_name in tmp_modify_position_shape_array[1]:
+                                                opposite_device_num = tmp_modify_position_shape_array[0]
+
+                                        tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] != '' else 0.0
+
+                                        if origin_device_num > opposite_device_num:
+                                            tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])
+                                        else:
+                                            tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])
+
+            direction_if_array.append(tmp_direction_if_array)
+
+        # ===== Sort interface locations =====
+        #print("  Phase 8: Sorting interface locations...")
+        self.shared_new_direction_if_array = []
+        for tmp_direction_if_array in direction_if_array:
+            sorted_direction_if_array = []
+            for i in range(0, 5):
+                if i == 0 or tmp_direction_if_array[i] == []:
+                    sorted_direction_if_array.extend([tmp_direction_if_array[i]])
+                else:
+                    if len(tmp_direction_if_array[i]) == 1:
+                        del tmp_direction_if_array[i][0][-1]
+                        sorted_direction_if_array.extend([tmp_direction_if_array[i][0]])
+                    else:
+                        sorted_data = sorted(tmp_direction_if_array[i], key=lambda x: (x[1]), reverse=False)
+                        sorted_data_array = [tmp_sorted_data[0] for tmp_sorted_data in sorted_data]
+                        sorted_direction_if_array.extend([sorted_data_array])
+
+            self.shared_new_direction_if_array.append(sorted_direction_if_array)
+
+        # ===== Create lookup dictionaries =====
+        #print("  Phase 9: Creating lookup dictionaries...")
+        self.shared_device_l2name_dict = {item[0]: item[1] for item in self.shared_device_l2name_array}
+        self.shared_direction_dict = {arr[0]: arr for arr in self.shared_new_direction_if_array}
+
+        # Set flag
+        self.l2_shared_data_prepared = True
+
+        '''prep_elapsed = time.time() - prep_start
+
+        print(f"\n{'=' * 70}")
+        print(f"Shared Data Preparation Complete:")
+        print(f"  Time: {prep_elapsed:.2f}s")
+        print(f"  L2 table entries: {len(self.shared_new_l2_table_array)}")
+        print(f"  Update entries: {len(self.shared_update_l2_table_array)}")
+        print(f"  Device L2 names: {len(self.shared_device_l2name_array)}")
+        print(f"  Unique L2 segments: {len(self.shared_unique_l2name_array)}")
+        print(f"  Devices: {len(self.shared_device_list_array)}")
+        print(f"  Waypoints: {len(self.shared_wp_list_array)}")
+        print(f"  Direction arrays: {len(self.shared_new_direction_if_array)}")
+        print(f"{'=' * 70}\n")'''
 
     def add_l2_material(self):
-        #print('--- self.shapes_size_array ---', self.shapes_size_array)  # from ns_ddx_figure
-        import ns_l2_diagram_create , ns_def , ns_ddx_figure
+        """Fully optimized version using pre-prepared shared data"""
+        import ns_l2_diagram_create, ns_def, ns_ddx_figure
+
+        #print("\n" + "=" * 70)
+        #print("L2 Material Generation (Using Shared Data)")
+        #print("=" * 70)
+
+        overall_start = time.time()
+        device_times = []
+
+        # Verify shared data exists
+        if not hasattr(self, 'l2_shared_data_prepared') or not self.l2_shared_data_prepared:
+            #print("WARNING: Shared L2 data not prepared. Preparing now...")
+            ns_ddx_figure_run.prepare_l2_shared_data(self)
+
+        # Create device size lookup
+        device_size_dict = {item[0]: item[1] for item in self.all_device_l2_size_array}
+
+        total_shapes = len(self.shapes_size_array)
+        #print(f"Processing {total_shapes} devices using optimized shared data\n")
 
         '''write materials of l2 shape'''
-        for tmp_shapes_size_array in self.shapes_size_array:
-            for tmp_all_device_l2_size_array in self.all_device_l2_size_array:
-                if tmp_all_device_l2_size_array[0] == tmp_shapes_size_array[0]:
-                    target_device_name = tmp_shapes_size_array[0]  # device_name
-                    device_size_array = tmp_all_device_l2_size_array
-                    action_type = 'WRITE_DEVICE_L2'  # 'RETURN_DEVICE_SIZE' - > return array[width, hight] , 'WRITE_DEVICE_L2' -> write device l2 materials
-                    write_left_top_array = [tmp_shapes_size_array[1][0], tmp_shapes_size_array[1][1], device_size_array[1]]  # [left , top , [offset_left, offset_top , right , left]]
+        for shape_idx, tmp_shapes_size_array in enumerate(self.shapes_size_array, 1):
+            device_start = time.time()
+            device_name = tmp_shapes_size_array[0]
 
-                    '''
-                    :param action_type: RETURN_DEVICE_SIZE' - > return array[left, top , width, hight] , 'WRITE_DEVICE_L2' -> write device l2 materials
-                    :param input_device_name: target device_name
-                    :param write_left_top_array: [left , top , [offset_left, offset_top , right , left]] or [left , top , [device_size_array]]
-                    :return: RETURN_DEVICE_SIZE' - > return array[left, top , width, hight]
-                    '''
+            # Progress display
+            if shape_idx % 10 == 0 or shape_idx in [1, 50, 100, 250]:
+                if device_times:
+                    avg_time = sum(device_times) / len(device_times)
+                    eta = avg_time * (total_shapes - shape_idx) / 60
+                    print(f"  Progress: {shape_idx}/{total_shapes} ({shape_idx / total_shapes * 100:.1f}%) | "
+                          f"Device: {device_name} | Avg: {avg_time:.3f}s/dev | ETA: {eta:.1f}min")
 
-                    offset_left_master = 0.0
-                    offset_top_master = 0.0
-                    if action_type == 'WRITE_DEVICE_L2':
-                        #print(write_left_top_array[0], write_left_top_array[2][0])
-                        offset_left_master = write_left_top_array[0] - write_left_top_array[2][0]
-                        offset_top_master = write_left_top_array[1] - write_left_top_array[2][1]
+            # Dictionary lookup
+            if device_name not in device_size_dict:
+                print(f"  Warning: Device '{device_name}' not found")
+                device_times.append(0.0)
+                continue
 
-                    #self.title_only_slide_layout = self.active_ppt.slide_layouts[5]
-                    #self.slide = self.active_ppt.slides.add_slide(self.title_only_slide_layout)
-                    self.shape = self.slide.shapes
+            tmp_all_device_l2_size_array = [device_name, device_size_dict[device_name]]
 
-                    ### default parameter ###
-                    self.folder_font_type = 'Calibri'
-                    self.folder_font_size = 10  # Pt
-                    self.shape_font_type = 'Calibri'
-                    self.shae_font_size = 6  # Pt
+            # === Process device ===
+            target_device_name = tmp_all_device_l2_size_array[0]
+            device_size_array = tmp_all_device_l2_size_array
+            action_type = 'WRITE_DEVICE_L2'
+            write_left_top_array = [tmp_shapes_size_array[1][0], tmp_shapes_size_array[1][1], device_size_array[1]]
 
-                    self.roundness = 0.0  # curve of ROUNDED_RECTANGLE 0.0-1.0 * 100(%)
-                    self.shape_width_min = 0.5  # in <<STYLE_SHAPE>> inches
-                    self.shape_hight_min = 0.1  # in <<STYLE_SHAPE>> inches
-                    self.per_char_inchi = 0.1  # inches of per char count in shape
+            offset_left_master = write_left_top_array[0] - write_left_top_array[2][0]
+            offset_top_master = write_left_top_array[1] - write_left_top_array[2][1]
 
-                    shape_left = 0
-                    shape_top = 0
+            self.shape = self.slide.shapes
+
+            ### default parameter ###
+            self.folder_font_type = 'Calibri'
+            self.folder_font_size = 10
+            self.shape_font_type = 'Calibri'
+            self.shae_font_size = 6
+
+            self.roundness = 0.0
+            self.shape_width_min = 0.5
+            self.shape_hight_min = 0.1
+            self.per_char_inchi = 0.1
+
+            shape_left = 0
+            shape_top = 0
+            shape_type = 'L2_SEGMENT'
+            shape_text = 'Dummy'
+            shape_interval_width_ratio = 0.75
+            shape_interval_hight_ratio = 0.75
+            between_tag = 0.2
+            l2seg_size_margin = 0.7
+            l2seg_size_margin_left_right_add = 0.4
+
+            offset_left_shape = offset_left_master
+            offset_top_shape = offset_top_master
+
+            self.shape.title.text = '[L2] ' + self.l2_folder_name
+            self.slide.shapes.title.left = Inches(0.0)
+            self.slide.shapes.title.top = Inches(0.0)
+            self.slide.shapes.title.width = Inches(14.0)
+            self.slide.shapes.title.height = Inches(1.0)
+
+            # ===== Use pre-prepared shared data (CRITICAL OPTIMIZATION) =====
+            new_l2_table_array = self.shared_new_l2_table_array
+            update_l2_table_array = self.shared_update_l2_table_array
+            device_l2name_array = self.shared_device_l2name_array
+            unique_l2name_array = self.shared_unique_l2name_array
+            device_list_array = self.shared_device_list_array
+            wp_list_array = self.shared_wp_list_array
+            shape_list_array = self.shared_shape_list_array
+            shape_if_array = self.shared_shape_if_array
+            modify_position_shape_array = self.shared_modify_position_shape_array
+            modify_position_folder_array = self.shared_modify_position_folder_array
+            new_direction_if_array = self.shared_new_direction_if_array
+            # ===== End of shared data usage =====
+
+            # Store for add_l2_line
+            self.new_direction_if_2_array = new_direction_if_array
+
+            '''STEP1.2 locate materials in shape'''
+            # Get target device L2 array
+            target_device_l2_array = []
+
+            for tmp_device_l2name_array in device_l2name_array:
+                if target_device_name == tmp_device_l2name_array[0]:
+                    for tmp_char in tmp_device_l2name_array[1]:
+                        if tmp_char not in target_device_l2_array:
+                            target_device_l2_array.extend([tmp_char])
+            target_device_l2_array.sort()
+
+            flag_l2_segment_empty = False
+            if target_device_l2_array == []:
+                flag_l2_segment_empty = True
+                target_device_l2_array.extend(['_DummyL2Segment_'])
+
+            '''write l2 segment of shape'''
+            count_l2name_array = 0
+            pre_shape_width = 0
+            pre_offset_left_shape = 0
+            l2seg_size_array = []
+
+            for tmp_target_device_l2_array in target_device_l2_array:
+                shape_text = tmp_target_device_l2_array
+                self.shape = self.slide.shapes
+                shape_width = self.shape_width_min
+                shape_hight = ns_def.get_description_width_hight(self.shae_font_size, shape_text)[1]
+
+                if ns_def.get_description_width_hight(self.shae_font_size, shape_text)[0] > self.shape_width_min:
+                    shape_width = ns_def.get_description_width_hight(self.shae_font_size, shape_text)[0]
+                else:
+                    shape_width = self.shape_width_min
+
+                if flag_l2_segment_empty == True:
+                    shape_width = 0.01
+                    shape_hight = 0.01
+
+                if count_l2name_array > 0:
+                    offset_left_shape -= pre_shape_width
+                    offset_left_shape += pre_shape_width * shape_interval_width_ratio
+                    offset_top_shape += shape_hight * shape_interval_hight_ratio
+
+                    if pre_offset_left_shape + pre_shape_width + (shape_width * shape_interval_width_ratio) > (offset_left_shape + shape_width):
+                        offset_left_shape += ((pre_offset_left_shape + pre_shape_width + (shape_width * shape_interval_width_ratio)) - (offset_left_shape + shape_width))
+
+                pre_offset_left_shape = offset_left_shape
+                pre_shape_width = shape_width
+
+                if flag_l2_segment_empty == False:
                     shape_type = 'L2_SEGMENT'
-                    shape_text = 'Dummy'
-                    shape_interval_width_ratio = 0.75  # ratio of interval shapes(width)
-                    shape_interval_hight_ratio = 0.75  # ratio of interval shapes(hight)
-                    between_tag = 0.2  # distance between tags
-                    l2seg_size_margin = 0.7  # inches   between l2seg and if, l2seg and vport
-                    l2seg_size_margin_left_right_add = 0.4  # add inches l2seg and if, l2seg and vport. and right or left
 
-                    offset_left_shape = offset_left_master
-                    offset_top_shape = offset_top_master
-
-                    self.shape.title.text = '[L2] ' + self.l2_folder_name
-                    self.slide.shapes.title.left = Inches(0.0)
-                    self.slide.shapes.title.top = Inches(0.0)
-                    self.slide.shapes.title.width = Inches(14.0)
-                    self.slide.shapes.title.height = Inches(1.0)
-
-                    #if self.click_value == 'L2-3-3':
-                    #    self.shape.title.text = '[L2] ' + target_device_name
-
-                    '''
-                    STEP1.1 define functions
-                    '''
-                    new_l2_table_array = []
-                    for tmp_l2_table_array in self.l2_table_array:
-                        if tmp_l2_table_array[0] != 1 and tmp_l2_table_array[0] != 2:
-                            tmp_l2_table_array[1].extend(['', '', '', '', '', '', '', ''])
-                            del tmp_l2_table_array[1][8:]
-                            new_l2_table_array.append(tmp_l2_table_array)
-
-                    # print('---- new_l2_table_array ----')
-                    # print(new_l2_table_array)
-
-
-                    new_l2_table_tuple = ns_def.convert_array_to_tuple(new_l2_table_array)
-                    # print('---- new_l2_table_tuple ----')
-                    # print(new_l2_table_tuple)
-
-                    # input l2 l3 if type
-                    update_l2_table_array = []
-
-                    for tmp_tmp_new_l2_table_array in new_l2_table_array:
-                        offset_excel = 2
-                        tmp_new_l2_table_array = tmp_tmp_new_l2_table_array[1]
-                        if tmp_new_l2_table_array[offset_excel + 3] == "":
-                            if tmp_new_l2_table_array[offset_excel + 4] == "":
-                                if tmp_new_l2_table_array[offset_excel + 1] == "":
-                                    tmp_new_l2_table_array[offset_excel] = ''
-                                else:
-                                    tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
-                            else:
-                                if tmp_new_l2_table_array[offset_excel + 1] == "":
-                                    tmp_new_l2_table_array[offset_excel] = ''
-                                else:
-                                    tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
-                        else:
-                            if tmp_new_l2_table_array[offset_excel + 1] == "":
-                                tmp_new_l2_table_array[offset_excel] = ''
-                            else:
-                                tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
-
-                        offset_excel = 4
-                        if tmp_new_l2_table_array[offset_excel + 1] == "":
-                            if tmp_new_l2_table_array[offset_excel + 1] == "":
-                                tmp_new_l2_table_array[offset_excel] = ''
-                            else:
-                                tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
-                        else:
-                            if tmp_new_l2_table_array[offset_excel + 2] == "":
-                                if tmp_new_l2_table_array[offset_excel - 1] == "":
-                                    tmp_new_l2_table_array[offset_excel] = 'Loopback (L3)'
-                                else:
-                                    tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
-                            else:
-                                if tmp_new_l2_table_array[offset_excel - 1] == "":
-                                    tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
-                                else:
-                                    tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
-
-                        update_l2_table_array.append(tmp_new_l2_table_array)  # print(tmp_new_l2_table_array)
-
-                    #print('--- update_l2_table_array ---')
-                    #print(update_l2_table_array)
-
-                    # GET L2 Segment name of each device
-                    device_l2name_array = []
-                    unique_l2name_array = []
-                    for tmp_new_l2_table_array in new_l2_table_array:
-                        if tmp_new_l2_table_array[1][6] != '':
+                    for tmp_update_l2_table_array in update_l2_table_array:
+                        if target_device_name == tmp_update_l2_table_array[1] and tmp_update_l2_table_array[3] == '' and tmp_update_l2_table_array[5] == '':
                             tmp_l2seg = []
-                            for tmp_char in tmp_new_l2_table_array[1][6].split(','):
-                                tmp_char = tmp_char.replace(' ', '')  # [Temporary setting] replace ' ' to '' in l2 segment name
-                                tmp_l2seg.append(tmp_char.strip())
-                                for tmp_tmp_char in tmp_l2seg:
-                                    if tmp_tmp_char not in unique_l2name_array:
-                                        unique_l2name_array.append(tmp_tmp_char)
-
-                            device_l2name_array.append([tmp_new_l2_table_array[1][1], tmp_l2seg])
-
-                    unique_l2name_array.sort()
-
-                    # print('--- device_l2name_array ---')
-                    # print(device_l2name_array)
-                    # print('--- unique_l2name_array ---')
-                    # print(unique_l2name_array)
-
-                    # get direction of phygical port of each device  (UP/DOWN/RIGHT/LEFT)
-                    device_list_array = []
-                    self.device_list_2_array = []
-                    wp_list_array = []
-                    shape_list_array = []
-                    for tmp_new_l2_table_array in new_l2_table_array:
-                        if tmp_new_l2_table_array[1][1] not in device_list_array and tmp_new_l2_table_array[1][1] not in wp_list_array:
-                            if tmp_new_l2_table_array[1][0] == 'N/A':
-                                wp_list_array.append(tmp_new_l2_table_array[1][1])
-                            else:
-                                device_list_array.append(tmp_new_l2_table_array[1][1])
-
-
-                    shape_list_array = device_list_array
-                    shape_list_array.extend(wp_list_array)
-
-                    # print('--- shape_list_array ---')
-                    # print(shape_list_array)
-                    # print('--- device_list_array ---')
-                    # print(device_list_array)
-                    # print('--- wp_list_array ---')
-                    # print(wp_list_array)
-
-                    shape_if_array = []
-                    for tmp_shape_list_array in shape_list_array:
-                        tmp_shape_if_array = []
-                        for tmp_new_l2_table_array in new_l2_table_array:
-                            if tmp_shape_list_array == tmp_new_l2_table_array[1][1] and tmp_new_l2_table_array[1][3] != '':
-                                tmp_shape_if_array.append(tmp_new_l2_table_array[1][3])
-                        shape_if_array.append([tmp_shape_list_array, tmp_shape_if_array])
-
-                    # print('--- shape_if_array ---')
-                    # print(shape_if_array)
-
-                    # create modify_position_shape_array for decide up / down of shape
-                    modify_position_shape_array = []
-                    for tmp_position_shape_array in self.position_shape_array:
-
-                        if tmp_position_shape_array[0] != 1 and tmp_position_shape_array[1][0] != '<END>':
-                            if tmp_position_shape_array[1][0] != '':
-                                tmp_folder_name = tmp_position_shape_array[1][0]
-                            else:
-                                tmp_position_shape_array[1][0] = tmp_folder_name
-                            # print(tmp_position_shape_array)
-                            modify_position_shape_array.append(tmp_position_shape_array)
-                    #print('--- modify_position_shape_array ---')
-                    #print(modify_position_shape_array)
-
-                    # create modify_position_shape_array for decide up / down of shape
-                    modify_position_folder_array = []
-                    for tmp_position_folder_array in self.position_folder_array:
-
-                        if tmp_position_folder_array[0] != 1 and tmp_position_folder_array[1][0] != '<SET_WIDTH>':
-                            tmp_position_folder_array[1][0] = ''
-                            modify_position_folder_array.append(tmp_position_folder_array)
-                    # print('--- modify_position_folder_array ---')
-                    # print(modify_position_folder_array)
-
-                    #### decide up/down/right/left ####
-                    tmp_device_line_array = []
-                    direction_if_array = []
-                    for tmp_shape_if_array in shape_if_array:
-                        tmp_direction_if_array = [tmp_shape_if_array[0], [], [], [], []]  # UP/DOWN/RIGHT/LEFT
-                        # print('#########', tmp_shape_if_array[0], '#########')
-                        for tmp_tmp_shape_if_array in tmp_shape_if_array[1]:
-                            # print(tmp_tmp_shape_if_array)
-
-                            # get direction of if
-                            for tmp_position_line_tuple in self.position_line_tuple:
-                                if tmp_position_line_tuple[0] != 1 and tmp_position_line_tuple[0] != 2 and (tmp_position_line_tuple[1] == 1 or tmp_position_line_tuple[1] == 2):
-                                    if tmp_position_line_tuple[1] == 1:
-                                        offet_column = 0
-                                    elif tmp_position_line_tuple[1] == 2:
-                                        offet_column = 1
-
-                                    if self.position_line_tuple[tmp_position_line_tuple[0], tmp_position_line_tuple[1]] == tmp_shape_if_array[0]:
-                                        # print(tmp_position_line_tuple, self.position_line_tuple[tmp_position_line_tuple])
-                                        tmp_tag = self.position_line_tuple[tmp_position_line_tuple[0], 3 + offet_column]
-                                        target = ' '
-                                        idx = tmp_tag.find(target)
-                                        modify_if_name = self.position_line_tuple[tmp_position_line_tuple[0], 13 + offet_column * 4] + ' ' + tmp_tag[idx + 1:]
-
-                                        # print(modify_if_name)
-
-                                        if tmp_tmp_shape_if_array == modify_if_name:
-                                            if self.position_line_tuple[tmp_position_line_tuple[0], 5 + offet_column] == 'RIGHT':
-                                                if self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2] == '':
-                                                    tmp_tag_offset = 0.0
-                                                else:
-                                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2]
-                                                tmp_direction_if_array[3].extend([[modify_if_name, tmp_tag_offset]])  # print(modify_if_name, '  RIGHT')
-                                            elif self.position_line_tuple[tmp_position_line_tuple[0], 5 + offet_column] == 'LEFT':
-                                                if self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2] == '':
-                                                    tmp_tag_offset = 0.0
-                                                else:
-                                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 8 + offet_column * 2]
-                                                tmp_direction_if_array[4].extend([[modify_if_name, tmp_tag_offset]])  # print(modify_if_name, '  LEFT')
-                                            else:
-                                                if offet_column == 0:
-                                                    opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0], tmp_position_line_tuple[1] + 1]  # print(tmp_shape_if_array[0], '  ',opposite_device_name)
-
-                                                else:
-                                                    opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0], tmp_position_line_tuple[1] - 1]  # print(tmp_shape_if_array[0], '  ', opposite_device_name)
-
-                                                ### 'TOP or DOWN'####
-                                                if tmp_shape_if_array[0] in wp_list_array or opposite_device_name in wp_list_array:
-                                                    # include wp case
-                                                    # print(tmp_shape_if_array[0], '  ',opposite_device_name)
-
-                                                    origin_folder_name = ''
-                                                    opposite_folder_name = ''
-                                                    for tmp_modify_position_shape_array in modify_position_shape_array:
-                                                        update_tmp_modify_position_shape_array = tmp_modify_position_shape_array[1]
-
-                                                        for index_31, tmp_update_tmp_modify_position_shape_array in enumerate(update_tmp_modify_position_shape_array):
-                                                            if index_31 != 0:
-                                                                # print(tmp_update_tmp_modify_position_shape_array)
-                                                                if tmp_shape_if_array[0] == tmp_update_tmp_modify_position_shape_array:
-                                                                    origin_folder_name = update_tmp_modify_position_shape_array[0]
-                                                                if opposite_device_name == tmp_update_tmp_modify_position_shape_array:
-                                                                    opposite_folder_name = update_tmp_modify_position_shape_array[0]
-
-                                                    for tmp_modify_position_folder_array in modify_position_folder_array:
-                                                        if origin_folder_name in tmp_modify_position_folder_array[1]:
-                                                            origin_folder_num = tmp_modify_position_folder_array[0]
-                                                        if opposite_folder_name in tmp_modify_position_folder_array[1]:
-                                                            opposite_folder_num = tmp_modify_position_folder_array[0]
-
-                                                    # print(origin_folder_name,origin_folder_num,'    ' , opposite_folder_name,opposite_folder_num)
-                                                    if origin_folder_num > opposite_folder_num:
-                                                        if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                            tmp_tag_offset = 0.0
-                                                        else:
-                                                            tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                                        tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])  # print(modify_if_name, '  UP')
-                                                    else:
-                                                        if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                            tmp_tag_offset = 0.0
-                                                        else:
-                                                            tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                                        tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])  # print(modify_if_name, '  DOWN')
-
-                                                else:
-                                                    # NOT include wp case
-                                                    for tmp_modify_position_shape_array in modify_position_shape_array:
-                                                        if tmp_shape_if_array[0] in tmp_modify_position_shape_array[1]:
-                                                            origin_device_num = tmp_modify_position_shape_array[0]
-                                                        if opposite_device_name in tmp_modify_position_shape_array[1]:
-                                                            opposite_device_num = tmp_modify_position_shape_array[0]
-                                                    # print(origin_device_num,opposite_device_num)
-
-                                                    if origin_device_num > opposite_device_num:
-                                                        if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                            tmp_tag_offset = 0.0
-                                                        else:
-                                                            tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                                        tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])  # print(modify_if_name, '  UP')
-                                                    else:
-                                                        if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                            tmp_tag_offset = 0.0
-                                                        else:
-                                                            tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                                        tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])  # print(modify_if_name, '  DOWN')
-
-                        direction_if_array.append(tmp_direction_if_array)
-
-                    #print('--- direction_if_array ---')
-                    #print(direction_if_array)
-
-                    ### sort if location
-                    new_direction_if_array = []
-                    for tmp_direction_if_array in direction_if_array:
-                        sorted_direction_if_array = []
-                        # print('tmp_direction_if_array  ', tmp_direction_if_array)
-                        for i in range(0, 5):
-                            # print('tmp_direction_if_array [ ] ' ,str(i), ' ', tmp_direction_if_array[i])
-                            if i == 0 or tmp_direction_if_array[i] == []:
-                                sorted_direction_if_array.extend([tmp_direction_if_array[i]])
-                            else:
-                                # print(len(tmp_direction_if_array[i]),' ',tmp_direction_if_array[i])
-
-                                if len(tmp_direction_if_array[i]) == 1:
-                                    del tmp_direction_if_array[i][0][-1]
-                                    sorted_direction_if_array.extend([tmp_direction_if_array[i][0]])
-                                else:
-                                    # print(tmp_direction_if_array[i])
-                                    sorted_data = sorted(tmp_direction_if_array[i], key=lambda x: (x[1]), reverse=False)
-                                    # print(sorted_data)
-
-                                    sorted_data_array = []
-                                    for tmp_sorted_data in sorted_data:
-                                        sorted_data_array.append(tmp_sorted_data[0])
-
-                                    # print(sorted_data_array)
-                                    sorted_direction_if_array.extend([sorted_data_array])
-
-                        #print('--- sorted_direction_if_array ---')
-                        #print(sorted_direction_if_array)
-
-                        new_direction_if_array.append(sorted_direction_if_array)
-
-                    #print('--- new_direction_if_array ---')
-                    #print(new_direction_if_array)
-                    self.new_direction_if_2_array = new_direction_if_array
-
-                    '''
-                    STEP1.2 locate materials in shape
-                    '''
-                    # get target_device_l2_array
-                    target_device_l2_array = []
-
-                    for tmp_device_l2name_array in device_l2name_array:
-                        if target_device_name == tmp_device_l2name_array[0]:
-                            for tmp_char in tmp_device_l2name_array[1]:
-                                # print(tmp_char,tmp_device_l2name_array[1],target_device_l2_array)
-                                if tmp_char not in target_device_l2_array:
-                                    target_device_l2_array.extend([tmp_char])
-                    target_device_l2_array.sort()
-
-                    flag_l2_segment_empty = False
-                    if target_device_l2_array == []:
-                        flag_l2_segment_empty = True  # have not l2 segment on the device
-                        target_device_l2_array.extend(['_DummyL2Segment_'])
-
-                    # print('--- target_device_l2_array ---')
-                    # print(target_device_name,target_device_l2_array)
-
-                    '''write l2 segment of shape'''
-                    count_l2name_array = 0
-                    pre_shape_width = 0
-                    pre_offset_left_shape = 0
-                    l2seg_size_array = []
-                    for tmp_target_device_l2_array in target_device_l2_array:
-                        shape_text = tmp_target_device_l2_array
-                        self.shape = self.slide.shapes
-                        shape_width = self.shape_width_min
-                        shape_hight = ns_def.get_description_width_hight(self.shae_font_size,shape_text)[1]
-
-                        if ns_def.get_description_width_hight(self.shae_font_size,shape_text)[0] > self.shape_width_min:
-                            shape_width = ns_def.get_description_width_hight(self.shae_font_size,shape_text)[0]
-                        else:
-                            shape_width = self.shape_width_min
-
-                        if flag_l2_segment_empty == True:
-                            shape_width = 0.01
-                            shape_hight = 0.01
-
-                        if count_l2name_array > 0:
-                            offset_left_shape -= pre_shape_width
-                            offset_left_shape += pre_shape_width * shape_interval_width_ratio
-                            offset_top_shape += shape_hight * shape_interval_hight_ratio
-
-                            if pre_offset_left_shape + pre_shape_width + (shape_width * shape_interval_width_ratio) > (offset_left_shape + shape_width):
-                                offset_left_shape += ((pre_offset_left_shape + pre_shape_width + (shape_width * shape_interval_width_ratio)) - (offset_left_shape + shape_width))
-
-                        pre_offset_left_shape = offset_left_shape
-                        pre_shape_width = shape_width
-
-                        l2_segment_only_array = []
-                        if flag_l2_segment_empty == False:
-                            shape_type = 'L2_SEGMENT'
-
-                            for tmp_update_l2_table_array in update_l2_table_array:
-                                if target_device_name == tmp_update_l2_table_array[1] and tmp_update_l2_table_array[3] == '' and tmp_update_l2_table_array[5] == '':
-                                    tmp_l2seg = []
-                                    tmp_char = tmp_update_l2_table_array[6].replace(' ', '')  # [Temporary setting] replace ' ' to '' in l2 segment name
-                                    tmp_l2seg = tmp_char.split(',')
-
-                                    if shape_text in tmp_l2seg:
-                                        shape_type = 'L2_SEGMENT_GRAY'
-                                        break
-
-                            ns_ddx_figure.extended.add_shape(self, shape_type, shape_left + offset_left_shape, shape_top + offset_top_shape, shape_width, shape_hight, shape_text)
-
-                        l2seg_size_array.append([shape_left + offset_left_shape, shape_top + offset_top_shape, shape_width, shape_hight, shape_text])
-
-                        offset_left_shape += shape_width
-                        offset_top_shape += shape_hight
-
-                        count_l2name_array += 1
-
-                    # get virtual port of shape
-                    target_device_vport_array = []
-                    target_device_vport_if_array = []
-                    for tmp_new_l2_table_array in new_l2_table_array:
-                        if tmp_new_l2_table_array[1][1] == target_device_name and tmp_new_l2_table_array[1][5] != '':
-                            if tmp_new_l2_table_array[1][5] not in target_device_vport_array:
-                                target_device_vport_array.append(tmp_new_l2_table_array[1][5])
-                                target_device_vport_if_array.append([tmp_new_l2_table_array[1][5], [tmp_new_l2_table_array[1][3]]])
-                            else:
-                                for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                    if tmp_target_device_vport_if_array[0] == tmp_new_l2_table_array[1][5]:
-                                        tmp_target_device_vport_if_array[1].extend([tmp_new_l2_table_array[1][3]])
-
-                    # target_device_vport_array = sorted(target_device_vport_array, key=lambda x: (x[0]), reverse=False)
-                    # target_device_vport_if_array = sorted(target_device_vport_if_array, key=lambda x: (x[0]), reverse=False)
-                    # print('--- target_device_vport_array ---')
-                    # print(target_device_vport_array)
-                    # print('--- target_device_vport_if_array ---')
-                    # print(target_device_vport_if_array)
-
-                    ### set temporarily device size
-                    # print('--- l2seg_size_array (left, top , width, hight)---')
-                    # print(l2seg_size_array)  #left, top , width, hight, text
-
-                    device_size_array = [l2seg_size_array[0][0], l2seg_size_array[0][1], l2seg_size_array[-1][0] + l2seg_size_array[-1][2] - l2seg_size_array[0][0] ,l2seg_size_array[-1][1] + l2seg_size_array[-1][3] - l2seg_size_array[0][1]  ]  # left, top  width, hight
-
-                    device_size_array = [device_size_array[0] - l2seg_size_margin, device_size_array[1 ] -l2seg_size_margin ,device_size_array[2] + l2seg_size_margin * 2 ,device_size_array[3] + l2seg_size_margin * 2]
-
-                    #print('--- device_size_array (left, top , width, hight) at 1st ---  ')
-                    #print(device_size_array)
-
-                    ### reflect if and vpc to device size
-                    current_direction_if_array = []
-                    for tmp_new_direction_if_array in new_direction_if_array:
-                        if tmp_new_direction_if_array[0] == target_device_name:
-                            current_direction_if_array = tmp_new_direction_if_array
-                            # print('--- current_direction_if_array ---  up/down/right/left', current_direction_if_array)
-                            break
-
-                    # remove duplicate Physical interface
-                    sec_current_direction_if_array = []
-                    for tmp_num in range (0,5):
-                        if tmp_num != 0:
-                            if len(current_direction_if_array[tmp_num]) != 0:
-                                sec_current_direction_if_array.append(sorted(set(current_direction_if_array[tmp_num]), key=current_direction_if_array[tmp_num].index))
-                            else:
-                                sec_current_direction_if_array.append([])
-                        else:
-                            sec_current_direction_if_array.append(current_direction_if_array[0])
-
-                    # print('--- sec_current_direction_if_array --- ' , sec_current_direction_if_array)
-                    current_direction_if_array = sec_current_direction_if_array
-                    # print('--- current_direction_if_array (up/down/right/left) ---  ')
-                    # print(current_direction_if_array)
-
-                    # check exist IF or Vport on up/down/right/left
-                    flag_exist_if_vport_array = [False,False],[False,False],[False,False],[False,False]
-                    exit_if_vport_num_array = [0, 0, 0,0]
-                    exit_if_vport_num_l3_only_array = [ 0, 0, 0,0]
-                    # print('### check exist IF or Vport on up/down/right/left ###')
-                    if current_direction_if_array[1] != []:
-                        # print('Exsit IF UP',current_direction_if_array[1])
-                        flag_exist_if_vport_array[0][0] = True
-                        for tmp_current_direction_if_array in current_direction_if_array[1]:
-                            for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
-                                    # print('Exsit Vport UP  ', tmp_current_direction_if_array, ' ',tmp_target_device_vport_if_array[0])
-                                    flag_exist_if_vport_array[0][1] = True
-                                    exit_if_vport_num_array[0] += 1
-
-                                    for tmp_update_l2_table_array in update_l2_table_array:
-                                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
-                                                and tmp_update_l2_table_array[4] != 'Switch (L2)':
-                                            exit_if_vport_num_l3_only_array[0] += 1
-
-                    if current_direction_if_array[2] != []:
-                        # print('Exsit IF DOWN  ',current_direction_if_array[2])
-                        flag_exist_if_vport_array[1][0] = True
-                        for tmp_current_direction_if_array in current_direction_if_array[2]:
-                            for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
-                                    # print('Exsit Vport DOWN  ', tmp_current_direction_if_array, ' ',tmp_target_device_vport_if_array)
-                                    flag_exist_if_vport_array[1][1] = True
-                                    exit_if_vport_num_array[1] += 1
-
-                                    for tmp_update_l2_table_array in update_l2_table_array:
-                                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
-                                                and tmp_update_l2_table_array[4] != 'Switch (L2)':
-                                            exit_if_vport_num_l3_only_array[1] += 1
-
-                    if current_direction_if_array[3] != []:
-                        # print('Exsit IF RIGHT ',current_direction_if_array[3])
-                        flag_exist_if_vport_array[2][0] = True
-                        for tmp_current_direction_if_array in current_direction_if_array[3]:
-                            for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
-                                    # print('Exsit Vport RIGHT  ', tmp_current_direction_if_array, ' ',tmp_target_device_vport_if_array[0])
-                                    flag_exist_if_vport_array[2][1] = True
-                                    exit_if_vport_num_array[2] += 1
-
-                                    for tmp_update_l2_table_array in update_l2_table_array:
-                                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
-                                                and tmp_update_l2_table_array[4] != 'Switch (L2)':
-                                            exit_if_vport_num_l3_only_array[2] += 1
-
-                    if current_direction_if_array[4] != []:
-                        # print('Exsit IF LEFT ',current_direction_if_array[4])
-                        flag_exist_if_vport_array[3][0] = True
-                        for tmp_current_direction_if_array in current_direction_if_array[4]:
-                            for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
-                                    # print('Exsit Vport LEFT  ', tmp_current_direction_if_array, ' ',tmp_target_device_vport_if_array)
-                                    flag_exist_if_vport_array[3][1] = True
-                                    exit_if_vport_num_array[3] += 1
-
-                                    for tmp_update_l2_table_array in update_l2_table_array:
-                                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
-                                                and tmp_update_l2_table_array[4] != 'Switch (L2)':
-                                            exit_if_vport_num_l3_only_array[3] += 1
-
-                    #print('--- flag_exist_if_vport_array ,exit_if_vport_num_array ,exit_if_vport_num_l3_only_array up/down/right/left ---')
-                    #print(flag_exist_if_vport_array,exit_if_vport_num_array,exit_if_vport_num_l3_only_array)
-
-                    ''' count Virtual port that has not physical IF(include loopback)'''
-                    count_other_if = 0
-                    other_if_array = []
+                            tmp_char = tmp_update_l2_table_array[6].replace(' ', '')
+                            tmp_l2seg = tmp_char.split(',')
+
+                            if shape_text in tmp_l2seg:
+                                shape_type = 'L2_SEGMENT_GRAY'
+                                break
+
+                    ns_ddx_figure.extended.add_shape(self, shape_type, shape_left + offset_left_shape, shape_top + offset_top_shape, shape_width, shape_hight, shape_text)
+
+                l2seg_size_array.append([shape_left + offset_left_shape, shape_top + offset_top_shape, shape_width, shape_hight, shape_text])
+
+                offset_left_shape += shape_width
+                offset_top_shape += shape_hight
+                count_l2name_array += 1
+
+            # Get virtual port of shape
+            target_device_vport_array = []
+            target_device_vport_if_array = []
+            for tmp_new_l2_table_array in new_l2_table_array:
+                if tmp_new_l2_table_array[1][1] == target_device_name and tmp_new_l2_table_array[1][5] != '':
+                    if tmp_new_l2_table_array[1][5] not in target_device_vport_array:
+                        target_device_vport_array.append(tmp_new_l2_table_array[1][5])
+                        target_device_vport_if_array.append([tmp_new_l2_table_array[1][5], [tmp_new_l2_table_array[1][3]]])
+                    else:
+                        for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                            if tmp_target_device_vport_if_array[0] == tmp_new_l2_table_array[1][5]:
+                                tmp_target_device_vport_if_array[1].extend([tmp_new_l2_table_array[1][3]])
+
+            ### set temporarily device size
+            device_size_array = [l2seg_size_array[0][0], l2seg_size_array[0][1],
+                                 l2seg_size_array[-1][0] + l2seg_size_array[-1][2] - l2seg_size_array[0][0],
+                                 l2seg_size_array[-1][1] + l2seg_size_array[-1][3] - l2seg_size_array[0][1]]
+
+            device_size_array = [device_size_array[0] - l2seg_size_margin, device_size_array[1] - l2seg_size_margin,
+                                 device_size_array[2] + l2seg_size_margin * 2, device_size_array[3] + l2seg_size_margin * 2]
+
+            ### reflect if and vpc to device size
+            current_direction_if_array = []
+            for tmp_new_direction_if_array in new_direction_if_array:
+                if tmp_new_direction_if_array[0] == target_device_name:
+                    current_direction_if_array = tmp_new_direction_if_array
+                    break
+
+            current_direction_if_array = []
+            for tmp_new_direction_if_array in new_direction_if_array:
+                if tmp_new_direction_if_array[0] == target_device_name:
+                    current_direction_if_array = tmp_new_direction_if_array
+                    break
+
+            # remove duplicate Physical interface
+            sec_current_direction_if_array = []
+            for tmp_num in range(0, 5):
+                if tmp_num != 0:
+                    if len(current_direction_if_array[tmp_num]) != 0:
+                        sec_current_direction_if_array.append(sorted(set(current_direction_if_array[tmp_num]), key=current_direction_if_array[tmp_num].index))
+                    else:
+                        sec_current_direction_if_array.append([])
+                else:
+                    sec_current_direction_if_array.append(current_direction_if_array[0])
+
+            current_direction_if_array = sec_current_direction_if_array
+
+            # check exist IF or Vport on up/down/right/left
+            flag_exist_if_vport_array = [[False, False], [False, False], [False, False], [False, False]]
+            exit_if_vport_num_array = [0, 0, 0, 0]
+            exit_if_vport_num_l3_only_array = [0, 0, 0, 0]
+
+            if current_direction_if_array[1] != []:
+                flag_exist_if_vport_array[0][0] = True
+                for tmp_current_direction_if_array in current_direction_if_array[1]:
                     for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                        if tmp_target_device_vport_if_array[1] == ['']:
-                            count_other_if += 1
-                            other_if_array.append(tmp_target_device_vport_if_array[0])
-                    #print('--- target_device_name, other_if_array,count_other_if ---')
-                    #print(target_device_name, other_if_array,count_other_if)
+                        if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
+                            flag_exist_if_vport_array[0][1] = True
+                            exit_if_vport_num_array[0] += 1
 
-                    # extend device frame distance up/down/right/left by vport exist
-                    if flag_exist_if_vport_array[0][1] == True or count_other_if != 0:
-                        device_size_array[1] -= l2seg_size_margin
-                        device_size_array[3] += l2seg_size_margin
-                    if flag_exist_if_vport_array[1][1] == True:
-                        device_size_array[3] += l2seg_size_margin
-                    if flag_exist_if_vport_array[2][1] == True:
-                        device_size_array[2] += (l2seg_size_margin + l2seg_size_margin_left_right_add)
-                    if flag_exist_if_vport_array[3][1] == True:
-                        device_size_array[0] -= (l2seg_size_margin + l2seg_size_margin_left_right_add)
-                        device_size_array[2] += (l2seg_size_margin + l2seg_size_margin_left_right_add)
-
-                    # print('--- device_size_array (left, top , width, hight) at 2nd ---  ')
-                    # print(device_size_array)
-
-                    ''' extend device_size_array by left number of if and vport to downside'''
-                    need_top_distance_leftside = len(current_direction_if_array[4]) * (self.shape_hight_min + between_tag) + l2seg_size_array[0][1] + l2seg_size_array[0][3]
-                    need_top_distance_rightside = l2seg_size_array[-1][1] + l2seg_size_array[-1][3] + exit_if_vport_num_l3_only_array[2] * (self.shape_hight_min + between_tag) - (l2seg_size_margin * 0.75)
-                    downside_keep_distance = device_size_array[1] + device_size_array[3] - l2seg_size_margin - (self.shape_hight_min * 1.5)
-                    # print('--- need_top_distance_leftside,need_top_distance_rightside,downside_keep_distance --- ', need_top_distance_leftside,need_top_distance_rightside,downside_keep_distance)
-
-                    if need_top_distance_leftside > need_top_distance_rightside:
-                        if downside_keep_distance < need_top_distance_leftside:
-                            device_size_array[3] += (need_top_distance_leftside - downside_keep_distance)
-                    else:
-                        if downside_keep_distance < need_top_distance_rightside:
-                            device_size_array[3] += (need_top_distance_rightside - downside_keep_distance)
-
-                    ''' extend device_size_array by right number of if and vport to upside'''
-                    need_top_distance_rightside = len(current_direction_if_array[3]) * (self.shape_hight_min + between_tag) + l2seg_size_margin
-                    if flag_exist_if_vport_array[0][1] == True:
-                        need_top_distance_rightside += l2seg_size_margin
-
-                    need_top_distance_leftside = (l2seg_size_array[-1][1] - l2seg_size_array[0][1]) + exit_if_vport_num_l3_only_array[3] * (self.shape_hight_min + between_tag) + (l2seg_size_margin * 0.75)
-                    upside_keep_distance = l2seg_size_array[-1][1] - device_size_array[1]
-                    # print('--- need_top_distance_rightside,need_top_distance_leftside,upside_keep_distance --- ', need_top_distance_rightside,need_top_distance_leftside,upside_keep_distance)
-
-                    if need_top_distance_leftside > need_top_distance_rightside:
-                        if upside_keep_distance < need_top_distance_leftside:
-                            device_size_array[1] -= (need_top_distance_leftside - upside_keep_distance)
-                            device_size_array[3] += (need_top_distance_leftside - upside_keep_distance)
-                    else:
-                        if upside_keep_distance < need_top_distance_rightside:
-                            device_size_array[1] -= (need_top_distance_rightside - upside_keep_distance)
-                            device_size_array[3] += (need_top_distance_rightside - upside_keep_distance)
-
-                    # print('--- device_size_array (left, top , width, hight) at 3rd ---  ')
-                    # print(device_size_array)
-
-                    '''
-                    write physical if and vport tag
-                    '''
-                    tag_size_array = []
-                    '''write physical if of target shape [UP]'''
-                    tmp_up_tag_distance_sum = l2seg_size_array[0][0] + (l2seg_size_array[0][2] * 0.5)
-                    last_tag_left = tmp_up_tag_distance_sum
-                    last_tag_width = 0.0
-
-                    if flag_exist_if_vport_array[0][0] == True  : # upside IF TAG
-                        # write up tag
-                        for tmp_current_direction_if_array in current_direction_if_array[1]:
-                            tag_type = ''
                             for tmp_update_l2_table_array in update_l2_table_array:
-                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
-                                    if 'L2' in str(tmp_update_l2_table_array[2]):
-                                        tag_type = 'L2_TAG'
-                                        break
-                                    elif 'L3' in str(tmp_update_l2_table_array[2]):
-                                        tag_type = 'L3_TAG'
-                                        break
+                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
+                                        and tmp_update_l2_table_array[4] != 'Switch (L2)':
+                                    exit_if_vport_num_l3_only_array[0] += 1
 
-                            tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
-                            tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
-                            tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
+            if current_direction_if_array[2] != []:
+                flag_exist_if_vport_array[1][0] = True
+                for tmp_current_direction_if_array in current_direction_if_array[2]:
+                    for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                        if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
+                            flag_exist_if_vport_array[1][1] = True
+                            exit_if_vport_num_array[1] += 1
 
-                            tag_left = tmp_up_tag_distance_sum
-                            tag_top = device_size_array[1] - ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1] * 0.5
-                            tag_width = tmp_if_distance
-                            tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                            tag_name = tmp_if_name
+                            for tmp_update_l2_table_array in update_l2_table_array:
+                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
+                                        and tmp_update_l2_table_array[4] != 'Switch (L2)':
+                                    exit_if_vport_num_l3_only_array[1] += 1
 
-                            self.shape = self.slide.shapes
-                            ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                            tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name , tmp_current_direction_if_array])
+            if current_direction_if_array[3] != []:
+                flag_exist_if_vport_array[2][0] = True
+                for tmp_current_direction_if_array in current_direction_if_array[3]:
+                    for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                        if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
+                            flag_exist_if_vport_array[2][1] = True
+                            exit_if_vport_num_array[2] += 1
 
-                            tmp_up_tag_distance_sum += tmp_if_distance + between_tag
+                            for tmp_update_l2_table_array in update_l2_table_array:
+                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
+                                        and tmp_update_l2_table_array[4] != 'Switch (L2)':
+                                    exit_if_vport_num_l3_only_array[2] += 1
 
-                        last_tag_left = tag_left
-                        last_tag_width = tag_width
-                        # adjust device size width
-                        l2seg_rightside = l2seg_size_array[-1][0] + l2seg_size_array[-1][2] + l2seg_size_margin
-                        if_tag_leftside = tag_left + tag_width + l2seg_size_margin
+            if current_direction_if_array[4] != []:
+                flag_exist_if_vport_array[3][0] = True
+                for tmp_current_direction_if_array in current_direction_if_array[4]:
+                    for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                        if tmp_current_direction_if_array in tmp_target_device_vport_if_array[1]:
+                            flag_exist_if_vport_array[3][1] = True
+                            exit_if_vport_num_array[3] += 1
 
-                        if if_tag_leftside > l2seg_rightside:
-                            device_size_array[2] += (if_tag_leftside-l2seg_rightside)
+                            for tmp_update_l2_table_array in update_l2_table_array:
+                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] == tmp_target_device_vport_if_array[0] \
+                                        and tmp_update_l2_table_array[4] != 'Switch (L2)':
+                                    exit_if_vport_num_l3_only_array[3] += 1
 
-                    ''' write virtual if of target shape [UP]'''
-                    used_vport_name_array = []
-                    vport_with_l2seg_array = []
-                    offset_vport_L3 = 0.0
-                    if flag_exist_if_vport_array[0][1] == True or count_other_if != 0:
-                        tag_type = ''
-                        for tmp_update_l2_table_array in update_l2_table_array:
-                            if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array and \
-                                    (tmp_update_l2_table_array[3] in current_direction_if_array[1] or tmp_update_l2_table_array[3] == ''):
-                                if 'L2' in str(tmp_update_l2_table_array[4]):
-                                    tag_type = 'L2_TAG'
-                                elif 'Routed (L3)' in str(tmp_update_l2_table_array[4]):
-                                    tag_type = 'L3_TAG'
-                                else:
-                                    tag_type = 'GRAY_TAG'
+            ''' count Virtual port that has not physical IF(include loopback)'''
+            count_other_if = 0
+            other_if_array = []
+            for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                if tmp_target_device_vport_if_array[1] == ['']:
+                    count_other_if += 1
+                    other_if_array.append(tmp_target_device_vport_if_array[0])
 
-                                # print(tmp_update_l2_table_array)
-                                tmp_if_array = ns_def.adjust_portname(tmp_update_l2_table_array[5])
-                                tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
-                                tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
+            # extend device frame distance up/down/right/left by vport exist
+            if flag_exist_if_vport_array[0][1] == True or count_other_if != 0:
+                device_size_array[1] -= l2seg_size_margin
+                device_size_array[3] += l2seg_size_margin
+            if flag_exist_if_vport_array[1][1] == True:
+                device_size_array[3] += l2seg_size_margin
+            if flag_exist_if_vport_array[2][1] == True:
+                device_size_array[2] += (l2seg_size_margin + l2seg_size_margin_left_right_add)
+            if flag_exist_if_vport_array[3][1] == True:
+                device_size_array[0] -= (l2seg_size_margin + l2seg_size_margin_left_right_add)
+                device_size_array[2] += (l2seg_size_margin + l2seg_size_margin_left_right_add)
 
-                                for tmp_tag_size_array in tag_size_array:
-                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                        if tag_type == 'L2_TAG':
-                                            tag_left = tmp_tag_size_array[0] + (tmp_tag_size_array[2] - tmp_if_distance) * 0.5
-                                            used_vport_name_array.append(tmp_update_l2_table_array[5])
-                                            vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
-                                            break
+            ''' extend device_size_array by left number of if and vport to downside'''
+            need_top_distance_leftside = len(current_direction_if_array[4]) * (self.shape_hight_min + between_tag) + l2seg_size_array[0][1] + l2seg_size_array[0][3]
+            need_top_distance_rightside = l2seg_size_array[-1][1] + l2seg_size_array[-1][3] + exit_if_vport_num_l3_only_array[2] * (self.shape_hight_min + between_tag) - (l2seg_size_margin * 0.75)
+            downside_keep_distance = device_size_array[1] + device_size_array[3] - l2seg_size_margin - (self.shape_hight_min * 1.5)
 
-                                        if tag_type == 'L3_TAG' or tag_type == 'GRAY_TAG':
-                                            tag_left = last_tag_left + last_tag_width + offset_vport_L3 + (between_tag * 0.5)
-                                            used_vport_name_array.append(tmp_update_l2_table_array[5])
-                                            offset_vport_L3 += tmp_if_distance + (between_tag * 0.5)  # device_size_array[0] = device_size_array[0] - tmp_if_distance - (between_tag * 0.5)  # device_size_array[2] = device_size_array[2] + tmp_if_distance + (between_tag * 0.5)
+            if need_top_distance_leftside > need_top_distance_rightside:
+                if downside_keep_distance < need_top_distance_leftside:
+                    device_size_array[3] += (need_top_distance_leftside - downside_keep_distance)
+            else:
+                if downside_keep_distance < need_top_distance_rightside:
+                    device_size_array[3] += (need_top_distance_rightside - downside_keep_distance)
 
-                                ### for other_if_array
-                                for tmp_other_if_array in other_if_array:
-                                    if tmp_other_if_array == tmp_update_l2_table_array[5]:
-                                        tag_left = last_tag_left + last_tag_width + offset_vport_L3 + (between_tag * 0.5)
-                                        used_vport_name_array.append(tmp_other_if_array)
-                                        offset_vport_L3 += tmp_if_distance + (between_tag * 0.5)
+            ''' extend device_size_array by right number of if and vport to upside'''
+            need_top_distance_rightside = len(current_direction_if_array[3]) * (self.shape_hight_min + between_tag) + l2seg_size_margin
+            if flag_exist_if_vport_array[0][1] == True:
+                need_top_distance_rightside += l2seg_size_margin
 
-                                tag_top = device_size_array[1] + l2seg_size_margin - ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1] * 0.5
-                                tag_width = tmp_if_distance
-                                tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                                tag_name = tmp_if_name
+            need_top_distance_leftside = (l2seg_size_array[-1][1] - l2seg_size_array[0][1]) + exit_if_vport_num_l3_only_array[3] * (self.shape_hight_min + between_tag) + (l2seg_size_margin * 0.75)
+            upside_keep_distance = l2seg_size_array[-1][1] - device_size_array[1]
 
-                                self.shape = self.slide.shapes
-                                ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                                tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5]])
-                                vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
+            if need_top_distance_leftside > need_top_distance_rightside:
+                if upside_keep_distance < need_top_distance_leftside:
+                    device_size_array[1] -= (need_top_distance_leftside - upside_keep_distance)
+                    device_size_array[3] += (need_top_distance_leftside - upside_keep_distance)
+            else:
+                if upside_keep_distance < need_top_distance_rightside:
+                    device_size_array[1] -= (need_top_distance_rightside - upside_keep_distance)
+                    device_size_array[3] += (need_top_distance_rightside - upside_keep_distance)
 
-                                ''' write Directory L2 Segment name under virtual port tag [UP]'''
-                                if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
-                                    tmp_l2seg = []
-                                    tmp_char = tmp_update_l2_table_array[7].replace(' ', '')  # [Temporary setting] replace ' ' to '' in l2 segment name
-                                    tmp_l2seg = tmp_char.split(',')
+            '''write physical if and vport tag'''
+            tag_size_array = []
 
-                                    offset_hight = 0.0
-                                    offset_left = 0.05
+            '''write physical if of target shape [UP]'''
+            tmp_up_tag_distance_sum = l2seg_size_array[0][0] + (l2seg_size_array[0][2] * 0.5)
+            last_tag_left = tmp_up_tag_distance_sum
+            last_tag_width = 0.0
 
-                                    for tmp_tmp_l2seg in tmp_l2seg:
-                                        offset_hight += tag_hight
-                                        # offset_left += 0.05
-                                        tag_width = ns_def.get_description_width_hight(self.shae_font_size,tmp_tmp_l2seg)[0]
-                                        self.shape = self.slide.shapes
-                                        ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left, tag_top + offset_hight, tag_width, tag_hight, tmp_tmp_l2seg)
+            if flag_exist_if_vport_array[0][0] == True:
+                for tmp_current_direction_if_array in current_direction_if_array[1]:
+                    tag_type = ''
+                    for tmp_update_l2_table_array in update_l2_table_array:
+                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
+                            if 'L2' in str(tmp_update_l2_table_array[2]):
+                                tag_type = 'L2_TAG'
+                                break
+                            elif 'L3' in str(tmp_update_l2_table_array[2]):
+                                tag_type = 'L3_TAG'
+                                break
 
+                    tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
+                    tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
+                    tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
 
-                        # adjust device size left + width
-                        if (tag_left + tag_width + l2seg_size_margin) > (device_size_array[0] + device_size_array[2]):
-                            device_size_array[2] += ((tag_left + tag_width + l2seg_size_margin) - (device_size_array[0] + device_size_array[2]))
+                    tag_left = tmp_up_tag_distance_sum
+                    tag_top = device_size_array[1] - ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] * 0.5
+                    tag_width = tmp_if_distance
+                    tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                    tag_name = tmp_if_name
 
-                    '''write physical if of target shape [DOWN]'''
-                    tmp_down_tag_distance_sum = l2seg_size_array[0][0]
+                    self.shape = self.slide.shapes
+                    ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                    tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_current_direction_if_array])
 
-                    if flag_exist_if_vport_array[1][0] == True: # Downside IF TAG
-                        # set left start point of if tag
-                        for tmp_current_direction_if_array in current_direction_if_array[2]:
-                            tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
-                            tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-                            tag_left = tmp_down_tag_distance_sum
-                            tmp_down_tag_distance_sum += tmp_if_distance + between_tag
+                    tmp_up_tag_distance_sum += tmp_if_distance + between_tag
 
-                        # offset start point
-                        tag_offset = 0.0
+                last_tag_left = tag_left
+                last_tag_width = tag_width
+                l2seg_rightside = l2seg_size_array[-1][0] + l2seg_size_array[-1][2] + l2seg_size_margin
+                if_tag_leftside = tag_left + tag_width + l2seg_size_margin
 
-                        if tmp_down_tag_distance_sum > l2seg_size_array[-1][0]:
-                            # print(tmp_down_tag_distance_sum , l2seg_size_array[-1][0])
-                            tag_offset = tmp_down_tag_distance_sum - l2seg_size_array[-1][0]
-                            tmp_down_tag_distance_sum = l2seg_size_array[0][0] - tag_offset
-                            device_size_array[0] -= tag_offset
-                            device_size_array[2] += tag_offset
+                if if_tag_leftside > l2seg_rightside:
+                    device_size_array[2] += (if_tag_leftside - l2seg_rightside)
 
+            ''' write virtual if of target shape [UP]'''
+            used_vport_name_array = []
+            vport_with_l2seg_array = []
+            offset_vport_L3 = 0.0
+
+            if flag_exist_if_vport_array[0][1] == True or count_other_if != 0:
+                tag_type = ''
+                for tmp_update_l2_table_array in update_l2_table_array:
+                    if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
+                            and (tmp_update_l2_table_array[3] in current_direction_if_array[1] or tmp_update_l2_table_array[3] == ''):
+                        if 'L2' in str(tmp_update_l2_table_array[4]):
+                            tag_type = 'L2_TAG'
+                        elif 'Routed (L3)' in str(tmp_update_l2_table_array[4]):
+                            tag_type = 'L3_TAG'
                         else:
-                            tmp_down_tag_distance_sum = l2seg_size_array[0][0]
+                            tag_type = 'GRAY_TAG'
 
-                        # write down tag
-                        flag_down_tag_left = False
-                        if flag_exist_if_vport_array[1][0] == True:
-                            for tmp_current_direction_if_array in current_direction_if_array[2]:
-                                tag_type = ''
-                                for tmp_update_l2_table_array in update_l2_table_array:
-                                    if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
-                                        if 'L2' in str(tmp_update_l2_table_array[2]):
-                                            tag_type = 'L2_TAG'
-                                            break
-                                        elif 'L3' in str(tmp_update_l2_table_array[2]):
-                                            tag_type = 'L3_TAG'
-                                            break
+                        tmp_if_array = ns_def.adjust_portname(tmp_update_l2_table_array[5])
+                        tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
+                        tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
 
-                                tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
-                                tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
-                                tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-
-                                tag_left = tmp_down_tag_distance_sum
-                                tag_top = device_size_array[1] + device_size_array[3] - ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1] * 0.5
-                                tag_width = tmp_if_distance
-                                tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                                tag_name = tmp_if_name
-
-                                self.shape = self.slide.shapes
-                                ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                                tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name , tmp_current_direction_if_array])
-
-                                if flag_down_tag_left == False:
-                                    down_tag_left_edge = tag_left
-                                    flag_down_tag_left = True
-
-                                tmp_down_tag_distance_sum += tmp_if_distance + between_tag
-
-                    ''' write virtual if of target shape [DOWN]'''
-                    vport_with_l2seg_array =[]
-                    offset_vport_L3 = 0.0
-                    if flag_exist_if_vport_array[1][1] == True:
-                        tag_type = ''
-                        for tmp_update_l2_table_array in  reversed(update_l2_table_array):
-                            if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
-                                    and tmp_update_l2_table_array[3] in current_direction_if_array[2]:
-                                if 'L2' in str(tmp_update_l2_table_array[4]):
-                                    tag_type = 'L2_TAG'
-                                elif 'Routed (L3)' in str(tmp_update_l2_table_array[4]):
-                                    tag_type = 'L3_TAG'
-                                else:
-                                    tag_type = 'GRAY_TAG'
-
-                                # print(tmp_update_l2_table_array)
-                                tmp_if_array = ns_def.adjust_portname(tmp_update_l2_table_array[5])
-                                tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
-                                tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-
-                                for tmp_tag_size_array in tag_size_array:
-                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                        if tag_type == 'L2_TAG':
-                                            tag_left = tmp_tag_size_array[0] + (tmp_tag_size_array[2] - tmp_if_distance) * 0.5
-                                            used_vport_name_array.append(tmp_update_l2_table_array[5])
-                                            vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
-                                            break
+                        for tmp_tag_size_array in tag_size_array:
+                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                if tag_type == 'L2_TAG':
+                                    tag_left = tmp_tag_size_array[0] + (tmp_tag_size_array[2] - tmp_if_distance) * 0.5
+                                    used_vport_name_array.append(tmp_update_l2_table_array[5])
+                                    vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
+                                    break
 
                                 if tag_type == 'L3_TAG' or tag_type == 'GRAY_TAG':
-                                    tag_left = down_tag_left_edge - offset_vport_L3 - tmp_if_distance - (between_tag * 0.5)
+                                    tag_left = last_tag_left + last_tag_width + offset_vport_L3 + (between_tag * 0.5)
                                     used_vport_name_array.append(tmp_update_l2_table_array[5])
                                     offset_vport_L3 += tmp_if_distance + (between_tag * 0.5)
-                                    device_size_array[0] = device_size_array[0] - tmp_if_distance - (between_tag * 0.5)
-                                    device_size_array[2] = device_size_array[2] + tmp_if_distance + (between_tag * 0.5)
 
-                                tag_top = device_size_array[1] + device_size_array[3] - 0.1 - l2seg_size_margin
+                        ### for other_if_array
+                        for tmp_other_if_array in other_if_array:
+                            if tmp_other_if_array == tmp_update_l2_table_array[5]:
+                                tag_left = last_tag_left + last_tag_width + offset_vport_L3 + (between_tag * 0.5)
+                                used_vport_name_array.append(tmp_other_if_array)
+                                offset_vport_L3 += tmp_if_distance + (between_tag * 0.5)
+
+                        tag_top = device_size_array[1] + l2seg_size_margin - ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] * 0.5
+                        tag_width = tmp_if_distance
+                        tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                        tag_name = tmp_if_name
+
+                        self.shape = self.slide.shapes
+                        ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                        tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5]])
+                        vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
+
+                        ''' write Directory L2 Segment name under virtual port tag [UP]'''
+                        if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
+                            tmp_l2seg = []
+                            tmp_char = tmp_update_l2_table_array[7].replace(' ', '')
+                            tmp_l2seg = tmp_char.split(',')
+
+                            offset_hight = 0.0
+                            offset_left = 0.05
+
+                            for tmp_tmp_l2seg in tmp_l2seg:
+                                offset_hight += tag_hight
+                                tag_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_tmp_l2seg)[0]
+                                self.shape = self.slide.shapes
+                                ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left, tag_top + offset_hight, tag_width, tag_hight, tmp_tmp_l2seg)
+
+                if (tag_left + tag_width + l2seg_size_margin) > (device_size_array[0] + device_size_array[2]):
+                    device_size_array[2] += ((tag_left + tag_width + l2seg_size_margin) - (device_size_array[0] + device_size_array[2]))
+
+            '''write physical if of target shape [DOWN]'''
+            tmp_down_tag_distance_sum = l2seg_size_array[0][0]
+
+            if flag_exist_if_vport_array[1][0] == True:
+                for tmp_current_direction_if_array in current_direction_if_array[2]:
+                    tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
+                    tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
+                    tag_left = tmp_down_tag_distance_sum
+                    tmp_down_tag_distance_sum += tmp_if_distance + between_tag
+
+                tag_offset = 0.0
+
+                if tmp_down_tag_distance_sum > l2seg_size_array[-1][0]:
+                    tag_offset = tmp_down_tag_distance_sum - l2seg_size_array[-1][0]
+                    tmp_down_tag_distance_sum = l2seg_size_array[0][0] - tag_offset
+                    device_size_array[0] -= tag_offset
+                    device_size_array[2] += tag_offset
+                else:
+                    tmp_down_tag_distance_sum = l2seg_size_array[0][0]
+
+                flag_down_tag_left = False
+                if flag_exist_if_vport_array[1][0] == True:
+                    for tmp_current_direction_if_array in current_direction_if_array[2]:
+                        tag_type = ''
+                        for tmp_update_l2_table_array in update_l2_table_array:
+                            if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
+                                if 'L2' in str(tmp_update_l2_table_array[2]):
+                                    tag_type = 'L2_TAG'
+                                    break
+                                elif 'L3' in str(tmp_update_l2_table_array[2]):
+                                    tag_type = 'L3_TAG'
+                                    break
+
+                        tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
+                        tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
+                        tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
+
+                        tag_left = tmp_down_tag_distance_sum
+                        tag_top = device_size_array[1] + device_size_array[3] - ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] * 0.5
+                        tag_width = tmp_if_distance
+                        tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                        tag_name = tmp_if_name
+
+                        self.shape = self.slide.shapes
+                        ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                        tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_current_direction_if_array])
+
+                        if flag_down_tag_left == False:
+                            down_tag_left_edge = tag_left
+                            flag_down_tag_left = True
+
+                        tmp_down_tag_distance_sum += tmp_if_distance + between_tag
+
+            ''' write virtual if of target shape [DOWN]'''
+            vport_with_l2seg_array = []
+            offset_vport_L3 = 0.0
+            if flag_exist_if_vport_array[1][1] == True:
+                tag_type = ''
+                for tmp_update_l2_table_array in reversed(update_l2_table_array):
+                    if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
+                            and tmp_update_l2_table_array[3] in current_direction_if_array[2]:
+                        if 'L2' in str(tmp_update_l2_table_array[4]):
+                            tag_type = 'L2_TAG'
+                        elif 'Routed (L3)' in str(tmp_update_l2_table_array[4]):
+                            tag_type = 'L3_TAG'
+                        else:
+                            tag_type = 'GRAY_TAG'
+
+                        tmp_if_array = ns_def.adjust_portname(tmp_update_l2_table_array[5])
+                        tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
+                        tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
+
+                        for tmp_tag_size_array in tag_size_array:
+                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                if tag_type == 'L2_TAG':
+                                    tag_left = tmp_tag_size_array[0] + (tmp_tag_size_array[2] - tmp_if_distance) * 0.5
+                                    used_vport_name_array.append(tmp_update_l2_table_array[5])
+                                    vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
+                                    break
+
+                        if tag_type == 'L3_TAG' or tag_type == 'GRAY_TAG':
+                            tag_left = down_tag_left_edge - offset_vport_L3 - tmp_if_distance - (between_tag * 0.5)
+                            used_vport_name_array.append(tmp_update_l2_table_array[5])
+                            offset_vport_L3 += tmp_if_distance + (between_tag * 0.5)
+                            device_size_array[0] = device_size_array[0] - tmp_if_distance - (between_tag * 0.5)
+                            device_size_array[2] = device_size_array[2] + tmp_if_distance + (between_tag * 0.5)
+
+                        tag_top = device_size_array[1] + device_size_array[3] - (ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] * 0.5) - l2seg_size_margin
+                        tag_width = tmp_if_distance
+                        tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                        tag_name = tmp_if_name
+
+                        self.shape = self.slide.shapes
+                        ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                        tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5]])
+                        vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
+
+                        ''' write Directory L2 Segment name under virtual port tag [DOWN]'''
+                        if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
+                            tmp_l2seg = []
+                            tmp_char = tmp_update_l2_table_array[7].replace(' ', '')
+                            tmp_l2seg = tmp_char.split(',')
+
+                            offset_hight = 0.0
+                            offset_left = 0.05
+
+                            for tmp_tmp_l2seg in tmp_l2seg:
+                                offset_hight += tag_hight
+                                tag_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_tmp_l2seg)[0]
+                                self.shape = self.slide.shapes
+                                ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left, tag_top + offset_hight, tag_width, tag_hight, tmp_tmp_l2seg)
+
+            '''write physical if of target shape [RIGHT]'''
+            if flag_exist_if_vport_array[2][0] == True:
+                offset_hight = 0.0
+                for tmp_current_direction_if_array in reversed(current_direction_if_array[3]):
+                    tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
+                    tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
+                    tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
+
+                    tag_left = device_size_array[0] + device_size_array[2] - (tmp_if_distance * 0.5)
+                    tag_top = l2seg_size_array[-1][1] - (l2seg_size_array[0][3] * 2) + offset_hight
+                    tag_width = tmp_if_distance
+                    tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                    tag_name = tmp_if_name
+
+                    # bug fix at ver 2.5.5
+                    if not any(row[0] == target_device_name for row in self.if_tag_left_array):
+                        device_left_offset_bugfix = device_size_array[0] + device_size_array[2] - (tmp_shapes_size_array[1][0] + tmp_shapes_size_array[1][2])
+                        if device_left_offset_bugfix > 0.01:
+                            self.if_tag_left_array.append([target_device_name, device_left_offset_bugfix])
+
+                    tag_type = 'GRAY_TAG'
+                    for tmp_update_l2_table_array in update_l2_table_array:
+                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
+                            if 'Routed (L3)' == tmp_update_l2_table_array[2]:
+                                tag_type = 'L3_TAG'
+                            elif 'Switch (L2)' == tmp_update_l2_table_array[2]:
+                                tag_type = 'L2_TAG'
+                            else:
+                                tag_type = 'GRAY_TAG'
+
+                    self.shape = self.slide.shapes
+                    ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                    tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_current_direction_if_array])
+
+                    offset_hight -= (self.shape_hight_min + between_tag)
+
+            ''' write virtual if of target shape [RIGHT]'''
+            offset_hight = 0
+            if flag_exist_if_vport_array[2][1] == True:
+                for tmp_update_l2_table_array in update_l2_table_array:
+                    if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
+                            and tmp_update_l2_table_array[3] in current_direction_if_array[3]:
+                        tmp_if_array = []
+                        for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                            if tmp_update_l2_table_array[3] in tmp_target_device_vport_if_array[1] and tmp_target_device_vport_if_array[0] not in used_vport_name_array:
+                                used_vport_name_array.append(tmp_target_device_vport_if_array[0])
+
+                                tmp_if_array = ns_def.adjust_portname(tmp_target_device_vport_if_array[0])
+                                tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
+                                tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
+
+                                tag_left = device_size_array[0] + device_size_array[2] - (tmp_if_distance * 0.5) - l2seg_size_margin - l2seg_size_margin_left_right_add
+                                tag_top = l2seg_size_array[-1][1] + (l2seg_size_array[-1][3] * 2) + offset_hight
                                 tag_width = tmp_if_distance
-                                tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
+                                tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
                                 tag_name = tmp_if_name
 
-                                self.shape = self.slide.shapes
-                                ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                                tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5]])
-                                vport_with_l2seg_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_update_l2_table_array[5], tmp_update_l2_table_array[6], tmp_update_l2_table_array[7]])
+                                if 'Routed (L3)' == tmp_update_l2_table_array[4]:
+                                    tag_type = 'L3_TAG'
+                                    break
+                                elif 'Switch (L2)' == tmp_update_l2_table_array[4]:
+                                    tag_type = 'L2_TAG'
+                                    for tmp_tag_size_array in tag_size_array:
+                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                            tag_top = tmp_tag_size_array[1]
+                                            break
+                                    break
+                                elif 'Loopback (L3)' == tmp_update_l2_table_array[4]:
+                                    tag_type = 'GRAY_TAG'
+                                    break
 
-                                ''' write Directory L2 Segment name under virtual port tag [DOWN]'''
-                                if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
-                                    # print(tag_name,tmp_update_l2_table_array[7])
-                                    tmp_l2seg = []
-                                    tmp_char = tmp_update_l2_table_array[7].replace(' ', '')  # [Temporary setting] replace ' ' to '' in l2 segment name
-                                    tmp_l2seg = tmp_char.split(',')
+                        self.shape = self.slide.shapes
+                        ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                        tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_target_device_vport_if_array[0]])
 
-                                    offset_hight = 0.0
-                                    offset_left = 0.05
+                        if tag_type != 'L2_TAG':
+                            offset_hight += (ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] + between_tag)
 
-                                    for tmp_tmp_l2seg in tmp_l2seg:
-                                        offset_hight += tag_hight
-                                        # offset_left += 0.05
-                                        tag_width = ns_def.get_description_width_hight(self.shae_font_size,tmp_tmp_l2seg)[0]
-                                        self.shape = self.slide.shapes
-                                        ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left, tag_top + offset_hight, tag_width, tag_hight, tmp_tmp_l2seg)
+                            ''' write Directory L2 Segment name under virtual port tag [RIGHT]'''
+                            if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
+                                tmp_l2seg = []
+                                tmp_char = tmp_update_l2_table_array[7].replace(' ', '')
+                                tmp_l2seg = tmp_char.split(',')
 
-                    '''write physical if of target shape [RIGHT]'''
-                    if flag_exist_if_vport_array[2][0] == True:
-                        offset_hight = 0.0
-                        for tmp_current_direction_if_array in reversed(current_direction_if_array[3]):
-                            tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
-                            tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
-                            tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-
-                            tag_left = device_size_array[0] + device_size_array[2] - (tmp_if_distance * 0.5)
-                            tag_top = l2seg_size_array[-1][1] - (l2seg_size_array[0][3] * 2) + offset_hight
-                            tag_width = tmp_if_distance
-                            tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                            tag_name = tmp_if_name
-
-                            # bug fix at ver 2.5.5  ##
-                            if not any(row[0] == target_device_name for row in self.if_tag_left_array):
-                                device_left_offset_bugfix = device_size_array[0] + device_size_array[2] - (tmp_shapes_size_array[1][0] + tmp_shapes_size_array[1][2])
-                                if device_left_offset_bugfix > 0.01:
-                                    self.if_tag_left_array.append([target_device_name, device_left_offset_bugfix])
-                            ##########################
-
-                            tag_type = 'GRAY_TAG'
-                            for tmp_update_l2_table_array in update_l2_table_array:
-                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
-                                    if 'Routed (L3)' == tmp_update_l2_table_array[2]:
-                                        tag_type = 'L3_TAG'
-                                    elif 'Switch (L2)' == tmp_update_l2_table_array[2]:
-                                        tag_type = 'L2_TAG'
+                                half_num = math.floor(len(tmp_l2seg) * 0.5)
+                                flag_over_half = False
+                                half_count = 0
+                                upside_l2seg = ''
+                                downside_l2seg = ''
+                                for tmp_tmp_l2seg in tmp_l2seg:
+                                    if half_num > half_count:
+                                        upside_l2seg += (tmp_tmp_l2seg + ' ')
+                                        half_count += 1
                                     else:
-                                        tag_type = 'GRAY_TAG'
+                                        flag_over_half = True
+                                        downside_l2seg += (tmp_tmp_l2seg + ' ')
 
-                            self.shape = self.slide.shapes
-                            ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                            tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_current_direction_if_array])
+                                offset_hight_l2seg = tag_hight
+                                offset_RIGHT_l2seg = 0.05
 
-                            offset_hight -= (self.shape_hight_min + between_tag)
-
-                    ''' write virtual if of target shape [RIGHT]'''
-                    offset_hight = 0
-                    if flag_exist_if_vport_array[2][1] == True:
-                        for tmp_update_l2_table_array in  update_l2_table_array:
-                            if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
-                                    and tmp_update_l2_table_array[3] in current_direction_if_array[3]:
-                                tmp_if_array = []
-                                for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                    if tmp_update_l2_table_array[3] in tmp_target_device_vport_if_array[1] and tmp_target_device_vport_if_array[0] not in used_vport_name_array:
-                                        used_vport_name_array.append(tmp_target_device_vport_if_array[0])
-
-                                        tmp_if_array = ns_def.adjust_portname(tmp_target_device_vport_if_array[0])
-                                        tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
-                                        tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-
-                                        tag_left = device_size_array[0] + device_size_array[2] - (tmp_if_distance * 0.5) - l2seg_size_margin - l2seg_size_margin_left_right_add
-                                        tag_top = l2seg_size_array[-1][1] + (l2seg_size_array[-1][3] * 2 ) + offset_hight
-                                        tag_width = tmp_if_distance
-                                        tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                                        tag_name = tmp_if_name
-
-                                        if 'Routed (L3)' == tmp_update_l2_table_array[4]:
-                                            tag_type = 'L3_TAG'
-                                            break
-                                        elif 'Switch (L2)' == tmp_update_l2_table_array[4]:
-                                            tag_type = 'L2_TAG'
-                                            for tmp_tag_size_array in tag_size_array:
-                                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                    tag_top = tmp_tag_size_array[1]
-                                                    break
-                                            break
-                                        elif 'Loopback (L3)' == tmp_update_l2_table_array[4]:
-                                            tag_type = 'GRAY_TAG'
-                                            break
+                                if upside_l2seg == '' and downside_l2seg != '':
+                                    upside_l2seg = downside_l2seg
+                                    downside_l2seg = ''
 
                                 self.shape = self.slide.shapes
-                                ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                                tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_target_device_vport_if_array[0]])
+                                tag_width = ns_def.get_description_width_hight(self.shae_font_size, upside_l2seg)[0]
+                                ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_RIGHT_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, upside_l2seg)
 
-                                if tag_type != 'L2_TAG':
-                                    offset_hight += (ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1] + between_tag)
-
-                                    ''' write Directory L2 Segment name under virtual port tag [RIGHT]'''
-                                    if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
-                                        tmp_l2seg = []
-                                        tmp_char = tmp_update_l2_table_array[7].replace(' ', '')  # [Temporary setting] replace ' ' to '' in l2 segment name
-                                        tmp_l2seg = tmp_char.split(',')
-
-
-
-                                        half_num = math.floor(len(tmp_l2seg) * 0.5)
-                                        flag_over_half = False
-                                        half_count = 0
-                                        upside_l2seg = ''
-                                        downside_l2seg = ''
-                                        for tmp_tmp_l2seg in tmp_l2seg:
-                                            if half_num > half_count:
-                                                upside_l2seg += (tmp_tmp_l2seg + ' ')
-                                                half_count += 1
-                                            else:
-                                                flag_over_half = True
-                                                downside_l2seg += (tmp_tmp_l2seg + ' ')
-
-                                        offset_hight_l2seg = tag_hight
-                                        offset_RIGHT_l2seg  = 0.05
-
-                                        if upside_l2seg == '' and downside_l2seg != '':
-                                            upside_l2seg = downside_l2seg
-                                            downside_l2seg = ''
-
-                                        self.shape = self.slide.shapes
-                                        tag_width = ns_def.get_description_width_hight(self.shae_font_size,upside_l2seg)[0]
-                                        ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_RIGHT_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, upside_l2seg)
-
-                                        offset_hight_l2seg += tag_hight
-                                        tag_width = ns_def.get_description_width_hight(self.shae_font_size,downside_l2seg)[0]
-                                        self.shape = self.slide.shapes
-                                        ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_RIGHT_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, downside_l2seg)
-
-
-                    '''write physical if of target shape [LEFT]'''
-                    if flag_exist_if_vport_array[3][0] == True:
-                        offset_hight = 0.0
-                        for tmp_current_direction_if_array in current_direction_if_array[4]:
-                            tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
-                            tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
-                            tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-
-                            tag_left = device_size_array[0] - (tmp_if_distance * 0.5)
-                            tag_top = l2seg_size_array[0][1] + (l2seg_size_array[0][3] * 2) + offset_hight
-                            tag_width = tmp_if_distance
-                            tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                            tag_name = tmp_if_name
-
-                            tag_type = 'GRAY_TAG'
-                            for tmp_update_l2_table_array in update_l2_table_array:
-                                if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
-                                    if 'Routed (L3)' == tmp_update_l2_table_array[2]:
-                                        tag_type = 'L3_TAG'
-                                    elif 'Switch (L2)' == tmp_update_l2_table_array[2]:
-                                        tag_type = 'L2_TAG'
-                                    else:
-                                        tag_type = 'GRAY_TAG'
-
-                            self.shape = self.slide.shapes
-                            ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                            tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_current_direction_if_array])
-
-                            offset_hight += (ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1] + between_tag)
-
-                    ''' write virtual if of target shape [LEFT]'''
-                    offset_hight = 0.0
-                    if flag_exist_if_vport_array[3][1] == True:
-                        for tmp_update_l2_table_array in  update_l2_table_array:
-                            if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
-                                    and tmp_update_l2_table_array[3] in current_direction_if_array[4]:
-                                tmp_if_array = []
-                                for tmp_target_device_vport_if_array in target_device_vport_if_array:
-                                    if tmp_update_l2_table_array[3] in tmp_target_device_vport_if_array[1] and tmp_target_device_vport_if_array[0] not in used_vport_name_array:
-                                        used_vport_name_array.append(tmp_target_device_vport_if_array[0])
-
-                                        tmp_if_array = ns_def.adjust_portname(tmp_target_device_vport_if_array[0])
-                                        tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
-                                        tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[0]
-
-                                        tag_left = device_size_array[0] - (tmp_if_distance * 0.5) + l2seg_size_margin + l2seg_size_margin_left_right_add
-                                        tag_top = l2seg_size_array[0][1] - ((exit_if_vport_num_l3_only_array[3]) * (between_tag + l2seg_size_array[0][3])) + offset_hight
-                                        tag_width = tmp_if_distance
-                                        tag_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_if_name)[1]
-                                        tag_name = tmp_if_name
-
-                                        if 'Routed (L3)' == tmp_update_l2_table_array[4]:
-                                            tag_type = 'L3_TAG'
-                                            break
-                                        elif 'Switch (L2)' == tmp_update_l2_table_array[4]:
-                                            tag_type = 'L2_TAG'
-                                            for tmp_tag_size_array in tag_size_array:
-                                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                    tag_top = tmp_tag_size_array[1]
-                                                    break
-                                            break
-                                        elif 'Loopback (L3)' == tmp_update_l2_table_array[4]:
-                                            tag_type = 'GRAY_TAG'
-                                            break
-
+                                offset_hight_l2seg += tag_hight
+                                tag_width = ns_def.get_description_width_hight(self.shae_font_size, downside_l2seg)[0]
                                 self.shape = self.slide.shapes
-                                ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
-                                tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_target_device_vport_if_array[0]])
+                                ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_RIGHT_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, downside_l2seg)
 
-                                if tag_type != 'L2_TAG':
-                                    offset_hight += (ns_def.get_description_width_hight(self.shae_font_size,tag_name)[1] + between_tag)
+            '''write physical if of target shape [LEFT]'''
+            if flag_exist_if_vport_array[3][0] == True:
+                offset_hight = 0.0
+                for tmp_current_direction_if_array in current_direction_if_array[4]:
+                    tmp_if_array = ns_def.adjust_portname(tmp_current_direction_if_array)
+                    tmp_if_name = ns_def.get_tag_name_from_full_name(target_device_name, tmp_current_direction_if_array, self.position_line_tuple)
+                    tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
 
-                                    ''' write Directory L2 Segment name under virtual port tag [LEFT]'''
-                                    if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
-                                        tmp_l2seg = []
-                                        tmp_char = tmp_update_l2_table_array[7].replace(' ', '')  # [Temporary setting] replace ' ' to '' in l2 segment name
-                                        tmp_l2seg = tmp_char.split(',')
+                    tag_left = device_size_array[0] - (tmp_if_distance * 0.5)
+                    tag_top = l2seg_size_array[0][1] + (l2seg_size_array[0][3] * 2) + offset_hight
+                    tag_width = tmp_if_distance
+                    tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                    tag_name = tmp_if_name
 
-
-
-                                        half_num = math.floor(len(tmp_l2seg) * 0.5)
-                                        flag_over_half = False
-                                        half_count = 0
-                                        upside_l2seg = ''
-                                        downside_l2seg = ''
-                                        for tmp_tmp_l2seg in tmp_l2seg:
-                                            if half_num > half_count:
-                                                upside_l2seg += (tmp_tmp_l2seg + ' ')
-                                                half_count += 1
-                                            else:
-                                                flag_over_half = True
-                                                downside_l2seg += (tmp_tmp_l2seg + ' ')
-
-                                        offset_hight_l2seg = tag_hight
-                                        offset_left_l2seg  = 0.05
-
-                                        if upside_l2seg == '' and downside_l2seg != '':
-                                            upside_l2seg = downside_l2seg
-                                            downside_l2seg = ''
-
-                                        self.shape = self.slide.shapes
-                                        tag_width = ns_def.get_description_width_hight(self.shae_font_size,upside_l2seg)[0]
-                                        ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, upside_l2seg)
-
-                                        offset_hight_l2seg += ns_def.get_description_width_hight(self.shae_font_size,downside_l2seg)[1]
-                                        tag_width = ns_def.get_description_width_hight(self.shae_font_size,downside_l2seg)[0]
-                                        self.shape = self.slide.shapes
-                                        ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, downside_l2seg)
-
-                    '''
-                    write lines
-                    '''
-                    used_vport_name_array = []
-                    inche_from_connect_x = 0.0
-                    inche_from_connect_y = 0.0
-                    inche_to_connect_x = 0.0
-                    inche_to_connect_y = 0.0
-                    # print('--- tag_size_array 2nd  (left, top , width, hight)--- ')
-                    # print(tag_size_array)
+                    tag_type = 'GRAY_TAG'
                     for tmp_update_l2_table_array in update_l2_table_array:
-                        if tmp_update_l2_table_array[1] == target_device_name:
-                            ### Physical IF to Virtual port
-                            if tmp_update_l2_table_array[3] != '' and tmp_update_l2_table_array[5] != '':
-                                # print('#LINE#  [From] ', tmp_update_l2_table_array[3], ' [To] ', tmp_update_l2_table_array[5])
-                                if tmp_update_l2_table_array[3] in current_direction_if_array[1]:
-                                    # UP
+                        if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[3] == tmp_current_direction_if_array:
+                            if 'Routed (L3)' == tmp_update_l2_table_array[2]:
+                                tag_type = 'L3_TAG'
+                            elif 'Switch (L2)' == tmp_update_l2_table_array[2]:
+                                tag_type = 'L2_TAG'
+                            else:
+                                tag_type = 'GRAY_TAG'
+
+                    self.shape = self.slide.shapes
+                    ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                    tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_current_direction_if_array])
+
+                    offset_hight += (ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] + between_tag)
+
+            ''' write virtual if of target shape [LEFT]'''
+            offset_hight = 0.0
+            if flag_exist_if_vport_array[3][1] == True:
+                for tmp_update_l2_table_array in update_l2_table_array:
+                    if tmp_update_l2_table_array[1] == target_device_name and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array \
+                            and tmp_update_l2_table_array[3] in current_direction_if_array[4]:
+                        tmp_if_array = []
+                        for tmp_target_device_vport_if_array in target_device_vport_if_array:
+                            if tmp_update_l2_table_array[3] in tmp_target_device_vport_if_array[1] and tmp_target_device_vport_if_array[0] not in used_vport_name_array:
+                                used_vport_name_array.append(tmp_target_device_vport_if_array[0])
+
+                                tmp_if_array = ns_def.adjust_portname(tmp_target_device_vport_if_array[0])
+                                tmp_if_name = str(tmp_if_array[0]) + ' ' + str(tmp_if_array[2])
+                                tmp_if_distance = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[0]
+
+                                tag_left = device_size_array[0] - (tmp_if_distance * 0.5) + l2seg_size_margin + l2seg_size_margin_left_right_add
+                                tag_top = l2seg_size_array[0][1] - ((exit_if_vport_num_l3_only_array[3]) * (between_tag + l2seg_size_array[0][3])) + offset_hight
+                                tag_width = tmp_if_distance
+                                tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
+                                tag_name = tmp_if_name
+
+                                if 'Routed (L3)' == tmp_update_l2_table_array[4]:
+                                    tag_type = 'L3_TAG'
+                                    break
+                                elif 'Switch (L2)' == tmp_update_l2_table_array[4]:
+                                    tag_type = 'L2_TAG'
                                     for tmp_tag_size_array in tag_size_array:
                                         if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_to_connect_y = tmp_tag_size_array[1]
+                                            tag_top = tmp_tag_size_array[1]
+                                            break
+                                    break
+                                elif 'Loopback (L3)' == tmp_update_l2_table_array[4]:
+                                    tag_type = 'GRAY_TAG'
+                                    break
 
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[2]:
-                                    # DOWN
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_from_connect_y = tmp_tag_size_array[1]
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_to_connect_x  = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_to_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
+                        self.shape = self.slide.shapes
+                        ns_ddx_figure.extended.add_shape(self, tag_type, tag_left, tag_top, tag_width, tag_hight, tag_name)
+                        tag_size_array.append([tag_left, tag_top, tag_width, tag_hight, tag_name, tmp_target_device_vport_if_array[0]])
 
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[3]:
-                                    # RIHGT
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                            inche_from_connect_x = tmp_tag_size_array[0]
-                                            inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_to_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
-                                            inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                        if tag_type != 'L2_TAG':
+                            offset_hight += (ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1] + between_tag)
 
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[4]:
-                                    # LEFT
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
-                                            inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_to_connect_x  = tmp_tag_size_array[0]
-                                            inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                            ''' write Directory L2 Segment name under virtual port tag [LEFT]'''
+                            if tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[6] == '' and tmp_update_l2_table_array[7] != '':
+                                tmp_l2seg = []
+                                tmp_char = tmp_update_l2_table_array[7].replace(' ', '')
+                                tmp_l2seg = tmp_char.split(',')
 
-                                line_type = 'NORMAL'
-                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-                            ### Virtual port to L2 Segment
-                            if tmp_update_l2_table_array[6] != '' and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array:
-                                # print('#LINE#  [From] ', tmp_update_l2_table_array[3], ' [To] ', tmp_update_l2_table_array[5])
-                                used_vport_name_array.append(tmp_update_l2_table_array[5])
-
-                                # UP for other's L3 Virtual port (include loopback)
-                                if tmp_update_l2_table_array[5] in other_if_array:
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
-
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2] - (tmp_l2seg_size_array[2] * 0.1)
-                                                inche_to_connect_y = tmp_l2seg_size_array[1]
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-                                if tmp_update_l2_table_array[3] in current_direction_if_array[1]:
-                                    # UP
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
-
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2] - (tmp_l2seg_size_array[2] * 0.1)
-                                                inche_to_connect_y = tmp_l2seg_size_array[1]
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[2]:
-                                    # DOWN
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                            inche_from_connect_y = tmp_tag_size_array[1]
-
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + (tmp_l2seg_size_array[2] * 0.1)
-                                                inche_to_connect_y = tmp_l2seg_size_array[1] + tmp_l2seg_size_array[3]
-                                                # used_vport_name_array.append(tmp_update_l2_table_array[5])
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[3]:
-                                    # RIHGT
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_from_connect_x = tmp_tag_size_array[0]
-                                            inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2]
-                                                inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
-                                                # used_vport_name_array.append(tmp_update_l2_table_array[5])
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[4]:
-                                    # LEFT
-                                    for tmp_tag_size_array in tag_size_array:
-                                        if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
-                                            inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
-                                            inche_from_connect_y = tmp_tag_size_array[1]+ (tmp_tag_size_array[3] * 0.5)
-
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
-                                                inche_to_connect_x = tmp_l2seg_size_array[0]
-                                                inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
-                                                # used_vport_name_array.append(tmp_update_l2_table_array[5])
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-                            ### Physical IF to L2 Segment
-                            if tmp_update_l2_table_array[6] != '' and tmp_update_l2_table_array[5] == '' and tmp_update_l2_table_array[3] != '':
-                                if tmp_update_l2_table_array[3] in current_direction_if_array[1]:
-                                    # UP
-                                    if flag_exist_if_vport_array[0][1] == True:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                                inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
-                                                inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                                inche_to_connect_y = device_size_array[1] + l2seg_size_margin
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-
-                                                inche_from_connect_x = inche_to_connect_x
-                                                inche_from_connect_y = inche_to_connect_y
-
+                                half_num = math.floor(len(tmp_l2seg) * 0.5)
+                                flag_over_half = False
+                                half_count = 0
+                                upside_l2seg = ''
+                                downside_l2seg = ''
+                                for tmp_tmp_l2seg in tmp_l2seg:
+                                    if half_num > half_count:
+                                        upside_l2seg += (tmp_tmp_l2seg + ' ')
+                                        half_count += 1
                                     else:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                                inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
+                                        flag_over_half = True
+                                        downside_l2seg += (tmp_tmp_l2seg + ' ')
 
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_update_l2_table_array:
-                                                # print('tmp_tmp_update_l2_table_array   ',tmp_tmp_update_l2_table_array )
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2] - (tmp_l2seg_size_array[2] * 0.1)
-                                                inche_to_connect_y = tmp_l2seg_size_array[1]
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+                                offset_hight_l2seg = tag_hight
+                                offset_left_l2seg = 0.05
 
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[2]:
-                                    # DOWN
-                                    if flag_exist_if_vport_array[1][1] == True:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                                inche_from_connect_y = tmp_tag_size_array[1]
-                                                inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                                inche_to_connect_y = device_size_array[1] + device_size_array[3] - 0.1 - l2seg_size_margin
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+                                if upside_l2seg == '' and downside_l2seg != '':
+                                    upside_l2seg = downside_l2seg
+                                    downside_l2seg = ''
 
-                                                inche_from_connect_x = inche_to_connect_x
-                                                inche_from_connect_y = inche_to_connect_y
+                                self.shape = self.slide.shapes
+                                tag_width = ns_def.get_description_width_hight(self.shae_font_size, upside_l2seg)[0]
+                                ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, upside_l2seg)
 
-                                    else:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
-                                                inche_from_connect_y = tmp_tag_size_array[1]
+                                offset_hight_l2seg += ns_def.get_description_width_hight(self.shae_font_size, downside_l2seg)[1]
+                                tag_width = ns_def.get_description_width_hight(self.shae_font_size, downside_l2seg)[0]
+                                self.shape = self.slide.shapes
+                                ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left_l2seg, tag_top + offset_hight_l2seg, tag_width, tag_hight, downside_l2seg)
 
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_update_l2_table_array:
-                                                # print('tmp_tmp_update_l2_table_array   ',tmp_tmp_update_l2_table_array )
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + (tmp_l2seg_size_array[2] * 0.1)
-                                                inche_to_connect_y = tmp_l2seg_size_array[1] + tmp_l2seg_size_array[3]
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+            '''write lines'''
+            used_vport_name_array = []
+            inche_from_connect_x = 0.0
+            inche_from_connect_y = 0.0
+            inche_to_connect_x = 0.0
+            inche_to_connect_y = 0.0
 
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[3]:
-                                    # RIHGT
-                                    if flag_exist_if_vport_array[2][1] == True:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0]
-                                                inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-                                                inche_to_connect_x = tmp_tag_size_array [0]  - l2seg_size_margin - l2seg_size_margin_left_right_add
-                                                inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+            for tmp_update_l2_table_array in update_l2_table_array:
+                if tmp_update_l2_table_array[1] == target_device_name:
+                    ### Physical IF to Virtual port
+                    if tmp_update_l2_table_array[3] != '' and tmp_update_l2_table_array[5] != '':
+                        if tmp_update_l2_table_array[3] in current_direction_if_array[1]:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                    inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_to_connect_y = tmp_tag_size_array[1]
 
-                                                inche_from_connect_x = inche_to_connect_x
-                                                inche_from_connect_y = inche_to_connect_y
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[2]:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                    inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_from_connect_y = tmp_tag_size_array[1]
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_to_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
 
-                                    else:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0]
-                                                inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[3]:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                    inche_from_connect_x = tmp_tag_size_array[0]
+                                    inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_to_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
+                                    inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
 
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_update_l2_table_array:
-                                                # print('tmp_tmp_update_l2_table_array   ',tmp_tmp_update_l2_table_array )
-                                                inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2]
-                                                inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[4]:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                    inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
+                                    inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_to_connect_x = tmp_tag_size_array[0]
+                                    inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
 
-                                elif tmp_update_l2_table_array[3] in current_direction_if_array[4]:
-                                    # LEFT
-                                    if flag_exist_if_vport_array[3][1] == True:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
-                                                inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-                                                inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5) + l2seg_size_margin +l2seg_size_margin_left_right_add + 0.3
-                                                inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+                        line_type = 'NORMAL'
+                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
 
-                                                inche_from_connect_x = inche_to_connect_x
-                                                inche_from_connect_y = inche_to_connect_y
+                    ### Virtual port to L2 Segment
+                    if tmp_update_l2_table_array[6] != '' and tmp_update_l2_table_array[5] != '' and tmp_update_l2_table_array[5] not in used_vport_name_array:
+                        used_vport_name_array.append(tmp_update_l2_table_array[5])
 
-                                    else:
-                                        for tmp_tag_size_array in tag_size_array:
-                                            if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
-                                                inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
-                                                inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                        if tmp_update_l2_table_array[5] in other_if_array:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
 
-                                    modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
-                                    for tmp_l2seg_size_array in l2seg_size_array:
-                                        for tmp_update_l2_table_array in modify_update_l2_table_array:
-                                            if tmp_l2seg_size_array[4] == tmp_update_l2_table_array:
-                                                # print('tmp_tmp_update_l2_table_array   ',tmp_tmp_update_l2_table_array )
-                                                inche_to_connect_x = tmp_l2seg_size_array[0]
-                                                inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
-                                                line_type = 'NORMAL'
-                                                ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2] - (tmp_l2seg_size_array[2] * 0.1)
+                                        inche_to_connect_y = tmp_l2seg_size_array[1]
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
 
+                        if tmp_update_l2_table_array[3] in current_direction_if_array[1]:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
 
-                    '''write device frame'''
-                    #self.shape = self.slide.shapes
-                    #ns_ddx_figure.extended.add_shape(self, 'DEVICE_FRAME', device_size_array[0], device_size_array[1], device_size_array[2], device_size_array[3], target_device_name)
-                    #self.slide.shapes._spTree.remove(self.shape._element)   # move shape to back layer
-                    #self.slide.shapes._spTree.insert(2, self.shape._element)  # move shape to back layer
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2] - (tmp_l2seg_size_array[2] * 0.1)
+                                        inche_to_connect_y = tmp_l2seg_size_array[1]
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
 
-                    #if action_type == 'RETURN_DEVICE_SIZE':
-                    #    return ([device_size_array[0], device_size_array[1],device_size_array[2],device_size_array[3]])
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[2]:
+                            for tmp_tag_size_array in tag_size_array:
+                                if tmp_tag_size_array[5] == tmp_update_l2_table_array[5]:
+                                    inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                    inche_from_connect_y = tmp_tag_size_array[1]
 
-                    self.all_tag_size_array.append([target_device_name,tag_size_array])
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + (tmp_l2seg_size_array[2] * 0.1)
+                                        inche_to_connect_y = tmp_l2seg_size_array[1] + tmp_l2seg_size_array[3]
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[3]:
+                            if flag_exist_if_vport_array[2][1] == True:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        inche_to_connect_x = tmp_tag_size_array[0] - l2seg_size_margin - l2seg_size_margin_left_right_add
+                                        inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                                        inche_from_connect_x = inche_to_connect_x
+                                        inche_from_connect_y = inche_to_connect_y
+                            else:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2]
+                                        inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[4]:
+                            if flag_exist_if_vport_array[3][1] == True:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5) + l2seg_size_margin + l2seg_size_margin_left_right_add + 0.3
+                                        inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                                        inche_from_connect_x = inche_to_connect_x
+                                        inche_from_connect_y = inche_to_connect_y
+                            else:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0]
+                                        inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                    ### Physical IF to L2 Segment
+                    if tmp_update_l2_table_array[6] != '' and tmp_update_l2_table_array[5] == '' and tmp_update_l2_table_array[3] != '':
+                        if tmp_update_l2_table_array[3] in current_direction_if_array[1]:
+                            if flag_exist_if_vport_array[0][1] == True:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                        inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
+                                        inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                        inche_to_connect_y = device_size_array[1] + l2seg_size_margin
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                                        inche_from_connect_x = inche_to_connect_x
+                                        inche_from_connect_y = inche_to_connect_y
+                            else:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                        inche_from_connect_y = tmp_tag_size_array[1] + tmp_tag_size_array[3]
+
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2] - (tmp_l2seg_size_array[2] * 0.1)
+                                        inche_to_connect_y = tmp_l2seg_size_array[1]
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[2]:
+                            if flag_exist_if_vport_array[1][1] == True:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                        inche_from_connect_y = tmp_tag_size_array[1]
+                                        inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                        inche_to_connect_y = device_size_array[1] + device_size_array[3] - 0.1 - l2seg_size_margin
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                                        inche_from_connect_x = inche_to_connect_x
+                                        inche_from_connect_y = inche_to_connect_y
+                            else:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5)
+                                        inche_from_connect_y = tmp_tag_size_array[1]
+
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + (tmp_l2seg_size_array[2] * 0.1)
+                                        inche_to_connect_y = tmp_l2seg_size_array[1] + tmp_l2seg_size_array[3]
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[3]:
+                            if flag_exist_if_vport_array[2][1] == True:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        inche_to_connect_x = tmp_tag_size_array[0] - l2seg_size_margin - l2seg_size_margin_left_right_add
+                                        inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                                        inche_from_connect_x = inche_to_connect_x
+                                        inche_from_connect_y = inche_to_connect_y
+                            else:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0] + tmp_l2seg_size_array[2]
+                                        inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                        elif tmp_update_l2_table_array[3] in current_direction_if_array[4]:
+                            if flag_exist_if_vport_array[3][1] == True:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        inche_to_connect_x = tmp_tag_size_array[0] + (tmp_tag_size_array[2] * 0.5) + l2seg_size_margin + l2seg_size_margin_left_right_add + 0.3
+                                        inche_to_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+                                        inche_from_connect_x = inche_to_connect_x
+                                        inche_from_connect_y = inche_to_connect_y
+                            else:
+                                for tmp_tag_size_array in tag_size_array:
+                                    if tmp_tag_size_array[5] == tmp_update_l2_table_array[3]:
+                                        inche_from_connect_x = tmp_tag_size_array[0] + tmp_tag_size_array[2]
+                                        inche_from_connect_y = tmp_tag_size_array[1] + (tmp_tag_size_array[3] * 0.5)
+
+                            modify_update_l2_table_array = str(tmp_update_l2_table_array[6]).replace(' ', '').split(',')
+                            for tmp_l2seg_size_array in l2seg_size_array:
+                                for tmp_modify_update_l2_table_array in modify_update_l2_table_array:
+                                    if tmp_l2seg_size_array[4] == tmp_modify_update_l2_table_array:
+                                        inche_to_connect_x = tmp_l2seg_size_array[0]
+                                        inche_to_connect_y = tmp_l2seg_size_array[1] + (tmp_l2seg_size_array[3] * 0.5)
+                                        line_type = 'NORMAL'
+                                        ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
+            '''write device frame'''
+            self.shape = self.slide.shapes
+            if target_device_name in wp_list_array:
+                tmp_device_type = 'WAY_POINT'
+            else:
+                tmp_device_type = 'DEVICE_FRAME'
+
+            ns_ddx_figure.extended.add_shape(self, tmp_device_type, device_size_array[0], device_size_array[1], device_size_array[2], device_size_array[3], target_device_name)
+            self.slide.shapes._spTree.remove(self.shape._element)
+            self.slide.shapes._spTree.insert(2, self.shape._element)
+
+            if action_type == 'RETURN_DEVICE_SIZE':
+                return ([device_size_array[0], device_size_array[1], device_size_array[2], device_size_array[3]])
+
+            self.all_tag_size_array.append([target_device_name, tag_size_array])
+
+            # === Record device processing time ===
+            device_elapsed = time.time() - device_start
+            device_times.append(device_elapsed)
+
+            if device_elapsed > 2.0:
+                print(f"  ⚠️  Slow device: '{device_name}' = {device_elapsed:.2f}s")
+            # === End of device loop ===
+
+        # === Final summary ===
+        total_elapsed = time.time() - overall_start
+        '''print(f"\n{'=' * 70}")
+        print(f"add_l2_material Complete (Optimized):")
+        print(f"  Total time: {total_elapsed:.2f}s ({total_elapsed / 60:.1f}min)")
+
+        if device_times:
+            avg = sum(device_times) / len(device_times)
+            print(f"  Devices: {len(device_times)}")
+            print(f"  Average: {avg:.3f}s per device")
+            print(f"  Slowest: {max(device_times):.3f}s")
+            print(f"  Fastest: {min(device_times):.3f}s")
+            print(f"  Estimated for 1024 devices: {avg * 1024 / 60:.1f} minutes")
+
+            # Show improvement
+            if avg < 1.0:  # Previous average was 1.0s
+                improvement = ((1.0 - avg) / 1.0) * 100
+                print(f"  Improvement: {improvement:.1f}% faster per device")
+
+        print(f"{'=' * 70}\n")'''
+
 
 
     def add_l2_line(self):
@@ -2687,6 +2643,11 @@ class  ns_ddx_figure_run():
                             inche_to_connect_y = tmp_tmp_all_tag_size_array[1] + (tmp_tmp_all_tag_size_array[3] * 0.5)
                             break
 
+            # Safety: skip line if coordinates not found
+            if not ('inche_from_connect_x' in locals() and 'inche_to_connect_x' in locals()):
+                temp_temp_line_row += 1
+                continue
+
             #write line
             if line_to_array[0] in check_current_device_array and line_from_array[0] in check_current_device_array:
                 #adjust line point x,y
@@ -2738,7 +2699,19 @@ class extended():
     def __init__(self):
         print('ns_ddx_figure_extended()')
 
+    def _ensure_l2_shared_prepared(self):
+        """
+        Ensure shared L2 data is prepared once.
+        Safe to call multiple times.
+        """
+        if not hasattr(self, "l2_shared_data_prepared") or not self.l2_shared_data_prepared:
+            ns_ddx_figure_run.prepare_l2_shared_data(self)
+
     def add_shape(self,shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text):
+        # FAST PATH: skip PPT drawing for size-only calculations
+        if getattr(self, "_skip_ppt_draw", False):
+            return
+
         if self.click_value_l3 == 'L3-4-1' and self.flag_re_create == True and self.flag_second_page == False: # add ver 2.3.3(b) , update at ver 2.4.1
             self.add_shape_write_array.append([shape_type,shape_left, shape_top, shape_width, shape_hight,shape_text])
 
@@ -2992,6 +2965,10 @@ class extended():
             print('### not defined shape_type ###')
 
     def add_line(self,line_type,inche_from_connect_x,inche_from_connect_y,inche_to_connect_x,inche_to_connect_y):
+        # FAST PATH: skip PPT drawing for size-only calculations
+        if getattr(self, "_skip_ppt_draw", False):
+            return
+
         from pptx.oxml import parse_xml
 
         self.shape = self.slide.shapes
@@ -3108,12 +3085,14 @@ class extended():
 
 
 
-    def l2_device_materials(self,action_type,input_device_name,write_left_top_array,wp_list_array):
+    def l2_device_materials(self, action_type, input_device_name, write_left_top_array, wp_list_array):
         import ns_def
         '''
-        :param action_type: RETURN_DEVICE_SIZE' - > return array[left, top , width, hight] , 'WRITE_DEVICE_L2' -> write device l2 materials
+        :param action_type: RETURN_DEVICE_SIZE' - > return array[left, top , width, hight] ,
+                            'WRITE_DEVICE_L2' -> write device l2 materials
         :param input_device_name: target device_name
-        :param write_left_top_array: [left , top , [offset_left, offset_top , right , left]] or [left , top , [device_size_array]]
+        :param write_left_top_array: [left , top , [offset_left, offset_top , right , left]]
+                                     or [left , top , [device_size_array]]
         :return: RETURN_DEVICE_SIZE' - > return array[left, top , width, hight]
         '''
         target_device_name = input_device_name
@@ -3121,20 +3100,52 @@ class extended():
         offset_left_master = 0.0
         offset_top_master = 0.0
         if action_type == 'WRITE_DEVICE_L2':
-            #print(write_left_top_array[0],write_left_top_array[2][0])
             offset_left_master = write_left_top_array[0] - write_left_top_array[2][0]
             offset_top_master = write_left_top_array[1] - write_left_top_array[2][1]
 
-        self.active_ppt.slide_width = Inches(self.ppt_width + self.ppt_edge_margin * 2)
-        self.active_ppt.slide_height = Inches(self.ppt_hight + self.ppt_edge_margin * 2)
+        # ============================================================
+        # FAST PATH SETUP for RETURN_DEVICE_SIZE (no PPT rendering)
+        # ============================================================
+        if action_type == 'RETURN_DEVICE_SIZE':
+            # Enable draw-skip (extended.add_shape/add_line must be patched to NO-OP)
+            self._skip_ppt_draw = True
 
-        self.title_only_slide_layout = self.active_ppt.slide_layouts[5]
-        self.slide = self.active_ppt.slides.add_slide(self.title_only_slide_layout)
-        self.slide.shapes.title.left = Inches(0.0)
-        self.slide.shapes.title.top = Inches(0.0)
-        self.slide.shapes.title.width = Inches(14.0)
-        self.slide.shapes.title.height = Inches(1.0)
-        self.shape = self.slide.shapes
+            # Provide dummy slide/shapes to satisfy attribute references safely
+            class _DummyTitle:
+                left = top = width = height = 0
+                text = ""
+
+            class _DummyShapes:
+                title = _DummyTitle()
+
+                def __getattr__(self, name):
+                    # Any unexpected attribute access becomes a harmless dummy
+                    return _DummyTitle()
+
+            class _DummySlide:
+                shapes = _DummyShapes()
+
+            self.slide = _DummySlide()
+            self.shape = self.slide.shapes
+
+        else:
+            # Normal path (existing behavior)
+            self._skip_ppt_draw = False
+
+            self.active_ppt.slide_width = Inches(self.ppt_width + self.ppt_edge_margin * 2)
+            self.active_ppt.slide_height = Inches(self.ppt_hight + self.ppt_edge_margin * 2)
+
+            self.title_only_slide_layout = self.active_ppt.slide_layouts[5]
+            self.slide = self.active_ppt.slides.add_slide(self.title_only_slide_layout)
+            self.slide.shapes.title.left = Inches(0.0)
+            self.slide.shapes.title.top = Inches(0.0)
+            self.slide.shapes.title.width = Inches(14.0)
+            self.slide.shapes.title.height = Inches(1.0)
+            self.shape = self.slide.shapes
+
+            self.shape.title.text = input_device_name
+            if self.click_value == 'L2-3-3':
+                self.shape.title.text = '[L2] ' + input_device_name
 
         ### default parameter ###
         self.folder_font_type = 'Calibri'
@@ -3143,332 +3154,359 @@ class extended():
         self.shae_font_size = 6  # Pt
         self.shae_font_large_size = 8  # Pt
 
-        self.roundness = 0.0  # curve of ROUNDED_RECTANGLE 0.0-1.0 * 100(%)
-        self.shape_width_min = 0.3  # in <<STYLE_SHAPE>> inches
-        self.shape_hight_min = 0.1  # in <<STYLE_SHAPE>> inches
-        self.per_char_inchi = 0.1  # inches of per char count in shape
+        self.roundness = 0.0
+        self.shape_width_min = 0.3
+        self.shape_hight_min = 0.1
+        self.per_char_inchi = 0.1
 
         shape_left = 0
         shape_top = 0
         shape_type = 'L2_SEGMENT'
         shape_text = 'Dummy'
-        shape_interval_width_ratio = 0.75  # ratio of interval shapes(width)
-        shape_interval_hight_ratio = 0.75  # ratio of interval shapes(hight)
-        between_tag = 0.2  # distance between tags
-        l2seg_size_margin = 0.7  # inches   between l2seg and if, l2seg and vport
-        l2seg_size_margin_left_right_add = 0.4  # add inches l2seg and if, l2seg and vport. and right or left
+        shape_interval_width_ratio = 0.75
+        shape_interval_hight_ratio = 0.75
+        between_tag = 0.2
+        l2seg_size_margin = 0.7
+        l2seg_size_margin_left_right_add = 0.4
 
         offset_left_shape = offset_left_master
         offset_top_shape = offset_top_master
 
-        self.shape.title.text = input_device_name
+        # NOTE: title text already handled in non-RETURN path above
 
-        if self.click_value == 'L2-3-3':
-            self.shape.title.text = '[L2] ' + input_device_name
+        # ============================================================
+        # STEP1.1 define functions
+        #   RETURN_DEVICE_SIZE: use shared_* (avoid per-device heavy work)
+        # ============================================================
+        if action_type == 'RETURN_DEVICE_SIZE':
+            # Prepare shared data once (per process)
+            self._ensure_l2_shared_prepared()
 
-        '''
-        STEP1.1 define functions
-        '''
-        new_l2_table_array = []
-        for tmp_l2_table_array in self.l2_table_array:
-            if tmp_l2_table_array[0] != 1 and tmp_l2_table_array[0] != 2:
-                tmp_l2_table_array[1].extend(['','','','','','','',''])
-                del tmp_l2_table_array[1][8:]
-                new_l2_table_array.append(tmp_l2_table_array)
+            # Use shared data (same meaning as originals)
+            new_l2_table_array = self.shared_new_l2_table_array
+            # new_l2_table_tuple was used only for debug/lookup in some paths; keep available if needed
+            try:
+                new_l2_table_tuple = self.shared_new_l2_table_tuple
+            except Exception:
+                new_l2_table_tuple = ns_def.convert_array_to_tuple(new_l2_table_array)
 
-        #print('---- new_l2_table_array ----')
-        #print(new_l2_table_array)
+            update_l2_table_array = self.shared_update_l2_table_array
+            device_l2name_array = self.shared_device_l2name_array
+            unique_l2name_array = self.shared_unique_l2name_array
 
-        new_l2_table_tuple = ns_def.convert_array_to_tuple(new_l2_table_array)
-        #print('---- new_l2_table_tuple ----')
-        #print(new_l2_table_tuple)
+            # These may be referenced later in the original code
+            device_list_array = self.shared_device_list_array
+            wp_list_array = self.shared_wp_list_array
+            shape_list_array = self.shared_shape_list_array
+            shape_if_array = self.shared_shape_if_array
+            modify_position_shape_array = self.shared_modify_position_shape_array
+            modify_position_folder_array = self.shared_modify_position_folder_array
+            new_direction_if_array = self.shared_new_direction_if_array
 
-        # input l2 l3 if type
-        update_l2_table_array = []
+        else:
+            '''
+            STEP1.1 define functions
+            '''
+            new_l2_table_array = []
+            for tmp_l2_table_array in self.l2_table_array:
+                if tmp_l2_table_array[0] != 1 and tmp_l2_table_array[0] != 2:
+                    tmp_l2_table_array[1].extend(['','','','','','','',''])
+                    del tmp_l2_table_array[1][8:]
+                    new_l2_table_array.append(tmp_l2_table_array)
 
-        for tmp_tmp_new_l2_table_array in new_l2_table_array:
-            offset_excel = 2
-            tmp_new_l2_table_array = tmp_tmp_new_l2_table_array[1]
-            if tmp_new_l2_table_array[offset_excel + 3]  == "":
-                if tmp_new_l2_table_array[offset_excel + 4] == "":
-                    if tmp_new_l2_table_array[offset_excel + 1] == "":
-                        tmp_new_l2_table_array[offset_excel] = ''
+            #print('---- new_l2_table_array ----')
+            #print(new_l2_table_array)
+
+            new_l2_table_tuple = ns_def.convert_array_to_tuple(new_l2_table_array)
+            #print('---- new_l2_table_tuple ----')
+            #print(new_l2_table_tuple)
+
+            # input l2 l3 if type
+            update_l2_table_array = []
+
+            for tmp_tmp_new_l2_table_array in new_l2_table_array:
+                offset_excel = 2
+                tmp_new_l2_table_array = tmp_tmp_new_l2_table_array[1]
+                if tmp_new_l2_table_array[offset_excel + 3]  == "":
+                    if tmp_new_l2_table_array[offset_excel + 4] == "":
+                        if tmp_new_l2_table_array[offset_excel + 1] == "":
+                            tmp_new_l2_table_array[offset_excel] = ''
+                        else:
+                            tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
                     else:
-                        tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+                        if tmp_new_l2_table_array[offset_excel + 1] == "":
+                            tmp_new_l2_table_array[offset_excel] = ''
+                        else:
+                            tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
                 else:
                     if tmp_new_l2_table_array[offset_excel + 1] == "":
                         tmp_new_l2_table_array[offset_excel] = ''
                     else:
                         tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
-            else:
-                if tmp_new_l2_table_array[offset_excel + 1] == "":
-                    tmp_new_l2_table_array[offset_excel] = ''
-                else:
-                    tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
 
-            offset_excel = 4
-            if tmp_new_l2_table_array[offset_excel + 1] == "":
+                offset_excel = 4
                 if tmp_new_l2_table_array[offset_excel + 1] == "":
-                    tmp_new_l2_table_array[offset_excel] = ''
-                else:
-                    tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
-            else:
-                if tmp_new_l2_table_array[offset_excel + 2] == "":
-                    if tmp_new_l2_table_array[offset_excel - 1] == "":
-                        tmp_new_l2_table_array[offset_excel] = 'Loopback (L3)'
+                    if tmp_new_l2_table_array[offset_excel + 1] == "":
+                        tmp_new_l2_table_array[offset_excel] = ''
                     else:
                         tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
                 else:
-                    if tmp_new_l2_table_array[offset_excel - 1] == "":
-                        tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+                    if tmp_new_l2_table_array[offset_excel + 2] == "":
+                        if tmp_new_l2_table_array[offset_excel - 1] == "":
+                            tmp_new_l2_table_array[offset_excel] = 'Loopback (L3)'
+                        else:
+                            tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
                     else:
-                        tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
+                        if tmp_new_l2_table_array[offset_excel - 1] == "":
+                            tmp_new_l2_table_array[offset_excel] = 'Routed (L3)'
+                        else:
+                            tmp_new_l2_table_array[offset_excel] = 'Switch (L2)'
 
-            update_l2_table_array.append(tmp_new_l2_table_array)
-            #print(tmp_new_l2_table_array)
+                update_l2_table_array.append(tmp_new_l2_table_array)
+                #print(tmp_new_l2_table_array)
 
-        #print('--- update_l2_table_array ---')
-        #print(update_l2_table_array)
+            #print('--- update_l2_table_array ---')
+            #print(update_l2_table_array)
 
-        # GET L2 Segment name of each device
-        device_l2name_array = []
-        unique_l2name_array = []
-        for tmp_new_l2_table_array in new_l2_table_array:
-            if tmp_new_l2_table_array[1][6] != '':
-                tmp_l2seg = []
-                for tmp_char in tmp_new_l2_table_array[1][6].split(','):
-                    tmp_char = tmp_char.replace(' ','') #[Temporary setting] replace ' ' to '' in l2 segment name
-                    tmp_l2seg.append(tmp_char.strip())
-                    for tmp_tmp_char in tmp_l2seg:
-                        if tmp_tmp_char not in unique_l2name_array:
-                            unique_l2name_array.append(tmp_tmp_char)
-
-                device_l2name_array.append([tmp_new_l2_table_array[1][1],tmp_l2seg])
-
-        unique_l2name_array.sort()
-
-        #print('--- device_l2name_array ---')
-        #print(device_l2name_array)
-        #print('--- unique_l2name_array ---')
-        #print(unique_l2name_array)
-
-        #get direction of phygical port of each device  (UP/DOWN/RIGHT/LEFT)
-        device_list_array = []
-        wp_list_array = []
-        shape_list_array = []
-        for tmp_new_l2_table_array in new_l2_table_array:
-            if tmp_new_l2_table_array[1][1] not in device_list_array and tmp_new_l2_table_array[1][1] not in wp_list_array:
-                if tmp_new_l2_table_array[1][0] == 'N/A':
-                    wp_list_array.append(tmp_new_l2_table_array[1][1])
-                else:
-                    device_list_array.append(tmp_new_l2_table_array[1][1])
-
-        shape_list_array= device_list_array
-        shape_list_array.extend(wp_list_array)
-
-        #print('--- shape_list_array ---')
-        #print(shape_list_array)
-        #print('--- device_list_array ---')
-        #print(device_list_array)
-        #print('--- wp_list_array ---')
-        #print(wp_list_array)
-
-
-        shape_if_array = []
-        for tmp_shape_list_array in shape_list_array:
-            tmp_shape_if_array = []
+            # GET L2 Segment name of each device
+            device_l2name_array = []
+            unique_l2name_array = []
             for tmp_new_l2_table_array in new_l2_table_array:
-                if tmp_shape_list_array == tmp_new_l2_table_array[1][1] and tmp_new_l2_table_array[1][3] != '':
-                    tmp_shape_if_array.append(tmp_new_l2_table_array[1][3])
-            shape_if_array.append([tmp_shape_list_array, tmp_shape_if_array])
+                if tmp_new_l2_table_array[1][6] != '':
+                    tmp_l2seg = []
+                    for tmp_char in tmp_new_l2_table_array[1][6].split(','):
+                        tmp_char = tmp_char.replace(' ','') #[Temporary setting] replace ' ' to '' in l2 segment name
+                        tmp_l2seg.append(tmp_char.strip())
+                        for tmp_tmp_char in tmp_l2seg:
+                            if tmp_tmp_char not in unique_l2name_array:
+                                unique_l2name_array.append(tmp_tmp_char)
 
-        #print('--- shape_if_array ---')
-        #print(shape_if_array)
+                    device_l2name_array.append([tmp_new_l2_table_array[1][1],tmp_l2seg])
 
-        #create modify_position_shape_array for decide up / down of shape
-        modify_position_shape_array = []
-        for tmp_position_shape_array in self.position_shape_array:
+            unique_l2name_array.sort()
 
-            if tmp_position_shape_array[0] != 1 and tmp_position_shape_array[1][0] != '<END>':
-                if tmp_position_shape_array[1][0] != '':
-                    tmp_folder_name = tmp_position_shape_array[1][0]
-                else:
-                    tmp_position_shape_array[1][0] = tmp_folder_name
-                #print(tmp_position_shape_array)
-                modify_position_shape_array.append(tmp_position_shape_array)
-        #print('--- modify_position_shape_array ---')
-        #print(modify_position_shape_array)
+            #print('--- device_l2name_array ---')
+            #print(device_l2name_array)
+            #print('--- unique_l2name_array ---')
+            #print(unique_l2name_array)
 
-        #create modify_position_shape_array for decide up / down of shape
-        modify_position_folder_array = []
-        for tmp_position_folder_array in self.position_folder_array:
-
-            if tmp_position_folder_array[0] != 1 and tmp_position_folder_array[1][0] != '<SET_WIDTH>':
-                tmp_position_folder_array[1][0] = ''
-                modify_position_folder_array.append(tmp_position_folder_array)
-        #print('--- modify_position_folder_array ---')
-        #print(modify_position_folder_array)
-
-        #### decide up/down/right/left ####
-        tmp_device_line_array = []
-        direction_if_array = []
-        for tmp_shape_if_array in shape_if_array:
-            tmp_direction_if_array = [tmp_shape_if_array[0], [], [], [], []] # UP/DOWN/RIGHT/LEFT
-            #print('#########', tmp_shape_if_array[0], '#########')
-            for tmp_tmp_shape_if_array in tmp_shape_if_array[1]:
-                #print(tmp_tmp_shape_if_array)
-
-                #get direction of if
-                for tmp_position_line_tuple in self.position_line_tuple:
-                    if tmp_position_line_tuple[0] != 1 and tmp_position_line_tuple[0] != 2 and (tmp_position_line_tuple[1] == 1 or tmp_position_line_tuple[1] == 2):
-                        if tmp_position_line_tuple[1] == 1:
-                            offet_column = 0
-                        elif tmp_position_line_tuple[1] == 2:
-                            offet_column = 1
-
-                        if self.position_line_tuple[tmp_position_line_tuple[0],tmp_position_line_tuple[1]] == tmp_shape_if_array[0]:
-                            #print(tmp_position_line_tuple, self.position_line_tuple[tmp_position_line_tuple])
-                            tmp_tag = self.position_line_tuple[tmp_position_line_tuple[0],3 + offet_column]
-                            target = ' '
-                            idx = tmp_tag.find(target)
-                            modify_if_name = self.position_line_tuple[tmp_position_line_tuple[0],13 + offet_column * 4] + ' ' + tmp_tag[idx + 1:]
-
-                            #print(modify_if_name)
-
-                            if tmp_tmp_shape_if_array == modify_if_name:
-
-                                if self.position_line_tuple[tmp_position_line_tuple[0],5 + offet_column] == 'RIGHT':
-                                    if self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2] == '':
-                                        tmp_tag_offset = 0.0
-                                    else:
-                                        tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2]
-                                    tmp_direction_if_array[3].extend([[modify_if_name,tmp_tag_offset]])
-                                    #print(modify_if_name, '  RIGHT')
-                                elif self.position_line_tuple[tmp_position_line_tuple[0],5 + offet_column] == 'LEFT':
-                                    if self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2] == '':
-                                        tmp_tag_offset = 0.0
-                                    else:
-                                        tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2]
-                                    tmp_direction_if_array[4].extend([[modify_if_name,tmp_tag_offset]])
-                                    #print(modify_if_name, '  LEFT')
-                                else:
-                                    if offet_column == 0:
-                                        opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0],tmp_position_line_tuple[1] + 1]
-                                        #print(tmp_shape_if_array[0], '  ',opposite_device_name)
-
-                                    else:
-                                        opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0],tmp_position_line_tuple[1] - 1]
-                                        #print(tmp_shape_if_array[0], '  ', opposite_device_name)
-
-                                    ### 'TOP or DOWN'####
-                                    if tmp_shape_if_array[0] in wp_list_array or opposite_device_name in wp_list_array:
-                                        # include wp case
-                                        #print(tmp_shape_if_array[0], '  ',opposite_device_name)
-                                        origin_folder_name = ''
-                                        opposite_folder_name = ''
-                                        for tmp_modify_position_shape_array in modify_position_shape_array:
-                                            update_tmp_modify_position_shape_array = tmp_modify_position_shape_array[1]
-
-                                            for index_31,tmp_update_tmp_modify_position_shape_array in enumerate(update_tmp_modify_position_shape_array):
-                                                if index_31 != 0:
-                                                    #print(tmp_update_tmp_modify_position_shape_array)
-                                                    if tmp_shape_if_array[0] == tmp_update_tmp_modify_position_shape_array:
-                                                        origin_folder_name = update_tmp_modify_position_shape_array[0]
-                                                    if opposite_device_name == tmp_update_tmp_modify_position_shape_array:
-                                                        opposite_folder_name = update_tmp_modify_position_shape_array[0]
-
-                                        for tmp_modify_position_folder_array in modify_position_folder_array:
-                                            if origin_folder_name in tmp_modify_position_folder_array[1]:
-                                                origin_folder_num = tmp_modify_position_folder_array[0]
-                                            if opposite_folder_name in tmp_modify_position_folder_array[1]:
-                                                opposite_folder_num = tmp_modify_position_folder_array[0]
-
-                                        #print(origin_folder_name,origin_folder_num,'    ' , opposite_folder_name,opposite_folder_num)
-
-                                        if origin_folder_num > opposite_folder_num:
-                                            if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                tmp_tag_offset = 0.0
-                                            else:
-                                                tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                            tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])
-                                            #print(modify_if_name, '  UP')
-                                        else:
-                                            if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                tmp_tag_offset = 0.0
-                                            else:
-                                                tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                            tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])
-                                            #print(modify_if_name, '  DOWN')
-
-                                    else:
-                                        # NOT include wp case
-                                        origin_device_num = 0
-                                        opposite_device_num = 0
-                                        for tmp_modify_position_shape_array in modify_position_shape_array:
-                                            if tmp_shape_if_array[0] in tmp_modify_position_shape_array[1]:
-                                                origin_device_num = tmp_modify_position_shape_array[0]
-                                            if opposite_device_name in tmp_modify_position_shape_array[1]:
-                                                opposite_device_num = tmp_modify_position_shape_array[0]
-
-                                        if origin_device_num > opposite_device_num:
-                                            if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                tmp_tag_offset = 0.0
-                                            else:
-                                                tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                            tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])
-                                            #print(modify_if_name, '  UP')
-                                        else:
-                                            if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
-                                                tmp_tag_offset = 0.0
-                                            else:
-                                                tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
-
-                                            tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])
-                                            #print(modify_if_name, '  DOWN')
-
-            direction_if_array.append(tmp_direction_if_array)
-
-        #print('--- direction_if_array ---')
-        #print(direction_if_array)
-
-
-        ### sort if location
-        new_direction_if_array = []
-        for tmp_direction_if_array in direction_if_array:
-            sorted_direction_if_array = []
-            #print('tmp_direction_if_array  ', tmp_direction_if_array)
-            for i in range(0,5):
-                #print('tmp_direction_if_array [ ] ' ,str(i), ' ', tmp_direction_if_array[i])
-                if i == 0 or tmp_direction_if_array[i] == []:
-                    sorted_direction_if_array.extend([tmp_direction_if_array[i]])
-                else:
-                    #print(len(tmp_direction_if_array[i]),' ',tmp_direction_if_array[i])
-
-                    if len(tmp_direction_if_array[i]) == 1:
-                        del tmp_direction_if_array[i][0][-1]
-                        sorted_direction_if_array.extend([tmp_direction_if_array[i][0]])
+            #get direction of phygical port of each device  (UP/DOWN/RIGHT/LEFT)
+            device_list_array = []
+            wp_list_array = []
+            shape_list_array = []
+            for tmp_new_l2_table_array in new_l2_table_array:
+                if tmp_new_l2_table_array[1][1] not in device_list_array and tmp_new_l2_table_array[1][1] not in wp_list_array:
+                    if tmp_new_l2_table_array[1][0] == 'N/A':
+                        wp_list_array.append(tmp_new_l2_table_array[1][1])
                     else:
-                        #print(tmp_direction_if_array[i])
-                        sorted_data = sorted(tmp_direction_if_array[i], key=lambda x: (x[1]), reverse=False)
-                        #print(sorted_data)
+                        device_list_array.append(tmp_new_l2_table_array[1][1])
 
-                        sorted_data_array = []
-                        for tmp_sorted_data in sorted_data:
-                            sorted_data_array.append(tmp_sorted_data[0])
+            shape_list_array= device_list_array
+            shape_list_array.extend(wp_list_array)
 
-                        #print(sorted_data_array)
-                        sorted_direction_if_array.extend([sorted_data_array])
+            #print('--- shape_list_array ---')
+            #print(shape_list_array)
+            #print('--- device_list_array ---')
+            #print(device_list_array)
+            #print('--- wp_list_array ---')
+            #print(wp_list_array)
 
-            #print('--- sorted_direction_if_array ---')
-            #print(sorted_direction_if_array)
 
-            new_direction_if_array.append(sorted_direction_if_array)
+            shape_if_array = []
+            for tmp_shape_list_array in shape_list_array:
+                tmp_shape_if_array = []
+                for tmp_new_l2_table_array in new_l2_table_array:
+                    if tmp_shape_list_array == tmp_new_l2_table_array[1][1] and tmp_new_l2_table_array[1][3] != '':
+                        tmp_shape_if_array.append(tmp_new_l2_table_array[1][3])
+                shape_if_array.append([tmp_shape_list_array, tmp_shape_if_array])
 
-        #print('--- new_direction_if_array ---')
-        #print(new_direction_if_array)
+            #print('--- shape_if_array ---')
+            #print(shape_if_array)
+
+            #create modify_position_shape_array for decide up / down of shape
+            modify_position_shape_array = []
+            for tmp_position_shape_array in self.position_shape_array:
+
+                if tmp_position_shape_array[0] != 1 and tmp_position_shape_array[1][0] != '<END>':
+                    if tmp_position_shape_array[1][0] != '':
+                        tmp_folder_name = tmp_position_shape_array[1][0]
+                    else:
+                        tmp_position_shape_array[1][0] = tmp_folder_name
+                    #print(tmp_position_shape_array)
+                    modify_position_shape_array.append(tmp_position_shape_array)
+            #print('--- modify_position_shape_array ---')
+            #print(modify_position_shape_array)
+
+            #create modify_position_shape_array for decide up / down of shape
+            modify_position_folder_array = []
+            for tmp_position_folder_array in self.position_folder_array:
+
+                if tmp_position_folder_array[0] != 1 and tmp_position_folder_array[1][0] != '<SET_WIDTH>':
+                    tmp_position_folder_array[1][0] = ''
+                    modify_position_folder_array.append(tmp_position_folder_array)
+            #print('--- modify_position_folder_array ---')
+            #print(modify_position_folder_array)
+
+            #### decide up/down/right/left ####
+            tmp_device_line_array = []
+            direction_if_array = []
+            for tmp_shape_if_array in shape_if_array:
+                tmp_direction_if_array = [tmp_shape_if_array[0], [], [], [], []] # UP/DOWN/RIGHT/LEFT
+                #print('#########', tmp_shape_if_array[0], '#########')
+                for tmp_tmp_shape_if_array in tmp_shape_if_array[1]:
+                    #print(tmp_tmp_shape_if_array)
+
+                    #get direction of if
+                    for tmp_position_line_tuple in self.position_line_tuple:
+                        if tmp_position_line_tuple[0] != 1 and tmp_position_line_tuple[0] != 2 and (tmp_position_line_tuple[1] == 1 or tmp_position_line_tuple[1] == 2):
+                            if tmp_position_line_tuple[1] == 1:
+                                offet_column = 0
+                            elif tmp_position_line_tuple[1] == 2:
+                                offet_column = 1
+
+                            if self.position_line_tuple[tmp_position_line_tuple[0],tmp_position_line_tuple[1]] == tmp_shape_if_array[0]:
+                                #print(tmp_position_line_tuple, self.position_line_tuple[tmp_position_line_tuple])
+                                tmp_tag = self.position_line_tuple[tmp_position_line_tuple[0],3 + offet_column]
+                                target = ' '
+                                idx = tmp_tag.find(target)
+                                modify_if_name = self.position_line_tuple[tmp_position_line_tuple[0],13 + offet_column * 4] + ' ' + tmp_tag[idx + 1:]
+
+                                #print(modify_if_name)
+
+                                if tmp_tmp_shape_if_array == modify_if_name:
+
+                                    if self.position_line_tuple[tmp_position_line_tuple[0],5 + offet_column] == 'RIGHT':
+                                        if self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2] == '':
+                                            tmp_tag_offset = 0.0
+                                        else:
+                                            tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2]
+                                        tmp_direction_if_array[3].extend([[modify_if_name,tmp_tag_offset]])
+                                        #print(modify_if_name, '  RIGHT')
+                                    elif self.position_line_tuple[tmp_position_line_tuple[0],5 + offet_column] == 'LEFT':
+                                        if self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2] == '':
+                                            tmp_tag_offset = 0.0
+                                        else:
+                                            tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0],8 + offet_column * 2]
+                                        tmp_direction_if_array[4].extend([[modify_if_name,tmp_tag_offset]])
+                                        #print(modify_if_name, '  LEFT')
+                                    else:
+                                        if offet_column == 0:
+                                            opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0],tmp_position_line_tuple[1] + 1]
+                                            #print(tmp_shape_if_array[0], '  ',opposite_device_name)
+
+                                        else:
+                                            opposite_device_name = self.position_line_tuple[tmp_position_line_tuple[0],tmp_position_line_tuple[1] - 1]
+                                            #print(tmp_shape_if_array[0], '  ', opposite_device_name)
+
+                                        ### 'TOP or DOWN'####
+                                        if tmp_shape_if_array[0] in wp_list_array or opposite_device_name in wp_list_array:
+                                            # include wp case
+                                            #print(tmp_shape_if_array[0], '  ',opposite_device_name)
+                                            origin_folder_name = ''
+                                            opposite_folder_name = ''
+                                            for tmp_modify_position_shape_array in modify_position_shape_array:
+                                                update_tmp_modify_position_shape_array = tmp_modify_position_shape_array[1]
+
+                                                for index_31,tmp_update_tmp_modify_position_shape_array in enumerate(update_tmp_modify_position_shape_array):
+                                                    if index_31 != 0:
+                                                        #print(tmp_update_tmp_modify_position_shape_array)
+                                                        if tmp_shape_if_array[0] == tmp_update_tmp_modify_position_shape_array:
+                                                            origin_folder_name = update_tmp_modify_position_shape_array[0]
+                                                        if opposite_device_name == tmp_update_tmp_modify_position_shape_array:
+                                                            opposite_folder_name = update_tmp_modify_position_shape_array[0]
+
+                                            for tmp_modify_position_folder_array in modify_position_folder_array:
+                                                if origin_folder_name in tmp_modify_position_folder_array[1]:
+                                                    origin_folder_num = tmp_modify_position_folder_array[0]
+                                                if opposite_folder_name in tmp_modify_position_folder_array[1]:
+                                                    opposite_folder_num = tmp_modify_position_folder_array[0]
+
+                                            #print(origin_folder_name,origin_folder_num,'    ' , opposite_folder_name,opposite_folder_num)
+
+                                            if origin_folder_num > opposite_folder_num:
+                                                if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
+                                                    tmp_tag_offset = 0.0
+                                                else:
+                                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
+
+                                                tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])
+                                                #print(modify_if_name, '  UP')
+                                            else:
+                                                if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
+                                                    tmp_tag_offset = 0.0
+                                                else:
+                                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
+
+                                                tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])
+                                                #print(modify_if_name, '  DOWN')
+
+                                        else:
+                                            # NOT include wp case
+                                            origin_device_num = 0
+                                            opposite_device_num = 0
+                                            for tmp_modify_position_shape_array in modify_position_shape_array:
+                                                if tmp_shape_if_array[0] in tmp_modify_position_shape_array[1]:
+                                                    origin_device_num = tmp_modify_position_shape_array[0]
+                                                if opposite_device_name in tmp_modify_position_shape_array[1]:
+                                                    opposite_device_num = tmp_modify_position_shape_array[0]
+
+                                            if origin_device_num > opposite_device_num:
+                                                if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
+                                                    tmp_tag_offset = 0.0
+                                                else:
+                                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
+
+                                                tmp_direction_if_array[1].extend([[modify_if_name, tmp_tag_offset]])
+                                                #print(modify_if_name, '  UP')
+                                            else:
+                                                if self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2] == '':
+                                                    tmp_tag_offset = 0.0
+                                                else:
+                                                    tmp_tag_offset = self.position_line_tuple[tmp_position_line_tuple[0], 7 + offet_column * 2]
+
+                                                tmp_direction_if_array[2].extend([[modify_if_name, tmp_tag_offset]])
+                                                #print(modify_if_name, '  DOWN')
+
+                direction_if_array.append(tmp_direction_if_array)
+
+            #print('--- direction_if_array ---')
+            #print(direction_if_array)
+
+
+            ### sort if location
+            new_direction_if_array = []
+            for tmp_direction_if_array in direction_if_array:
+                sorted_direction_if_array = []
+                #print('tmp_direction_if_array  ', tmp_direction_if_array)
+                for i in range(0,5):
+                    #print('tmp_direction_if_array [ ] ' ,str(i), ' ', tmp_direction_if_array[i])
+                    if i == 0 or tmp_direction_if_array[i] == []:
+                        sorted_direction_if_array.extend([tmp_direction_if_array[i]])
+                    else:
+                        #print(len(tmp_direction_if_array[i]),' ',tmp_direction_if_array[i])
+
+                        if len(tmp_direction_if_array[i]) == 1:
+                            del tmp_direction_if_array[i][0][-1]
+                            sorted_direction_if_array.extend([tmp_direction_if_array[i][0]])
+                        else:
+                            #print(tmp_direction_if_array[i])
+                            sorted_data = sorted(tmp_direction_if_array[i], key=lambda x: (x[1]), reverse=False)
+                            #print(sorted_data)
+
+                            sorted_data_array = []
+                            for tmp_sorted_data in sorted_data:
+                                sorted_data_array.append(tmp_sorted_data[0])
+
+                            #print(sorted_data_array)
+                            sorted_direction_if_array.extend([sorted_data_array])
+
+                #print('--- sorted_direction_if_array ---')
+                #print(sorted_direction_if_array)
+
+                new_direction_if_array.append(sorted_direction_if_array)
+
+            #print('--- new_direction_if_array ---')
+            #print(new_direction_if_array)
 
         '''
         STEP1.2 locate materials in shape
@@ -3548,6 +3586,12 @@ class extended():
             offset_top_shape += shape_hight
 
             count_l2name_array += 1
+
+        if not l2seg_size_array:
+            if action_type == 'RETURN_DEVICE_SIZE':
+                return [0.0, 0.0, 1.0, 1.0]
+            l2seg_size_array = [[0.0, 0.0, 0.01, 0.01, '_DummyL2Segment_']]
+
 
         #get virtual port of shape
         target_device_vport_array = []
@@ -4472,6 +4516,9 @@ class extended():
 
 
         '''write device frame'''
+        if action_type == 'RETURN_DEVICE_SIZE':
+            return [device_size_array[0], device_size_array[1], device_size_array[2], device_size_array[3]]
+
         self.shape = self.slide.shapes
         if target_device_name in wp_list_array:
             tmp_device_type = 'WAY_POINT'
@@ -4487,6 +4534,9 @@ class extended():
             return ([device_size_array[0], device_size_array[1],device_size_array[2],device_size_array[3]])
 
         return ()
+
+
+
 
     def offset_device_width(self): #bug fix at ver 2.5.5
         from pptx.util import Inches
