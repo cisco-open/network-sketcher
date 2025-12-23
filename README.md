@@ -112,19 +112,18 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
  ```
 <br>
 
-# Performance Measurement Summary
+# Performance Measurement Summary(Ver: 2.6.1b)
 
-| Item                                               | 16 Devices (4x4) | 64 Devices (8x8) | 256 Devices (16x16) | 1024 Devices (32x32) |
-|----------------------------------------------------|-----------:|-----------:|------------:|-------------:|
-| Master file creation (Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.)                               | 1m55s      | 7m36s      | 50m31s      | TBD          |
-| Layer 1 diagram generation (All Areas with tags)   | 2s         | 5s         | 27s         | TBD          |
-| Layer 2 diagram generation                         | 3s         | 14s        | 9m22s       | TBD          |
-| Layer 3 diagram generation (All Areas)             | 13s        | 29s        | 2m42s       | TBD          |
-| Device file export                                 | 5s         | 14s        | 51s         | TBD          |
+|                                                    | 64 NW devices<br>112 Connections<br>(~500 endpoints)| 256 NW devices<br>480 Connections<br>(~3000 endpoints) | 1024 NW devices<br>1984 Connections<br>(~10000 endpoints)|
+|----------------------------------------------------|-----------:|------------:|-------------:|
+| Master file creation *1                            | 51s      | 2m45s      | 25m45s          |
+| Layer 1 diagram generation (All Areas with tags)   | 6s         | 29s         | 6m30s         |
+| Layer 2 diagram generation                         | 13s        | 51s       | 6m53s          |
+| Layer 3 diagram generation (All Areas)             | 10s        | 56s       | 14m23s         |
+| Device file export                                 | 19s        | 1m4s         | 5m14s          |
 
 ---
-Status: Python code optimization, multi-processor support, and GPU support are not yet implemented. <br>
-Network Skecher Ver: 2.6.1a <br>
+*1 Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.<br>
 Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise <br>
 
 # GUI vs. CLI Feature Support Matrix
@@ -203,6 +202,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
