@@ -60,7 +60,7 @@ class ns_front_run():
         self.root = TkinterDnD.Tk()
         style = ttk.Style(self.root)
         style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
-        self.root.title("Network Sketcher  ver 2.6.1a")
+        self.root.title("Network Sketcher  ver 2.6.1b")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
@@ -786,7 +786,7 @@ class ns_front_run():
         self.sub2_A = tk.LabelFrame(self.sub2_1, text='Lab', font=("", 14), height=1, background="#D9D9D9")
         self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2)
 
-        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta4)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
+        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta5)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
         self.sub2_9_button_1.grid(row=1, column=21, sticky='WE', padx=2, pady=2, ipadx=3)
 
 

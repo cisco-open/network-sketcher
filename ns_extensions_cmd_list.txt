@@ -1240,11 +1240,6 @@ The file contains no areas or devices.<br>
 
 
 
-
-
-
-
-
 '''
 CRITICAL Network Sketcher Architecture Constraints
 '''
@@ -1257,25 +1252,10 @@ CRITICAL Network Sketcher Architecture Constraints
 
 ### Visual Layout Analysis Priority:
 
-1. **Identify Central/Hub Devices**:
-   - Look for devices at the center or top of the diagram
-   - These typically represent core routers, switches, or aggregation points
-   - Place these devices in center columns of the grid
-
-2. **Identify Edge/Leaf Devices**:
-   - Look for devices at the periphery of the diagram
-   - Customer routers, access switches, end devices
-   - Distribute these around the central device(s)
-
-3. **Preserve Left-Right Grouping**:
-   - Devices shown on the LEFT side of diagram → Place in LEFT columns
-   - Devices shown on the RIGHT side of diagram → Place in RIGHT columns
-   - Devices shown in CENTER → Place in CENTER columns
-
-4. **Preserve Vertical Relationships**:
-   - Devices shown ABOVE others → Place in UPPER rows
-   - Devices shown BELOW others → Place in LOWER rows
-   - Maintain relative vertical positioning
+1. **Identify Central/Hub Devices**: Place at center or top of grid
+2. **Identify Edge/Leaf Devices**: Distribute around central device(s)
+3. **Preserve Left-Right Grouping**: LEFT devices → LEFT columns, RIGHT devices → RIGHT columns
+4. **Preserve Vertical Relationships**: ABOVE → UPPER rows, BELOW → LOWER rows
 
 ### Grid Layout Construction Guidelines:
 
@@ -1305,104 +1285,44 @@ Key principles:
   ['CX-B','_AIR_','CY-B']      # SP not centered, loses visual relationship
 ]]
 
-### Common Diagram Patterns and Grid Translation:
+### Common Diagram Patterns:
 
 **Pattern 1: Star Topology (Hub-and-Spoke)**
-Diagram:              Grid Layout:
-    [Hub]             [['_AIR_','Hub','_AIR_'],
-   / | | \             ['Dev1','Dev2','Dev3','Dev4']]
-[1][2][3][4]
+[['_AIR_','Hub','_AIR_'],['Dev1','Dev2','Dev3','Dev4']]
 
 **Pattern 2: Horizontal Distribution**
-Diagram:              Grid Layout:
-[A]--[B]--[C]--[D]    [['A','B','C','D']]]
+[['A','B','C','D']]
 
 **Pattern 3: Vertical Stack**
-Diagram:              Grid Layout:
-  [A]                 [['A'],
-  [B]                  ['B'],
-  [C]                  ['C']]
+[['A'],['B'],['C']]
 
 **Pattern 4: Service Provider with Customer Groups**
-Diagram:                    Grid Layout:
-  Left Group   [SP]   Right Group
-  [CX-A]        |     [CY-A]
-  [CX-B]        |     [CY-B]
-
-Translation:
-[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],
- ['CX-A','CX-B','_AIR_','CY-A','CY-B']]
+[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]
 
 ### Layout Decision Rules:
 
-1. **Count Visual Layers**:
-   - How many horizontal layers in diagram? → Number of rows
-   - Example: Hub at top + devices below = 2 rows
-
-2. **Count Horizontal Positions**:
-   - How many devices/groups side-by-side? → Minimum columns needed
-   - Add _AIR_ columns for spacing to match diagram aesthetics
-
-3. **Identify Symmetry**:
-   - Symmetric diagrams should have symmetric grid layouts
-   - If diagram shows 2 groups on left, 1 center, 2 right → Use 5 columns
-
-4. **Preserve Empty Space**:
-   - Diagrams often use spacing to show logical grouping
-   - Use _AIR_ to recreate this spacing in grid
-   - Don't compress layout unnecessarily
-
-### Integration with VRF/Waypoint Rules:
-
-⚠️ Layout preservation applies WITHIN each area:
-
-- For VRF scenarios (single area): Preserve entire diagram layout in one grid
-- For multi-site scenarios (multiple areas): Preserve layout within each site's area
-- Waypoint areas: Usually single device, minimal layout considerations
+1. **Count Visual Layers**: Diagram layers → Grid rows
+2. **Count Horizontal Positions**: Side-by-side devices/groups → Grid columns
+3. **Identify Symmetry**: Symmetric diagrams → Symmetric grid layouts
+4. **Preserve Empty Space**: Use _AIR_ for logical grouping
 
 ### Example: VRF Scenario with Layout Preservation
 
-Given diagram:
-        CUST-X              CUST-Y
-        ┌────────┐          ┌────────┐
-        │        │          │        │
-10.110.1.0/30   │    SP    │  10.130.1.0/30
-    ┌───┴───┐   │  Router  │   ┌───┴───┐
-    │       │   │          │   │       │
-  CX-A    CX-B  │          │  CY-A   CY-B
-10.10.10.0/24   │          │  10.10.10.0/24
-10.20.20.0/24   └──────────┘  10.30.30.0/24
-
 Analysis:
-- SP is at CENTER TOP
-- Left group (CX-A, CX-B) represents Customer X
-- Right group (CY-A, CY-B) represents Customer Y
-- Spacing between groups shows logical separation
+- SP router at CENTER TOP
+- Customer X (CX-A, CX-B) on LEFT
+- Customer Y (CY-A, CY-B) on RIGHT
+- VRF logical separation, all in same physical location
 
-✅ CORRECT Grid Layout (preserves visual structure):
-python "script" add device_location "['ServiceProvider_DC',[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]]" --master "file"
+✅ CORRECT Grid Layout:
+[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],
+ ['CX-A','CX-B','_AIR_','CY-A','CY-B']]
 
-Result:
-- 2 rows: Top row for SP, bottom row for customers
-- 5 columns: Provides symmetry and spacing
-- SP centered in position 3
-- CX-A, CX-B in positions 1-2 (left)
-- CY-A, CY-B in positions 4-5 (right)
-- Position 3 bottom row is _AIR_ (separates customer groups)
-
-❌ INCORRECT Layout (loses visual structure):
-python "script" add device_location "['ServiceProvider_DC',[['CX-A','SP','CY-A'],['CX-B','_AIR_','CY-B']]]" --master "file"
-
-Problems:
-- SP not centered
-- Loses left-right grouping
-- No visual separation between customer groups
-- Doesn't reflect diagram's symmetry
+For complete implementation with VRF configuration, see Rule 5, Scenario A.
 
 ### Verification of Layout Accuracy:
 
-After generating layout commands, mentally verify:
-
+After generating layout commands, verify:
 1. ✅ Does grid TOP match diagram TOP?
 2. ✅ Does grid CENTER align with diagram CENTER?
 3. ✅ Are LEFT devices in grid LEFT columns?
@@ -1434,7 +1354,7 @@ Network Sketcher distinguishes between PHYSICAL topology and LOGICAL segmentatio
 When implementing VRF configurations:
 
 ✅ CORRECT APPROACH:
-1. Create ONE area containing ALL physical devices (e.g., "ServiceProvider")
+1. Create ONE area containing ALL physical devices
 2. Place ALL routers/devices in that single area
 3. **PRESERVE diagram layout** when positioning devices in grid
 4. Create physical L1 links between devices
@@ -1443,26 +1363,21 @@ When implementing VRF configurations:
 
 Example Structure:
 - Area: "ServiceProvider"
-  - Devices: SP (router), CX-A, CX-B, CY-A, CY-B
-  - Grid Layout: Reflects diagram positioning (SP centered, customers distributed)
-  - L1 Links: Physical connections between all devices
-  - L3 Instances (VRFs): CUST-X, CUST-Y (assigned to specific interfaces on SP router)
-
-Correct Grid Example (matching visual diagram):
-[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],      # SP centered at top
- ['CX-A','CX-B','_AIR_','CY-A','CY-B']]       # Customers below, grouped
+- Devices: SP (router), CX-A, CX-B, CY-A, CY-B
+- Grid Layout: [['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]
+- L1 Links: Physical connections between all devices
+- L3 Instances (VRFs): CUST-X, CUST-Y (assigned to specific interfaces)
 
 ❌ INCORRECT APPROACH:
-1. Creating separate areas for each VRF (CUST-X, CUST-Y)
+1. Creating separate areas for each VRF
 2. Placing customer devices in separate areas
 3. Attempting to connect areas instead of devices
 4. Ignoring diagram layout and compressing devices without spacing
 
 ⚠️ WHY THIS MATTERS:
-- Areas represent PHYSICAL separation (buildings, data centers, locations)
-- VRFs represent LOGICAL separation (routing tables, customer isolation)
+- Areas = PHYSICAL separation (buildings, data centers, locations)
+- VRFs = LOGICAL separation (routing tables, customer isolation)
 - Grid layout should reflect VISUAL diagram structure
-- Mixing these concepts or ignoring layout creates confusion
 
 ## Rule 3: Area Connection Constraints and Waypoint Requirements
 
@@ -1479,31 +1394,15 @@ Area A          Waypoint Area         Area B
 
 ✅ VALID CONNECTION PATTERNS:
 
-1. Device-to-Device within SAME area:
-   - Direct L1 link allowed
-   - Example: Switch1 ↔ Switch2 (both in "DataCenter" area)
-
-2. Device-to-Device across DIFFERENT areas (via Waypoint):
-   - Device in Area-A → Waypoint in Waypoint-Area → Device in Area-B
-   - Example: Router-A (HQ area) ↔ WAN-Cloud (Internet_wp_ area) ↔ Router-B (Branch area)
-
-3. Device-to-Waypoint:
-   - Device in standard area → Waypoint in waypoint area
-   - Example: Firewall (Office area) ↔ MPLS-Node (WAN_wp_ area)
+1. Device-to-Device within SAME area: Direct L1 link allowed
+2. Device-to-Device across DIFFERENT areas: Must use Waypoint
+3. Device-to-Waypoint: Device in standard area → Waypoint in waypoint area
 
 ❌ INVALID CONNECTION PATTERNS:
 
-1. Direct Device-to-Device across different areas:
-   - Device-A (Area-1) →❌ Device-B (Area-2)
-   - MUST use waypoint: Device-A → Waypoint → Device-B
-
-2. Area-to-Area direct connection:
-   - Area-1 →❌ Area-2
-   - NOT POSSIBLE - areas are logical containers, not connectable entities
-
-3. Device-to-Device in separate areas without waypoint:
-   - Router-HQ (HQ area) →❌ Router-Branch (Branch area)
-   - MUST insert waypoint area between them
+1. Direct Device-to-Device across different areas without waypoint
+2. Area-to-Area direct connection (areas are logical containers, not connectable)
+3. Mixed waypoint types (WAN waypoint for building backbone, or vice versa)
 
 ### Waypoint Area Requirements:
 
@@ -1514,68 +1413,39 @@ Waypoint areas (_wp_) are MANDATORY when:
 2. Representing WAN connections (Internet, MPLS, leased lines)
 3. Representing external networks or cloud services
 4. Connecting geographically separated sites
-
-✅ CORRECT WAYPOINT USAGE:
-
-Scenario: Connect HQ and Branch offices
-
-[HQ Area]          [WAN_wp_ Area]        [Branch Area]
-Router-HQ    <-->    MPLS-Cloud    <-->   Router-Branch
-
-Commands:
-# Create three areas: HQ, WAN waypoint, Branch
-python "script" add area_location "[['HQ','WAN_wp_','Branch']]" --master "file"
-
-# Place devices (preserve layout within each area)
-python "script" add device_location "['HQ',[['Router-HQ']]]" --master "file"
-python "script" add device_location "['WAN_wp_',[['MPLS-Cloud']]]" --master "file"
-python "script" add device_location "['Branch',[['Router-Branch']]]" --master "file"
-
-# Connect via waypoint
-python "script" add l1_link "Router-HQ" "MPLS-Cloud" "GigabitEthernet 0/0" "port 0" --master "file"
-python "script" add l1_link "MPLS-Cloud" "Router-Branch" "port 1" "GigabitEthernet 0/0" --master "file"
-
-❌ INCORRECT WAYPOINT USAGE:
-
-Scenario: VRF implementation (logical separation)
-
-# WRONG - Do not create waypoint for VRF separation
-[CUST-X Area] <--> [ServiceProvider_wp_] <--> [CUST-Y Area]
-
-# CORRECT - Use single area with VRF instances, preserve layout
-[ServiceProvider Area]
-Grid: [['_AIR_','_AIR_','SP','_AIR_','_AIR_'],
-       ['CX-A','CX-B','_AIR_','CY-A','CY-B']]
-├── SP Router (with CUST-X and CUST-Y VRFs) - centered
-├── CX-A, CX-B (Customer X sites) - left side
-└── CY-A, CY-B (Customer Y sites) - right side
+5. Representing building backbone/riser connections between MDF and IDF (when required by system)
 
 ### Waypoint Area Naming Convention:
 
 ✅ CORRECT naming:
-- WAN_wp_
-- Internet_wp_
-- MPLS_wp_
-- Cloud_wp_
-- ISP_Connection_wp_
+
+**WAN / Inter-Site Waypoints:**
+WAN_wp_, Internet_wp_, MPLS_wp_, Cloud_wp_, ISP_Connection_wp_, Metro_Ethernet_wp_
+
+**Building Backbone / Intra-Site Waypoints:**
+Building1_Backbone_wp_, HQ_Backbone_wp_, Campus_Riser_wp_, DataCenter_Backbone_wp_
 
 ❌ INCORRECT naming:
-- CUST-X_wp_ (this is VRF, not physical separation)
-- VLAN100_wp_ (VLANs are L2 segments, not areas)
-- CustomerA_wp_ (customer separation is typically VRF-based)
+- VLAN100_wp_, VRF-A_wp_ (logical separation, not physical)
+- Floor2_wp_ (may not need waypoint unless mandated)
+
+### Waypoint Usage Examples:
+
+✅ CORRECT WAYPOINT USAGE:
+
+Example: HQ and Branch connected via MPLS
+[HQ Area] ↔ [MPLS_wp_ Area] ↔ [Branch Area]
+
+❌ INCORRECT WAYPOINT USAGE:
+
+Example: VRF implementation (logical separation)
+WRONG: [CUST-X Area] ↔ [ServiceProvider_wp_] ↔ [CUST-Y Area]
+CORRECT: Single area with VRF L3 instances (see Rule 2)
 
 ### Multiple Area Connection Example:
 
 Scenario: Connect 3 sites (HQ, Branch1, Branch2) via MPLS
 
-Topology:
-    [HQ Area]
-        |
-   [MPLS_wp_ Area]
-      /   \
-[Branch1] [Branch2]
-
-Commands:
 # Create areas with waypoint in middle
 python "script" add area_location "[['HQ'],['MPLS_wp_'],['Branch1','Branch2']]" --master "file"
 
@@ -1590,8 +1460,6 @@ python "script" add l1_link_bulk "[['HQ-Router','MPLS-Core','GigabitEthernet 0/1
 
 ## Rule 4: Area vs Waypoint Decision Matrix
 
-Use this decision tree to determine proper architecture:
-
 ### Question 1: Is this logical or physical separation?
 
 LOGICAL SEPARATION (VRF, VLAN, security zones):
@@ -1605,50 +1473,38 @@ PHYSICAL SEPARATION (different buildings, cities, sites):
 
 ### Question 2: Are devices in the same physical location?
 
-SAME LOCATION (same building, same data center):
+SAME LOCATION (same building/data center/floor):
 - Use: Single area containing all devices
 - Connect: Direct L1 links between devices
 - Layout: Match diagram's visual structure
-- Do NOT use: Waypoint areas
+- Exception: If system mandates waypoint, use Building_Backbone_wp_
 
-DIFFERENT LOCATIONS (different buildings, cities, sites):
+DIFFERENT LOCATIONS (different buildings/cities/sites):
 - Use: Multiple areas (one per location)
 - Connect: Via waypoint area representing WAN/connection medium
-- Layout: Preserve layout within EACH area separately
 - MUST use: Waypoint area for inter-area connections
 
 ### Question 3: What type of connection between locations?
 
-WAN CONNECTION (Internet, MPLS, VPN, leased line):
-- Create: Waypoint area (name ending with _wp_)
-- Waypoint represents: WAN cloud, ISP network, transport medium
-- Example: Internet_wp_, MPLS_wp_, VPN_Gateway_wp_
-
-DIRECT CONNECTION (cross-connect, dark fiber within campus):
-- Consider: If truly same physical location, use single area
-- If separate buildings: Still use waypoint for clarity
-- Waypoint represents: Cross-connect point, fiber path
+WAN CONNECTION: Internet_wp_, MPLS_wp_, VPN_Gateway_wp_
+BUILDING BACKBONE: Building_Backbone_wp_, Campus_Riser_wp_
+DIRECT CONNECTION: Appropriate waypoint for documentation
 
 ### Decision Matrix Summary:
 
-| Scenario | Areas | Waypoint | VRF/VLAN | Layout Priority |
-|----------|-------|----------|----------|-----------------|
-| VRF customers, same DC | 1 area | No | Yes (L3 instance) | Match diagram |
-| VLANs on switches | 1 area | No | Yes (L2 segment) | Match diagram |
-| Two switches in same building | 1 area | No | No | Match diagram |
-| Two offices connected via MPLS | 3 areas | Yes (MPLS_wp_) | Optional | Per-area layout |
-| HQ and branch via Internet | 3 areas | Yes (Internet_wp_) | Optional | Per-area layout |
-| Multi-tenant with VRF | 1 area | No | Yes (L3 instance) | Match diagram |
-| Campus buildings with fiber | 2-3 areas | Yes (Campus_Backbone_wp_) | No | Per-area layout |
+| Scenario | Areas | Waypoint | VRF/VLAN | Layout |
+|----------|-------|----------|----------|--------|
+| VRF customers, same DC | 1 | No | L3 instance | Match diagram |
+| VLANs on switches | 1 | No | L2 segment | Match diagram |
+| Switches in same building | 1 | No | No | Match diagram |
+| Multi-site via MPLS/Internet | 3+ | WAN_wp_ | Optional | Per-area |
+| Multi-tenant with VRF | 1 | No | L3 instance | Match diagram |
+| Campus buildings with fiber | 2-3 | Campus_Backbone_wp_ | No | Per-area |
+| Multi-floor building MDF-IDF | 3+ | Building_Backbone_wp_ | Optional | Per-area |
 
 ## Rule 5: Common Scenarios and Correct Implementation
 
 ### Scenario A: Service Provider with VRF Customers (Same Data Center)
-
-Diagram shows:
-        CUST-X              CUST-Y
-          |         SP         |
-       CX-A CX-B           CY-A CY-B
 
 Analysis:
 - Service provider router (SP) at center/top
@@ -1657,13 +1513,12 @@ Analysis:
 - VRF CUST-X and CUST-Y (logical separation)
 - All in same data center (physical colocation)
 
-✅ CORRECT Implementation (with layout preservation):
+✅ CORRECT Implementation:
 
 # Single area - all devices in same physical location
 python "script" add area_location "[['ServiceProvider_DC']]" --master "file"
 
-# All devices in one area - PRESERVE DIAGRAM LAYOUT
-# SP centered at top, customers distributed below in groups
+# PRESERVE DIAGRAM LAYOUT - SP centered, customers grouped
 python "script" add device_location "['ServiceProvider_DC',[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]]" --master "file"
 
 # Direct L1 links (same location)
@@ -1675,33 +1530,17 @@ python "script" rename l3_instance "SP" "FastEthernet 0/1" "CUST-X" --master "fi
 python "script" rename l3_instance "SP" "FastEthernet 1/0" "CUST-Y" --master "file"
 python "script" rename l3_instance "SP" "FastEthernet 1/1" "CUST-Y" --master "file"
 
-Layout Explanation:
-- Row 1: [_AIR_, _AIR_, SP, _AIR_, _AIR_] - SP centered with spacing
-- Row 2: [CX-A, CX-B, _AIR_, CY-A, CY-B] - Customers grouped, separated by _AIR_
-- This preserves the visual "hub-and-spoke" and "left-right grouping" from diagram
-
-❌ INCORRECT Implementation (ignores layout):
-
-# WRONG - Creating separate areas for VRFs
-python "script" add area_location "[['CUST-X','ServiceProvider','CUST-Y']]" --master "file"
-
-# WRONG - Compressed layout that loses visual structure
-python "script" add device_location "['ServiceProvider_DC',[['CX-A','SP','CY-A'],['CX-B','_AIR_','CY-B']]]" --master "file"
+❌ INCORRECT Implementation:
+Creating separate areas for VRFs or compressed layout losing visual structure
 
 ### Scenario B: Enterprise with HQ and Branch Connected via MPLS
 
-Diagram shows:
-- HQ office with core router (one physical location)
-- Branch office with edge router (different physical location)
-- MPLS cloud connecting them (WAN infrastructure)
-- Different physical locations requiring waypoint
-
-✅ CORRECT Implementation (with per-area layout):
+✅ CORRECT Implementation:
 
 # Three areas: HQ, MPLS waypoint, Branch
 python "script" add area_location "[['HQ','MPLS_wp_','Branch']]" --master "file"
 
-# Devices in respective areas (preserve layout within each)
+# Devices in respective areas
 python "script" add device_location "['HQ',[['HQ-Core-Router','HQ-Switch']]]" --master "file"
 python "script" add device_location "['MPLS_wp_',[['MPLS-Cloud']]]" --master "file"
 python "script" add device_location "['Branch',[['Branch-Router','Branch-Switch']]]" --master "file"
@@ -1709,25 +1548,14 @@ python "script" add device_location "['Branch',[['Branch-Router','Branch-Switch'
 # Connections via waypoint
 python "script" add l1_link_bulk "[['HQ-Core-Router','HQ-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24'],['HQ-Core-Router','MPLS-Cloud','GigabitEthernet 0/0','port 0'],['MPLS-Cloud','Branch-Router','port 1','GigabitEthernet 0/0'],['Branch-Router','Branch-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24']]" --master "file"
 
-❌ INCORRECT Implementation:
-
-# WRONG - Direct connection between areas without waypoint
-python "script" add l1_link "HQ-Core-Router" "Branch-Router" "GigabitEthernet 0/0" "GigabitEthernet 0/0" --master "file"
-
 ### Scenario C: Multi-Site with Hub-and-Spoke MPLS
-
-Diagram shows:
-- Central HQ (hub)
-- Three branch sites (spokes)
-- MPLS cloud in center connecting all
-- All branches connect to HQ via MPLS
 
 ✅ CORRECT Implementation:
 
 # Five areas: HQ, MPLS waypoint, three branches
 python "script" add area_location "[['HQ'],['MPLS_wp_'],['Branch1','Branch2','Branch3']]" --master "file"
 
-# Devices (preserve any internal layout per area)
+# Devices
 python "script" add device_location "['HQ',[['HQ-Router']]]" --master "file"
 python "script" add device_location "['MPLS_wp_',[['MPLS-Hub']]]" --master "file"
 python "script" add device_location "['Branch1',[['B1-Router']]]" --master "file"
@@ -1739,18 +1567,12 @@ python "script" add l1_link_bulk "[['HQ-Router','MPLS-Hub','GigabitEthernet 0/0'
 
 ### Scenario D: Data Center with VRF and External WAN
 
-Diagram shows:
-- Data center with multiple VRF tenants (logical separation)
-- WAN connection to external sites (physical separation)
-- VRFs for logical separation within DC
-- Physical WAN for site connectivity
-
 ✅ CORRECT Implementation:
 
-# Two areas: DC (with VRFs) and WAN waypoint for external connectivity
+# Two areas: DC (with VRFs) and WAN waypoint
 python "script" add area_location "[['DataCenter','WAN_wp_']]" --master "file"
 
-# DC devices (all in one area despite VRFs) - preserve diagram layout
+# DC devices (all in one area despite VRFs)
 python "script" add device_location "['DataCenter',[['Core-Router','Tenant-A-Router','Tenant-B-Router']]]" --master "file"
 python "script" add device_location "['WAN_wp_',[['Internet-Gateway']]]" --master "file"
 
@@ -1760,7 +1582,7 @@ python "script" add l1_link_bulk "[['Core-Router','Tenant-A-Router','GigabitEthe
 # External connection (via waypoint)
 python "script" add l1_link "Core-Router" "Internet-Gateway" "GigabitEthernet 0/0" "port 0" --master "file"
 
-# VRFs for tenants (logical separation)
+# VRFs for tenants
 python "script" rename l3_instance "Core-Router" "GigabitEthernet 0/1" "Tenant-A" --master "file"
 python "script" rename l3_instance "Core-Router" "GigabitEthernet 0/2" "Tenant-B" --master "file"
 
@@ -1770,145 +1592,1341 @@ python "script" rename l3_instance "Core-Router" "GigabitEthernet 0/2" "Tenant-B
 
 ⚠️ If you see these patterns, STOP and reconsider:
 
-1. VRF names as area names
-   - Seeing: "CUST-X", "CUST-Y" as area names
-   - Problem: VRFs are logical, not physical areas
-   - Fix: Create single area, use L3 instances for VRFs, preserve layout
-
-2. Direct inter-area device connections
-   - Seeing: Device in Area-A directly connected to Device in Area-B
-   - Problem: Missing waypoint area
-   - Fix: Insert waypoint area between them
-
-3. Customer names as separate areas in VRF scenario
-   - Seeing: "CustomerA_Area", "CustomerB_Area"
-   - Problem: Mixing logical (customer) with physical (area)
-   - Fix: Single area with VRF L3 instances, layout shows grouping
-
-4. Waypoint areas for logical separation
-   - Seeing: "VLAN100_wp_", "VRF-A_wp_"
-   - Problem: Waypoints are for physical WAN, not logical separation
-   - Fix: Remove waypoint, use L2/L3 instances, preserve diagram layout
-
-5. Multiple areas in same building without waypoint
-   - Seeing: "Floor1", "Floor2" areas with direct device connections
-   - Problem: Either use single area OR add waypoint
-   - Fix: Consolidate to single area if same building
-
-6. Layout doesn't match diagram
-   - Seeing: Grid layout compressed or rearranged arbitrarily
-   - Problem: Loses visual structure and relationships from original diagram
-   - Fix: Analyze diagram positioning, use _AIR_ for spacing, preserve symmetry
+1. VRF names as area names → Use L3 instances instead
+2. Direct inter-area device connections → Insert waypoint area
+3. Customer names as separate areas in VRF scenario → Use single area with VRF L3 instances
+4. Waypoint areas for logical separation → Use L2/L3 instances instead
+5. Multiple areas in same building without waypoint → Consolidate to single area
+6. Wrong waypoint type → Use Building_Backbone_wp_ for intra-building, WAN_wp_ for inter-site
+7. Layout doesn't match diagram → Analyze positioning, use _AIR_ for spacing
 
 ### Correction Workflow:
 
 1. Identify the issue from red flags above
-2. Determine true requirement: Physical or logical separation?
-3. Analyze diagram layout: What's the visual structure?
-4. Redesign architecture:
+2. Determine: Physical or logical separation?
+3. If physical: WAN or Building Backbone connection type?
+4. Analyze diagram layout: Visual structure?
+5. Redesign:
    - Logical → Single area + L3/L2 instances + layout preservation
-   - Physical → Multiple areas + waypoint + per-area layout
-5. Regenerate commands with correct structure and layout
-6. Verify with show commands
-7. Check if grid output matches diagram structure
+   - Physical WAN → Multiple areas + WAN waypoint + per-area layout
+   - Physical Building → Multiple areas + Building Backbone waypoint + per-area layout
+6. Regenerate commands
+7. Verify with show commands
 
-## Rule 7: Command Generation Decision Tree with Waypoint and Layout Logic
+## Rule 7: Command Generation Decision Tree
 
-### WHEN USER PROVIDES NETWORK DIAGRAM:
+### Decision Flow:
 
-Question 0: Analyze diagram visual layout
-- Identify: Central/hub devices
-- Identify: Edge/peripheral devices
-- Note: Left-right groupings
-- Note: Vertical relationships
-- Note: Spacing and symmetry
+Question 0: Analyze diagram visual layout (central/hub, edge/leaf, groupings, spacing)
 
-Question 1: Does the diagram show different PHYSICAL locations?
-- NO → Go to Question 2
-- YES → Go to Question 4
+Question 1: Different PHYSICAL locations?
+- NO → Question 2
+- YES → Question 4
 
-Question 2: Does the diagram show VRFs, VLANs, or logical separation?
-- YES → SOLUTION A: Single area, VRF as L3 instances, preserve diagram layout
-- NO → Go to Question 3
+Question 2: VRFs, VLANs, or logical separation?
+- YES → SOLUTION A (Single area, VRF as L3 instances)
+- NO → Question 3
 
-Question 3: Are all devices in same physical space?
-- YES → SOLUTION B: Single area, direct connections, preserve diagram layout
-- NO → Go to Question 4
+Question 3: All devices in same physical space?
+- YES → SOLUTION B (Single area, direct connections)
+- NO → Question 4
 
 Question 4: How many physical locations?
-- 2 locations → Go to Question 5
-- 3+ locations → Go to Question 6
+- 2 locations → Question 5
+- 3+ locations → Question 6
 
 Question 5: What connects the two locations?
-- WAN (Internet, MPLS, VPN) → SOLUTION C: 3 areas (Site1, Waypoint_wp_, Site2), per-area layout
-- Direct fiber/cable → SOLUTION C: 3 areas with waypoint, per-area layout
+- WAN → SOLUTION C (3 areas: Site1, WAN_wp_, Site2)
+- Building Backbone → SOLUTION D (3 areas: MDF, Building_Backbone_wp_, IDF)
 
-Question 6: What is the topology between sites?
-- Hub-and-spoke → SOLUTION D: Hub area, Waypoint_wp_, spoke areas, per-area layout
-- Full mesh → SOLUTION E: All site areas, central Waypoint_wp_, per-area layout
-- Partial mesh → SOLUTION E: Site areas, Waypoint_wp_ for each path, per-area layout
+Question 6: Topology between sites?
+- Hub-and-spoke → SOLUTION E (Hub, Waypoint_wp_, spokes)
+- Mesh → SOLUTION F (Sites, central Waypoint_wp_)
+- Multi-floor building → SOLUTION D (MDF, Building_Backbone_wp_, IDFs)
 
 ### SOLUTION TEMPLATES:
 
-SOLUTION A: Single Area with VRF (Logical Separation)
-Areas: 1 (e.g., "DataCenter")
-Waypoints: None
-Devices: All in single area
-Layout: PRESERVE diagram positioning with _AIR_ for spacing
-VRF: L3 instances on router interfaces
+**SOLUTION A: Single Area with VRF**
+- 1 area, no waypoints
+- VRF via L3 instances
+- Preserve diagram layout with _AIR_
 
-Example Grid Construction:
-- Identify central device (SP router) → Place in center column
-- Identify left group (Customer X) → Place in left columns
-- Identify right group (Customer Y) → Place in right columns
-- Use _AIR_ to create spacing matching diagram
-- Maintain vertical relationships (hub top, leaves bottom)
+**SOLUTION B: Single Area Direct Connection**
+- 1 area, no waypoints
+- Direct L1 links, preserve layout
 
-SOLUTION B: Single Area Direct Connection (Same Location)
-Areas: 1 (e.g., "Office")
-Waypoints: None
-Devices: All in single area with direct L1 links
-Layout: PRESERVE diagram positioning
-VRF: Optional (L3 instances if needed)
+**SOLUTION C: Two Sites via WAN**
+- 3 areas (Site1, WAN_wp_, Site2)
+- Per-area layout preservation
 
-SOLUTION C: Two Sites via WAN (Physical Separation)
-Areas: 3 (Site1, WAN_wp_, Site2)
-Waypoints: 1 (WAN connection medium)
-Devices: Site1 → Waypoint → Site2
-Layout: Preserve layout WITHIN each site area separately
-Pattern: [Device-A] <-L1-> [Waypoint] <-L1-> [Device-B]
+**SOLUTION D: Multi-Floor Building MDF-IDF**
+- M+2 areas (1 MDF, 1 Building_Backbone_wp_, M IDFs)
+- Backbone waypoint for vertical cabling
 
-SOLUTION D: Hub-and-Spoke (Multiple Sites, Central Hub)
-Areas: N+2 (Hub, Waypoint_wp_, N spokes)
-Waypoints: 1 (central WAN hub)
-Devices: All spokes connect to hub via waypoint
-Layout: Preserve layout within each area independently
-Pattern:
-  [Hub] <-L1-> [Waypoint]
-  [Waypoint] <-L1-> [Spoke1]
-  [Waypoint] <-L1-> [Spoke2]
-  [Waypoint] <-L1-> [SpokeN]
+**SOLUTION E: Hub-and-Spoke Multi-Site**
+- N+2 areas (Hub, Waypoint_wp_, N spokes)
+- All spokes connect via central waypoint
 
-SOLUTION E: Mesh Network (Multiple Interconnected Sites)
-Areas: N+1 (N sites, 1 Waypoint_wp_)
-Waypoints: 1 (represents mesh network cloud)
-Devices: All sites connect to central waypoint
-Layout: Preserve layout within each area
-Pattern: All sites have L1 links to waypoint
+**SOLUTION F: Mesh Network**
+- N+1 areas (N sites, 1 central Waypoint_wp_)
+- All sites connect to central waypoint
+
+
+## Rule 8: Command Execution Sequence
+
+⚠️ CRITICAL: Execute commands in the correct order to prevent data corruption.
+
+📝 NOTE: All names and addresses in examples are SAMPLES. Replace with user's specific parameters.
+
+### Mandatory Execution Sequence:
+
+**PHASE 1: NETWORK STRUCTURE**
+  1. add area_location (define all areas once)
+  2. add device_location (batch placement - PREFERRED)
+     OR add device/add waypoint (incremental additions)
+
+**PHASE 2: PHYSICAL CONNECTIVITY**
+  3. add l1_link_bulk (batch - PREFERRED)
+     OR add l1_link (individual)
+
+**PHASE 3: LAYER 2 CONFIGURATION**
+  4. add portchannel (create LAG first)
+  5. add virtual_port (create SVIs/Loopback)
+  6. add vport_l1if_direct_binding (subinterfaces)
+  7. add l2_segment (add VLANs)
+  8. add vport_l2_direct_binding (VLAN tagging on subinterfaces)
+
+**PHASE 4: LAYER 3 CONFIGURATION**
+  9. add ip_address (assign IPs)
+  10. rename l3_instance (configure VRF - optional)
+
+**PHASE 5: MODIFICATIONS** (if needed)
+  11. rename area
+  12. rename device
+  13. rename port
+
+**PHASE 6: VERIFICATION**
+  14. show commands (verify at each phase)
+
+### Phase Execution Rules:
+
+✅ CORRECT:
+- Execute add area_location once with complete structure
+- Use add device_location for batch placement (2+ devices)
+- Use add l1_link_bulk for multiple connections (2+ links)
+- Complete each phase before moving to next
+- Verify after each phase
+
+❌ INCORRECT:
+- Mixing add device_location and multiple add device for same area
+- Creating links before devices exist
+- Adding L2 segments before port-channels
+- Skipping verification
+
+### Key Command Dependencies:
+
+**Phase Dependencies:**
+- Phase 2 requires: Phase 1 complete (devices exist)
+- Phase 3 requires: Phase 2 complete (L1 interfaces exist)
+- Phase 4 requires: Phase 3 complete (L3 interfaces exist)
+- Phase 5: Independent (anytime after object creation)
+
+**Critical Dependencies:**
+- add portchannel → L1 interface must exist
+- add l2_segment → Interface (physical/virtual) must exist
+- add ip_address → L3 interface must exist
+- rename l3_instance → L3 interface must exist
+
+### Common Deployment Scenarios:
+
+#### Scenario 1: Simple Office Network
+Phase 1: Structure (1 area, 3 devices)
+Phase 2: Connectivity (direct L1 links)
+Phase 4: IP addressing (skip Phase 3 if no VLANs)
+
+#### Scenario 2: Campus Network with VLANs
+Phase 1: Structure (1 area, multiple switches)
+Phase 2: Connectivity (uplinks between core and access)
+Phase 3: VLANs (create SVIs, add VLANs to ports)
+Phase 4: IP addressing (gateway IPs on SVIs)
+
+#### Scenario 3: Router with Subinterfaces
+Phase 1: Structure
+Phase 2: Connectivity
+Phase 3: Subinterfaces (vport_l1if_direct_binding + vport_l2_direct_binding)
+Phase 4: IP addressing
+
+#### Scenario 4: Service Provider with VRF
+Phase 1: Structure (single area)
+Phase 2: Connectivity
+Phase 4: IP + VRF configuration (rename l3_instance)
+See Rule 5, Scenario A for complete implementation.
+
+#### Scenario 5: Multi-Site with WAN Waypoint
+Phase 1: Structure (3 areas with waypoint)
+Phase 2: Connectivity (via waypoint)
+Phase 4: IP addressing
+See Rule 5, Scenario B for complete implementation.
+
+#### Scenario 6: Port Channel Configuration
+Phase 1: Structure
+Phase 2: Connectivity (physical links first)
+Phase 3: Port-channel (MUST be after L1 links)
+Phase 4: IP addressing (optional)
+
+### Execution Checklist:
+
+**PHASE 1: STRUCTURE**
+□ Backup created (if modifying existing)
+□ Area structure defined and verified
+□ All devices placed per area (batch)
+□ Device placement verified
+
+**PHASE 2: CONNECTIVITY**
+□ Physical connections created (batch preferred)
+□ Connections verified
+
+**PHASE 3: LAYER 2**
+□ Port channels created (if needed)
+□ Virtual ports created (if needed)
+□ Subinterfaces created (if needed)
+□ VLANs assigned (if needed)
+□ Layer 2 verified
+
+**PHASE 4: LAYER 3**
+□ IP addresses assigned
+□ VRF configured (if needed)
+□ Layer 3 verified
+
+**PHASE 5: MODIFICATIONS**
+□ Objects renamed (if needed)
+□ Renames verified
+
+**PHASE 6: FINAL VERIFICATION**
+□ Complete verification done
+□ AI context exported (optional)
+
+### Error Prevention Rules:
+
+1. ✅ ALWAYS use batch operations (add device_location, add l1_link_bulk) for 2+ items
+2. ✅ NEVER mix add device_location and add device for same area
+3. ✅ ALWAYS complete Phase 1 before Phase 2
+4. ✅ ALWAYS create port channels BEFORE adding L2 segments
+5. ✅ ALWAYS create virtual ports BEFORE assigning IPs
+6. ✅ ALWAYS verify after each phase
+7. ✅ ALWAYS backup before modifying existing configurations
+
+### Quick Reference: Command Selection
+
+| Task | Number | Use | Alternative |
+|------|--------|-----|-------------|
+| Add area structure | Multiple | add area_location | N/A |
+| Place devices in area | 1 device | add device | add device_location |
+| Place devices in area | 2+ devices | add device_location | Multiple add device |
+| Create L1 connections | 1 link | add l1_link | add l1_link_bulk |
+| Create L1 connections | 2+ links | add l1_link_bulk | Multiple add l1_link |
+| Create port channel | Per port | add portchannel | N/A |
+| Create virtual interface | Per interface | add virtual_port | N/A |
+| Bind subinterface to L1 | Per subif | add vport_l1if_direct_binding | N/A |
+| Add VLAN to interface | Per VLAN | add l2_segment | N/A |
+| Add VLAN to subinterface | Per VLAN | add vport_l2_direct_binding | N/A |
+| Assign IP address | Per IP | add ip_address | N/A |
+| Configure VRF | Per interface | rename l3_instance | N/A |
 
 ### FINAL VERIFICATION CHECKLIST:
 
 Before generating commands, verify:
+
+**Architecture (Rules 0-7):**
 - ✅ VRF names are L3 instances, NOT area names
 - ✅ VLAN names are L2 segments, NOT area names
 - ✅ Physical locations are separate areas
 - ✅ Inter-area connections have waypoint area (_wp_)
-- ✅ Waypoint areas represent WAN/physical connection medium
-- ✅ Direct L1 links only between devices in same area OR device-to-waypoint
-- ✅ No direct device-to-device links across different areas without waypoint
-- ✅ **Grid layout matches diagram's visual structure**
-- ✅ **Central/hub devices are in center columns**
-- ✅ **Left-side devices are in left columns**
-- ✅ **Right-side devices are in right columns**
-- ✅ **_AIR_ is used to preserve spacing and symmetry**
-- ✅ **Vertical relationships match diagram (top-bottom)**
+- ✅ Grid layout matches diagram's visual structure
+- ✅ Central/hub devices are in center columns
+- ✅ _AIR_ is used to preserve spacing and symmetry
+- ✅ Vertical relationships match diagram (top-bottom)
+- ✅ WAN waypoints for inter-site connections
+- ✅ Building Backbone waypoints for intra-building MDF-IDF connections
+
+**Virtualized Devices (Rule 9):**
+- ✅ Device name includes member IDs and technology tag
+- ✅ Interfaces numbered by member (1/0/x, 2/0/x)
+- ✅ Port-channels include interfaces from multiple members
+- ✅ VLANs/SVIs configured once (not per member)
+
+**Port-Channel Configuration (Rule 10):**
+- ✅ Port-channels created on both ends of connection
+- ✅ Same VLANs configured on both Port-channel interfaces
+- ✅ VLAN list matches on Device A and Device B Port-channels
+- ✅ Trunk configuration symmetric across link
+- ✅ VLAN symmetry verified with show l2_interface
+
+**IP Addressing (Rule 11):**
+- ✅ All IPv4 octets within valid range (0-255)
+- ✅ VLAN ≤ 255: Can use Option 1 or Option 3
+- ✅ VLAN > 255: Must use Option 2 or Option 3 mapping
+- ✅ Addressing scheme selected and documented
+- ✅ Scheme applied consistently across all VLANs
+- ✅ No octet exceeds 255
+- ✅ IP addresses verified with show l3_interface
+- ✅ Gateway IPs use .1 (recommended)
+- ✅ No conflicts with network/broadcast addresses
+
+## Rule 9: Virtualized Multi-Chassis Device Naming Convention
+
+### Purpose
+When multiple physical hardware units operate as a single logical device (StackWise, StackWise Virtual, VSS, vPC, MC-LAG), represent them as a unified device with clear naming convention.
+
+### Naming Convention Standard
+
+#### CORRECT Naming Format:
+[DeviceName]-[Member1ID]-[Member2ID]...(Technology)
+
+#### Examples:
+- Dist-SW1-2(StackVirtual) - Two distribution switches
+- Access-SW1-2-3-4(Stack) - Four access switches
+- Core-SW1-2(VSS) - Two core switches (legacy)
+- Nexus-SW1-2(vPC) - Two Nexus switches
+- AGG-SW1-2-3(Stack) - Three aggregation switches
+
+#### Format Components:
+1. Base Name: Functional role (Dist-SW, Access-SW, Core-SW)
+2. Member IDs: Hyphen-separated identifiers (1-2, 1-2-3-4)
+3. Technology Tag: (Stack, StackVirtual, VSS, vPC, MC-LAG)
+
+❌ INCORRECT: Dist-SW1 and Dist-SW2 as separate devices, DistributionStack, Dist-SW-Pair, Dist-SW1-2 without tag
+
+### Supported Virtualization Technologies
+
+| Technology | Naming Tag | Example |
+|------------|------------|---------|
+| StackWise (up to 8 units) | (Stack) | Access-SW1-2-3-4(Stack) |
+| StackWise Virtual (2 units, Catalyst 9K) | (StackVirtual) | Dist-SW1-2(StackVirtual) |
+| VSS (2 units, legacy) | (VSS) | Core-SW1-2(VSS) |
+| vPC (Nexus) | (vPC) | Nexus-SW1-2(vPC) |
+| MC-LAG | (MC-LAG) | AGG-SW1-2(MC-LAG) |
+
+### Interface Naming Convention
+
+#### For 2-member systems (StackWise Virtual, vPC, VSS):
+- Member 1: GigabitEthernet 1/0/x, TenGigabitEthernet 1/0/x
+- Member 2: GigabitEthernet 2/0/x, TenGigabitEthernet 2/0/x
+
+#### For multi-member stacks (StackWise):
+- Member 1: GigabitEthernet 1/0/x
+- Member 2: GigabitEthernet 2/0/x
+- Member N: GigabitEthernet N/0/x
+
+### Port-Channel Configuration
+
+#### CORRECT Approach:
+1. Create L1 links to BOTH members
+2. Add port-channel to remote device's interfaces
+3. Add port-channel to virtualized device's interfaces (one per member)
+4. Result: Redundant, load-balanced MEC/cross-stack connection
+
+#### Example:
+# Phase 2: L1 Links
+python "script" add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/2','GigabitEthernet 2/0/11']]" --master "file"
+
+# Phase 3: Port-channels (both ends)
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/1" "Port-channel 1" --master "file"
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/2" "Port-channel 1" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 1/0/11" "Port-channel 11" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 2/0/11" "Port-channel 11" --master "file"
+
+### High Availability Design Patterns
+
+#### Pattern 1: Dual-Homed to StackWise Virtual
+[SW1] Po1 ↔ [Dist-SW1-2(StackVirtual)] Po11 (Gi1/0/11 + Gi2/0/11)
+
+#### Pattern 2: Stack to StackWise Virtual
+[Access-SW1-2-3-4(Stack)] Po1 ↔ [Dist-SW1-2(StackVirtual)] Po11
+
+#### Pattern 3: Multiple Stacks to Single Virtual
+[Access-Stack1] Po1 ↔ Po11 (Gi1/0/11 + Gi2/0/11)
+[Access-Stack2] Po1 ↔ Po12 (Gi1/0/12 + Gi2/0/12)  [Dist-SW1-2(StackVirtual)]
+[Access-Stack3] Po1 ↔ Po13 (Gi1/0/13 + Gi2/0/13)
+[Access-Stack4] Po1 ↔ Po14 (Gi1/0/14 + Gi2/0/14)
+
+### Migration: Separate Devices to Virtualized Device
+
+Steps follow Rule 8 phases in reverse for deletion, then forward for creation:
+
+1. Delete old device L1 links
+2. Delete old devices
+3. Add new virtualized device (Phase 1)
+4. Create L1 links to both members (Phase 2)
+5. Configure port-channels (Phase 3)
+6. Migrate VLANs/IPs (Phase 3-4)
+
+For detailed step-by-step commands, see Rule 8 deletion commands and Phase sequence.
+
+### Configuration Requirements
+
+**Mandatory Elements:**
+1. Device Name: [Name]-[Members](Technology)
+2. Interface Naming: Member-specific (1/0/x, 2/0/x, N/0/x)
+3. Port-Channel: One interface per member
+4. VLAN/SVI: Configured once on logical device
+
+### Best Practices
+
+✅ DO:
+- Use technology tag in device name
+- Use member-specific interface numbering
+- Create port-channels with one interface per member
+- Configure VLANs/SVIs once on logical device
+
+❌ DON'T:
+- Represent as separate physical devices
+- Omit technology tag
+- Use identical interface numbers for different members
+- Duplicate VLAN/SVI configuration
+
+### Verification for Virtualized Devices
+
+After configuration, verify:
+1. Device name includes member IDs and technology tag
+2. Interfaces numbered by member (1/0/x, 2/0/x)
+3. Port-channels include interfaces from multiple members
+4. L1 links connect to different member interfaces
+5. VLANs/SVIs configured once (not per member)
+6. IP addresses assigned once to logical interface
+
+### Real-World Example: Campus LAN with Virtualized Distribution
+
+**BEFORE (INCORRECT - separate devices):**
+Devices: Dist-SW1, Dist-SW2 (separate)
+Problem: Port-channel cannot span devices
+
+**AFTER (CORRECT - virtualized device):**
+Device: Dist-SW1-2(StackVirtual)
+
+Layout:
+[['_AIR_','_AIR_','Dist-SW1-2(StackVirtual)','_AIR_','_AIR_'],
+ ['WLC-9800L','_AIR_','_AIR_','_AIR_','_AIR_'],
+ ['Access-Stack1','Access-Stack2','Access-Stack3','Access-Stack4','_AIR_']]
+
+Connections:
+  WLC → Dist (Po10): Gi0/0+Gi0/1 → Gi1/0/10+Gi2/0/10
+  Access-Stack1 → Dist (Po11): Te1/1/1+Te1/1/2 → Gi1/0/11+Gi2/0/11
+  Access-Stack2 → Dist (Po12): Te1/1/1+Te1/1/2 → Gi1/0/12+Gi2/0/12
+  Access-Stack3 → Dist (Po13): Te1/1/1+Te1/1/2 → Gi1/0/13+Gi2/0/13
+  Access-Stack4 → Dist (Po14): Te1/1/1+Te1/1/2 → Gi1/0/14+Gi2/0/14
+
+Benefits: Proper MEC, simplified management, clear redundancy model
+
+### Common Virtualization Scenarios
+
+#### Catalyst 9300 StackWise (4 members)
+Device: Access-SW1-2-3-4(Stack)
+Interface numbering: 1/0/x through 4/0/x
+Uplinks: From members 1 and 3 (TenGigE 1/1/1, 3/1/1 in Po1)
+
+#### Catalyst 9500 StackWise Virtual (2 members)
+Device: Dist-SW1-2(StackVirtual)
+Interface numbering: 1/0/x and 2/0/x
+SVL: FortyGigE 1/0/1-2 + FortyGigE 2/0/1-2
+Multiple uplink port-channels (Po10, Po11, etc.)
+
+#### Nexus vPC Pair
+Device: Nexus-DC1-2(vPC)
+Interface numbering: 1/x and 2/x
+vPC Peer Link: Eth 1/49-50 + Eth 2/49-50 (Po100)
+
+### Technology-Specific Considerations
+
+**StackWise (Catalyst 9200/9300):** Up to 8 members, 480/160 Gbps bandwidth, interface 1/0/x-8/0/x
+**StackWise Virtual (Catalyst 9400/9500/9600):** 2 members, SVL, NSF/SSO, interface 1/0/x-2/0/x
+**VSS (Legacy Catalyst 6500/4500):** 2 members, VSL, interface 1/x/x-2/x/x
+**vPC (Nexus):** 2 members (both active), vPC Peer Link required
+
+### Summary
+
+This rule ensures:
+1. Clarity: Device names indicate virtualization technology
+2. Consistency: Uniform naming across deployments
+3. Accuracy: Proper member interfaces and port-channels
+4. Maintainability: Easy to understand and troubleshoot
+5. Scalability: Applies to various virtualization technologies
+
+
+
+## Rule 10: Port-Channel VLAN Symmetry Rule
+
+⚠️ CRITICAL: Port-channels connecting two devices MUST have identical VLAN configuration on BOTH ends.
+
+### Core Principle
+
+When creating a Port-channel (LAG/EtherChannel) connection between two devices, the VLAN configuration must be symmetric. This means:
+
+**BOTH Port-channel interfaces must carry the SAME VLANs**
+
+### Why This Matters
+
+**Technical Reasons:**
+1. Port-channel is a trunk link carrying multiple VLANs
+2. Asymmetric VLAN configuration causes:
+   - Traffic black-holing for missing VLANs
+   - VLAN inconsistency errors
+   - Spanning-tree issues
+   - Forwarding failures
+
+**Design Intent:**
+- If VLAN 100 needs to traverse from Access to Distribution
+- VLAN 100 must exist on Port-channel at BOTH Access AND Distribution layers
+
+### Configuration Workflow
+
+#### Step 1: Create Port-channels on both devices
+
+# Device A
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/1" "Port-channel 1" --master "file"
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/2" "Port-channel 1" --master "file"
+
+# Device B
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 1/0/11" "Port-channel 11" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 2/0/11" "Port-channel 11" --master "file"
+
+#### Step 2: Add VLANs to BOTH Port-channels (symmetric configuration)
+
+# Device A Port-channel: Add all required VLANs
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN200" --master "file"
+
+# Device B Port-channel: Add SAME VLANs
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN200" --master "file"
+
+#### Step 3: Verify symmetry
+
+python "script" show l2_interface --master "file"
+
+Expected output (symmetric VLANs):
+['Access-Stack1', 'Port-channel 1', '', 'VLAN10,VLAN100,VLAN200', '']
+['Dist-SW1-2(StackVirtual)', 'Port-channel 11', '', 'VLAN10,VLAN100,VLAN200', '']
+
+### Common Mistakes and Corrections
+
+#### Mistake 1: VLANs only on one side
+
+❌ INCORRECT:
+
+# Only adding VLANs to Distribution side
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+# Access-Stack1 Port-channel 1 has NO VLANs ❌
+
+✅ CORRECT:
+
+# Add VLANs to BOTH sides
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+
+#### Mistake 2: Different VLANs on each side
+
+❌ INCORRECT:
+
+# Device A has VLAN10, VLAN100
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+
+# Device B has VLAN10, VLAN200 (different!) ❌
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN200" --master "file"
+
+Result: VLAN 100 traffic black-holed, VLAN 200 traffic black-holed
+
+✅ CORRECT:
+
+# Both devices have VLAN10, VLAN100, VLAN200
+# Device A
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN200" --master "file"
+
+# Device B (SAME VLANs)
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN200" --master "file"
+
+#### Mistake 3: Adding VLANs only to physical interfaces
+
+❌ INCORRECT:
+
+# VLANs added to physical interfaces, but NOT to Port-channel
+python "script" add l2_segment "Access-Stack1" "TenGigE 1/1/1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "TenGigE 1/1/2" "VLAN10" --master "file"
+# Port-channel 1 has NO VLANs ❌
+
+✅ CORRECT:
+
+# VLANs added to Port-channel interface (logical aggregation)
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+
+### Port-Channel VLAN Symmetry Checklist
+
+For each Port-channel connection between Device A and Device B:
+
+**Device A:**
+□ Port-channel created on Device A
+□ Physical interfaces added to Port-channel
+□ VLAN list identified: [VLAN10, VLAN100, VLAN200]
+□ ALL VLANs added to Device A's Port-channel
+
+**Device B:**
+□ Port-channel created on Device B
+□ Physical interfaces added to Port-channel
+□ SAME VLAN list: [VLAN10, VLAN100, VLAN200]
+□ ALL SAME VLANs added to Device B's Port-channel
+
+**Verification:**
+□ show l2_interface shows symmetric VLAN lists
+□ VLAN lists match exactly on both Port-channels
+□ No missing VLANs on either side
+
+### Systematic Verification Method
+
+**After configuring Port-channels and VLANs:**
+
+1. List all Port-channel pairs in your network
+2. For each pair, extract VLAN list from both sides
+3. Compare VLAN lists
+4. Flag any asymmetries
+
+**Example verification script pseudocode:**
+
+# Get Port-channel configuration
+device_a_vlans = get_vlans("Access-Stack1", "Port-channel 1")
+device_b_vlans = get_vlans("Dist-SW1-2(StackVirtual)", "Port-channel 11")
+
+# Compare
+if device_a_vlans == device_b_vlans:
+    print("✓ VLAN symmetry verified")
+else:
+    print("❌ VLAN mismatch detected")
+    print(f"Device A has: {device_a_vlans}")
+    print(f"Device B has: {device_b_vlans}")
+    print(f"Missing on A: {device_b_vlans - device_a_vlans}")
+    print(f"Missing on B: {device_a_vlans - device_b_vlans}")
+
+### Real-World Campus LAN Example
+
+**Scenario:** Access switch stack connected to Distribution via MEC
+
+**Required VLANs:**
+- VLAN 10: Management
+- VLAN 100: Employee Data
+- VLAN 200: Voice
+
+**Correct Implementation:**
+
+# Phase 2: Physical links
+python "script" add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/2','GigabitEthernet 2/0/11']]" --master "file"
+
+# Phase 3a: Create Port-channels
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/1" "Port-channel 1" --master "file"
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/2" "Port-channel 1" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 1/0/11" "Port-channel 11" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 2/0/11" "Port-channel 11" --master "file"
+
+# Phase 3b: Add VLANs to Access-Stack1 Port-channel 1
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN200" --master "file"
+
+# Phase 3c: Add SAME VLANs to Dist Port-channel 11 (SYMMETRY)
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN200" --master "file"
+
+# Verification
+python "script" show l2_interface --master "file"
+
+**Expected output (symmetric configuration):**
+
+['Access-Stack1', 'Port-channel 1', '', 'VLAN10,VLAN100,VLAN200', '']
+['Dist-SW1-2(StackVirtual)', 'Port-channel 11', '', 'VLAN10,VLAN100,VLAN200', '']
+
+### Multiple Port-Channel Scenario
+
+**Scenario:** 4 Access stacks connected to 1 Distribution pair
+
+**Systematic approach:**
+
+# For EACH Access stack, ensure Port-channel VLAN symmetry
+
+# Access-Stack1 ↔ Dist Po11
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN200" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN200" --master "file"
+
+# Access-Stack2 ↔ Dist Po12 (repeat same pattern)
+python "script" add l2_segment "Access-Stack2" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack2" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Access-Stack2" "Port-channel 1" "VLAN200" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 12" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 12" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 12" "VLAN200" --master "file"
+
+# Repeat for Access-Stack3 ↔ Po13 and Access-Stack4 ↔ Po14
+
+### Special Case: WLC LAG Mode
+
+**Scenario:** WLC connected to Distribution with LAG
+
+**VLANs needed on WLC uplink:**
+- VLAN 10: Management (WMI and CAPWAP)
+- VLAN 300: Wireless Client traffic
+- VLAN 400: Guest traffic
+
+**Correct Implementation:**
+
+# WLC Port-channel
+python "script" add l2_segment "WLC-9800L" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "WLC-9800L" "Port-channel 1" "VLAN300" --master "file"
+python "script" add l2_segment "WLC-9800L" "Port-channel 1" "VLAN400" --master "file"
+
+# Distribution Port-channel (SAME VLANs)
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 10" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 10" "VLAN300" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 10" "VLAN400" --master "file"
+
+### VLAN Pruning Best Practice
+
+While maintaining symmetry, it's recommended to:
+
+**✅ DO:**
+- Include only VLANs that need to traverse the link
+- Prune unnecessary VLANs from trunk
+- Document which VLANs are required per link
+
+**❌ DON'T:**
+- Allow all VLANs (1-4094) on trunk
+- Include VLANs not used in that segment
+- Configure asymmetric VLAN lists
+
+**Example - Optimized VLAN list:**
+
+WLC uplink Port-channel:
+  VLAN 10 (Management) ✓
+  VLAN 300 (Wireless) ✓
+  VLAN 400 (Guest) ✓
+  VLAN 100, 200 NOT needed ✗ (no wired clients on WLC)
+
+Access Stack uplink Port-channel:
+  VLAN 10 (Management + APs) ✓
+  VLAN 100 (Data) ✓
+  VLAN 200 (Voice) ✓
+  VLAN 300, 400 NOT needed ✗ (wireless handled by WLC)
+
+### Port-Channel Configuration Matrix
+
+**For typical Campus LAN design:**
+
+| Connection | Device A Po | Device B Po | Required VLANs |
+|------------|-------------|-------------|----------------|
+| Access1 ↔ Dist | Po1 | Po11 | 10, 100, 200 |
+| Access2 ↔ Dist | Po1 | Po12 | 10, 100, 200 |
+| Access3 ↔ Dist | Po1 | Po13 | 10, 100, 200 |
+| Access4 ↔ Dist | Po1 | Po14 | 10, 100, 200 |
+| WLC ↔ Dist | Po1 | Po10 | 10, 300, 400 |
+
+**Key observation:** Each connection may require different VLANs, but BOTH ends must match.
+
+### Verification Commands for Each Phase
+
+**After Phase 3 (Port-channel + VLAN configuration):**
+
+# Verify Port-channel creation
+python "script" show l2_interface --master "file" | grep "Port-channel"
+
+# Verify VLAN symmetry for specific connection
+python "script" show l2_interface --master "file" | grep "Access-Stack1.*Port-channel"
+python "script" show l2_interface --master "file" | grep "Dist-SW1-2.*Port-channel 11"
+
+# Compare output - VLAN lists must match
+
+### Troubleshooting Asymmetric Configuration
+
+**Symptom:** Traffic not passing for specific VLANs
+
+**Diagnosis steps:**
+1. Identify the Port-channel connection
+2. Check VLAN list on Device A's Port-channel
+3. Check VLAN list on Device B's Port-channel
+4. Compare lists
+
+**Fix:**
+
+# Add missing VLANs to the side that lacks them
+python "script" add l2_segment "[device with missing VLAN]" "[Port-channel]" "[missing VLAN]" --master "file"
+
+### Design Pattern Template
+
+**For ANY Port-channel connection:**
+
+# Template structure (replace [placeholders])
+# Device A side
+python "script" add l2_segment "[DeviceA]" "[Port-channelA]" "[VLAN1]" --master "file"
+python "script" add l2_segment "[DeviceA]" "[Port-channelA]" "[VLAN2]" --master "file"
+python "script" add l2_segment "[DeviceA]" "[Port-channelA]" "[VLAN3]" --master "file"
+
+# Device B side (SAME VLANs)
+python "script" add l2_segment "[DeviceB]" "[Port-channelB]" "[VLAN1]" --master "file"
+python "script" add l2_segment "[DeviceB]" "[Port-channelB]" "[VLAN2]" --master "file"
+python "script" add l2_segment "[DeviceB]" "[Port-channelB]" "[VLAN3]" --master "file"
+
+### Summary
+
+**Key Principles:**
+1. ✅ Port-channel = Logical trunk interface
+2. ✅ VLANs on Port-channel must be symmetric
+3. ✅ Configure VLANs on Port-channel, not on physical member interfaces
+4. ✅ Same VLAN list on both ends of connection
+5. ✅ Verify symmetry before moving to next phase
+
+**Quick Mnemonic:**
+"**Two devices, one link, same VLANs**"
+- Two devices: Both ends of Port-channel
+- One link: Logical Port-channel connection
+- Same VLANs: Identical VLAN configuration
+
+**Command Pattern:**
+For each Port-channel connection:
+1. Create Port-channel on Device A
+2. Create Port-channel on Device B
+3. Add VLAN-X to Device A Port-channel
+4. Add VLAN-X to Device B Port-channel (IMMEDIATELY AFTER step 3)
+5. Repeat steps 3-4 for all required VLANs
+6. Verify symmetry
+
+
+
+## Rule 11: Valid IPv4 Address Range Constraints
+
+### Quick Decision Guide for IP Addressing
+
+**Ask these questions in order:**
+
+1. Is VLAN ID ≤ 255?
+   - YES → Can use Option 1 (10.1.VLAN.1/24) or Option 3 for consistency
+   - NO → Go to Question 2
+
+2. Is VLAN ID ≤ 2550?
+   - YES → Use Option 3: 10.1.(VLAN÷10).1/24
+   - NO → Use Option 2: 10.(VLAN÷100).(VLAN%100).1/24
+
+3. Execute validation before command generation
+
+**Example Quick Reference:**
+- VLAN 10 → 10.1.1.1/24 (Option 3: 10÷10=1)
+- VLAN 100 → 10.1.10.1/24 (Option 3: 100÷10=10)
+- VLAN 300 → 10.1.30.1/24 (Option 3: 300÷10=30)
+- VLAN 3000 → 10.30.0.1/24 (Option 2: 3000÷100=30, 3000%100=0)
+
+### IPv4 Address Format Validation
+
+⚠️ CRITICAL: All IPv4 addresses must comply with valid octet ranges (0-255).
+
+**Valid IPv4 Format:**
+- Each octet must be: 0 ≤ value ≤ 255
+- Format: X.X.X.X/subnet_mask
+- Example: 10.1.100.1/24 ✓
+- Invalid: 10.1.300.1/24 ❌ (300 > 255)
+
+### Common IP Addressing Mistakes
+
+❌ INCORRECT Approaches:
+1. Using VLAN ID directly as third octet when VLAN > 255
+   - VLAN 300 → 10.1.300.1/24 ❌
+   - VLAN 400 → 10.1.400.1/24 ❌
+   - VLAN 999 → 10.1.999.1/24 ❌
+
+2. Using sequential numbering without validation
+   - 192.168.256.1/24 ❌ (256 > 255)
+
+✓ CORRECT Approaches:
+1. Map large VLAN IDs to valid IP ranges
+   - VLAN 300 → 10.3.0.1/24 ✓ (use 10.VLAN/100.VLAN%100.1)
+   - VLAN 400 → 10.4.0.1/24 ✓
+   - VLAN 999 → 10.9.99.1/24 ✓
+
+2. Use simple sequential mapping
+   - VLAN 300 → 10.1.30.1/24 ✓
+   - VLAN 400 → 10.1.40.1/24 ✓
+
+3. Use non-conflicting subnets
+   - VLAN 300 → 172.16.30.1/24 ✓
+   - VLAN 400 → 172.16.40.1/24 ✓
+
+### Recommended IP Addressing Schemes
+
+#### Option 1: Third Octet Mapping (for VLAN ≤ 255)
+VLAN 10  → 10.1.10.0/24   (Gateway: 10.1.10.1)
+VLAN 100 → 10.1.100.0/24  (Gateway: 10.1.100.1)
+VLAN 200 → 10.1.200.0/24  (Gateway: 10.1.200.1)
+VLAN 255 → 10.1.255.0/24  (Gateway: 10.1.255.1)
+
+#### Option 2: Divided Mapping (for VLAN > 255)
+Formula: 10.FLOOR(VLAN/100).VLAN%100.0/24
+
+VLAN 300 → 10.3.0.0/24    (Gateway: 10.3.0.1)
+VLAN 400 → 10.4.0.0/24    (Gateway: 10.4.0.1)
+VLAN 999 → 10.9.99.0/24   (Gateway: 10.9.99.1)
+
+#### Option 3: Simple Compression (divide VLAN by 10) - RECOMMENDED DEFAULT
+VLAN 10  → 10.1.1.0/24    (Gateway: 10.1.1.1)
+VLAN 100 → 10.1.10.0/24   (Gateway: 10.1.10.1)
+VLAN 200 → 10.1.20.0/24   (Gateway: 10.1.20.1)
+VLAN 300 → 10.1.30.0/24   (Gateway: 10.1.30.1)
+VLAN 400 → 10.1.40.0/24   (Gateway: 10.1.40.1)
+VLAN 999 → 10.1.99.0/24   (Gateway: 10.1.99.1)
+
+#### Option 4: Use RFC 1918 Class B (172.16.0.0/12)
+VLAN 10  → 172.16.10.0/24   (Gateway: 172.16.10.1)
+VLAN 100 → 172.16.100.0/24  (Gateway: 172.16.100.1)
+VLAN 300 → 172.16.300.0/24  ❌ INVALID
+VLAN 300 → 172.17.44.0/24   ✓ (16 + 300/256 = 17, 300%256 = 44)
+
+### IP Address Assignment Pre-Check Algorithm
+
+**Before generating add ip_address commands:**
+
+1. Extract VLAN ID from context
+2. Select appropriate addressing scheme:
+   - If VLAN ≤ 255: Can use Option 1 (10.X.VLAN.1/24)
+   - If VLAN > 255: MUST use Option 2 or Option 3
+3. Generate IP address using selected scheme
+4. Validate ALL octets are ≤ 255
+5. Generate command only if validation passes
+
+### Validation Logic Pseudocode
+
+# Validation function
+def validate_and_generate_ip(vlan_id, base_network="10.1", scheme="option3"):
+    """
+    Generate valid gateway IP address for given VLAN ID
+
+    Args:
+        vlan_id: VLAN identifier (1-4094)
+        base_network: First two octets (default: "10.1")
+        scheme: Addressing scheme to use
+
+    Returns:
+        Valid IP address string with subnet mask
+    """
+
+    if scheme == "option1":
+        if vlan_id > 255:
+            raise ValueError(f"VLAN {vlan_id} > 255, cannot use Option 1")
+        third_octet = vlan_id
+        ip_address = f"{base_network}.{third_octet}.1/24"
+
+    elif scheme == "option2":
+        second_octet = vlan_id // 100
+        third_octet = vlan_id % 100
+        if second_octet > 255:
+            raise ValueError(f"VLAN {vlan_id} too large for Option 2")
+        ip_address = f"10.{second_octet}.{third_octet}.1/24"
+
+    elif scheme == "option3":  # RECOMMENDED
+        third_octet = vlan_id // 10
+        if third_octet > 255:
+            # Fallback to option2
+            return validate_and_generate_ip(vlan_id, base_network, "option2")
+        ip_address = f"{base_network}.{third_octet}.1/24"
+
+    # Final validation
+    octets = ip_address.split('/')[0].split('.')
+    for i, octet in enumerate(octets):
+        octet_value = int(octet)
+        if octet_value < 0 or octet_value > 255:
+            raise ValueError(f"Invalid octet {i+1}: {octet_value} (must be 0-255)")
+
+    return ip_address
+
+# Usage examples
+generate_ip(10, scheme="option3")   → "10.1.1.1/24"    ✓
+generate_ip(100, scheme="option3")  → "10.1.10.1/24"   ✓
+generate_ip(200, scheme="option3")  → "10.1.20.1/24"   ✓
+generate_ip(300, scheme="option3")  → "10.1.30.1/24"   ✓
+generate_ip(400, scheme="option3")  → "10.1.40.1/24"   ✓
+generate_ip(999, scheme="option3")  → "10.1.99.1/24"   ✓
+
+generate_ip(300, scheme="option1")  → ValueError ❌
+generate_ip(300, scheme="option2")  → "10.3.0.1/24"    ✓
+
+### Recommended Default Scheme Selection
+
+**For Campus LAN deployments:**
+- **Primary: Option 3 (Simple Compression)** - Works for VLANs 1-2550
+- **Fallback: Option 2 (Divided Mapping)** - Works for VLANs 1-4094
+
+**Rationale:**
+- Easy to remember and troubleshoot
+- Clear correlation between VLAN and subnet
+- Sufficient address space for most deployments
+- Mathematically guaranteed to produce valid addresses
+
+### Common VLAN-to-IP Mapping Table (Option 3)
+
+| VLAN ID | IP Subnet      | Gateway IP   | Third Octet Calculation |
+|---------|----------------|--------------|------------------------|
+| 1       | 10.1.0.0/24    | 10.1.0.1     | 1 ÷ 10 = 0 (integer)  |
+| 10      | 10.1.1.0/24    | 10.1.1.1     | 10 ÷ 10 = 1           |
+| 50      | 10.1.5.0/24    | 10.1.5.1     | 50 ÷ 10 = 5           |
+| 100     | 10.1.10.0/24   | 10.1.10.1    | 100 ÷ 10 = 10         |
+| 150     | 10.1.15.0/24   | 10.1.15.1    | 150 ÷ 10 = 15         |
+| 200     | 10.1.20.0/24   | 10.1.20.1    | 200 ÷ 10 = 20         |
+| 250     | 10.1.25.0/24   | 10.1.25.1    | 250 ÷ 10 = 25         |
+| 300     | 10.1.30.0/24   | 10.1.30.1    | 300 ÷ 10 = 30         |
+| 400     | 10.1.40.0/24   | 10.1.40.1    | 400 ÷ 10 = 40         |
+| 500     | 10.1.50.0/24   | 10.1.50.1    | 500 ÷ 10 = 50         |
+| 999     | 10.1.99.0/24   | 10.1.99.1    | 999 ÷ 10 = 99         |
+| 1000    | 10.1.100.0/24  | 10.1.100.1   | 1000 ÷ 10 = 100       |
+| 2000    | 10.1.200.0/24  | 10.1.200.1   | 2000 ÷ 10 = 200       |
+| 2550    | 10.1.255.0/24  | 10.1.255.1   | 2550 ÷ 10 = 255       |
+
+### Edge Cases and Solutions
+
+**Case 1: VLAN > 2550 (Option 3 fails)**
+Solution: Automatically fall back to Option 2
+- VLAN 3000 → Option 3: 10.1.300.1 ❌ → Option 2: 10.30.0.1 ✓
+
+**Case 2: Multiple sites with same VLAN IDs**
+Solution: Use different second octet per site
+- Site 1 VLAN 100 → 10.1.10.1/24
+- Site 2 VLAN 100 → 10.2.10.1/24
+- Site 3 VLAN 100 → 10.3.10.1/24
+
+**Case 3: Need more than 254 hosts per VLAN**
+Solution: Use /23 or /22 subnet mask
+- VLAN 100 → 10.1.10.0/23 (510 hosts)
+- VLAN 100 → 10.1.10.0/22 (1022 hosts)
+
+### Mandatory Pre-Command Validation
+
+**BEFORE executing any add ip_address command:**
+
+Step 1: Parse the IP address
+Step 2: Extract each octet
+Step 3: Verify each octet ≤ 255
+Step 4: If validation fails:
+   - Identify which octet is invalid
+   - Apply appropriate mapping scheme
+   - Regenerate IP address
+   - Re-validate
+Step 5: Only execute command after successful validation
+
+### Example Validation Workflow
+
+User requests: "Configure VLAN 300 with gateway"
+
+LLM Processing:
+1. Identify VLAN: 300
+2. Check scheme: Using Option 3 (default)
+3. Calculate: 300 ÷ 10 = 30 (integer division)
+4. Generate: 10.1.30.1/24
+5. Validate: 10 ✓, 1 ✓, 30 ✓, 1 ✓ (all ≤ 255)
+6. Output command: add ip_address "Device" "Vlan 300" "10.1.30.1/24"
+
+### Error Recovery Examples
+
+**Error Example 1:**
+Command: add ip_address "Switch" "Vlan 300" "10.1.300.1/24"
+Error: IP Address format is invalid: 10.1.300.1/24
+Analysis: Third octet 300 > 255
+Fix (Option 3): 10.1.30.1/24 (300 ÷ 10 = 30)
+Fix (Option 2): 10.3.0.1/24 (300 ÷ 100 = 3, 300 % 100 = 0)
+Corrected: add ip_address "Switch" "Vlan 300" "10.1.30.1/24"
+
+**Error Example 2:**
+Command: add ip_address "Router" "Vlan 999" "10.1.999.1/24"
+Error: IP Address format is invalid: 10.1.999.1/24
+Analysis: Third octet 999 > 255
+Fix (Option 3): 10.1.99.1/24 (999 ÷ 10 = 99)
+Fix (Option 2): 10.9.99.1/24 (999 ÷ 100 = 9, 999 % 100 = 99)
+Corrected: add ip_address "Router" "Vlan 999" "10.1.99.1/24"
+
+**Error Example 3:**
+Command: add ip_address "Firewall" "Vlan 2560" "10.1.256.1/24"
+Error: IP Address format is invalid: 10.1.256.1/24
+Analysis: Third octet 256 > 255
+Fix (Option 3): 10.1.256.1 → Still invalid, fallback to Option 2
+Fix (Option 2): 10.25.60.1/24 (2560 ÷ 100 = 25, 2560 % 100 = 60)
+Corrected: add ip_address "Firewall" "Vlan 2560" "10.25.60.1/24"
+
+### Subnet Mask Common Values
+
+**Valid subnet masks for /24 networks:**
+- /24 = 255.255.255.0 (254 usable hosts)
+- /23 = 255.255.254.0 (510 usable hosts)
+- /22 = 255.255.252.0 (1022 usable hosts)
+- /21 = 255.255.248.0 (2046 usable hosts)
+- /30 = 255.255.255.252 (2 usable hosts - point-to-point)
+- /31 = 255.255.255.254 (2 hosts - RFC 3021 point-to-point)
+
+**Campus LAN recommendation:** Use /24 for most VLANs (sufficient for 100-200 devices)
+
+### Reserved and Special IP Addresses
+
+**Avoid using these addresses:**
+- 0.0.0.0 - Default route
+- 127.0.0.0/8 - Loopback
+- 169.254.0.0/16 - Link-local
+- 224.0.0.0/4 - Multicast
+- 240.0.0.0/4 - Reserved
+- 255.255.255.255 - Broadcast
+
+**Within each subnet, avoid:**
+- Network address (e.g., 10.1.10.0 in 10.1.10.0/24)
+- Broadcast address (e.g., 10.1.10.255 in 10.1.10.0/24)
+
+**Best practice for gateway:**
+- Use .1 as gateway (e.g., 10.1.10.1)
+- Use .254 as secondary gateway if needed
+
+### IP Address Assignment Workflow
+
+**Step-by-step process when assigning IPs:**
+
+Step 1: Identify VLAN ID
+   Example: VLAN 300
+
+Step 2: Check if VLAN ID ≤ 255
+   300 > 255 → Must use mapping
+
+Step 3: Apply default scheme (Option 3)
+   300 ÷ 10 = 30 (integer division, valid ≤ 255)
+   Result: 10.1.30.0/24
+
+Step 4: Determine gateway IP
+   Network: 10.1.30.0/24
+   Gateway: 10.1.30.1
+   Usable range: 10.1.30.2 - 10.1.30.254
+
+Step 5: Generate command
+   add ip_address "Device" "Vlan 300" "10.1.30.1/24"
+
+Step 6: Validate before execution
+   Octets: 10 ✓, 1 ✓, 30 ✓, 1 ✓
+   All valid → Execute command
+
+### Quick Reference Conversion Table
+
+| VLAN Range | Recommended Scheme | Example |
+|------------|-------------------|---------|
+| 1-255      | Option 1 (Direct) | VLAN 100 → 10.1.100.1/24 |
+| 256-999    | Option 3 (÷10)    | VLAN 300 → 10.1.30.1/24 |
+| 1000-2550  | Option 3 (÷10)    | VLAN 1500 → 10.1.150.1/24 |
+| 2551-4094  | Option 2 (÷100)   | VLAN 3000 → 10.30.0.1/24 |
+
+### Error Prevention Checklist
+
+Before executing add ip_address command:
+□ All octets in range 0-255
+□ VLAN-to-IP mapping scheme selected and documented
+□ No IP address conflicts with existing subnets
+□ Subnet mask is valid (/8, /16, /24, /30, etc.)
+□ Gateway IP is within subnet range
+□ Gateway IP is not network or broadcast address
+□ Scheme consistently applied across all VLANs
+
+### Common Cisco Campus VLAN Naming and IP Scheme
+
+**Standard Campus VLANs (using Option 3):**
+
+| VLAN | Purpose | IP Subnet | Gateway | Calculation |
+|------|---------|-----------|---------|-------------|
+| 1    | Native (unused) | - | - | Reserved |
+| 10   | Management | 10.1.1.0/24 | 10.1.1.1 | 10÷10=1 |
+| 20   | Voice | 10.1.2.0/24 | 10.1.2.1 | 20÷10=2 |
+| 30   | Video | 10.1.3.0/24 | 10.1.3.1 | 30÷10=3 |
+| 100  | Employee Data | 10.1.10.0/24 | 10.1.10.1 | 100÷10=10 |
+| 200  | Guest Wireless | 10.1.20.0/24 | 10.1.20.1 | 200÷10=20 |
+| 300  | Employee Wireless | 10.1.30.0/24 | 10.1.30.1 | 300÷10=30 |
+| 400  | IoT Devices | 10.1.40.0/24 | 10.1.40.1 | 400÷10=40 |
+| 500  | Security/Cameras | 10.1.50.0/24 | 10.1.50.1 | 500÷10=50 |
+| 999  | Quarantine | 10.1.99.0/24 | 10.1.99.1 | 999÷10=99 |
+
+### Multi-Site IP Addressing
+
+**When designing for multiple sites:**
+
+Site 1: Use 10.1.X.0/24
+Site 2: Use 10.2.X.0/24
+Site 3: Use 10.3.X.0/24
+
+Example:
+- Site 1 VLAN 100 → 10.1.10.1/24
+- Site 2 VLAN 100 → 10.2.10.1/24
+- Site 3 VLAN 100 → 10.3.10.1/24
+
+### Integration with Network Sketcher Commands
+
+**Correct command generation pattern:**
+
+# For VLAN ≤ 255 (Option 1 - Direct mapping when using consistent Option 1 scheme)
+python "script" add ip_address "Device" "Vlan 10" "10.1.10.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 100" "10.1.100.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 200" "10.1.200.1/24" --master "file"
+
+# For VLAN > 255 (using Option 3 - RECOMMENDED for consistency)
+python "script" add ip_address "Device" "Vlan 300" "10.1.30.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 400" "10.1.40.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 999" "10.1.99.1/24" --master "file"
+
+# For VLAN > 2550 (using Option 2)
+python "script" add ip_address "Device" "Vlan 3000" "10.30.0.1/24" --master "file"
+
+# For consistency, Option 3 can be used for ALL VLANs (1-2550)
+python "script" add ip_address "Device" "Vlan 10" "10.1.1.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 100" "10.1.10.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 200" "10.1.20.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 300" "10.1.30.1/24" --master "file"
+python "script" add ip_address "Device" "Vlan 400" "10.1.40.1/24" --master "file"
+
+### Real-World Example: Campus LAN VLAN Configuration
+
+**Scenario:** Single-site campus with 4 floors
+**VLANs needed:** 10, 100, 200, 300, 400
+
+**Analysis:**
+- VLAN 10, 100, 200: ≤ 255 → Can use Option 1 OR Option 3
+- VLAN 300, 400: > 255 → MUST use Option 2 or Option 3
+
+**Decision:** Use Option 3 for ALL VLANs (consistency recommended)
+
+**Correct Implementation:**
+
+# Management VLAN (10 ÷ 10 = 1)
+python "script" add ip_address "Dist-SW1-2(StackVirtual)" "Vlan 10" "10.1.1.1/24" --master "file"
+
+# Employee Data VLAN (100 ÷ 10 = 10)
+python "script" add ip_address "Dist-SW1-2(StackVirtual)" "Vlan 100" "10.1.10.1/24" --master "file"
+
+# Voice VLAN (200 ÷ 10 = 20)
+python "script" add ip_address "Dist-SW1-2(StackVirtual)" "Vlan 200" "10.1.20.1/24" --master "file"
+
+# Employee Wireless VLAN (300 ÷ 10 = 30)
+python "script" add ip_address "Dist-SW1-2(StackVirtual)" "Vlan 300" "10.1.30.1/24" --master "file"
+
+# Guest Wireless VLAN (400 ÷ 10 = 40)
+python "script" add ip_address "Dist-SW1-2(StackVirtual)" "Vlan 400" "10.1.40.1/24" --master "file"
+
+# WLC Management Interface (same as VLAN 10 subnet)
+python "script" add ip_address "WLC-9800L" "Vlan 10" "10.1.1.10/24" --master "file"
+
+**Verification:**
+
+python "script" show l3_interface --master "file"
+
+Expected output:
+['Dist-SW1-2(StackVirtual)', 'Vlan 10', '', '10.1.1.1/24']     ✓ Valid
+['Dist-SW1-2(StackVirtual)', 'Vlan 100', '', '10.1.10.1/24']   ✓ Valid
+['Dist-SW1-2(StackVirtual)', 'Vlan 200', '', '10.1.20.1/24']   ✓ Valid
+['Dist-SW1-2(StackVirtual)', 'Vlan 300', '', '10.1.30.1/24']   ✓ Valid
+['Dist-SW1-2(StackVirtual)', 'Vlan 400', '', '10.1.40.1/24']   ✓ Valid
+['WLC-9800L', 'Vlan 10', '', '10.1.1.10/24']                    ✓ Valid
+
+NOT:
+['Dist-SW1-2(StackVirtual)', 'Vlan 300', '', '10.1.300.1/24']  ❌ Invalid
+['Dist-SW1-2(StackVirtual)', 'Vlan 400', '', '10.1.400.1/24']  ❌ Invalid
+
+**IP Address Allocation Summary:**
+| Device | Interface | VLAN | IP Address | Purpose |
+|--------|-----------|------|------------|---------|
+| Dist-SW1-2 | Vlan 10 | 10 | 10.1.1.1 | Mgmt Gateway |
+| Dist-SW1-2 | Vlan 100 | 100 | 10.1.10.1 | Data Gateway |
+| Dist-SW1-2 | Vlan 200 | 200 | 10.1.20.1 | Voice Gateway |
+| Dist-SW1-2 | Vlan 300 | 300 | 10.1.30.1 | Wireless Gateway |
+| Dist-SW1-2 | Vlan 400 | 400 | 10.1.40.1 | Guest Gateway |
+| WLC-9800L | Vlan 10 | 10 | 10.1.1.10 | WLC Management |
+
+### Verification After IP Assignment
+
+**Use show commands to verify:**
+
+# Check all L3 interfaces and IPs
+python "script" show l3_interface --master "file"
+
+Expected output format:
+['Device', 'Vlan 300', '', '10.1.30.1/24']  ✓ Valid
+['Device', 'Vlan 400', '', '10.1.40.1/24']  ✓ Valid
+
+NOT:
+['Device', 'Vlan 300', '', '10.1.300.1/24'] ❌ Invalid
+
+# Check L3 broadcast domains
+python "script" show l3_broadcast_domain --master "file"
+
+### Summary - Key Takeaways
+
+1. **ALWAYS validate IPv4 octets ≤ 255** before generating commands
+2. **Use Option 3 (Simple Compression) as default** for VLANs 1-2550
+3. **Automatically fallback to Option 2** for VLANs > 2550
+4. **Never directly map VLAN ID to IP** when VLAN > 255
+5. **Document your addressing scheme** for consistency
+6. **Use integer division** for all calculations
+7. **Verify with show commands** after IP assignment
+
+### Final Command Generation Rules
+
+**When generating add ip_address commands:**
+
+✓ DO:
+- Calculate third octet using: VLAN_ID ÷ 10 (Option 3, integer division)
+- Validate all octets ≤ 255 BEFORE command generation
+- Use consistent scheme across all VLANs in same deployment
+- Document the mapping logic in output
+- Provide conversion table when generating multiple IPs
+- Use .1 for gateway addresses (recommended)
+
+✗ DON'T:
+- Use VLAN ID directly as octet when > 255
+- Generate commands without validation
+- Mix different schemes randomly without documentation
+- Assume user will manually fix invalid IPs
+- Use floating-point division (always use integer division)
+
+### Automated Validation Example
+
+**Before generating commands, perform this check:**
+
+# Pseudo-code for automated validation
+vlans_to_configure = [10, 100, 200, 300, 400]
+
+for vlan_id in vlans_to_configure:
+    # Generate IP using Option 3
+    third_octet = vlan_id // 10  # Integer division
+    gateway_ip = f"10.1.{third_octet}.1/24"
+
+    # Validate
+    octets = gateway_ip.split('/')[0].split('.')
+    valid = all(0 <= int(octet) <= 255 for octet in octets)
+
+    if valid:
+        print(f"✓ VLAN {vlan_id} → {gateway_ip}")
+        # Generate command
+    else:
+        print(f"❌ VLAN {vlan_id} → {gateway_ip} INVALID")
+        # Apply fallback scheme
+
+**Expected output:**
+
+✓ VLAN 10 → 10.1.1.1/24
+✓ VLAN 100 → 10.1.10.1/24
+✓ VLAN 200 → 10.1.20.1/24
+✓ VLAN 300 → 10.1.30.1/24
+✓ VLAN 400 → 10.1.40.1/24

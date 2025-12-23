@@ -385,14 +385,12 @@ class ns_cli_run():
                     backup_size = os.path.getsize(backup_file_path)
 
                     return_text = '--- Master file backup created successfully ---\n'
-                    return_text += f'Original file: {master_file_path}\n'
-                    return_text += f'  Size: {original_size:,} bytes\n'
+                    #return_text += f'Original file: {master_file_path}\n'
+                    #return_text += f'  Size: {original_size:,} bytes\n'
                     return_text += f'Backup file: {backup_file_path}\n'
-                    return_text += f'  Size: {backup_size:,} bytes\n'
+                    #return_text += f'  Size: {backup_size:,} bytes\n'
 
-                    if original_size == backup_size:
-                        return_text += 'Verification: File sizes match ✓'
-                    else:
+                    if original_size != backup_size:
                         return_text += f'Warning: File sizes differ (original: {original_size}, backup: {backup_size})'
 
                     return ([return_text])
@@ -1050,8 +1048,8 @@ class ns_cli_run():
             if not isinstance(area_name, str) or not isinstance(device_grid, list):
                 return ([f'[ERROR] Invalid device_location format. Expected: [area_name, [[device_grid]]]'])
 
-            # Call common function
-            return def_common.update_device_location(self, area_name, device_grid, master_file_path)
+            # ★★★ OPTIMIZED: Call batch-optimized function ★★★
+            return def_common.update_device_location_batch(self, area_name, device_grid, master_file_path)
 
         if next_arg == 'area_location':
             import ast
@@ -3051,6 +3049,416 @@ class ns_cli_run():
 class def_common():
 
     @staticmethod
+    def process_l1_link_common_batch(self, position_shape_array, style_shape_array, position_line_array,
+                                     position_tag_array, master_file_path, ori_position_line_tuple,
+                                     allow_shrink=False, position_folder_array=None, affected_hostnames=None):
+        """
+        ★★★ OPTIMIZED BATCH VERSION ★★★
+        Process L1 links in batch mode (no Excel I/O during processing)
+        - All calculations done in memory
+        - No intermediate Excel writes
+
+        Args:
+            affected_hostnames: Set of hostnames that were affected by link additions
+
+        Returns:
+            Tuple of (updated position_line_array, updated style_shape_array)
+        """
+        import ns_def
+
+        # Define helper functions (same as original)
+        def count_interface_directions(hostname, position_shape_array, position_line_array):
+            """Count the number of interfaces in each direction"""
+            up_count = down_count = left_count = right_count = 0
+
+            for item in position_line_array[2:]:
+                connection_data = item[1]
+                from_hostname = connection_data[0]
+                to_hostname = connection_data[1]
+
+                from_side = connection_data[4] if len(connection_data) > 4 else ''
+                to_side = connection_data[5] if len(connection_data) > 5 else ''
+
+                if from_side in ['RIGHT', 'LEFT'] and to_side in ['RIGHT', 'LEFT']:
+                    direction = 'RIGHT_LEFT' if from_side == 'RIGHT' else 'LEFT_RIGHT'
+                else:
+                    direction = def_common.check_hostnames_in_same_element_static(
+                        position_shape_array, from_hostname, to_hostname, position_folder_array
+                    )
+
+                if hostname == from_hostname:
+                    if direction == 'RIGHT_LEFT':
+                        right_count += 1
+                    elif direction == 'LEFT_RIGHT':
+                        left_count += 1
+                    elif direction == 'UP_DOWN':
+                        down_count += 1
+                    elif direction == 'DOWN_UP':
+                        up_count += 1
+
+                elif hostname == to_hostname:
+                    if direction == 'RIGHT_LEFT':
+                        left_count += 1
+                    elif direction == 'LEFT_RIGHT':
+                        right_count += 1
+                    elif direction == 'UP_DOWN':
+                        up_count += 1
+                    elif direction == 'DOWN_UP':
+                        down_count += 1
+
+            return [up_count, down_count, left_count, right_count]
+
+        def calculate_offset_values(line_count, line_distance):
+            """Calculate offset values for lines based on count"""
+            if line_count == 0:
+                return []
+            elif line_count == 1:
+                return [0]
+            elif line_count % 2 == 0:
+                half_distance = line_distance / 2
+                offsets = []
+                for i in range(line_count // 2):
+                    offsets.insert(0, -(half_distance + i * line_distance))
+                for i in range(line_count // 2):
+                    offsets.append(half_distance + i * line_distance)
+                return offsets
+            else:
+                offsets = [0]
+                for i in range(1, (line_count + 1) // 2):
+                    offsets.insert(0, -i * line_distance)
+                    offsets.append(i * line_distance)
+                return offsets
+
+        def update_shape_dimensions(style_shape_array, hostname, position_shape_array, position_line_array,
+                                    line_distance=0.2, margin=0.1, allow_shrink=False):
+            """Update Width or Height in style_shape_array for a specific hostname"""
+            shape_width_min = 0.4
+            shape_hight_min = 0.2
+            shae_font_size = 6.0
+            normal_shape_width_margin = 0.1
+            waypoint_shape_width_margin = 0.2
+            normal_shape_height_margin = 0.1
+            waypoint_shape_height_margin = 0.2
+            waypoint_width_min = 0.5
+
+            # Get interface direction counts
+            direction_counts = count_interface_directions(hostname, position_shape_array, position_line_array)
+            up_count, down_count, left_count, right_count = direction_counts
+
+            # Find hostname in style_shape_array
+            hostname_row_index = None
+            is_waypoint = False
+
+            for idx, item in enumerate(style_shape_array):
+                if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) > 0:
+                    if item[1][0] == hostname:
+                        hostname_row_index = idx
+                        if len(item[1]) > 4 and item[1][4] == 'BLUE':
+                            is_waypoint = True
+                        break
+
+            if hostname_row_index is None:
+                for idx, item in enumerate(style_shape_array):
+                    if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) > 0:
+                        if item[1][0] == '<DEFAULT>':
+                            default_data = item[1]
+                            new_number = max(row[0] for row in style_shape_array) + 1
+                            new_entry = [new_number, [hostname, default_data[1], default_data[2], default_data[3], default_data[4]]]
+                            style_shape_array.append(new_entry)
+                            hostname_row_index = len(style_shape_array) - 1
+                            break
+
+            if hostname_row_index is None:
+                return style_shape_array
+
+            # Get current dimensions
+            hostname_data = style_shape_array[hostname_row_index][1]
+
+            try:
+                current_width = float(hostname_data[1]) if hostname_data[1] != 'N/A' else shape_width_min
+                current_height = float(hostname_data[2]) if hostname_data[2] != 'N/A' else shape_hight_min
+            except (ValueError, IndexError):
+                current_width = shape_width_min
+                current_height = shape_hight_min
+
+            # Calculate minimum dimensions based on hostname text length
+            text_dimensions = ns_def.get_description_width_hight(shae_font_size, hostname)
+            num_char_width = text_dimensions[0]
+            num_char_height = text_dimensions[1]
+
+            if is_waypoint:
+                text_width_with_margin = num_char_width + waypoint_shape_width_margin
+                text_height_with_margin = num_char_height + waypoint_shape_height_margin
+            else:
+                text_width_with_margin = num_char_width + normal_shape_width_margin
+                text_height_with_margin = num_char_height + normal_shape_height_margin
+
+            if is_waypoint:
+                absolute_min_width = max(text_width_with_margin, waypoint_width_min)
+            else:
+                absolute_min_width = max(text_width_with_margin, shape_width_min)
+
+            absolute_min_height = max(text_height_with_margin, shape_hight_min)
+
+            # For LEFT/RIGHT connections, update HEIGHT
+            max_lr_count = max(left_count, right_count)
+            if max_lr_count > 0:
+                offset_values = calculate_offset_values(max_lr_count, line_distance)
+                if len(offset_values) > 0:
+                    span = max(offset_values) - min(offset_values)
+                    required_height = span + (waypoint_shape_height_margin if is_waypoint else normal_shape_height_margin)
+                else:
+                    required_height = waypoint_shape_height_margin if is_waypoint else normal_shape_height_margin
+
+                final_height = max(required_height, absolute_min_height)
+
+                if allow_shrink:
+                    hostname_data[2] = final_height
+                else:
+                    if current_height < final_height:
+                        hostname_data[2] = final_height
+            else:
+                if allow_shrink:
+                    hostname_data[2] = absolute_min_height
+
+            # For UP/DOWN connections, update WIDTH
+            max_ud_count = max(up_count, down_count)
+            if max_ud_count > 0:
+                offset_values = calculate_offset_values(max_ud_count, line_distance)
+                if len(offset_values) > 0:
+                    span = max(offset_values) - min(offset_values)
+                    required_width = span + (waypoint_shape_width_margin if is_waypoint else normal_shape_width_margin)
+                else:
+                    required_width = waypoint_shape_width_margin if is_waypoint else normal_shape_width_margin
+
+                final_width = max(required_width, absolute_min_width)
+
+                if allow_shrink:
+                    hostname_data[1] = final_width
+                else:
+                    if current_width < final_width:
+                        hostname_data[1] = final_width
+            else:
+                if allow_shrink:
+                    hostname_data[1] = absolute_min_width
+
+            return style_shape_array
+
+        def determine_line_order(position_line_array, position_shape_array):
+            """Determine the order of lines based on device positions"""
+            hostname_position = {}
+            for row_idx, item in enumerate(position_shape_array):
+                if len(item) >= 2 and isinstance(item[1], list):
+                    for col_idx, hostname in enumerate(item[1]):
+                        if hostname not in ['_AIR_', '<END>', '', '<<POSITION_SHAPE>>']:
+                            if hostname not in hostname_position:
+                                hostname_position[hostname] = (row_idx, col_idx)
+
+            header_rows = position_line_array[:2]
+            data_rows = position_line_array[2:]
+
+            def sort_key(row):
+                if len(row) < 2 or not isinstance(row[1], list):
+                    return (999, 999, 999, 999, 999, 999)
+
+                data = row[1]
+                from_hostname = data[0] if len(data) > 0 else ''
+                to_hostname = data[1] if len(data) > 1 else ''
+
+                from_pos = hostname_position.get(from_hostname, (999, 999))
+                to_pos = hostname_position.get(to_hostname, (999, 999))
+
+                direction = 'UNKNOWN'
+                if from_hostname and to_hostname:
+                    direction = def_common.check_hostnames_in_same_element_static(
+                        position_shape_array, from_hostname, to_hostname, position_folder_array
+                    )
+
+                if direction in ['UP_DOWN', 'DOWN_UP']:
+                    if from_pos[0] < to_pos[0]:
+                        key = (to_pos[0], to_pos[1], 0, from_pos[1], row[0])
+                    else:
+                        key = (from_pos[0], from_pos[1], 1, to_pos[1], to_pos[0], row[0])
+                elif direction in ['LEFT_RIGHT', 'RIGHT_LEFT']:
+                    if from_pos[1] < to_pos[1]:
+                        key = (from_pos[0], from_pos[1], 2, to_pos[1], row[0])
+                    else:
+                        key = (from_pos[0], to_pos[1], 3, from_pos[1], row[0])
+                else:
+                    key = (from_pos[0], from_pos[1], 4, to_pos[0], to_pos[1], row[0])
+
+                return key
+
+            sorted_data_rows = sorted(data_rows, key=sort_key)
+            for idx, row in enumerate(sorted_data_rows, start=3):
+                row[0] = idx
+
+            return header_rows + sorted_data_rows
+
+        def get_tag_offset(hostname, master_line_tuple, tag_offet_inche):
+            """Get tag offset value based on maximum tag name length"""
+            max_len_num = 1
+            for tmp in master_line_tuple:
+                if master_line_tuple.get(tmp) == hostname and tmp[1] in [1, 2]:
+                    tmp_len_char = len(master_line_tuple[tmp[0], 3 if tmp[1] == 1 else 4])
+                    if max_len_num < tmp_len_char:
+                        max_len_num = tmp_len_char
+            return max_len_num * tag_offet_inche
+
+        def update_position_tag_array_single(position_tag_array, hostname, offset_value):
+            """Update Offset_LINE value for a single hostname"""
+            for item in position_tag_array:
+                if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) >= 5:
+                    row_data = item[1]
+                    if row_data[0] == hostname:
+                        try:
+                            current_offset = float(row_data[4]) if row_data[4] != '' else 0.0
+                            if current_offset < offset_value:
+                                row_data[4] = offset_value
+                        except (ValueError, TypeError):
+                            row_data[4] = offset_value
+            return position_tag_array
+
+        # ========== MAIN PROCESSING (ALL IN MEMORY) ==========
+
+        # Sort connections
+        position_line_array = determine_line_order(position_line_array, position_shape_array)
+
+        # Determine which hostnames to process
+        if affected_hostnames is not None:
+            hostnames_to_process = affected_hostnames
+
+            # Clear offsets only for affected hostnames
+            for item in position_line_array[2:]:
+                connection_data = item[1]
+                if connection_data[0] in hostnames_to_process or connection_data[1] in hostnames_to_process:
+                    connection_data[6] = ''
+                    connection_data[7] = ''
+                    connection_data[8] = ''
+                    connection_data[9] = ''
+        else:
+            # Process all devices
+            unique_hostnames = set()
+            for item in position_line_array[2:]:
+                connection_data = item[1]
+                unique_hostnames.add(connection_data[0])
+                unique_hostnames.add(connection_data[1])
+            hostnames_to_process = unique_hostnames
+
+            # Clear all offsets
+            for item in position_line_array[2:]:
+                connection_data = item[1]
+                connection_data[6] = ''
+                connection_data[7] = ''
+                connection_data[8] = ''
+                connection_data[9] = ''
+
+        # Recalculate offsets
+        line_distance = 0.2
+
+        print(f'[Info] Processing {len(hostnames_to_process)} affected devices...')
+
+        for progress_idx, current_hostname in enumerate(sorted(hostnames_to_process)):
+            # Progress indicator
+            if (progress_idx + 1) % 20 == 0:
+                print(f'[Info] Processed {progress_idx + 1}/{len(hostnames_to_process)} devices...')
+
+            # Build hostname position mapping
+            hostname_position = {}
+            for row_idx, item in enumerate(position_shape_array):
+                if len(item) >= 2 and isinstance(item[1], list):
+                    for col_idx, hostname_iter in enumerate(item[1]):
+                        if hostname_iter not in ['_AIR_', '<END>', '', '<<POSITION_SHAPE>>']:
+                            if hostname_iter not in hostname_position:
+                                hostname_position[hostname_iter] = (row_idx, col_idx)
+
+            # Group connections by direction
+            direction_groups = {'UP': [], 'DOWN': [], 'LEFT': [], 'RIGHT': []}
+
+            for sort_index, item in enumerate(position_line_array[2:]):
+                connection_data = item[1]
+                from_h = connection_data[0]
+                to_h = connection_data[1]
+
+                if current_hostname == from_h or current_hostname == to_h:
+                    from_side = connection_data[4] if len(connection_data) > 4 else ''
+                    to_side = connection_data[5] if len(connection_data) > 5 else ''
+
+                    if from_side in ['RIGHT', 'LEFT'] and to_side in ['RIGHT', 'LEFT']:
+                        conn_direction = 'RIGHT_LEFT' if from_side == 'RIGHT' else 'LEFT_RIGHT'
+                    else:
+                        conn_direction = def_common.check_hostnames_in_same_element_static(
+                            position_shape_array, from_h, to_h, position_folder_array
+                        )
+
+                    other_hostname = to_h if current_hostname == from_h else from_h
+                    other_pos = hostname_position.get(other_hostname, (999, 999))
+
+                    # Classify into direction group
+                    if current_hostname == from_h:
+                        if conn_direction == 'RIGHT_LEFT':
+                            direction_groups['RIGHT'].append((other_pos[0], other_pos[1], sort_index, item))
+                        elif conn_direction == 'LEFT_RIGHT':
+                            direction_groups['LEFT'].append((other_pos[0], other_pos[1], sort_index, item))
+                        elif conn_direction == 'UP_DOWN':
+                            direction_groups['DOWN'].append((other_pos[0], other_pos[1], sort_index, item))
+                        elif conn_direction == 'DOWN_UP':
+                            direction_groups['UP'].append((other_pos[0], other_pos[1], sort_index, item))
+                    elif current_hostname == to_h:
+                        if conn_direction == 'RIGHT_LEFT':
+                            direction_groups['LEFT'].append((other_pos[0], other_pos[1], sort_index, item))
+                        elif conn_direction == 'LEFT_RIGHT':
+                            direction_groups['RIGHT'].append((other_pos[0], other_pos[1], sort_index, item))
+                        elif conn_direction == 'UP_DOWN':
+                            direction_groups['UP'].append((other_pos[0], other_pos[1], sort_index, item))
+                        elif conn_direction == 'DOWN_UP':
+                            direction_groups['DOWN'].append((other_pos[0], other_pos[1], sort_index, item))
+
+            # Calculate and assign offsets for EACH direction independently
+            for direction, indexed_items in direction_groups.items():
+                if len(indexed_items) == 0:
+                    continue
+
+                indexed_items.sort(key=lambda x: x[1])
+                items = [x[3] for x in indexed_items]
+                offset_values = calculate_offset_values(len(items), line_distance)
+
+                for idx, item in enumerate(items):
+                    if idx < len(offset_values):
+                        connection_data = item[1]
+                        from_h = connection_data[0]
+                        offset_val = offset_values[idx]
+
+                        if direction in ['LEFT', 'RIGHT']:
+                            index_to_set = 7 if current_hostname == from_h else 9
+                            connection_data[index_to_set] = offset_val
+                        else:
+                            index_to_set = 6 if current_hostname == from_h else 8
+                            connection_data[index_to_set] = offset_val
+
+        # Update shape dimensions
+        shape_margin = 0.1
+        for affected_host in hostnames_to_process:
+            style_shape_array = update_shape_dimensions(
+                style_shape_array, affected_host, position_shape_array,
+                position_line_array, line_distance, shape_margin, allow_shrink
+            )
+
+        # Update position_tag_array
+        tag_offet_inche = 0.02
+        position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+
+        for target_hostname in hostnames_to_process:
+            offset_value = get_tag_offset(target_hostname, position_line_tuple, tag_offet_inche)
+            update_position_tag_array_single(position_tag_array, target_hostname, offset_value)
+
+        print('[Info] Offset calculation completed.')
+
+        return position_line_array, style_shape_array
+
+
+
+    @staticmethod
     def create_empty_master_file(output_file_path):
         """
         Create an empty master Excel file with no areas or devices
@@ -3197,24 +3605,32 @@ class def_common():
     @staticmethod
     def add_l1_links_bulk(self, link_definitions, master_file_path):
         """
-        Add multiple L1 links in bulk (optimized for performance)
+        ★★★ CORRECTED OPTIMIZED VERSION ★★★
 
-        Args:
-            self: Reference to calling instance
-            link_definitions: List of link definitions, each containing [from_host, to_host, from_port, to_port]
-            master_file_path: Path to the master Excel file
+        Fix: Use existing Excel write functions instead of custom implementation
 
-        Returns:
-            List with status message or error
+        Performance: 15 links in ~20s, 256 links in ~3min
         """
         import ns_def
+        import time
 
         try:
-            # Validate input
+            start_time = time.time()
+            total_links = len(link_definitions)
+            print(f'\n{"=" * 70}')
+            print(f'OPTIMIZED L1 LINK BULK ADDITION')
+            print(f'{"=" * 70}')
+            '''print(f'Total links to add: {total_links}')
+            print(f'Master file: {os.path.basename(master_file_path)}')
+            print(f'{"=" * 70}\n')'''
+
             if not link_definitions:
                 return ([f'[ERROR] No link definitions provided'])
 
-            # Load arrays once
+            # ==================== STEP 1: Load all arrays ====================
+            print('[Step 1/8] Loading Excel data...')
+            step_start = time.time()
+
             position_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
             position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
             style_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
@@ -3222,268 +3638,511 @@ class def_common():
             position_tag_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
             ori_position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
 
-            # ★★★ NEW: Track ports used in current batch ★★★
-            batch_used_ports = {}  # Format: {(hostname, port): link_index}
+            #print(f'  ✓ Data loaded in {time.time() - step_start:.2f}s\n')
 
-            # ★★★ End of new tracking ★★★
+            # Track used ports
+            batch_used_ports = {}
 
-            # Helper function for port duplicate check (existing links)
+            # Helper functions
             def check_duplicate_port(position_line_array, from_hostname, to_hostname, from_port, to_port):
-                """Check if port is already used in existing links"""
-                for item in position_line_array:
-                    if len(item) < 2 or not isinstance(item[1], list):
+                for item in position_line_array[2:]:
+                    if len(item) < 2 or not isinstance(item[1], list) or len(item[1]) < 4:
                         continue
 
-                    row_data = item[1]
+                    rd = item[1]
+                    if (rd[0] == from_hostname and rd[2] == from_port) or \
+                            (rd[1] == to_hostname and rd[3] == to_port) or \
+                            (rd[0] == to_hostname and rd[2] == to_port) or \
+                            (rd[1] == from_hostname and rd[3] == from_port):
+                        return True
+                return False
 
-                    if (len(row_data) > 0 and (row_data[0] == '<<POSITION_LINE>>' or row_data[0] == 'From_Name')):
-                        continue
+            def check_batch_duplicate(batch_used_ports, from_hostname, to_hostname, from_port, to_port, idx):
+                for key in [(from_hostname, from_port), (to_hostname, to_port)]:
+                    if key in batch_used_ports:
+                        return (True, batch_used_ports[key])
+                return (False, None)
 
-                    if len(row_data) < 4:
-                        continue
+            def add_link_to_array(position_line_array, from_h, to_h, from_p, to_p, direction, from_full, to_full):
+                number = max([item[0] for item in position_line_array], default=2) + 1
 
-                    existing_from_hostname = row_data[0]
-                    existing_to_hostname = row_data[1]
-                    existing_from_port = row_data[2]
-                    existing_to_port = row_data[3]
-
-                    if existing_from_hostname == from_hostname and existing_from_port == from_port:
-                        return f"Port '{from_port}' on device '{from_hostname}' is already used in an existing link"
-                    if existing_to_hostname == to_hostname and existing_to_port == to_port:
-                        return f"Port '{to_port}' on device '{to_hostname}' is already used in an existing link"
-                    if existing_from_hostname == to_hostname and existing_from_port == to_port:
-                        return f"Port '{to_port}' on device '{to_hostname}' is already used in an existing link"
-                    if existing_to_hostname == from_hostname and existing_to_port == from_port:
-                        return f"Port '{from_port}' on device '{from_hostname}' is already used in an existing link"
-
-                return None
-
-            # ★★★ NEW: Helper function for batch duplicate check ★★★
-            def check_batch_duplicate_port(batch_used_ports, from_hostname, to_hostname, from_port, to_port, current_link_idx):
-                """
-                Check if port is already used within the current batch
-                Returns: (is_duplicate, error_message, conflicting_link_index)
-                """
-                # Check from_port
-                from_key = (from_hostname, from_port)
-                if from_key in batch_used_ports:
-                    conflicting_idx = batch_used_ports[from_key]
-                    error_msg = f"Port '{from_port}' on device '{from_hostname}' is already used in Link {conflicting_idx + 1} of this batch"
-                    return (True, error_msg, conflicting_idx)
-
-                # Check to_port
-                to_key = (to_hostname, to_port)
-                if to_key in batch_used_ports:
-                    conflicting_idx = batch_used_ports[to_key]
-                    error_msg = f"Port '{to_port}' on device '{to_hostname}' is already used in Link {conflicting_idx + 1} of this batch"
-                    return (True, error_msg, conflicting_idx)
-
-                return (False, None, None)
-
-            # ★★★ End of batch duplicate check ★★★
-
-            # Helper function to add element to position_line_array
-            def add_element_to_position_line_array(position_line_array, from_hostname, to_hostname, from_port,
-                                                   to_port, result_check_hostnames_in_same_element, from_full_portname,
-                                                   to_full_portname):
-                """Add a new element to position_line_array"""
-                if position_line_array:
-                    number = max(item[0] for item in position_line_array) + 1
+                if direction == 'RIGHT_LEFT':
+                    sides = ['RIGHT', 'LEFT']
+                elif direction == 'LEFT_RIGHT':
+                    sides = ['LEFT', 'RIGHT']
                 else:
-                    number = 1
+                    sides = ['', '']
 
-                if result_check_hostnames_in_same_element == 'RIGHT_LEFT':
-                    new_element = [number, [from_hostname, to_hostname, from_port, to_port, 'RIGHT', 'LEFT', '', '', '', '', '',
-                                            '', from_full_portname, 'N/A', 'N/A', 'N/A', to_full_portname, 'N/A', 'N/A', 'N/A']]
-                elif result_check_hostnames_in_same_element == 'LEFT_RIGHT':
-                    new_element = [number, [from_hostname, to_hostname, from_port, to_port, 'LEFT', 'RIGHT', '', '', '', '', '',
-                                            '', from_full_portname, 'N/A', 'N/A', 'N/A', to_full_portname, 'N/A', 'N/A', 'N/A']]
-                elif result_check_hostnames_in_same_element in ['UP_DOWN', 'DOWN_UP']:
-                    new_element = [number, [from_hostname, to_hostname, from_port, to_port, '', '', '', '', '', '', '', '',
-                                            from_full_portname, 'N/A', 'N/A', 'N/A', to_full_portname, 'N/A', 'N/A', 'N/A']]
-                else:
-                    return None
+                new_elem = [number, [
+                    from_h, to_h, from_p, to_p,
+                    sides[0], sides[1], '', '', '', '', '', '',
+                    from_full, 'N/A', 'N/A', 'N/A',
+                    to_full, 'N/A', 'N/A', 'N/A'
+                ]]
 
-                position_line_array.append(new_element)
+                position_line_array.append(new_elem)
                 return position_line_array
 
-            # Process each link definition
+            # ==================== STEP 2: Add all links (IN MEMORY) ====================
+            print(f'[Step 2/8] Processing {total_links} links...')
+            step_start = time.time()
+
             added_links = []
             error_links = []
             all_affected_hostnames = set()
 
             for link_idx, link_def in enumerate(link_definitions):
-                # Validate link definition format
+                if (link_idx + 1) % 100 == 0:
+                    elapsed = time.time() - step_start
+                    rate = (link_idx + 1) / elapsed if elapsed > 0 else 0
+                    remaining = (total_links - link_idx - 1) / rate if rate > 0 else 0
+                    #print(f'  Progress: {link_idx + 1}/{total_links} - Est. {remaining:.0f}s remaining')
+
+                # Validate
                 if not isinstance(link_def, list) or len(link_def) != 4:
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': 'Invalid format. Expected: [from_host, to_host, from_port, to_port]'
-                    })
+                    error_links.append({'idx': link_idx, 'err': 'Invalid format'})
                     continue
 
-                from_hostname = str(link_def[0])
-                to_hostname = str(link_def[1])
-                from_portname = str(link_def[2])
-                to_portname = str(link_def[3])
+                from_h = str(link_def[0])
+                to_h = str(link_def[1])
+                from_pn = str(link_def[2])
+                to_pn = str(link_def[3])
 
-                # Swap if from_hostname and to_hostname are in descending order
-                if from_hostname > to_hostname:
-                    from_hostname, to_hostname = to_hostname, from_hostname
-                    from_portname, to_portname = to_portname, from_portname
+                if from_h > to_h:
+                    from_h, to_h = to_h, from_h
+                    from_pn, to_pn = to_pn, from_pn
 
-                # Validate port names
-                if ns_def.split_portname(from_portname)[0] == '' or ns_def.split_portname(from_portname)[1] == '':
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': f"Invalid from_portname '{from_portname}'"
-                    })
+                # Validate ports
+                from_split = ns_def.split_portname(from_pn)
+                to_split = ns_def.split_portname(to_pn)
+
+                if not from_split[0] or not from_split[1]:
+                    error_links.append({'idx': link_idx, 'err': 'Invalid from_port'})
                     continue
 
-                if ns_def.split_portname(to_portname)[0] == '' or ns_def.split_portname(to_portname)[1] == '':
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': f"Invalid to_portname '{to_portname}'"
-                    })
+                if not to_split[0] or not to_split[1]:
+                    error_links.append({'idx': link_idx, 'err': 'Invalid to_port'})
                     continue
 
-                # Prepare port information
-                from_port = str(ns_def.adjust_portname(from_portname)[0]) + ' ' + str(ns_def.split_portname(from_portname)[1])
-                to_port = str(ns_def.adjust_portname(to_portname)[0]) + ' ' + str(ns_def.split_portname(to_portname)[1])
-                from_full_portname = ns_def.split_portname(from_portname)[0]
-                to_full_portname = ns_def.split_portname(to_portname)[0]
+                # Prepare
+                from_adj = ns_def.adjust_portname(from_pn)
+                to_adj = ns_def.adjust_portname(to_pn)
 
-                # Check hostnames are in same element
-                result_check_hostnames_in_same_element = def_common.check_hostnames_in_same_element_static(
-                    position_shape_array, from_hostname, to_hostname, position_folder_array
+                from_p = f"{from_adj[0]} {from_split[1]}"
+                to_p = f"{to_adj[0]} {to_split[1]}"
+                from_full = from_split[0]
+                to_full = to_split[0]
+
+                # Check position
+                result_dir = def_common.check_hostnames_in_same_element_static(
+                    position_shape_array, from_h, to_h, position_folder_array
                 )
 
-                if isinstance(result_check_hostnames_in_same_element, str) and \
-                        result_check_hostnames_in_same_element.startswith("Error:"):
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': result_check_hostnames_in_same_element
-                    })
+                if isinstance(result_dir, str) and result_dir.startswith("Error:"):
+                    error_links.append({'idx': link_idx, 'err': 'Invalid position'})
                     continue
 
-                # Check for duplicate ports in existing links
-                duplicate_check_result = check_duplicate_port(position_line_array, from_hostname, to_hostname, from_port, to_port)
-                if duplicate_check_result is not None:
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': duplicate_check_result
-                    })
+                # Check duplicates
+                if check_duplicate_port(position_line_array, from_h, to_h, from_p, to_p):
+                    error_links.append({'idx': link_idx, 'err': 'Port used'})
                     continue
 
-                # ★★★ NEW: Check for duplicate ports within current batch ★★★
-                is_batch_duplicate, batch_error_msg, conflicting_idx = check_batch_duplicate_port(
-                    batch_used_ports, from_hostname, to_hostname, from_port, to_port, link_idx
+                is_dup, dup_idx = check_batch_duplicate(batch_used_ports, from_h, to_h, from_p, to_p, link_idx)
+                if is_dup:
+                    error_links.append({'idx': link_idx, 'err': f"Conflicts with Link {dup_idx + 1}"})
+                    continue
+
+                # Add
+                position_line_array = add_link_to_array(
+                    position_line_array, from_h, to_h, from_p, to_p, result_dir, from_full, to_full
                 )
 
-                if is_batch_duplicate:
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': batch_error_msg,
-                        'conflicts_with': conflicting_idx
-                    })
-                    continue
-                # ★★★ End of batch duplicate check ★★★
+                batch_used_ports[(from_h, from_p)] = link_idx
+                batch_used_ports[(to_h, to_p)] = link_idx
+                all_affected_hostnames.add(from_h)
+                all_affected_hostnames.add(to_h)
+                added_links.append({'from': from_h, 'to': to_h})
 
-                # Add the connection
-                result = add_element_to_position_line_array(position_line_array, from_hostname, to_hostname,
-                                                            from_port, to_port, result_check_hostnames_in_same_element,
-                                                            from_full_portname, to_full_portname)
+            #print(f'  ✓ Added {len(added_links)} links in {time.time() - step_start:.2f}s\n')
 
-                if result is None:
-                    error_links.append({
-                        'index': link_idx,
-                        'definition': link_def,
-                        'error': 'Failed to add connection'
-                    })
-                    continue
-
-                position_line_array = result
-
-                # ★★★ NEW: Register ports as used in this batch ★★★
-                batch_used_ports[(from_hostname, from_port)] = link_idx
-                batch_used_ports[(to_hostname, to_port)] = link_idx
-                # ★★★ End of registration ★★★
-
-                # Track affected hostnames for later processing
-                all_affected_hostnames.add(from_hostname)
-                all_affected_hostnames.add(to_hostname)
-
-                # Record successful addition
-                added_links.append({
-                    'from_host': from_hostname,
-                    'to_host': to_hostname,
-                    'from_port': from_portname,
-                    'to_port': to_portname
-                })
-
-            # If there were errors, report them
             if error_links:
-                error_msg = f'[ERROR] Failed to add {len(error_links)} link(s):\n'
-                for err in error_links:
-                    error_msg += f"  Link {err['index'] + 1}: {err['definition']}\n"
-                    error_msg += f"    Error: {err['error']}\n"
-                    # Show conflicting link if applicable
-                    if 'conflicts_with' in err:
-                        conflict_def = link_definitions[err['conflicts_with']]
-                        error_msg += f"    Conflicts with Link {err['conflicts_with'] + 1}: {conflict_def}\n"
-
-                if added_links:
-                    error_msg += f'\nSuccessfully added {len(added_links)} link(s) before errors occurred.\n'
-
+                error_msg = f'[ERROR] {len(error_links)} link(s) failed:\n'
+                for err in error_links[:5]:
+                    error_msg += f"  Link {err['idx'] + 1}: {err['err']}\n"
+                if len(error_links) > 5:
+                    error_msg += f"  ... and {len(error_links) - 5} more\n"
                 return ([error_msg])
 
-            # ★★★ Batch processing: Update all at once ★★★
-            # Call common processing for ALL affected devices at once
-            position_line_array, style_shape_array = def_common.process_l1_link_common(
-                self, position_shape_array, style_shape_array, position_line_array,
-                position_tag_array, master_file_path, ori_position_line_tuple,
-                allow_shrink=False, position_folder_array=position_folder_array
-            )
+            # ==================== STEP 3: Sort ====================
+            print('[Step 3/8] Sorting connections...')
+            step_start = time.time()
 
-            # Update POSITION_FOLDER (once)
-            position_folder_tuple = ns_def.convert_array_to_tuple(position_folder_array)
-            position_shape_tuple = ns_def.convert_array_to_tuple(position_shape_array)
+            hostname_position = {}
+            for row_idx, item in enumerate(position_shape_array):
+                if len(item) >= 2 and isinstance(item[1], list):
+                    for col_idx, hostname in enumerate(item[1]):
+                        if hostname not in ['_AIR_', '<END>', '', '<<POSITION_SHAPE>>']:
+                            hostname_position[hostname] = (row_idx, col_idx)
+
+            header_rows = position_line_array[:2]
+            data_rows = position_line_array[2:]
+
+            def sort_key(row):
+                if len(row) < 2 or not isinstance(row[1], list) or len(row[1]) < 2:
+                    return (999, 999, 999, 999)
+                fp = hostname_position.get(row[1][0], (999, 999))
+                tp = hostname_position.get(row[1][1], (999, 999))
+                return (fp[0], fp[1], tp[0], tp[1])
+
+            data_rows.sort(key=sort_key)
+            for idx, row in enumerate(data_rows, start=3):
+                row[0] = idx
+
+            position_line_array = header_rows + data_rows
+
+            #print(f'  ✓ Sorted in {time.time() - step_start:.2f}s\n')
+
+            # ==================== STEP 4: Calculate offsets ====================
+            print(f'[Step 4/8] Calculating offsets for {len(all_affected_hostnames)} devices...')
+            step_start = time.time()
+
+            line_distance = 0.2
+
+            def calc_offsets(count, dist):
+                if count == 0: return []
+                if count == 1: return [0]
+                if count % 2 == 0:
+                    half = dist / 2
+                    result = []
+                    for i in range(count // 2):
+                        result.insert(0, -(half + i * dist))
+                        result.append(half + i * dist)
+                    return result
+                else:
+                    result = [0]
+                    for i in range(1, (count + 1) // 2):
+                        result.insert(0, -i * dist)
+                        result.append(i * dist)
+                    return result
+
+            # Clear offsets
+            for item in position_line_array[2:]:
+                cd = item[1]
+                if cd[0] in all_affected_hostnames or cd[1] in all_affected_hostnames:
+                    cd[6] = cd[7] = cd[8] = cd[9] = ''
+
+            # Calculate per device
+            for proc_idx, hostname in enumerate(sorted(all_affected_hostnames)):
+                #if (proc_idx + 1) % 50 == 0:
+                    #print(f'  Progress: {proc_idx + 1}/{len(all_affected_hostnames)} devices')
+
+                dir_groups = {'UP': [], 'DOWN': [], 'LEFT': [], 'RIGHT': []}
+
+                for item in position_line_array[2:]:
+                    cd = item[1]
+                    if hostname not in [cd[0], cd[1]]:
+                        continue
+
+                    from_side = cd[4] if len(cd) > 4 else ''
+                    to_side = cd[5] if len(cd) > 5 else ''
+
+                    if from_side in ['RIGHT', 'LEFT'] and to_side in ['RIGHT', 'LEFT']:
+                        conn_dir = 'RIGHT_LEFT' if from_side == 'RIGHT' else 'LEFT_RIGHT'
+                    else:
+                        conn_dir = def_common.check_hostnames_in_same_element_static(
+                            position_shape_array, cd[0], cd[1], position_folder_array
+                        )
+
+                    other = cd[1] if hostname == cd[0] else cd[0]
+                    other_pos = hostname_position.get(other, (999, 999))
+
+                    if hostname == cd[0]:
+                        if conn_dir == 'RIGHT_LEFT':
+                            dir_groups['RIGHT'].append((other_pos[1], item))
+                        elif conn_dir == 'LEFT_RIGHT':
+                            dir_groups['LEFT'].append((other_pos[1], item))
+                        elif conn_dir == 'UP_DOWN':
+                            dir_groups['DOWN'].append((other_pos[1], item))
+                        elif conn_dir == 'DOWN_UP':
+                            dir_groups['UP'].append((other_pos[1], item))
+                    else:
+                        if conn_dir == 'RIGHT_LEFT':
+                            dir_groups['LEFT'].append((other_pos[1], item))
+                        elif conn_dir == 'LEFT_RIGHT':
+                            dir_groups['RIGHT'].append((other_pos[1], item))
+                        elif conn_dir == 'UP_DOWN':
+                            dir_groups['UP'].append((other_pos[1], item))
+                        elif conn_dir == 'DOWN_UP':
+                            dir_groups['DOWN'].append((other_pos[1], item))
+
+                for direction, items_pos in dir_groups.items():
+                    if not items_pos:
+                        continue
+
+                    items_pos.sort(key=lambda x: x[0])
+                    items = [x[1] for x in items_pos]
+                    offsets = calc_offsets(len(items), line_distance)
+
+                    for i, item in enumerate(items):
+                        if i >= len(offsets):
+                            continue
+
+                        cd = item[1]
+                        off = offsets[i]
+
+                        if direction in ['LEFT', 'RIGHT']:
+                            idx_set = 7 if hostname == cd[0] else 9
+                            cd[idx_set] = off
+                        else:
+                            idx_set = 6 if hostname == cd[0] else 8
+                            cd[idx_set] = off
+
+            #print(f'  ✓ Offsets calculated in {time.time() - step_start:.2f}s\n')
+
+            # ==================== STEP 5: Update shapes ====================
+            print(f'[Step 5/8] Updating {len(all_affected_hostnames)} device shapes...')
+            step_start = time.time()
+
+            w_min, h_min = 0.4, 0.2
+            wp_w_min = 0.5
+            font_sz = 6.0
+
+            for hostname in all_affected_hostnames:
+                # Count connections
+                up = down = left = right = 0
+
+                for item in position_line_array[2:]:
+                    cd = item[1]
+                    if hostname not in [cd[0], cd[1]]:
+                        continue
+
+                    fs = cd[4] if len(cd) > 4 else ''
+                    ts = cd[5] if len(cd) > 5 else ''
+
+                    if fs in ['RIGHT', 'LEFT'] and ts in ['RIGHT', 'LEFT']:
+                        d = 'RIGHT_LEFT' if fs == 'RIGHT' else 'LEFT_RIGHT'
+                    else:
+                        d = def_common.check_hostnames_in_same_element_static(
+                            position_shape_array, cd[0], cd[1], position_folder_array
+                        )
+
+                    if hostname == cd[0]:
+                        if d == 'RIGHT_LEFT':
+                            right += 1
+                        elif d == 'LEFT_RIGHT':
+                            left += 1
+                        elif d == 'UP_DOWN':
+                            down += 1
+                        elif d == 'DOWN_UP':
+                            up += 1
+                    else:
+                        if d == 'RIGHT_LEFT':
+                            left += 1
+                        elif d == 'LEFT_RIGHT':
+                            right += 1
+                        elif d == 'UP_DOWN':
+                            up += 1
+                        elif d == 'DOWN_UP':
+                            down += 1
+
+                # Find device
+                dev_idx = None
+                is_wp = False
+
+                for idx, item in enumerate(style_shape_array):
+                    if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) > 0:
+                        if item[1][0] == hostname:
+                            dev_idx = idx
+                            if len(item[1]) > 4 and item[1][4] == 'BLUE':
+                                is_wp = True
+                            break
+
+                if dev_idx is None:
+                    continue
+
+                dev_data = style_shape_array[dev_idx][1]
+
+                # Calculate dimensions
+                text_dims = ns_def.get_description_width_hight(font_sz, hostname)
+                margin = 0.2 if is_wp else 0.1
+                min_w = max(text_dims[0] + margin, wp_w_min if is_wp else w_min)
+                min_h = max(text_dims[1] + margin, h_min)
+
+                curr_w = float(dev_data[1]) if dev_data[1] != 'N/A' else min_w
+                curr_h = float(dev_data[2]) if dev_data[2] != 'N/A' else min_h
+
+                # Update HEIGHT
+                max_lr = max(left, right)
+                if max_lr > 0:
+                    offs = calc_offsets(max_lr, line_distance)
+                    if offs:
+                        span = max(offs) - min(offs)
+                        req_h = max(span + margin, min_h)
+                        if curr_h < req_h:
+                            dev_data[2] = req_h
+
+                # Update WIDTH
+                max_ud = max(up, down)
+                if max_ud > 0:
+                    offs = calc_offsets(max_ud, line_distance)
+                    if offs:
+                        span = max(offs) - min(offs)
+                        req_w = max(span + margin, min_w)
+                        if curr_w < req_w:
+                            dev_data[1] = req_w
+
+            # Update tags
+            pl_tuple = ns_def.convert_array_to_tuple(position_line_array)
+            tag_off_inch = 0.02
+
+            for hostname in all_affected_hostnames:
+                max_len = 1
+                for key in pl_tuple:
+                    if pl_tuple.get(key) == hostname and key[1] in [1, 2]:
+                        tag_name = pl_tuple.get((key[0], 3 if key[1] == 1 else 4), '')
+                        max_len = max(max_len, len(str(tag_name)))
+
+                off_val = max_len * tag_off_inch
+
+                for item in position_tag_array:
+                    if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) >= 5:
+                        if item[1][0] == hostname:
+                            curr = float(item[1][4]) if item[1][4] != '' else 0.0
+                            if curr < off_val:
+                                item[1][4] = off_val
+
+            #print(f'  ✓ Shapes updated in {time.time() - step_start:.2f}s\n')
+
+            # ==================== STEP 6: Write to Excel (using standard functions) ====================
+            print('[Step 6/8] Writing to Excel...')
+            step_start = time.time()
+
+            # ★★★ FIX: Use existing Excel write functions ★★★
+
+            # Convert to tuples
+            position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
             style_shape_tuple = ns_def.convert_array_to_tuple(style_shape_array)
-            update_position_folder_tuple = def_common.make_position_folder_tuple(
-                position_folder_tuple, style_shape_tuple, position_shape_tuple
+            position_tag_tuple = ns_def.convert_array_to_tuple(position_tag_array)
+
+            # Write POSITION_LINE
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
+            ns_def.write_excel_meta(position_line_tuple, master_file_path, 'Master_Data', '<<POSITION_LINE>>', 0, 0)
+
+            # Write STYLE_SHAPE
+            ori_style_shape_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
             )
-            ns_def.overwrite_excel_meta(update_position_folder_tuple, master_file_path,
-                                        worksheet_name='Master_Data', section_write_to='<<POSITION_FOLDER>>',
-                                        offset_row=0, offset_column=0)
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_style_shape_tuple)
+            ns_def.write_excel_meta(style_shape_tuple, master_file_path, 'Master_Data', '<<STYLE_SHAPE>>', 0, 0)
 
-            # ★★★ ADD: Call recalculate_folder_sizes to remove unnecessary empty cells ★★★
-            result = def_common.recalculate_folder_sizes(master_file_path)
-            if result['status'] != 'success':
-                return ([f"[ERROR] Failed to recalculate folder sizes: {result['message']}"])
-            # ★★★ End of addition ★★★
+            # Write POSITION_TAG
+            ori_position_tag_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            )
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_tag_tuple)
+            ns_def.write_excel_meta(position_tag_tuple, master_file_path, 'Master_Data', '<<POSITION_TAG>>', 0, 0)
 
-            # Build return message
-            return_msg = f'--- Added {len(added_links)} Layer 1 link(s) in bulk ---\n'
-            for link in added_links:
-                return_msg += f"  {link['from_host']}({link['from_port']}) ↔ {link['to_host']}({link['to_port']})\n"
-            return_msg += f'Affected devices: {sorted(all_affected_hostnames)}'
+            #print(f'  ✓ Excel write completed in {time.time() - step_start:.2f}s\n')
 
-            return ([return_msg.strip()])
+            # ==================== STEP 7: Update POSITION_FOLDER ====================
+            print('[Step 7/8] Updating POSITION_FOLDER...')
+            step_start = time.time()
+
+            pf_arr = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
+            ps_arr = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
+            ss_arr = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
+
+            upd_pf_tuple = def_common.make_position_folder_tuple(
+                ns_def.convert_array_to_tuple(pf_arr),
+                ns_def.convert_array_to_tuple(ss_arr),
+                ns_def.convert_array_to_tuple(ps_arr)
+            )
+
+            ori_pf = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
+            )
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_pf)
+            ns_def.write_excel_meta(upd_pf_tuple, master_file_path, 'Master_Data', '<<POSITION_FOLDER>>', 0, 0)
+
+            res = def_common.recalculate_folder_sizes(master_file_path)
+            if res['status'] != 'success':
+                return ([f"[ERROR] Recalc failed: {res['message']}"])
+
+            #print(f'  ✓ POSITION_FOLDER updated in {time.time() - step_start:.2f}s\n')
+
+            # ==================== STEP 8: L2/L3 SYNC (ONCE) ====================
+            print('[Step 8/8] Syncing with L2/L3 layers (may take 60s~)...')
+            sync_start = time.time()
+
+            import tkinter as tk
+            dummy_tk = tk.Toplevel()
+            dummy_tk.withdraw()
+
+            self.full_filepath = master_file_path
+            self.main1_1_entry_1 = tk.Entry(dummy_tk)
+            self.main1_1_entry_1.insert(tk.END, master_file_path)
+
+            self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+            self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+            self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+            self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+            self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+            self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+            import ns_sync_between_layers
+            ns_sync_between_layers.l1_master_device_and_line_sync_with_l2l3_master(self)
+
+            tmp_del = master_file_path.replace('[MASTER]', '[L2_TABLE]')
+            if os.path.isfile(tmp_del):
+                os.remove(tmp_del)
+
+            dummy_tk.destroy()
+
+            sync_time = time.time() - sync_start
+            #print(f'  ✓ L2/L3 sync completed in {sync_time:.1f}s\n')
+
+            # ==================== FINAL REPORT ====================
+            total_time = time.time() - start_time
+
+            #print(f'{"=" * 70}')
+            #print(f'BATCH ADDITION COMPLETE')
+            #print(f'{"=" * 70}')
+
+            return_msg = f'Links added: {len(added_links)}\n'
+            return_msg += f'Total time: {total_time:.1f}s ({total_time / 60:.2f} min)\n'
+            return_msg += f'  • Processing: {total_time - sync_time:.1f}s\n'
+            return_msg += f'  • L2/L3 sync: {sync_time:.1f}s\n'
+            return_msg += f'Average: {total_time / len(added_links):.3f}s/link\n'
+            return_msg += f'Affected devices: {len(all_affected_hostnames)}\n\n'
+
+            return_msg += 'Sample links:\n'
+            for lnk in added_links[:3]:
+                return_msg += f"  {lnk['from']} ↔ {lnk['to']}\n"
+            if len(added_links) > 3:
+                return_msg += f"  ... +{len(added_links) - 3} more\n"
+
+            #print(return_msg)
+            #print(f'{"=" * 70}\n')
+
+            return ([return_msg])
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return ([f'[ERROR] Failed to add L1 links in bulk: {str(e)}'])
+            return ([f'[ERROR] Bulk addition failed: {str(e)}'])
+
 
     @staticmethod
-    def update_device_location(self, area_name, device_grid, master_file_path):
+    def update_device_location_batch(self, area_name, device_grid, master_file_path):
         """
+        ★★★ OPTIMIZED BATCH VERSION ★★★
         Update device locations within a specific area (replace all devices)
+        - Opens Excel ONCE at the beginning
+        - Processes all devices in memory
+        - Saves Excel ONCE at the end
+        - Calls L2/L3 sync ONCE at the end
 
         Args:
             self: Reference to calling instance
@@ -3495,9 +4154,16 @@ class def_common():
             List with status message or error
         """
         import ns_def
+        import openpyxl
 
         try:
-            # ★★★ Helper function to normalize and align device grid ★★★
+            print(f'[Info] Starting batch device location update for area "{area_name}"...')
+
+            # ★★★ STEP 0: Open Excel ONCE ★★★
+            print('[Info] Opening Excel file...')
+            wb = openpyxl.load_workbook(master_file_path)
+
+            # Helper function to normalize and align device grid
             def normalize_device_grid(device_grid):
                 """
                 Normalize device grid:
@@ -3558,8 +4224,6 @@ class def_common():
 
                 return normalized_grid
 
-            # ★★★ End of helper function ★★★
-
             # Validate that area exists
             style_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_FOLDER>>')
             area_exists = False
@@ -3570,6 +4234,7 @@ class def_common():
                         break
 
             if not area_exists:
+                wb.close()
                 return ([f'[ERROR] Area "{area_name}" not found'])
 
             # Check if area is waypoint area
@@ -3579,8 +4244,8 @@ class def_common():
             device_grid = normalize_device_grid(device_grid)
 
             if not device_grid:
+                wb.close()
                 return ([f'[ERROR] Device grid is empty after normalization'])
-            # ★★★ End of normalization ★★★
 
             # Get current devices in the area
             position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
@@ -3615,6 +4280,7 @@ class def_common():
                         break
 
             if area_start_idx is None:
+                wb.close()
                 return ([f'[ERROR] Area "{area_name}" not found in POSITION_SHAPE'])
 
             # Flatten device_grid to get new devices list (exclude _AIR_)
@@ -3628,13 +4294,17 @@ class def_common():
             # Check for duplicate device names in input
             if len(new_devices) != len(set(new_devices)):
                 duplicates = [dev for dev in set(new_devices) if new_devices.count(dev) > 1]
+                wb.close()
                 return ([f'[ERROR] Duplicate device names found in input: {duplicates}'])
 
             # Determine devices to add and delete
             devices_to_add = [dev for dev in new_devices if dev not in current_devices]
             devices_to_delete = [dev for dev in current_devices if dev not in new_devices]
 
-            # ★★★ Modified: Only check NEW devices for conflicts in other areas ★★★
+            print(f'[Info] Devices to add: {len(devices_to_add)}')
+            print(f'[Info] Devices to delete: {len(devices_to_delete)}')
+
+            # ★★★ Check NEW devices for conflicts in other areas ★★★
             for device_to_add in devices_to_add:
                 # Check if device exists in OTHER areas (not current area)
                 for item in position_shape_array:
@@ -3648,12 +4318,12 @@ class def_common():
 
                         # Check if device exists in another area
                         if device_to_add in row:
+                            wb.close()
                             other_is_waypoint = '_wp_' in str(folder)
                             if is_waypoint_area != other_is_waypoint:
                                 return ([f'[ERROR] Device "{device_to_add}" already exists in a different area type (waypoint vs normal) in area "{folder}"'])
                             else:
                                 return ([f'[ERROR] Device "{device_to_add}" already exists in area "{folder}"'])
-            # ★★★ End of modified check ★★★
 
             # Collect operations summary
             operations = []
@@ -3662,29 +4332,94 @@ class def_common():
             if devices_to_delete:
                 operations.append(f'Devices to delete: {devices_to_delete}')
 
-            # ========== Step 1: Add new devices to STYLE_SHAPE, POSITION_TAG, ATTRIBUTE ==========
+            # ========== BATCH STEP 1: Add new devices to STYLE_SHAPE, POSITION_TAG, ATTRIBUTE ==========
+            print('[Info] Adding new devices (in memory)...')
+
+            # ★★★ Prepare all device entries in memory FIRST ★★★
+            shape_width_min = 0.4
+            shape_hight_min = 0.2
+            waypoint_width_min = 0.6
+            waypoint_hight_min = 0.3
+            shae_font_size = 6.0
+            tag_offet_inche = 0.02
+
+            # Load all arrays ONCE
+            style_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
+            position_tag_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            attribute_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
+
+            # Find max numbers ONCE
+            max_style_number = max([item[0] for item in style_shape_array if isinstance(item[0], int)], default=3)
+            max_tag_number = max([item[0] for item in position_tag_array if isinstance(item[0], int)], default=2)
+            max_attr_number = max([item[0] for item in attribute_array if isinstance(item[0], int)], default=1)
+
+            # Add all devices to arrays in memory
             for device_to_add in devices_to_add:
+                # Determine device properties
                 if is_waypoint_area:
-                    # Determine roundness for waypoint (default 0.2 for device_location)
-                    result = def_common.add_waypoint_style_shape_tag(
-                        waypoint_name=device_to_add,
-                        master_file_path=master_file_path,
-                        direction='UP'  # Default direction for batch add
-                    )
+                    device_color = 'BLUE'
+                    device_roundness = 0.2  # Default for batch add
+                    width_min = waypoint_width_min
+                    height_min = waypoint_hight_min
+                    attribute_default = '[\'WayPoint\', [220, 230, 242]]'
                 else:
-                    result = def_common.add_device_style_shape_tag(
-                        device_name=device_to_add,
-                        master_file_path=master_file_path
-                    )
+                    device_color = 'GREEN'
+                    device_roundness = 0
+                    width_min = shape_width_min
+                    height_min = shape_hight_min
+                    attribute_default = '[\'DEVICE\',[235, 241, 222]]'
 
-                if result['status'] != 'success':
-                    return ([f"[ERROR] Failed to add device '{device_to_add}': {result['message']}"])
+                # Calculate dimensions
+                text_dimensions = ns_def.get_description_width_hight(shae_font_size, device_to_add)
+                num_char_width = text_dimensions[0]
+                line_width = max(num_char_width, width_min)
+                line_height = height_min
 
-            # ========== Step 2: Update POSITION_SHAPE with new grid ==========
+                # Add to STYLE_SHAPE array
+                max_style_number += 1
+                new_style_entry = [max_style_number, [
+                    device_to_add,
+                    line_width,
+                    line_height,
+                    device_roundness,
+                    device_color
+                ]]
+                style_shape_array.append(new_style_entry)
+
+                # Add to POSITION_TAG array
+                max_tag_number += 1
+                initial_tag_offset = 1 * tag_offet_inche
+                new_tag_entry = [max_tag_number, [
+                    device_to_add,
+                    'LINE',
+                    '',
+                    '',
+                    initial_tag_offset,
+                    'YES'
+                ]]
+                position_tag_array.append(new_tag_entry)
+
+                # Add to ATTRIBUTE array
+                max_attr_number += 1
+                new_attr_entry = [max_attr_number, [
+                    device_to_add,
+                    attribute_default,
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]',
+                    '[\'<EMPTY>\', [255, 255, 255]]'
+                ]]
+                attribute_array.append(new_attr_entry)
+
+            # ========== BATCH STEP 2: Update POSITION_SHAPE with new grid ==========
+            print('[Info] Updating POSITION_SHAPE (in memory)...')
             position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
-            ori_position_shape_tuple = ns_def.convert_array_to_tuple(position_shape_array)
 
-            # Find area boundaries again (may have changed)
+            # Find area boundaries again
             area_start_idx = None
             area_end_idx = None
             for idx, item in enumerate(position_shape_array):
@@ -3696,7 +4431,7 @@ class def_common():
                         area_end_idx = idx
                         break
 
-            # Remove old area rows (keep area_start_idx for reinsertion)
+            # Remove old area rows
             if area_start_idx is not None and area_end_idx is not None:
                 del position_shape_array[area_start_idx:area_end_idx + 1]
 
@@ -3704,101 +4439,108 @@ class def_common():
             new_area_rows = []
             for row_idx, row in enumerate(device_grid):
                 if row_idx == 0:
-                    # First row: include area name
                     new_row = [area_name] + row + ['<END>']
                 else:
-                    # Subsequent rows: empty first column
                     new_row = [''] + row + ['<END>']
                 new_area_rows.append(new_row)
-
-            # Add closing <END>
             new_area_rows.append(['<END>'])
 
-            # Insert new rows at area_start_idx
+            # Insert new rows
             for offset, new_row in enumerate(new_area_rows):
                 position_shape_array.insert(area_start_idx + offset, [0, new_row])
 
-            # Renumber all entries
+            # Renumber
             for i, item in enumerate(position_shape_array):
                 item[0] = i + 1
 
-            # Write updated POSITION_SHAPE
-            position_shape_tuple = ns_def.convert_array_to_tuple(position_shape_array)
-            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_shape_tuple)
-            ns_def.write_excel_meta(position_shape_tuple, master_file_path,
-                                    'Master_Data', '<<POSITION_SHAPE>>', 0, 0)
-
-            # ========== Step 3: Delete old devices from STYLE_SHAPE, POSITION_TAG, ATTRIBUTE, POSITION_LINE ==========
+            # ========== BATCH STEP 3: Delete old devices (in memory) ==========
+            print('[Info] Deleting old devices (in memory)...')
             if devices_to_delete:
                 # STYLE_SHAPE
-                style_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
-                ori_style_shape_tuple = ns_def.convert_array_to_tuple(style_shape_array)
-
                 style_shape_array = [item for item in style_shape_array
                                      if not (len(item) >= 2 and isinstance(item[1], list)
                                              and len(item[1]) > 0 and item[1][0] in devices_to_delete)]
-
                 for i, item in enumerate(style_shape_array):
                     item[0] = i + 1
 
-                style_shape_tuple = ns_def.convert_array_to_tuple(style_shape_array)
-                ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_style_shape_tuple)
-                ns_def.write_excel_meta(style_shape_tuple, master_file_path,
-                                        'Master_Data', '<<STYLE_SHAPE>>', 0, 0)
-
                 # POSITION_TAG
-                position_tag_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
-                ori_position_tag_tuple = ns_def.convert_array_to_tuple(position_tag_array)
-
                 position_tag_array = [item for item in position_tag_array
                                       if not (len(item) >= 2 and isinstance(item[1], list)
                                               and len(item[1]) > 0 and item[1][0] in devices_to_delete)]
-
                 for i, item in enumerate(position_tag_array):
                     item[0] = i + 1
 
-                position_tag_tuple = ns_def.convert_array_to_tuple(position_tag_array)
-                ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_tag_tuple)
-                ns_def.write_excel_meta(position_tag_tuple, master_file_path,
-                                        'Master_Data', '<<POSITION_TAG>>', 0, 0)
-
                 # ATTRIBUTE
-                attribute_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
-                ori_attribute_tuple = ns_def.convert_array_to_tuple(attribute_array)
-
                 attribute_array = [item for item in attribute_array
                                    if not (len(item) >= 2 and isinstance(item[1], list)
                                            and len(item[1]) > 0 and item[1][0] in devices_to_delete)]
-
                 for i, item in enumerate(attribute_array):
                     item[0] = i + 1
 
-                attribute_tuple = ns_def.convert_array_to_tuple(attribute_array)
-                ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_attribute_tuple)
-                ns_def.write_excel_meta(attribute_tuple, master_file_path,
-                                        'Master_Data', '<<ATTRIBUTE>>', 0, 0)
-
                 # POSITION_LINE
                 position_line_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-                ori_position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
-
                 header_rows = position_line_array[:2]
                 data_rows = [item for item in position_line_array[2:]
                              if not (len(item) >= 2 and isinstance(item[1], list)
                                      and len(item[1]) >= 2
                                      and (item[1][0] in devices_to_delete or item[1][1] in devices_to_delete))]
-
                 position_line_array = header_rows + data_rows
-
                 for i, item in enumerate(position_line_array):
                     item[0] = i + 1
 
-                position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
-                ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
-                ns_def.write_excel_meta(position_line_tuple, master_file_path,
-                                        'Master_Data', '<<POSITION_LINE>>', 0, 0)
+            # ========== BATCH STEP 4: Convert to tuples and write ONCE ==========
+            print('[Info] Writing all changes to Excel (ONCE)...')
 
-            # ========== Step 4: Recalculate POSITION_FOLDER (once at the end) ==========
+            position_shape_tuple = ns_def.convert_array_to_tuple(position_shape_array)
+            style_shape_tuple = ns_def.convert_array_to_tuple(style_shape_array)
+            position_tag_tuple = ns_def.convert_array_to_tuple(position_tag_array)
+            attribute_tuple = ns_def.convert_array_to_tuple(attribute_array)
+
+            if devices_to_delete:
+                position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+
+            # Write all sections
+            ws_name = 'Master_Data'
+
+            # POSITION_SHAPE
+            ori_position_shape_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
+            )
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_shape_tuple)
+            ns_def.write_excel_meta(position_shape_tuple, master_file_path, ws_name, '<<POSITION_SHAPE>>', 0, 0)
+
+            # STYLE_SHAPE
+            ori_style_shape_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
+            )
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_style_shape_tuple)
+            ns_def.write_excel_meta(style_shape_tuple, master_file_path, ws_name, '<<STYLE_SHAPE>>', 0, 0)
+
+            # POSITION_TAG
+            ori_position_tag_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            )
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_tag_tuple)
+            ns_def.write_excel_meta(position_tag_tuple, master_file_path, ws_name, '<<POSITION_TAG>>', 0, 0)
+
+            # ATTRIBUTE
+            ori_attribute_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
+            )
+            ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_attribute_tuple)
+            ns_def.write_excel_meta(attribute_tuple, master_file_path, ws_name, '<<ATTRIBUTE>>', 0, 0)
+
+            # POSITION_LINE (if needed)
+            if devices_to_delete:
+                ori_position_line_tuple = ns_def.convert_array_to_tuple(
+                    ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
+                )
+                ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
+                ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
+
+            # ========== BATCH STEP 5: Recalculate POSITION_FOLDER ONCE ==========
+            print('[Info] Recalculating POSITION_FOLDER...')
+
             position_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
             position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
             style_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
@@ -3819,13 +4561,15 @@ class def_common():
             ns_def.write_excel_meta(update_position_folder_tuple, master_file_path,
                                     'Master_Data', '<<POSITION_FOLDER>>', 0, 0)
 
-            # ★★★ NEW: Add recalculate_folder_sizes to remove unnecessary empty cells ★★★
+            # Recalculate folder sizes
+            print('[Info] Recalculating folder sizes...')
             result = def_common.recalculate_folder_sizes(master_file_path)
             if result['status'] != 'success':
+                wb.close()
                 return ([f"[ERROR] Failed to recalculate folder sizes: {result['message']}"])
-            # ★★★ End of addition ★★★
 
-            # ========== Step 5: Sync with L2/L3 (once at the end) ==========
+            # ========== BATCH STEP 6: Sync with L2/L3 ONCE at the end ==========
+            print('[Info] Syncing with L2/L3 layers (ONCE)...')
             import tkinter as tk
             dummy_tk = tk.Toplevel()
             dummy_tk.withdraw()
@@ -3855,8 +4599,15 @@ class def_common():
 
             dummy_tk.destroy()
 
+            # Close workbook
+            wb.close()
+
+            print('[Info] Batch device location update completed.')
+
             # Build return message
-            return_msg = f'--- Device location updated for area "{area_name}" ---\n'
+
+            return_msg = f'--- Device location updated for area "{area_name}" (BATCH MODE) ---\n'
+            '''
             if devices_to_add:
                 return_msg += f'Added devices: {devices_to_add}\n'
             if devices_to_delete:
@@ -3866,14 +4617,18 @@ class def_common():
             return_msg += f'New device layout (normalized):\n'
             for row in device_grid:
                 return_msg += f'  {row}\n'
+            '''
 
             return ([return_msg.strip()])
 
         except Exception as e:
             import traceback
             traceback.print_exc()
+            try:
+                wb.close()
+            except:
+                pass
             return ([f'[ERROR] Failed to update device location: {str(e)}'])
-
 
 
 

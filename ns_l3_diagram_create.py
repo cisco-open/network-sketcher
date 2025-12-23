@@ -32,9 +32,37 @@ from pptx.dml.line import LineFormat
 from pptx.shapes.connector import Connector
 from pptx.util import Inches, Cm, Pt
 from collections import defaultdict
+import time
+
+def _ts():
+    return time.perf_counter()
+
+def log_elapsed(label, t0):
+    print(f"[TIME] {label}: {(_ts() - t0):.3f}s")
+
+def get_text_wh_cached(ctx, font_size, text):
+    """
+    ctx: ns_front_run の self（本ツールでは ns_l3_diagram_create.__init__/l3_area_create に渡される self）
+    """
+    if not hasattr(ctx, "_text_size_cache") or ctx._text_size_cache is None:
+        ctx._text_size_cache = {}
+
+    if text is None:
+        text = ""
+    else:
+        text = str(text)
+
+    key = (font_size, text)
+    v = ctx._text_size_cache.get(key)
+    if v is None:
+        v = ns_def.get_description_width_hight(font_size, text)
+        ctx._text_size_cache[key] = v
+    return v
 
 class  ns_l3_diagram_create():
     def __init__(self):
+        import time
+        _t0 = time.perf_counter()
         #print('--- ns_l3_diagram_create ---')
         '''
         STEP0 get values of Master Data
@@ -45,27 +73,19 @@ class  ns_l3_diagram_create():
         ws_l3_name = 'Master_Data_L3'
         excel_maseter_file = self.inFileTxt_L3_3_1.get()
 
+        self._text_size_cache = {}
+        self._l3_ipset_cache = {}  # key: (device, if) -> list (remake_array)
+
         if self.click_value_l3 == 'L3-4-1':
             excel_maseter_file = self.outFileTxt_L3_3_5_1.get()
 
         self.result_get_l2_broadcast_domains =  ns_def.get_l2_broadcast_domains.run(self,excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
 
-        #print('--- self.update_l2_table_array ---')
-        #print(self.result_get_l2_broadcast_domains[0])
-        #print('--- self.device_l2_boradcast_domain_array ---')
-        #print(self.result_get_l2_broadcast_domains[1])
-        self.device_l2_boradcast_domain_array = self.result_get_l2_broadcast_domains[1]
-        #print('--- device_l2_directly_l3vport_array ---')
-        #print(self.result_get_l2_broadcast_domains[2])
-        self.device_l2_directly_l3vport_array = self.result_get_l2_broadcast_domains[2]
-        #print('--- device_l2_other_array ---')
-        #print(self.result_get_l2_broadcast_domains[3])
-        self.device_l2_other_array = self.result_get_l2_broadcast_domains[3]
-        #print('--- marged_l2_broadcast_group_array ---')
-        #print(self.result_get_l2_broadcast_domains[4])
-        self.marged_l2_broadcast_group_array = self.result_get_l2_broadcast_domains[4]
-        #print('--- self.target_l2_broadcast_group_array ---')
-        #print(self.target_l2_broadcast_group_array)
+        # ============================================================
+        # BUILD INDEXES for faster lookup (避免重複全探索)
+        # ============================================================
+        import time
+        _idx_start = time.time()
 
         self.l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
         #print('--- self.l3_table_array  ---')
@@ -92,6 +112,69 @@ class  ns_l3_diagram_create():
                 self.update_l3_table_array.append(tmp_l3_table_array[1])
         #print('--- self.update_l3_table_array  ---')
         #print(self.update_l3_table_array )
+
+
+        # L3 table indexed by device
+        self.l3_rows_by_device = {}
+        for row in self.update_l3_table_array:
+            dev = row[1]
+            if dev not in self.l3_rows_by_device:
+                self.l3_rows_by_device[dev] = []
+            self.l3_rows_by_device[dev].append(row)
+
+        # L3 table indexed by (device, interface)
+        self.l3_rows_by_device_if = {}
+        for row in self.update_l3_table_array:
+            key = (row[1], row[2])
+            if key not in self.l3_rows_by_device_if:
+                self.l3_rows_by_device_if[key] = []
+            self.l3_rows_by_device_if[key].append(row)
+
+        # L2 table indexed by folder (area) - use self.update_l2_table_array
+        # update_l2_table_array format: each row is a list where row[0] = area
+        self.l2_rows_by_area = {}
+        for row in self.update_l2_table_array:
+            area = row[0]
+            if area not in self.l2_rows_by_area:
+                self.l2_rows_by_area[area] = []
+            self.l2_rows_by_area[area].append(row)
+
+        # Broadcast groups: member -> group_ids and group_id -> members
+        self.groups_by_member = {}
+        self.members_by_group = {}
+        for gid, group in enumerate(self.target_l2_broadcast_group_array):
+            self.members_by_group[gid] = group[1]
+            for member in group[1]:
+                key = tuple(member)
+                if key not in self.groups_by_member:
+                    self.groups_by_member[key] = []
+                self.groups_by_member[key].append(gid)
+
+        # print summary only once (1st pass only) for All Areas
+        if not (self.click_value_l3 == 'L3-4-1' and self.flag_re_create == True):
+            print(f"  Areas: {len(self.l2_rows_by_area)}")
+            print(f"  Devices: {len(self.l3_rows_by_device)}")
+            print(f"  Broadcast groups: {len(self.members_by_group)}")
+
+
+        #print('--- self.update_l2_table_array ---')
+        #print(self.result_get_l2_broadcast_domains[0])
+        #print('--- self.device_l2_boradcast_domain_array ---')
+        #print(self.result_get_l2_broadcast_domains[1])
+        self.device_l2_boradcast_domain_array = self.result_get_l2_broadcast_domains[1]
+        #print('--- device_l2_directly_l3vport_array ---')
+        #print(self.result_get_l2_broadcast_domains[2])
+        self.device_l2_directly_l3vport_array = self.result_get_l2_broadcast_domains[2]
+        #print('--- device_l2_other_array ---')
+        #print(self.result_get_l2_broadcast_domains[3])
+        self.device_l2_other_array = self.result_get_l2_broadcast_domains[3]
+        #print('--- marged_l2_broadcast_group_array ---')
+        #print(self.result_get_l2_broadcast_domains[4])
+        self.marged_l2_broadcast_group_array = self.result_get_l2_broadcast_domains[4]
+        #print('--- self.target_l2_broadcast_group_array ---')
+        #print(self.target_l2_broadcast_group_array)
+
+
 
         # GET way point with folder tuple
         self.wp_with_folder_tuple = {}
@@ -122,6 +205,7 @@ class  ns_l3_diagram_create():
 
         #print('---- wp_with_folder_tuple ----')
         #print(self.wp_with_folder_tuple)
+        print(f"[TIME] create_master_file_one_area: {time.perf_counter() - _t0:.3f}s")
 
         '''
         Create per area l3 ppt
@@ -154,9 +238,10 @@ class  ns_l3_diagram_create():
             if self.click_value_l3 == 'L3-4-1':
                 create_master_file_one_area.calculate_area_offset(self)
 
-            '''CREATE L3 DIAGRAM'''
-            self.result_get_l2_broadcast_domains = ns_def.get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
+            '''CREATE L3 DIAGRAM (reuse cached result from __init__)'''
+            #self.result_get_l2_broadcast_domains = ns_def.get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
             #self.active_ppt = Presentation()  # define target ppt object
+
 
             if os.path.exists(self.output_ppt_file) and self.flag_second_page == True:
                 self.active_ppt = Presentation(self.output_ppt_file)
@@ -177,6 +262,12 @@ class  ns_l3_diagram_create():
                         break
 
                 ns_l3_diagram_create.l3_area_create(self, tmp_new_position_folder_array , action_type,offset_x ,offset_y)
+
+            ### save pptx file
+            # Skip save on 1st pass (only for All Areas L3-4-1 mode)
+            if self.flag_re_create == False and self.click_value_l3 == 'L3-4-1':
+                #print("[L3 Diagram] 1st pass done (skip save)")
+                return
 
             ### save pptx file
             self.active_ppt.save(self.output_ppt_file)
@@ -209,7 +300,8 @@ class  ns_l3_diagram_create():
             prs.save(self.output_ppt_file)
 
     def l3_area_create(self, target_folder_name, action_type,offset_x ,offset_y):
-        print('--- l3_area_create -',action_type,' - ',target_folder_name,'---')
+        #print('--- l3_area_create -',action_type,' - ',target_folder_name,'---')
+        t0 = _ts()
 
         ### add for y-grid optimize at ve 2.4.1
         if self.flag_re_create == True and self.flag_second_page == False and action_type == 'GET_SIZE':
@@ -220,13 +312,12 @@ class  ns_l3_diagram_create():
         ### get l3segment in the target folder
         target_all_device_array = []
 
-        for tmp_update_l2_table_array in self.update_l2_table_array:
-            if tmp_update_l2_table_array[0] == target_folder_name and 'L3' in tmp_update_l2_table_array[2]:
-                #print([tmp_update_l2_table_array[1],tmp_update_l2_table_array[3]])
-                target_all_device_array.append([tmp_update_l2_table_array[1],tmp_update_l2_table_array[3]])
-
-            if tmp_update_l2_table_array[0] == target_folder_name and 'L3' in tmp_update_l2_table_array[4]:
-                #print([tmp_update_l2_table_array[1], tmp_update_l2_table_array[5]])
+        # Use pre-filtered rows by area
+        area_l2_rows = self.l2_rows_by_area.get(target_folder_name, [])
+        for tmp_update_l2_table_array in area_l2_rows:
+            if 'L3' in tmp_update_l2_table_array[2]:
+                target_all_device_array.append([tmp_update_l2_table_array[1], tmp_update_l2_table_array[3]])
+            if 'L3' in tmp_update_l2_table_array[4]:
                 target_all_device_array.append([tmp_update_l2_table_array[1], tmp_update_l2_table_array[5]])
 
         target_all_device_array = ns_def.get_l2_broadcast_domains.get_unique_list(target_all_device_array)
@@ -264,12 +355,11 @@ class  ns_l3_diagram_create():
 
         # set the result
         #print(l3only_position_shape_array)
-        self.position_shape_array = l3only_position_shape_array
-
+        local_position_shape_array = l3only_position_shape_array
 
         target_position_shape_array = []
         flag_match_folder = False
-        for tmp_position_shape_array in self.position_shape_array:
+        for tmp_position_shape_array in local_position_shape_array:
             if tmp_position_shape_array[1][0] == target_folder_name:
                 del tmp_position_shape_array[1][0]
                 del tmp_position_shape_array[1][-1]
@@ -463,6 +553,11 @@ class  ns_l3_diagram_create():
         '''
         ### create slide
         if action_type == 'CREATE':
+            # 1st pass (All Areas): only measure y-grid (skip most shapes/tags/lines)
+            minimal_1st_pass = (self.click_value_l3 == 'L3-4-1' and
+                               self.flag_re_create == False and
+                               self.flag_second_page == False)
+
             self.active_ppt.slide_width = Inches(10.0)
             self.active_ppt.slide_height = Inches(5.0)
 
@@ -611,7 +706,7 @@ class  ns_l3_diagram_create():
                     shape_type  = 'DEVICE_NORMAL'
                     shape_left  = self.left_margin + left_offset
                     shape_top   = self.top_margin + top_offset
-                    shape_width_hight_array = ns_def.get_description_width_hight(self.shae_font_large_size,tmp_tmp_target_position_shape_array)
+                    shape_width_hight_array = get_text_wh_cached(self,self.shae_font_large_size,tmp_tmp_target_position_shape_array)
                     shape_width = shape_width_hight_array[0]
                     shape_hight = shape_width_hight_array[1] * 5
 
@@ -648,13 +743,13 @@ class  ns_l3_diagram_create():
                                 tmp_l3_instance_array.append(tmp_update_l3_instance_array[1])
 
                         tmp_l3_instance_array = ns_def.get_l2_broadcast_domains.get_unique_list(tmp_l3_instance_array)
-                        offset_l3_instance = ns_def.get_description_width_hight(self.shae_font_size,shape_text)[0] + self.between_l3instance
+                        offset_l3_instance = get_text_wh_cached(self,self.shae_font_size,shape_text)[0] + self.between_l3instance
 
-                        calc_need_device_width = ns_def.get_description_width_hight(self.shae_font_size,shape_text)[0] + offset_l3_instance
+                        calc_need_device_width = get_text_wh_cached(self,self.shae_font_size,shape_text)[0] + offset_l3_instance
                         for tmp_tmp_l3_instance_array in tmp_l3_instance_array:
                             l3_shape_text = tmp_tmp_l3_instance_array
-                            l3_shape_width = ns_def.get_description_width_hight(self.shae_font_size,tmp_tmp_l3_instance_array)[0]
-                            l3_shape_hight = ns_def.get_description_width_hight(self.shae_font_size,tmp_tmp_l3_instance_array)[1]
+                            l3_shape_width = get_text_wh_cached(self,self.shae_font_size,tmp_tmp_l3_instance_array)[0]
+                            l3_shape_hight = get_text_wh_cached(self,self.shae_font_size,tmp_tmp_l3_instance_array)[1]
 
                             if (min_shape_width * 0.3) > l3_shape_width:
                                 l3_shape_width = (min_shape_width * 0.3)
@@ -665,7 +760,7 @@ class  ns_l3_diagram_create():
 
                             calc_need_device_width += l3_shape_width + self.between_l3instance
 
-                            if action_type == 'CREATE':
+                            if action_type == 'CREATE' and not minimal_1st_pass:
                                 #self.shape = self.slide.shapes
                                 #ns_ddx_figure.extended.add_shape(self, l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text)
                                 tmp_l3_add_shape_array.append([l3_shape_type, l3_shape_left, l3_shape_top, l3_shape_width, l3_shape_hight, l3_shape_text])
@@ -707,8 +802,8 @@ class  ns_l3_diagram_create():
 
                             for tmp_tmp_l3_instance_array in tmp_l3_instance_array:
                                 l3_shape_text = tmp_tmp_l3_instance_array
-                                l3_shape_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_tmp_l3_instance_array)[0]
-                                l3_shape_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_tmp_l3_instance_array)[1]
+                                l3_shape_width = get_text_wh_cached(self,self.shae_font_size, tmp_tmp_l3_instance_array)[0]
+                                l3_shape_hight = get_text_wh_cached(self,self.shae_font_size, tmp_tmp_l3_instance_array)[1]
 
                                 if (min_shape_width * 0.3) > l3_shape_width:
                                     l3_shape_width = (min_shape_width * 0.3)
@@ -717,7 +812,7 @@ class  ns_l3_diagram_create():
                                 l3_shape_left = shape_left + tmp_plus_width - l3_shape_width * 0.5 + offset_l3_instance
                                 l3_shape_type = 'L3_INSTANCE'
 
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     # add at ver 2.4.1
                                     if self.flag_re_create == True and self.flag_second_page == False and len(self.per_index2_before_array) > self.index_2:
                                         l3_shape_top -= (self.per_index2_before_array[self.index_2] - self.per_index2_after_array[self.index_2])
@@ -732,7 +827,7 @@ class  ns_l3_diagram_create():
 
 
                     if '_AIR_' not in shape_text:
-                        if action_type == 'CREATE':
+                        if action_type == 'CREATE' and not minimal_1st_pass:
                             # add at ver 2.4.1
                             #print(self.index_2,self.per_index2_before_array,self.per_index2_after_array)
                             if self.flag_re_create == True and self.flag_second_page == False and len(self.per_index2_before_array) > self.index_2:
@@ -794,13 +889,14 @@ class  ns_l3_diagram_create():
                     #print('### self.shape_width_if_array[1], self.shape_width_if_array[2]  ',self.shape_width_if_array[1], self.shape_width_if_array[2])
                     tag_up_offset_x = self.between_l3if
                     tag_down_offset_x = self.between_l3if
-                    for tmp_update_l3_table_array  in self.update_l3_table_array:
-                        if tmp_update_l3_table_array[1] == shape_text:
+                    # Use index instead of full scan
+                    device_l3_rows = self.l3_rows_by_device.get(shape_text, [])
+                    for tmp_update_l3_table_array in device_l3_rows:
                             '''write upside l3 if'''
                             for up_shape_width_if_array in self.shape_width_if_array[1]:
                                 if up_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
                                     #print('##UP   ',shape_text,up_shape_width_if_array[1])
-                                    shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size, up_shape_width_if_array[1]) # width, hight
+                                    shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size, up_shape_width_if_array[1]) # width, hight
                                     tag_shape_type  = 'TAG_NORMAL'
                                     tag_shape_left  = shape_left + tag_up_offset_x
                                     tag_shape_top   = shape_top - shape_width_hight_array[1] * 0.5
@@ -808,7 +904,7 @@ class  ns_l3_diagram_create():
                                     tag_shape_hight = shape_width_hight_array[1]
                                     tag_shape_text  = up_shape_width_if_array[1]
 
-                                    if action_type == 'CREATE':
+                                    if action_type == 'CREATE' and not minimal_1st_pass:
                                         self.shape = self.slide.shapes
                                         ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text)
 
@@ -828,13 +924,17 @@ class  ns_l3_diagram_create():
 
                                     '''mark ip address(up side)'''
                                     offset_ipaddress = 0.0 #inches
-                                    remake_array = []
-                                    remake_array = eval(tmp_update_l3_table_array[6])
-                                    if remake_array != []:
+                                    key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                    remake_array = self._l3_ipset_cache.get(key_if)
+                                    if remake_array is None:
+                                        remake_array = eval(tmp_update_l3_table_array[6])
+                                        self._l3_ipset_cache[key_if] = remake_array
+
+                                    if remake_array:
                                         #print('##mark ip address', len(remake_array),remake_array)
                                         for tmp_remake_array in remake_array:
                                             tag_shape_type = 'IP_ADDRESS_TAG'
-                                            tag_ip_width = ns_def.get_description_width_hight(self.shae_font_size,tmp_remake_array[2])[0]
+                                            tag_ip_width = get_text_wh_cached(self,self.shae_font_size,tmp_remake_array[2])[0]
                                             self.mark_multi_ip_array.append([tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top - tag_shape_hight - offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2],tmp_remake_array,shape_text,len(remake_array),[shape_text,up_shape_width_if_array[0]],tag_shape_left ])
 
                                             offset_ipaddress += tag_shape_hight
@@ -848,7 +948,7 @@ class  ns_l3_diagram_create():
                             for down_shape_width_if_array in self.shape_width_if_array[2]:
                                 if down_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
                                     #print('##DOWN ',shape_text,down_shape_width_if_array[1])
-                                    shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size, down_shape_width_if_array[1]) # width, hight
+                                    shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size, down_shape_width_if_array[1]) # width, hight
                                     tag_shape_type  = 'TAG_NORMAL'
                                     tag_shape_left  = shape_left + tag_down_offset_x
                                     tag_shape_top   = shape_top + shape_hight  - shape_width_hight_array[1] * 0.5
@@ -856,7 +956,7 @@ class  ns_l3_diagram_create():
                                     tag_shape_hight = shape_width_hight_array[1]
                                     tag_shape_text  = down_shape_width_if_array[1]
 
-                                    if action_type == 'CREATE':
+                                    if action_type == 'CREATE' and not minimal_1st_pass:
                                         self.shape = self.slide.shapes
                                         ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text)
 
@@ -876,13 +976,17 @@ class  ns_l3_diagram_create():
 
                                     '''mark ip address(down side)'''
                                     offset_ipaddress = 0.0 #inches
-                                    remake_array = []
-                                    remake_array = eval(tmp_update_l3_table_array[6])
-                                    if remake_array != []:
+                                    key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                    remake_array = self._l3_ipset_cache.get(key_if)
+                                    if remake_array is None:
+                                        remake_array = eval(tmp_update_l3_table_array[6])
+                                        self._l3_ipset_cache[key_if] = remake_array
+
+                                    if remake_array:
                                         #print('##mark ip address', len(remake_array),remake_array)
                                         for tmp_remake_array in remake_array:
                                             tag_shape_type = 'IP_ADDRESS_TAG'
-                                            tag_ip_width = ns_def.get_description_width_hight(self.shae_font_size,tmp_remake_array[2])[0]
+                                            tag_ip_width = get_text_wh_cached(self,self.shae_font_size,tmp_remake_array[2])[0]
                                             self.mark_multi_ip_array.append([tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top + tag_shape_hight + offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2],tmp_remake_array,shape_text,len(remake_array),[shape_text,down_shape_width_if_array[0]],tag_shape_left])
 
                                             offset_ipaddress += tag_shape_hight
@@ -983,7 +1087,7 @@ class  ns_l3_diagram_create():
         write wp(left/right)
         '''
         shape_top = self.mark_wp_top
-        shape_width_hight_array = ns_def.get_description_width_hight(self.shae_font_large_size, str(new_wp_exist_array[2]))
+        shape_width_hight_array = get_text_wh_cached(self,self.shae_font_large_size, str(new_wp_exist_array[2]))
         shape_width = shape_width_hight_array[0]
         shape_hight = shape_width_hight_array[1] * 5
 
@@ -1006,7 +1110,7 @@ class  ns_l3_diagram_create():
                 #print('### WRITE LEFT WP  ', shape_text, shape_width,new_wp_exist_array[2])
                 shape_left = self.left_margin - shape_width - self.between_shape_column * 3 + offset_shape_left
 
-                if action_type == 'CREATE':
+                if action_type == 'CREATE' and not minimal_1st_pass:
                     self.shape = self.slide.shapes
                     ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
                     if self.click_value_l3 == 'L3-4-1':
@@ -1023,13 +1127,14 @@ class  ns_l3_diagram_create():
                 tag_up_offset_x = self.between_l3if
                 tag_down_offset_x = self.between_l3if
 
-                for tmp_update_l3_table_array in self.update_l3_table_array:
-                    if tmp_update_l3_table_array[1] == shape_text:
+                # Use index instead of full scan
+                device_l3_rows = self.l3_rows_by_device.get(shape_text, [])
+                for tmp_update_l3_table_array in device_l3_rows:
                         for up_shape_width_if_array in self.shape_width_if_array[1]:
                             #write up side l3 if
                             if up_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
                                 # print('##UP   ',shape_text,up_shape_width_if_array[1])
-                                shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size, up_shape_width_if_array[1])  # width, hight
+                                shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size, up_shape_width_if_array[1])  # width, hight
                                 tag_shape_type = 'TAG_NORMAL'
                                 tag_shape_left = shape_left + tag_up_offset_x
                                 tag_shape_top = shape_top - shape_width_hight_array[1] * 0.5
@@ -1037,7 +1142,7 @@ class  ns_l3_diagram_create():
                                 tag_shape_hight = shape_width_hight_array[1]
                                 tag_shape_text = up_shape_width_if_array[1]
 
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text)
 
@@ -1058,13 +1163,17 @@ class  ns_l3_diagram_create():
 
                                 '''wp_left write ip address(up side)'''
                                 offset_ipaddress = 0.0  # inches
-                                remake_array = []
-                                remake_array = eval(tmp_update_l3_table_array[6])
-                                if remake_array != []:
+                                key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                remake_array = self._l3_ipset_cache.get(key_if)
+                                if remake_array is None:
+                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    self._l3_ipset_cache[key_if] = remake_array
+
+                                if remake_array:
                                     for tmp_remake_array in remake_array:
                                         #print('##wp_left write ip address', tmp_remake_array)
                                         tag_shape_type = 'IP_ADDRESS_TAG'
-                                        tag_ip_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_remake_array[2])[0]
+                                        tag_ip_width = get_text_wh_cached(self,self.shae_font_size, tmp_remake_array[2])[0]
                                         #self.shape = self.slide.shapes
 
                                         self.mark_multi_ip_array.append([tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top - tag_shape_hight - offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2], tmp_remake_array, shape_text, len(remake_array), [shape_text, up_shape_width_if_array[0]], tag_shape_left])
@@ -1078,7 +1187,7 @@ class  ns_l3_diagram_create():
                         for down_shape_width_if_array in self.shape_width_if_array[2]:
                             if down_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
                                 #print('##DOWN ',shape_text,down_shape_width_if_array[1])
-                                shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size, down_shape_width_if_array[1]) # width, hight
+                                shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size, down_shape_width_if_array[1]) # width, hight
                                 tag_shape_type  = 'TAG_NORMAL'
                                 tag_shape_left  = shape_left + tag_down_offset_x
                                 tag_shape_top   = shape_top + shape_hight  - shape_width_hight_array[1] * 0.5
@@ -1086,7 +1195,7 @@ class  ns_l3_diagram_create():
                                 tag_shape_hight = shape_width_hight_array[1]
                                 tag_shape_text  = down_shape_width_if_array[1]
 
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text)
 
@@ -1106,13 +1215,17 @@ class  ns_l3_diagram_create():
 
                                 '''wp_left write ip address(down side)'''
                                 offset_ipaddress = 0.0  # inches
-                                remake_array = []
-                                remake_array = eval(tmp_update_l3_table_array[6])
-                                if remake_array != []:
+                                key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                remake_array = self._l3_ipset_cache.get(key_if)
+                                if remake_array is None:
+                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    self._l3_ipset_cache[key_if] = remake_array
+
+                                if remake_array:
                                     for tmp_remake_array in remake_array:
                                         #print('##wp_left write ip address', tmp_remake_array)
                                         tag_shape_type = 'IP_ADDRESS_TAG'
-                                        tag_ip_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_remake_array[2])[0]
+                                        tag_ip_width = get_text_wh_cached(self,self.shae_font_size, tmp_remake_array[2])[0]
 
                                         #self.shape = self.slide.shapes
                                         self.mark_multi_ip_array.append([tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top + tag_shape_hight + offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2], tmp_remake_array, shape_text, len(remake_array), [shape_text, down_shape_width_if_array[0]],tag_shape_left])
@@ -1146,7 +1259,7 @@ class  ns_l3_diagram_create():
                 #print('### WRITE RIGHT WP  ', new_wp_exist_array[3], shape_width)
                 #shape_left = end_l3_seg_inche_x + self.between_shape_column * 3
                 shape_left = self.area_position_array[0] + self.area_position_array[2] + self.between_shape_column * 2  + offset_shape_right # updated
-                if action_type == 'CREATE':
+                if action_type == 'CREATE' and not minimal_1st_pass:
                     self.shape = self.slide.shapes
                     ns_ddx_figure.extended.add_shape(self, shape_type, shape_left, shape_top, shape_width, shape_hight, shape_text)
 
@@ -1160,13 +1273,14 @@ class  ns_l3_diagram_create():
                 tag_up_offset_x = self.between_l3if
                 tag_down_offset_x = self.between_l3if
 
-                for tmp_update_l3_table_array in self.update_l3_table_array:
-                    if tmp_update_l3_table_array[1] == shape_text:
+                # Use index instead of full scan
+                device_l3_rows = self.l3_rows_by_device.get(shape_text, [])
+                for tmp_update_l3_table_array in device_l3_rows:
                         for up_shape_width_if_array in self.shape_width_if_array[1]:
                             # write up side l3 if
                             if up_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
                                 # print('##UP   ',shape_text,up_shape_width_if_array[1])
-                                shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size, up_shape_width_if_array[1])  # width, hight
+                                shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size, up_shape_width_if_array[1])  # width, hight
                                 tag_shape_type = 'TAG_NORMAL'
                                 tag_shape_left = shape_left + tag_up_offset_x
                                 tag_shape_top = shape_top - shape_width_hight_array[1] * 0.5
@@ -1174,7 +1288,7 @@ class  ns_l3_diagram_create():
                                 tag_shape_hight = shape_width_hight_array[1]
                                 tag_shape_text = up_shape_width_if_array[1]
 
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text)
 
@@ -1196,12 +1310,17 @@ class  ns_l3_diagram_create():
 
                                 '''wp_right write ip address(up side)'''
                                 offset_ipaddress = 0.0  # inches
-                                remake_array = eval(tmp_update_l3_table_array[6])
-                                if remake_array != []:
+                                key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                remake_array = self._l3_ipset_cache.get(key_if)
+                                if remake_array is None:
+                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    self._l3_ipset_cache[key_if] = remake_array
+
+                                if remake_array:
                                     for tmp_remake_array in remake_array:
                                         #print('##wp_right write ip address', tmp_remake_array)
                                         tag_shape_type = 'IP_ADDRESS_TAG'
-                                        tag_ip_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_remake_array[2])[0]
+                                        tag_ip_width = get_text_wh_cached(self,self.shae_font_size, tmp_remake_array[2])[0]
                                         #self.shape = self.slide.shapes
                                         #ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top - tag_shape_hight - offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_tmp_update_l3_table_array[2])
                                         self.mark_multi_ip_array.append([tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top - tag_shape_hight - offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2], tmp_remake_array, shape_text, len(remake_array), [shape_text, up_shape_width_if_array[0]],tag_shape_left])
@@ -1216,7 +1335,7 @@ class  ns_l3_diagram_create():
                         # wite down side l3 if
                         for down_shape_width_if_array in self.shape_width_if_array[2]:
                             if down_shape_width_if_array[0] == tmp_update_l3_table_array[2]:
-                                shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size, down_shape_width_if_array[1])  # width, hight
+                                shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size, down_shape_width_if_array[1])  # width, hight
                                 tag_shape_type = 'TAG_NORMAL'
                                 tag_shape_left = shape_left + tag_down_offset_x
                                 tag_shape_top = shape_top + shape_hight - shape_width_hight_array[1] * 0.5
@@ -1224,7 +1343,7 @@ class  ns_l3_diagram_create():
                                 tag_shape_hight = shape_width_hight_array[1]
                                 tag_shape_text = down_shape_width_if_array[1]
 
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left, tag_shape_top, tag_shape_width, tag_shape_hight, tag_shape_text)
 
@@ -1246,13 +1365,17 @@ class  ns_l3_diagram_create():
 
                                 '''wp_right write ip address(down side)'''
                                 offset_ipaddress = 0.0  # inches
-                                remake_array = []
-                                remake_array = eval(tmp_update_l3_table_array[6])
-                                if remake_array != []:
+                                key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                remake_array = self._l3_ipset_cache.get(key_if)
+                                if remake_array is None:
+                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    self._l3_ipset_cache[key_if] = remake_array
+
+                                if remake_array:
                                     for tmp_remake_array in remake_array:
                                         #print('##wp_right write ip address', tmp_remake_array)
                                         tag_shape_type = 'IP_ADDRESS_TAG'
-                                        tag_ip_width = ns_def.get_description_width_hight(self.shae_font_size, tmp_remake_array[2])[0]
+                                        tag_ip_width = get_text_wh_cached(self,self.shae_font_size, tmp_remake_array[2])[0]
                                         #self.shape = self.slide.shapes
                                         #ns_ddx_figure.extended.add_shape(self, tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top + tag_shape_hight + offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_tmp_update_l3_table_array[2])
                                         self.mark_multi_ip_array.append( [tag_shape_type, tag_shape_left + tag_shape_width * 0.6, tag_shape_top + tag_shape_hight + offset_ipaddress, tag_ip_width, tag_shape_hight, tmp_remake_array[2], tmp_remake_array, shape_text, len(remake_array), [shape_text, down_shape_width_if_array[0]],tag_shape_left])
@@ -1399,7 +1522,7 @@ class  ns_l3_diagram_create():
                     shape_text = 'xxx.xxx.xxx.xxx/xx'
                     shape_type = 'L3_SEGMENT_GRAY'
                     shape_width = inche_to_connect_x - inche_from_connect_x
-                    shape_hight = ns_def.get_description_width_hight(self.tag_font_large_size, shape_text)[1] * l3_segment_hight_ratio  # l3 segment hight ratio
+                    shape_hight = get_text_wh_cached(self,self.tag_font_large_size, shape_text)[1] * l3_segment_hight_ratio  # l3 segment hight ratio
                     shape_left = inche_from_connect_x
                     shape_top = inche_from_connect_y - shape_hight * 0.5
 
@@ -1459,9 +1582,13 @@ class  ns_l3_diagram_create():
                                         if [tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]] in self.vpn_hostname_if_list:
                                             line_type = 'L3_SEGMENT-VPN'
 
+                                            # Skip connectors on 1st pass (All Areas mode only)
+                                    skip_connectors = (self.click_value_l3 == 'L3-4-1' and self.flag_re_create == False and self.flag_second_page == False)
+
                                     # print(line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
-                                    if action_type == 'CREATE':
+                                    if action_type == 'CREATE' and not skip_connectors:
                                         ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
+
                                     self.all_written_line_position_array.append([line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y])
 
                                     if inche_from_connect_x < edge_left_x:
@@ -1470,14 +1597,18 @@ class  ns_l3_diagram_create():
                                         edge_right_x = inche_from_connect_x
 
                                     #make l3 network address list
-                                    for tmp_update_l3_table_array in self.update_l3_table_array:
-                                        if tmp_update_l3_table_array[1] == tmp_all_l3if_tag_array[7] and tmp_update_l3_table_array[2] == tmp_all_l3if_tag_array[6]:
+                                    key = (tmp_all_l3if_tag_array[7], tmp_all_l3if_tag_array[6])
+                                    for tmp_update_l3_table_array in self.l3_rows_by_device_if.get(key, []):
+                                        key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
+                                        remake_array = self._l3_ipset_cache.get(key_if)
+                                        if remake_array is None:
                                             remake_array = eval(tmp_update_l3_table_array[6])
+                                            self._l3_ipset_cache[key_if] = remake_array
 
-                                            for tmp_remake_array in remake_array:
-                                                l3_network_list.append(tmp_remake_array[1])
-                                                all_l3_netowrk_list.append([tmp_remake_array[1],[tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]]])
-                                                the_l3segment_l3_network_list.append([tmp_remake_array[1],[tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]]])
+                                        for tmp_remake_array in remake_array:
+                                            l3_network_list.append(tmp_remake_array[1])
+                                            all_l3_netowrk_list.append([tmp_remake_array[1],[tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]]])
+                                            the_l3segment_l3_network_list.append([tmp_remake_array[1],[tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]]])
 
 
                                     #mark written if line for write ip address
@@ -1526,17 +1657,17 @@ class  ns_l3_diagram_create():
                     shape_width = l3segment_edge_array[1] - l3segment_edge_array[0]
 
                     #check width text
-                    tmp_text_width = ns_def.get_description_width_hight(self.tag_font_large_size, shape_text)[0]
+                    tmp_text_width = get_text_wh_cached(self,self.tag_font_large_size, shape_text)[0]
                     if tmp_text_width > shape_width:
                         shape_width = tmp_text_width
 
                     #add left right inches
-                    tmp_add_width = ns_def.get_description_width_hight(self.tag_font_large_size, 'aa')[0]
+                    tmp_add_width = get_text_wh_cached(self,self.tag_font_large_size, 'aa')[0]
                     shape_left -= tmp_add_width
                     shape_width += tmp_add_width * 2
 
                     #check min width
-                    tmp_char_width = ns_def.get_description_width_hight(self.tag_font_large_size,shape_text)[0]
+                    tmp_char_width = get_text_wh_cached(self,self.tag_font_large_size,shape_text)[0]
                     if shape_width < tmp_char_width:
                         shape_width = tmp_char_width
 
@@ -1611,26 +1742,26 @@ class  ns_l3_diagram_create():
             for tmp_mark_multi_ip_array in self.mark_multi_ip_array:
                 if tmp_mark_multi_ip_array[8] == 1:
                     tag_ip_text = tmp_mark_multi_ip_array[5]
-                    tag_ip_width = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text)[0]
+                    tag_ip_width = get_text_wh_cached(self,self.tag_font_large_size, tag_ip_text)[0]
                     tag_ip_text_2 = tmp_mark_multi_ip_array[6][0]
-                    tag_ip_width_2 = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text_2 + str('x'))[0]
+                    tag_ip_width_2 = get_text_wh_cached(self,self.tag_font_large_size, tag_ip_text_2 + str('x'))[0]
                     tag_ip_left_2 = tmp_mark_multi_ip_array[10]
 
                     #chack add (x)
                     for tmp_all_l3segment_l3_netowrk_list in all_l3segment_l3_netowrk_list:
                         if tmp_all_l3segment_l3_netowrk_list[1] == tmp_mark_multi_ip_array[9] and tmp_all_l3segment_l3_netowrk_list[0] == tmp_mark_multi_ip_array[6][1] and len(tmp_all_l3segment_l3_netowrk_list) == 3:
                             tag_ip_text = tmp_all_l3segment_l3_netowrk_list[2] + tmp_mark_multi_ip_array[5]
-                            tag_ip_width = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text)[0]
+                            tag_ip_width = get_text_wh_cached(self,self.tag_font_large_size, tag_ip_text)[0]
                             tag_ip_text_2 = tmp_all_l3segment_l3_netowrk_list[2] + tmp_mark_multi_ip_array[6][0]
-                            tag_ip_width_2 = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text_2 + str('x'))[0]
+                            tag_ip_width_2 = get_text_wh_cached(self,self.tag_font_large_size, tag_ip_text_2 + str('x'))[0]
 
                     # check no line l3 if
                     if tmp_mark_multi_ip_array[9] in self.all_written_if_line_array:
-                        if action_type == 'CREATE':
+                        if action_type == 'CREATE' and not minimal_1st_pass:
                             self.shape = self.slide.shapes
                             ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tmp_mark_multi_ip_array[1], tmp_mark_multi_ip_array[2], tag_ip_width, tmp_mark_multi_ip_array[4], tag_ip_text)
                     else:
-                        if action_type == 'CREATE':
+                        if action_type == 'CREATE' and not minimal_1st_pass:
                             self.shape = self.slide.shapes
                             ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tag_ip_left_2, tmp_mark_multi_ip_array[2], tag_ip_width_2, tmp_mark_multi_ip_array[4], tag_ip_text_2)
 
@@ -1644,20 +1775,20 @@ class  ns_l3_diagram_create():
                             ################################################################
 
                             tag_ip_text = tmp_all_l3segment_l3_netowrk_list[2] + tmp_mark_multi_ip_array[5]
-                            tag_ip_width = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text)[0]
+                            tag_ip_width = get_text_wh_cached(self,self.tag_font_large_size, tag_ip_text)[0]
                             tag_ip_text_2 = tmp_all_l3segment_l3_netowrk_list[2]  + tmp_mark_multi_ip_array[6][0]
-                            tag_ip_width_2 = ns_def.get_description_width_hight(self.tag_font_large_size, tag_ip_text_2 + str('x'))[0]
+                            tag_ip_width_2 = get_text_wh_cached(self,self.tag_font_large_size, tag_ip_text_2 + str('x'))[0]
                             tag_ip_left_2 = tmp_mark_multi_ip_array[10]
 
                             # print('### tag_ip_text, tag_ip_width',tag_ip_text,tag_ip_width)
 
                             # check no line l3 if
                             if tmp_mark_multi_ip_array[9] in self.all_written_if_line_array:
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tmp_mark_multi_ip_array[1], tmp_mark_multi_ip_array[2], tag_ip_width, tmp_mark_multi_ip_array[4], tag_ip_text)
                             else:
-                                if action_type == 'CREATE':
+                                if action_type == 'CREATE' and not minimal_1st_pass:
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tag_ip_left_2, tmp_mark_multi_ip_array[2], tag_ip_width_2, tmp_mark_multi_ip_array[4], tag_ip_text_2)
                             break
@@ -1682,10 +1813,17 @@ class  ns_l3_diagram_create():
                                 inche_from_connect_y = tmp_all_l3if_tag_array[2] + tmp_all_l3if_tag_array[4]
                                 inche_to_connect_y = tmp_size_l3_instance_array[4]
 
-                            if action_type == 'CREATE' and [line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y] not in used_line_array:
+                            # Skip connectors on 1st pass (All Areas mode only)
+                            skip_connectors = (self.click_value_l3 == 'L3-4-1' and self.flag_re_create == False and self.flag_second_page == False)
+
+                            if action_type == 'CREATE' and (not skip_connectors) and [line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y] not in used_line_array:
                                 ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
                                 used_line_array.append([line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y])
                                 break
+
+        log_elapsed(f"l3_area_create {action_type} {target_folder_name}", t0)
+        if action_type == 'CREATE':
+            self._t_get_l3_segment_num = 0.0
 
         return ([outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, folder_shape_text])
 
@@ -1795,11 +1933,11 @@ def get_shape_width_if_array(self,device_name):
     tmp_up_width = self.between_l3if  #inches
     tmp_down_width = self.between_l3if   # inches
     full_ip_address = 'xxx.xxx.xxx.xxx/xxxx'
-    distance_full_ip_address = ns_def.get_description_width_hight(self.tag_font_large_size,full_ip_address)[0]
+    distance_full_ip_address = get_text_wh_cached(self,self.tag_font_large_size,full_ip_address)[0]
 
 
     for tmp_tmp_up_array in tmp_up_array:
-        shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size,tmp_tmp_up_array[1])
+        shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size,tmp_tmp_up_array[1])
         first_up_width = shape_width_hight_array[0] + self.between_l3if
 
         #check distance of full ip address and not connect l3segment
@@ -1812,7 +1950,7 @@ def get_shape_width_if_array(self,device_name):
 
 
     for tmp_tmp_down_array in tmp_down_array:
-        shape_width_hight_array = ns_def.get_description_width_hight(self.tag_font_large_size,tmp_tmp_down_array[1])
+        shape_width_hight_array = get_text_wh_cached(self,self.tag_font_large_size,tmp_tmp_down_array[1])
         first_down_width =  shape_width_hight_array[0] + self.between_l3if
 
         # check distance of full ip address
@@ -1924,6 +2062,8 @@ def check_move_to_right(self,top_device_name_array,target_position_shape_array):
     return (False)
 
 def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
+    import time
+    _t0 = time.perf_counter()
     #print('--- get_l3_segment_num ---')
     #print(f'top_device_name_array,target_position_shape_array     {top_device_name_array,target_position_shape_array}')
     count_l3segment = 0
@@ -1999,6 +2139,7 @@ def get_l3_segment_num(self,top_device_name_array,target_position_shape_array):
 
         self.used_l3segment_array.extend(tmp_used_l3segment_array)
 
+    self._t_get_l3_segment_num = getattr(self, "_t_get_l3_segment_num", 0.0) + (time.perf_counter() - _t0)
     #print('-- connected_l3if_key_array --', connected_l3if_key_array)
     return ([count_l3segment,connected_l3if_key_array])
 
