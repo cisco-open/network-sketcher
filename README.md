@@ -112,9 +112,9 @@ pyinstaller.exe [file path]/network_sketcher.py --onefile --collect-data tkinter
  ```
 <br>
 
-# Performance Measurement Summary(Ver: 2.6.1b)
+# Performance Measurement Summary
 
-|                                                    | 64 NW devices<br>112 Connections<br>(~500 endpoints)| 256 NW devices<br>480 Connections<br>(~3000 endpoints) | 1024 NW devices<br>1984 Connections<br>(~10000 endpoints)|
+| Ver: 2.6.1b                                         | 64 NW devices<br>112 Connections<br>(~500 endpoints)| 256 NW devices<br>480 Connections<br>(~3000 endpoints) | 1024 NW devices<br>1984 Connections<br>(~10000 endpoints)|
 |----------------------------------------------------|-----------:|------------:|-------------:|
 | Master file creation *1                            | 51s      | 2m45s      | 25m45s          |
 | Layer 1 diagram generation (All Areas with tags)   | 6s         | 29s         | 6m30s         |
@@ -202,6 +202,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
