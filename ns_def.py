@@ -2025,43 +2025,28 @@ class  get_l2_broadcast_domains():
         #print('--- last, l2_broadcast_group_array ---')
         #print(get_l2_broadcast_domains.get_unique_list(sorted(l2_broadcast_group_array)))
 
-        # --- merge l2_broadcast_group_array robustly (connected components by shared IDs) ---
-        # l2_broadcast_group_array: list[list[int]]
 
-        # build adjacency by "id -> groups"
-        id_to_groups = defaultdict(list)
-        for gi, grp in enumerate(l2_broadcast_group_array):
-            for n in grp:
-                id_to_groups[n].append(gi)
-
-        visited = [False] * len(l2_broadcast_group_array)
+        '''marge l2_broadcast_group_array'''
         marged_l2_broadcast_group_array = []
 
-        for start_gi in range(len(l2_broadcast_group_array)):
-            if visited[start_gi]:
-                continue
+        for tmp_l2_broadcast_group_array in l2_broadcast_group_array:
+            #print('### tmp_l2_broadcast_group_array   ',tmp_l2_broadcast_group_array )
+            tmp_marged_l2_broadcast_group_array = tmp_l2_broadcast_group_array
+            for now_tmp_l2_broadcast_group_array in tmp_l2_broadcast_group_array:
 
-            # BFS/DFS over groups connected by shared ids
-            stack = [start_gi]
-            visited[start_gi] = True
-            merged_ids = set()
+                for tmp_tmp_l2_broadcast_group_array in l2_broadcast_group_array:
+                    if tmp_l2_broadcast_group_array != tmp_tmp_l2_broadcast_group_array and now_tmp_l2_broadcast_group_array in tmp_tmp_l2_broadcast_group_array:
+                        if set(tmp_tmp_l2_broadcast_group_array ).issubset(tmp_marged_l2_broadcast_group_array) == False: # check if all value included
+                            #print(tmp_marged_l2_broadcast_group_array , '  and  ' ,tmp_tmp_l2_broadcast_group_array)
+                            tmp_marged_l2_broadcast_group_array.extend(tmp_tmp_l2_broadcast_group_array)
+                            tmp_marged_l2_broadcast_group_array = sorted(list(set(tmp_marged_l2_broadcast_group_array)))
+                            #print('    resuret  --> ',tmp_marged_l2_broadcast_group_array)
 
-            while stack:
-                gi = stack.pop()
-                grp = l2_broadcast_group_array[gi]
-                for n in grp:
-                    if n not in merged_ids:
-                        merged_ids.add(n)
-                        for ngi in id_to_groups.get(n, []):
-                            if not visited[ngi]:
-                                visited[ngi] = True
-                                stack.append(ngi)
+            marged_l2_broadcast_group_array.append(tmp_marged_l2_broadcast_group_array)
 
-            marged_l2_broadcast_group_array.append(sorted(merged_ids))
-
-        # unique (order-preserving)
+        #print('--- marged_l2_broadcast_group_array ---')
+        #print(get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array))
         marged_l2_broadcast_group_array = get_l2_broadcast_domains.get_unique_list(marged_l2_broadcast_group_array)
-        # --- end merge ---
 
         '''make target_l2_broadcast_group_array'''
         self.target_l2_broadcast_group_array = []
