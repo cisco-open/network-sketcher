@@ -159,6 +159,7 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 Download : [Sample.figure5.zip](https://github.com/user-attachments/files/24335488/Sample.figure5.zip)
 
 #### - Wi-Fi office
+Created by giving instructions to AI (LLM) several times
 <img  alt="image" src="https://github.com/user-attachments/assets/56dc300e-6461-4c09-a269-ce960fd45163" />
 
 Download : [Sample Office.zip](https://github.com/user-attachments/files/24336868/Sample.Office.zip)
@@ -184,6 +185,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
