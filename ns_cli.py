@@ -63,6 +63,7 @@ class ns_cli_run():
             List with status message or error
         """
         import ns_def
+        import tkinter as tk
 
         next_arg = get_next_arg(argv_array, 'export')
         export_command_list = [
@@ -450,6 +451,7 @@ class ns_cli_run():
 
     def cli_rename(self, master_file_path, argv_array): # add at ver 2.5.4
         import ns_def
+        import tkinter as tk
         next_arg = get_next_arg(argv_array, 'rename')
         rename_command_list = [ \
             'rename area', \
@@ -905,6 +907,7 @@ class ns_cli_run():
 
     def cli_add(self, master_file_path, argv_array): # add at ver 2.5.3
         import ns_def
+        import tkinter as tk
         next_arg = get_next_arg(argv_array, 'add')
         add_command_list = [ \
             'add area_location', # Add this line at ver 2.6.1
@@ -1813,16 +1816,38 @@ class ns_cli_run():
 
                 return ([return_text])
 
-            elif 'vport_l2_direct_binding' in argv_array:
+            if 'vport_l2_direct_binding' in argv_array:
                 return_text = '--- vport_l2_direct_binding added --- ' + ' ' + hostname + ',' + portname + ',' + add_l2seg_name
                 return ([return_text])
 
             else:
+                # sync l2 sheet of Master file to L3 sheet
+                dummy_tk = tk.Toplevel()
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk )
+                self.inFileTxt_L3_1_1 .delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1 .insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk )
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk )
+                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name) == True:
+                    os.remove(tmp_delete_excel_name)
                 return_text = '--- l2 Segment added --- ' + ' ' + hostname + ',' + portname + ',' + add_l2seg_name
                 return ([return_text])
 
     def cli_delete(self, master_file_path, argv_array):
         import ns_def
+        import tkinter as tk
         next_arg = get_next_arg(argv_array, 'delete')
         delete_command_list = [
             'delete area',  # Add this line at ver 2.6.1
@@ -2522,6 +2547,27 @@ class ns_cli_run():
                 return_text = '--- vport_l2_direct_binding deleted --- ' + ' ' + hostname + ',' + portname + ',' + del_l2seg_name
 
             else:
+                #sync l2 sheet of Master file to L3 sheet
+                dummy_tk = tk.Toplevel()
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name) == True:
+                    os.remove(tmp_delete_excel_name)
                 return_text = '--- l2 Segment deleted --- ' + ' ' + hostname + ',' + portname + ',' + del_l2seg_name
 
             return ([return_text])
