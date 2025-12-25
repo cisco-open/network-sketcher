@@ -376,21 +376,16 @@ def l1_sketch_device_name_sync_with_l2l3_master(self):
 
 def l1_master_device_and_line_sync_with_l2l3_master(self):
     """
-    ★★★ OPTIMIZED VERSION (maintains exact specification) ★★★
+    Fixed version: Maintains all original data while optimizing performance
 
-    Optimizations applied:
-    1. Reduce Excel file open/close operations
-    2. Use dictionary for O(1) lookups instead of nested loops
-    3. Pre-calculate values to avoid repeated function calls
-    4. Batch array operations
-
-    Expected performance: 10-20x faster
+    Key fixes:
+    1. Separate handling for L2 entries with empty Port Name
+    2. Preserve unmatched original entries from dictionary
+    3. Same logic applied to L3 processing
     """
-
     import os
     import tkinter as tk
 
-    # Get file paths
     ws_l2_name = 'Master_Data_L2'
     ws_l3_name = 'Master_Data_L3'
     excel_maseter_file = self.full_filepath
@@ -402,18 +397,17 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     del original_master_l2_table_array[:2]
     del original_master_l3_table_array[:2]
 
-    # ========== STEP 2: Normalize array lengths (OPTIMIZED) ==========
-    # ★★★ OPTIMIZATION 1: Batch processing instead of per-item ★★★
+    # ========== STEP 2: Normalize array lengths ==========
+    # Ensure L2 arrays have exactly 8 columns
     for item in original_master_l2_table_array:
-        # Ensure exactly 8 columns
         current_len = len(item[1])
         if current_len < 8:
             item[1].extend([''] * (8 - current_len))
         elif current_len > 8:
             item[1] = item[1][:8]
 
+    # Ensure L3 arrays have exactly 7 columns
     for item in original_master_l3_table_array:
-        # Ensure exactly 7 columns
         current_len = len(item[1])
         if current_len < 7:
             item[1].extend([''] * (7 - current_len))
@@ -432,7 +426,7 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     recreate_master_l2_table_array = ns_def.convert_master_to_array(ws_l2_name, excel_maseter_file, '<<L2_TABLE>>')
     del recreate_master_l2_table_array[:2]
 
-    # Normalize re-created L2
+    # Normalize re-created L2 arrays
     for item in recreate_master_l2_table_array:
         current_len = len(item[1])
         if current_len < 8:
@@ -440,55 +434,63 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
         elif current_len > 8:
             item[1] = item[1][:8]
 
-    # ========== STEP 5: Merge L2 data (OPTIMIZED) ==========
-    # ★★★ OPTIMIZATION 2: Use dictionary for O(1) lookup instead of nested loop ★★★
+    # ========== STEP 5: Merge L2 data (FIXED VERSION) ==========
+    # Create two separate collections:
+    # - Dictionary for entries with non-empty Port Name (for fast lookup)
+    # - List for entries with empty Port Name
+    original_l2_with_port = {}  # Port Name != ''
+    original_l2_without_port = []  # Port Name == ''
 
-    # Build lookup dictionary from original data (only non-empty port entries)
-    original_l2_dict = {}
     for item in original_master_l2_table_array:
-        if item[1][3] != '':  # Port Name not empty
-            # Key: (Area, Device Name, Port Name)
-            key = (item[1][0], item[1][1], item[1][3])
-            original_l2_dict[key] = item[1]
+        if item[1][3] != '':  # Port Name column is not empty
+            key = (item[1][0], item[1][1], item[1][3])  # (Area, Device Name, Port Name)
+            original_l2_with_port[key] = item[1]
+        else:
+            # Store entries with empty Port Name separately
+            original_l2_without_port.append(item[1])
 
-    # Merge re-created with original
     new_master_l2_table_array = []
 
+    # Process re-created data and merge with original
     for recreate_item in recreate_master_l2_table_array:
         key = (recreate_item[1][0], recreate_item[1][1], recreate_item[1][3])
 
-        # ★★★ Fast O(1) lookup instead of O(n) loop ★★★
-        if key in original_l2_dict:
-            # Use original data
-            original_data = original_l2_dict[key]
-            # ★★★ OPTIMIZATION 3: Pre-calculate and append ★★★
+        if key in original_l2_with_port:
+            # Use original data (preserves user modifications)
+            original_data = original_l2_with_port[key]
             if_value = ns_def.get_if_value(original_data[3])
             portname = str(ns_def.split_portname(original_data[3])[0])
             result = original_data[:8] + [if_value, portname]
             new_master_l2_table_array.append(result)
-            # Remove from dict to track processed items
-            del original_l2_dict[key]
+            del original_l2_with_port[key]  # Mark as processed
         else:
-            # Use re-created data
+            # Use re-created data (new entry)
             if_value = ns_def.get_if_value(recreate_item[1][3])
             portname = str(ns_def.split_portname(recreate_item[1][3])[0])
             result = recreate_item[1][:8] + [if_value, portname]
             new_master_l2_table_array.append(result)
 
-    # Add remaining original items with empty port
-    for original_data in original_l2_dict.values():
-        if original_data[3] == '':
-            result = original_data[:8] + [0, '']
-            new_master_l2_table_array.append(result)
+    # ★★★ FIX 1: Add original entries with empty Port Name ★★★
+    for original_data in original_l2_without_port:
+        result = original_data[:8] + [0, '']
+        new_master_l2_table_array.append(result)
 
-    # Sort L2 table
+    # ★★★ FIX 2: Add unmatched original entries (not re-created, Port Name != '') ★★★
+    for original_data in original_l2_with_port.values():
+        if_value = ns_def.get_if_value(original_data[3])
+        portname = str(ns_def.split_portname(original_data[3])[0])
+        result = original_data[:8] + [if_value, portname]
+        new_master_l2_table_array.append(result)
+
+    # Sort L2 table according to original specification
     new_master_l2_table_array.sort(key=lambda x: (x[0], x[1], x[9], x[8], x[5], x[7], x[6]))
 
-    # Build final L2 array
+    # Build final L2 array with header
     last_l2_table_array = [
         [1, ['<<L2_TABLE>>']],
         [2, ['Area', 'Device Name', 'Port Mode', 'Port Name', 'Virtual Port Mode', 'Virtual Port Name',
-             'Connected L2 Segment Name(Comma Separated)', 'L2 Name directly received by L3 Virtual Port (Comma Separated)']]
+             'Connected L2 Segment Name(Comma Separated)',
+             'L2 Name directly received by L3 Virtual Port (Comma Separated)']]
     ]
 
     for index_l2_num, item in enumerate(new_master_l2_table_array):
@@ -499,7 +501,7 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     ns_def.clear_section_sheet(ws_l2_name, excel_maseter_file, last_master_l2_table_tuple)
     ns_def.overwrite_excel_meta(last_master_l2_table_tuple, excel_maseter_file, ws_l2_name, '<<L2_TABLE>>', 0, 0)
 
-    # ========== STEP 7: Process L3 data (OPTIMIZED) ==========
+    # ========== STEP 7: Process L3 data (FIXED VERSION) ==========
     # Re-create L3 sheet
     ns_def.remove_excel_sheet(excel_maseter_file, ws_l3_name)
 
@@ -512,7 +514,7 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     recreate_master_l3_table_array = ns_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
     del recreate_master_l3_table_array[:2]
 
-    # Normalize re-created L3
+    # Normalize re-created L3 arrays
     for item in recreate_master_l3_table_array:
         current_len = len(item[1])
         if current_len < 7:
@@ -520,44 +522,49 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
         elif current_len > 7:
             item[1] = item[1][:7]
 
-    # ========== STEP 8: Merge L3 data (OPTIMIZED) ==========
-    # ★★★ OPTIMIZATION 4: Use dictionary for O(1) lookup ★★★
-
+    # ========== STEP 8: Merge L3 data (FIXED VERSION) ==========
     # Build lookup dictionary from original L3 data
     original_l3_dict = {}
     for item in original_master_l3_table_array:
-        # Key: (Area, Device Name, L3 IF Name)
-        key = (item[1][0], item[1][1], item[1][2])
+        key = (item[1][0], item[1][1], item[1][2])  # (Area, Device Name, L3 IF Name)
         original_l3_dict[key] = item[1]
 
-    # Merge re-created with original
     new_master_l3_table_array = []
 
+    # Process re-created data and merge with original
     for recreate_item in recreate_master_l3_table_array:
         key = (recreate_item[1][0], recreate_item[1][1], recreate_item[1][2])
 
-        # Fast O(1) lookup
         if key in original_l3_dict:
-            # Use original data
+            # Use original data (preserves user modifications)
             original_data = original_l3_dict[key]
             if_value = ns_def.get_if_value(original_data[2])
             portname = str(ns_def.split_portname(original_data[2])[0])
             result = original_data[:5] + [if_value, portname]
             new_master_l3_table_array.append(result)
+            del original_l3_dict[key]  # Mark as processed
         else:
-            # Use re-created data
+            # Use re-created data (new entry)
             if_value = ns_def.get_if_value(recreate_item[1][2])
             portname = str(ns_def.split_portname(recreate_item[1][2])[0])
             result = recreate_item[1][:5] + [if_value, portname]
             new_master_l3_table_array.append(result)
 
-    # Sort L3 table
+    # ★★★ FIX 3: Add unmatched original L3 entries (not re-created) ★★★
+    for original_data in original_l3_dict.values():
+        if_value = ns_def.get_if_value(original_data[2])
+        portname = str(ns_def.split_portname(original_data[2])[0])
+        result = original_data[:5] + [if_value, portname]
+        new_master_l3_table_array.append(result)
+
+    # Sort L3 table according to original specification
     new_master_l3_table_array.sort(key=lambda x: (x[0], x[1], x[3], x[6], x[5], x[4]))
 
-    # Build final L3 array
+    # Build final L3 array with header
     last_l3_table_array = [
         [1, ['<<L3_TABLE>>']],
-        [2, ['Area', 'Device Name', 'L3 IF Name', 'L3 Instance Name', 'IP Address / Subnet mask (Comma Separated)']]
+        [2, ['Area', 'Device Name', 'L3 IF Name', 'L3 Instance Name',
+             'IP Address / Subnet mask (Comma Separated)']]
     ]
 
     for index_l3_num, item in enumerate(new_master_l3_table_array):
@@ -568,17 +575,11 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     ns_def.clear_section_sheet(ws_l3_name, excel_maseter_file, last_master_l3_table_tuple)
     ns_def.overwrite_excel_meta(last_master_l3_table_tuple, excel_maseter_file, ws_l3_name, '<<L3_TABLE>>', 0, 0)
 
-    # ========== STEP 10: Cleanup ==========
-    # Remove temporary L2 table file if exists
-    temp_l2_file = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')
-    if os.path.isfile(temp_l2_file):
-        os.remove(temp_l2_file)
+    # ========== STEP 10: Cleanup temporary files ==========
     # Remove temporary L3 table file if exists
     temp_l3_file = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
     if os.path.isfile(temp_l3_file):
         os.remove(temp_l3_file)
-
-
 
 
 

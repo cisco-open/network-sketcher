@@ -60,7 +60,7 @@ class ns_front_run():
         self.root = TkinterDnD.Tk()
         style = ttk.Style(self.root)
         style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
-        self.root.title("Network Sketcher  ver 2.6.1c")
+        self.root.title("Network Sketcher  ver 2.6.1d")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
@@ -516,6 +516,7 @@ class ns_front_run():
 
                 ### L1 Master data update to L2 Master data
                 ns_sync_between_layers.l1_master_device_and_line_sync_with_l2l3_master(self)
+
                 self.click_value_2nd = ''
                 self.click_value_3rd = ''
 
@@ -582,13 +583,15 @@ class ns_front_run():
                 if os.path.isfile(self.outFileTxt_11_2.get().replace('[MASTER]', '')) == True:
                     os.remove(self.outFileTxt_11_2.get().replace('[MASTER]', ''))
 
-                ###Create the device file , add at ver 2.5.1a
+                ###Create the device file , add at ver 2.5.1a. Removed at ver 2.6.1d
+                '''
                 self.inFileTxt_11_1.delete(0, tkinter.END)
                 self.inFileTxt_11_1.insert(tk.END, self.full_filepath)
                 self.outFileTxt_11_2.delete(0, tkinter.END)
                 self.outFileTxt_11_2.insert(tk.END,iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
                 self.click_value_2nd = 'self.sub1_1_button_1'
                 self.click_action_sub('self.self.sub2_5_button_3', push_array)
+                '''
                 self.click_value_2nd = ''
 
                 ### open master panel
@@ -786,7 +789,7 @@ class ns_front_run():
         self.sub2_A = tk.LabelFrame(self.sub2_1, text='Lab', font=("", 14), height=1, background="#D9D9D9")
         self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2)
 
-        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta5)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
+        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta5a)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
         self.sub2_9_button_1.grid(row=1, column=21, sticky='WE', padx=2, pady=2, ipadx=3)
 
 
