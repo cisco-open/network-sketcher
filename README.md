@@ -153,10 +153,15 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Generate L1/L2/L3 topology diagrams | ✅ | ❌ |
 
 # SAMPLE
+#### Supports various connections
 <img alt="image" src="https://github.com/user-attachments/assets/752a5a6d-fcb8-4bf2-a709-91c4c8f862c5" />
 
 Download : [Sample.figure5.zip](https://github.com/user-attachments/files/24335488/Sample.figure5.zip)
 
+#### Wi-Fi office
+<img  alt="image" src="https://github.com/user-attachments/assets/56dc300e-6461-4c09-a269-ce960fd45163" />
+
+Download : [Sample Office.zip](https://github.com/user-attachments/files/24336868/Sample.Office.zip)
 
 
 # Author
@@ -179,6 +184,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
