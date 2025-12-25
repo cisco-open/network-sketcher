@@ -47,6 +47,8 @@ All data in the master file
 ** show_waypoint_interface
 []
 
+
+
 '''
 Show Commands reference
 '''
@@ -193,15 +195,23 @@ python [file path]/network_sketcher.py show l1_interface　--master [master file
 ['DEVICE10', 'GE 0/5', 'GigabitEthernet 0/5', 'Auto', 'Auto', '1000BASE-T']<br>
 
 ## show L1_link
-Displays L1 wiring information.
+Displays Layer 1 (L1) physical wiring information per link.
+- Each output line represents one physical link.
+- Each line contains two endpoints: '[[Device-A, Interface-A], [Device-B, Interface-B]].
+- The left/right order in the output is not meaningful (either endpoint may appear on the left).
+- Therefore, when identifying or deleting a link, you can treat either endpoint (device + interface) as the “from” side.
  ```bash
 python [file path]/network_sketcher.py show l1_link　--master [master file path]
  ```
 * ex.<br>
 ＃python .\network_sketcher.py show l1_link　--master "C:\work\\[MASTER]test.xlsx"<br>
-[['DEVICE1', 'GigabitEthernet 0/0'], ['DEVICE4', 'GigabitEthernet 0/0']]<br>
-[['DEVICE1', 'GigabitEthernet 0/4'], ['DEVICE5', 'GigabitEthernet 0/4']]<br>
-[['DEVICE10', 'GigabitEthernet 0/5'], ['DEVICE4', 'GigabitEthernet 0/5']]<br>
+'[['DEVICE1', 'GigabitEthernet 0/0'], ['DEVICE4', 'GigabitEthernet 0/0']]<br>
+'[['DEVICE1', 'GigabitEthernet 0/4'], ['DEVICE5', 'GigabitEthernet 0/4']]<br>
+'[['DEVICE10', 'GigabitEthernet 0/5'], ['DEVICE4', 'GigabitEthernet 0/5']]<br>
+
+- Notes
+    - show l1_link shows only existing links. Interfaces that are not connected by an L1 link will not appear.
+    - To delete an L1 link, specify one endpoint (device + interface). The peer endpoint will be determined automatically by the tool (see delete l1_link).
 
 
 ## show l2_broadcast_domain
@@ -749,9 +759,54 @@ python [file path]/network_sketcher.py delete ip_address [device name] [layer3_p
 ['L3SW2', 'Vlan 100', '', '']<br>
 
 
+
+## delete device
+
+This command deletes the specified device, along with all Layer 1 links connected to the deleted device.
+
+ ```bash
+python [file path]/network_sketcher.py delete device [device_name] --master [master file path]
+ ```
+
+ex.<br>
+
++BEFORE+
+
+#python .\network_sketcher.py show device --master "C:\work[MASTER]test.xlsx"<br>
+<code>['DC1_device_', 'L3SW1', 'L3SW2', 'SW-1', 'SW-2', 'SW-3']</code>
+
+#python .\network_sketcher.py show l1_link --master "C:\work[MASTER]test.xlsx"<br>
+<code>[['SW-1', 'GigabitEthernet 0/0'], ['SW-3', 'GigabitEthernet 0/1']]</code>
+<code>[['SW-1', 'GigabitEthernet 0/1'], ['SW-2', 'GigabitEthernet 0/0']]</code>
+<code>[['SW-2', 'GigabitEthernet 0/1'], ['L3SW1', 'GigabitEthernet 0/0']]</code>
+
++device deleted+
+
+#python .\network_sketcher.py delete device 'SW-2' --master "C:\work[MASTER]test.xlsx"<br>
+--- Device deleted --- SW-2
+
+
++AFTER+
+
+#python .\network_sketcher.py show device --master "C:\work[MASTER]test.xlsx"<br>
+<code>['DC1_device_', 'L3SW1', 'L3SW2', 'SW-1', 'SW-3']</code>
+
+
+#python .\network_sketcher.py show l1_link --master "C:\work[MASTER]test.xlsx"<br>
+<code>[['SW-1', 'GigabitEthernet 0/0'], ['SW-3', 'GigabitEthernet 0/1']]</code>
+<br><br>
+
+[Tips]
+
+* All Layer 1 links connected to the deleted device will also be deleted.
+* If it is the last device in an area, it cannot be deleted (use the delete area command).
+* If it is a waypoint (a device in an area ending in _wp_), use the delete waypoint command.
+
+
+
 ## delete l1_link
 
-Deletes the Layer 1 physical connection between devices. Only one physical link can be deleted at a time.
+Deletes the Layer 1 physical connection between devices. All associated Layer 2 and Layer 3 configurations on the deleted interface are automatically removed. Only one physical link can be deleted at a time.
 
 ```bash
 python [file path]/network_sketcher.py delete l1_link [from_device] [from_portname] --master [master file path]
@@ -779,8 +834,16 @@ python [file path]/network_sketcher.py delete l1_link [from_device] [from_portna
 <br><br>
 [Tips]
 
-* Specify only the from device and from port name (to device/to port are automatically determined)
-* Since the port name contains spaces, it must be enclosed in single quotes (‘port 0’)
+
+- Cascade deletion: Deleting an L1 link automatically deletes the following: Any other Layer 2 and Layer 3 configurations are also deleted.:
+    - Port-channel membership (if the interface is a member)
+    - L2 segments (VLANs) configured on the interface
+    - Subinterfaces (virtual ports) bound to the interface
+    - IP addresses on subinterfaces
+    - The entire Port-channel and its L3 configuration if all member interfaces are deleted
+- Specify only the from device and from port name (to device/to port are automatically determined)
+- Since the port name contains spaces, it must be enclosed in single quotes ('port 0')
+- Use with caution: This single command can remove extensive Layer 2/Layer 3 configurations
 
 
 
@@ -1241,681 +1304,1660 @@ The file contains no areas or devices.<br>
 
 
 
+================================================================================
+CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
+================================================================================
+MANDATORY ARCHITECTURAL RULES - MUST BE FOLLOWED WITHOUT EXCEPTION
 
+================================================================================
+SECTION 1: FUNDAMENTAL ARCHITECTURE RULES (RULES 0-7)
+================================================================================
 
+--------------------------------------------------------------------------------
+RULE 0: NETWORK DIAGRAM LAYOUT PRESERVATION POLICY
+--------------------------------------------------------------------------------
 
+CRITICAL LAYOUT RULE:
+When analyzing network diagrams, preserve the visual device placement as
+closely as possible.
 
+VISUAL LAYOUT ANALYSIS PRIORITY:
+1. Identify Central/Hub Devices: Place at center or top of grid
+2. Identify Edge/Leaf Devices: Distribute around central device(s)
+3. Preserve Left-Right Grouping: LEFT devices -> LEFT columns, RIGHT -> RIGHT
+4. Preserve Vertical Relationships: ABOVE -> UPPER rows, BELOW -> LOWER rows
 
+GRID LAYOUT CONSTRUCTION GUIDELINES:
 
+CORRECT Layout Approach:
+  Diagram showing:
+          [SP]           (Center/Top)
+         /    \
+     [CX-A] [CX-B]       (Left side, below SP)
+     [CY-A] [CY-B]       (Right side, below SP)
 
+  Network Sketcher grid:
+  ['ServiceProvider_DC',[
+    ['_AIR_','_AIR_','SP','_AIR_','_AIR_'],
+    ['CX-A','CX-B','_AIR_','CY-A','CY-B']
+  ]]
 
-'''
-CRITICAL Network Sketcher Architecture Constraints
-'''
+  Key principles:
+  - SP in CENTER COLUMN (position 3 of 5) at TOP ROW
+  - CX-A, CX-B on LEFT (positions 1-2) in BOTTOM ROW
+  - CY-A, CY-B on RIGHT (positions 4-5) in BOTTOM ROW
+  - Use _AIR_ for spacing that reflects diagram layout
 
-⚠️ MANDATORY ARCHITECTURAL RULES - MUST BE FOLLOWED WITHOUT EXCEPTION
+INCORRECT Layout:
+  ['ServiceProvider_DC',[
+    ['CX-A','SP','CY-A'],
+    ['CX-B','_AIR_','CY-B']
+  ]]
+  Problem: Too compact, doesn't reflect spacing, SP not centered
 
-## Rule 0: Network Diagram Layout Preservation Policy
+COMMON DIAGRAM PATTERNS:
+- Pattern 1 (Star Topology): [['_AIR_','Hub','_AIR_'],['Dev1','Dev2','Dev3','Dev4']]
+- Pattern 2 (Horizontal): [['A','B','C','D']]
+- Pattern 3 (Vertical): [['A'],['B'],['C']]
+- Pattern 4 (Service Provider): [['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]
 
-⚠️ CRITICAL LAYOUT RULE: When analyzing network diagrams, preserve the visual device placement as closely as possible.
+LAYOUT DECISION RULES:
+1. Count Visual Layers: Diagram layers -> Grid rows
+2. Count Horizontal Positions: Side-by-side devices/groups -> Grid columns
+3. Identify Symmetry: Symmetric diagrams -> Symmetric grid layouts
+4. Preserve Empty Space: Use _AIR_ for logical grouping
 
-### Visual Layout Analysis Priority:
-
-1. **Identify Central/Hub Devices**:
-   - Look for devices at the center or top of the diagram
-   - These typically represent core routers, switches, or aggregation points
-   - Place these devices in center columns of the grid
-
-2. **Identify Edge/Leaf Devices**:
-   - Look for devices at the periphery of the diagram
-   - Customer routers, access switches, end devices
-   - Distribute these around the central device(s)
-
-3. **Preserve Left-Right Grouping**:
-   - Devices shown on the LEFT side of diagram → Place in LEFT columns
-   - Devices shown on the RIGHT side of diagram → Place in RIGHT columns
-   - Devices shown in CENTER → Place in CENTER columns
-
-4. **Preserve Vertical Relationships**:
-   - Devices shown ABOVE others → Place in UPPER rows
-   - Devices shown BELOW others → Place in LOWER rows
-   - Maintain relative vertical positioning
-
-### Grid Layout Construction Guidelines:
-
-✅ CORRECT Layout Approach:
-
-For a diagram showing:
-        [SP]           (Center/Top)
-       /    \
-   [CX-A] [CX-B]       (Left side, below SP)
-   [CY-A] [CY-B]       (Right side, below SP)
-
-Translate to Network Sketcher grid:
-['ServiceProvider_DC',[
-  ['_AIR_','_AIR_','SP','_AIR_','_AIR_'],      # SP centered at top
-  ['CX-A','CX-B','_AIR_','CY-A','CY-B']        # Customers distributed below
-]]
-
-Key principles:
-- SP is in CENTER COLUMN (position 3 of 5) at TOP ROW
-- CX-A, CX-B on LEFT side (positions 1-2) in BOTTOM ROW
-- CY-A, CY-B on RIGHT side (positions 4-5) in BOTTOM ROW
-- Use _AIR_ to create spacing that reflects diagram layout
-
-❌ INCORRECT Layout (ignoring diagram positioning):
-['ServiceProvider_DC',[
-  ['CX-A','SP','CY-A'],        # Too compact, doesn't reflect spacing
-  ['CX-B','_AIR_','CY-B']      # SP not centered, loses visual relationship
-]]
-
-### Common Diagram Patterns and Grid Translation:
-
-**Pattern 1: Star Topology (Hub-and-Spoke)**
-Diagram:              Grid Layout:
-    [Hub]             [['_AIR_','Hub','_AIR_'],
-   / | | \             ['Dev1','Dev2','Dev3','Dev4']]
-[1][2][3][4]
-
-**Pattern 2: Horizontal Distribution**
-Diagram:              Grid Layout:
-[A]--[B]--[C]--[D]    [['A','B','C','D']]]
-
-**Pattern 3: Vertical Stack**
-Diagram:              Grid Layout:
-  [A]                 [['A'],
-  [B]                  ['B'],
-  [C]                  ['C']]
-
-**Pattern 4: Service Provider with Customer Groups**
-Diagram:                    Grid Layout:
-  Left Group   [SP]   Right Group
-  [CX-A]        |     [CY-A]
-  [CX-B]        |     [CY-B]
-
-Translation:
-[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],
- ['CX-A','CX-B','_AIR_','CY-A','CY-B']]
-
-### Layout Decision Rules:
-
-1. **Count Visual Layers**:
-   - How many horizontal layers in diagram? → Number of rows
-   - Example: Hub at top + devices below = 2 rows
-
-2. **Count Horizontal Positions**:
-   - How many devices/groups side-by-side? → Minimum columns needed
-   - Add _AIR_ columns for spacing to match diagram aesthetics
-
-3. **Identify Symmetry**:
-   - Symmetric diagrams should have symmetric grid layouts
-   - If diagram shows 2 groups on left, 1 center, 2 right → Use 5 columns
-
-4. **Preserve Empty Space**:
-   - Diagrams often use spacing to show logical grouping
-   - Use _AIR_ to recreate this spacing in grid
-   - Don't compress layout unnecessarily
-
-### Integration with VRF/Waypoint Rules:
-
-⚠️ Layout preservation applies WITHIN each area:
-
-- For VRF scenarios (single area): Preserve entire diagram layout in one grid
-- For multi-site scenarios (multiple areas): Preserve layout within each site's area
-- Waypoint areas: Usually single device, minimal layout considerations
-
-### Example: VRF Scenario with Layout Preservation
-
-Given diagram:
-        CUST-X              CUST-Y
-        ┌────────┐          ┌────────┐
-        │        │          │        │
-10.110.1.0/30   │    SP    │  10.130.1.0/30
-    ┌───┴───┐   │  Router  │   ┌───┴───┐
-    │       │   │          │   │       │
-  CX-A    CX-B  │          │  CY-A   CY-B
-10.10.10.0/24   │          │  10.10.10.0/24
-10.20.20.0/24   └──────────┘  10.30.30.0/24
-
-Analysis:
-- SP is at CENTER TOP
-- Left group (CX-A, CX-B) represents Customer X
-- Right group (CY-A, CY-B) represents Customer Y
-- Spacing between groups shows logical separation
-
-✅ CORRECT Grid Layout (preserves visual structure):
-python "script" add device_location "['ServiceProvider_DC',[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]]" --master "file"
-
-Result:
-- 2 rows: Top row for SP, bottom row for customers
-- 5 columns: Provides symmetry and spacing
-- SP centered in position 3
-- CX-A, CX-B in positions 1-2 (left)
-- CY-A, CY-B in positions 4-5 (right)
-- Position 3 bottom row is _AIR_ (separates customer groups)
-
-❌ INCORRECT Layout (loses visual structure):
-python "script" add device_location "['ServiceProvider_DC',[['CX-A','SP','CY-A'],['CX-B','_AIR_','CY-B']]]" --master "file"
-
-Problems:
-- SP not centered
-- Loses left-right grouping
-- No visual separation between customer groups
-- Doesn't reflect diagram's symmetry
-
-### Verification of Layout Accuracy:
-
-After generating layout commands, mentally verify:
-
-1. ✅ Does grid TOP match diagram TOP?
-2. ✅ Does grid CENTER align with diagram CENTER?
-3. ✅ Are LEFT devices in grid LEFT columns?
-4. ✅ Are RIGHT devices in grid RIGHT columns?
-5. ✅ Does spacing/symmetry match diagram?
-6. ✅ Are logical groups visually separated in grid?
-
+VERIFICATION OF LAYOUT ACCURACY:
+After generating layout commands, verify ALL of the following:
+1. Does grid TOP match diagram TOP?
+2. Does grid CENTER align with diagram CENTER?
+3. Are LEFT devices in grid LEFT columns?
+4. Are RIGHT devices in grid RIGHT columns?
+5. Does spacing/symmetry match diagram?
+6. Are logical groups visually separated in grid?
 If ANY answer is NO, revise the grid layout.
 
-## Rule 1: Physical Topology vs Logical Segmentation
+--------------------------------------------------------------------------------
+RULE 1: PHYSICAL TOPOLOGY VS LOGICAL SEGMENTATION
+--------------------------------------------------------------------------------
 
-Network Sketcher distinguishes between PHYSICAL topology and LOGICAL segmentation:
+Network Sketcher distinguishes between PHYSICAL and LOGICAL:
 
-✅ PHYSICAL TOPOLOGY (Areas and Devices):
-- Areas represent PHYSICAL locations or network segments
-- Devices represent PHYSICAL equipment (routers, switches, firewalls)
-- Layer 1 (L1) links represent PHYSICAL cables/connections between devices
-- Areas CANNOT be directly connected - only devices within areas can be connected
+PHYSICAL TOPOLOGY (Areas and Devices):
+- Areas = PHYSICAL locations or network segments
+- Devices = PHYSICAL equipment (routers, switches, firewalls)
+- Layer 1 (L1) links = PHYSICAL cables/connections between devices
+- Areas CANNOT be directly connected - only devices within areas can connect
 - Device placement within areas should reflect diagram layout
 
-❌ LOGICAL SEGMENTATION (VRFs, VLANs, L3 Instances):
-- VRFs are implemented as L3 instances (rename l3_instance command)
-- VLANs are implemented as L2 segments (add l2_segment command)
+LOGICAL SEGMENTATION (VRFs, VLANs, L3 Instances):
+- VRFs = L3 instances (rename l3_instance command)
+- VLANs = L2 segments (add l2_segment command)
 - Logical segmentation does NOT require separate physical areas
-- Logical grouping can be reflected in device grid layout using spacing
+- Logical grouping reflected in device grid layout using spacing
 
-## Rule 2: VRF Implementation Architecture
+--------------------------------------------------------------------------------
+RULE 2: VRF IMPLEMENTATION ARCHITECTURE
+--------------------------------------------------------------------------------
 
 When implementing VRF configurations:
 
-✅ CORRECT APPROACH:
-1. Create ONE area containing ALL physical devices (e.g., "ServiceProvider")
+CORRECT APPROACH:
+1. Create ONE area containing ALL physical devices
 2. Place ALL routers/devices in that single area
-3. **PRESERVE diagram layout** when positioning devices in grid
+3. PRESERVE diagram layout when positioning devices in grid
 4. Create physical L1 links between devices
 5. Assign interfaces to VRFs using rename l3_instance command
 6. VRFs exist as logical separation, NOT as separate areas
 
 Example Structure:
 - Area: "ServiceProvider"
-  - Devices: SP (router), CX-A, CX-B, CY-A, CY-B
-  - Grid Layout: Reflects diagram positioning (SP centered, customers distributed)
-  - L1 Links: Physical connections between all devices
-  - L3 Instances (VRFs): CUST-X, CUST-Y (assigned to specific interfaces on SP router)
+- Devices: SP (router), CX-A, CX-B, CY-A, CY-B
+- Grid: [['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]
+- L1 Links: Physical connections between all devices
+- L3 Instances (VRFs): CUST-X, CUST-Y (assigned to specific interfaces)
 
-Correct Grid Example (matching visual diagram):
-[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],      # SP centered at top
- ['CX-A','CX-B','_AIR_','CY-A','CY-B']]       # Customers below, grouped
-
-❌ INCORRECT APPROACH:
-1. Creating separate areas for each VRF (CUST-X, CUST-Y)
+INCORRECT APPROACH:
+1. Creating separate areas for each VRF
 2. Placing customer devices in separate areas
 3. Attempting to connect areas instead of devices
 4. Ignoring diagram layout and compressing devices without spacing
 
-⚠️ WHY THIS MATTERS:
-- Areas represent PHYSICAL separation (buildings, data centers, locations)
-- VRFs represent LOGICAL separation (routing tables, customer isolation)
+WHY THIS MATTERS:
+- Areas = PHYSICAL separation (buildings, data centers, locations)
+- VRFs = LOGICAL separation (routing tables, customer isolation)
 - Grid layout should reflect VISUAL diagram structure
-- Mixing these concepts or ignoring layout creates confusion
 
-## Rule 3: Area Connection Constraints and Waypoint Requirements
+--------------------------------------------------------------------------------
+RULE 3: AREA CONNECTION CONSTRAINTS AND WAYPOINT REQUIREMENTS
+--------------------------------------------------------------------------------
 
-⚠️ CRITICAL INTER-AREA CONNECTION RULE:
-
+CRITICAL INTER-AREA CONNECTION RULE:
 Devices in different areas CANNOT connect directly to each other.
-ALL inter-area connections MUST go through a Waypoint area (area name ending with _wp_).
+ALL inter-area connections MUST go through Waypoint area (area name ending _wp_).
 
-### Connection Architecture:
-
+CONNECTION ARCHITECTURE:
 Area A          Waypoint Area         Area B
 [Device-A] <---> [Waypoint] <---> [Device-B]
    (L1)            (_wp_)           (L1)
 
-✅ VALID CONNECTION PATTERNS:
+VALID CONNECTION PATTERNS:
+1. Device-to-Device within SAME area: Direct L1 link allowed
+2. Device-to-Device across DIFFERENT areas: Must use Waypoint
+3. Device-to-Waypoint: Device in standard area -> Waypoint in waypoint area
 
-1. Device-to-Device within SAME area:
-   - Direct L1 link allowed
-   - Example: Switch1 ↔ Switch2 (both in "DataCenter" area)
+INVALID CONNECTION PATTERNS:
+1. Direct Device-to-Device across different areas without waypoint
+2. Area-to-Area direct connection (areas are logical containers)
+3. Mixed waypoint types (WAN waypoint for building backbone, or vice versa)
 
-2. Device-to-Device across DIFFERENT areas (via Waypoint):
-   - Device in Area-A → Waypoint in Waypoint-Area → Device in Area-B
-   - Example: Router-A (HQ area) ↔ WAN-Cloud (Internet_wp_ area) ↔ Router-B (Branch area)
-
-3. Device-to-Waypoint:
-   - Device in standard area → Waypoint in waypoint area
-   - Example: Firewall (Office area) ↔ MPLS-Node (WAN_wp_ area)
-
-❌ INVALID CONNECTION PATTERNS:
-
-1. Direct Device-to-Device across different areas:
-   - Device-A (Area-1) →❌ Device-B (Area-2)
-   - MUST use waypoint: Device-A → Waypoint → Device-B
-
-2. Area-to-Area direct connection:
-   - Area-1 →❌ Area-2
-   - NOT POSSIBLE - areas are logical containers, not connectable entities
-
-3. Device-to-Device in separate areas without waypoint:
-   - Router-HQ (HQ area) →❌ Router-Branch (Branch area)
-   - MUST insert waypoint area between them
-
-### Waypoint Area Requirements:
-
-⚠️ WHEN TO CREATE WAYPOINT AREAS:
-
+WAYPOINT AREA REQUIREMENTS:
 Waypoint areas (_wp_) are MANDATORY when:
 1. Connecting devices in different physical areas
 2. Representing WAN connections (Internet, MPLS, leased lines)
 3. Representing external networks or cloud services
 4. Connecting geographically separated sites
+5. Representing building backbone/riser connections (MDF-IDF when required)
 
-✅ CORRECT WAYPOINT USAGE:
+WAYPOINT NAMING CONVENTION:
+CORRECT:
+- WAN/Inter-Site: WAN_wp_, Internet_wp_, MPLS_wp_, Cloud_wp_, ISP_Connection_wp_
+- Building Backbone: Building1_Backbone_wp_, HQ_Backbone_wp_, Campus_Riser_wp_
 
-Scenario: Connect HQ and Branch offices
+INCORRECT:
+- VLAN100_wp_, VRF-A_wp_ (logical separation, not physical)
+- Floor2_wp_ (may not need waypoint unless mandated)
 
-[HQ Area]          [WAN_wp_ Area]        [Branch Area]
-Router-HQ    <-->    MPLS-Cloud    <-->   Router-Branch
+WAYPOINT USAGE EXAMPLES:
+CORRECT: HQ and Branch via MPLS
+  [HQ Area] <-> [MPLS_wp_ Area] <-> [Branch Area]
 
-Commands:
-# Create three areas: HQ, WAN waypoint, Branch
-python "script" add area_location "[['HQ','WAN_wp_','Branch']]" --master "file"
+INCORRECT: VRF implementation
+  WRONG: [CUST-X Area] <-> [ServiceProvider_wp_] <-> [CUST-Y Area]
+  CORRECT: Single area with VRF L3 instances (see Rule 2)
 
-# Place devices (preserve layout within each area)
-python "script" add device_location "['HQ',[['Router-HQ']]]" --master "file"
-python "script" add device_location "['WAN_wp_',[['MPLS-Cloud']]]" --master "file"
-python "script" add device_location "['Branch',[['Router-Branch']]]" --master "file"
-
-# Connect via waypoint
-python "script" add l1_link "Router-HQ" "MPLS-Cloud" "GigabitEthernet 0/0" "port 0" --master "file"
-python "script" add l1_link "MPLS-Cloud" "Router-Branch" "port 1" "GigabitEthernet 0/0" --master "file"
-
-❌ INCORRECT WAYPOINT USAGE:
-
-Scenario: VRF implementation (logical separation)
-
-# WRONG - Do not create waypoint for VRF separation
-[CUST-X Area] <--> [ServiceProvider_wp_] <--> [CUST-Y Area]
-
-# CORRECT - Use single area with VRF instances, preserve layout
-[ServiceProvider Area]
-Grid: [['_AIR_','_AIR_','SP','_AIR_','_AIR_'],
-       ['CX-A','CX-B','_AIR_','CY-A','CY-B']]
-├── SP Router (with CUST-X and CUST-Y VRFs) - centered
-├── CX-A, CX-B (Customer X sites) - left side
-└── CY-A, CY-B (Customer Y sites) - right side
-
-### Waypoint Area Naming Convention:
-
-✅ CORRECT naming:
-- WAN_wp_
-- Internet_wp_
-- MPLS_wp_
-- Cloud_wp_
-- ISP_Connection_wp_
-
-❌ INCORRECT naming:
-- CUST-X_wp_ (this is VRF, not physical separation)
-- VLAN100_wp_ (VLANs are L2 segments, not areas)
-- CustomerA_wp_ (customer separation is typically VRF-based)
-
-### Multiple Area Connection Example:
-
+MULTIPLE AREA CONNECTION EXAMPLE:
 Scenario: Connect 3 sites (HQ, Branch1, Branch2) via MPLS
-
-Topology:
-    [HQ Area]
-        |
-   [MPLS_wp_ Area]
-      /   \
-[Branch1] [Branch2]
-
-Commands:
-# Create areas with waypoint in middle
 python "script" add area_location "[['HQ'],['MPLS_wp_'],['Branch1','Branch2']]" --master "file"
-
-# Place devices (preserve any internal layout within each area)
 python "script" add device_location "['HQ',[['HQ-Router']]]" --master "file"
 python "script" add device_location "['MPLS_wp_',[['MPLS-Core']]]" --master "file"
 python "script" add device_location "['Branch1',[['Branch1-Router']]]" --master "file"
 python "script" add device_location "['Branch2',[['Branch2-Router']]]" --master "file"
-
-# Connect all sites via waypoint
 python "script" add l1_link_bulk "[['HQ-Router','MPLS-Core','GigabitEthernet 0/1','port 0'],['MPLS-Core','Branch1-Router','port 1','GigabitEthernet 0/0'],['MPLS-Core','Branch2-Router','port 2','GigabitEthernet 0/0']]" --master "file"
 
-## Rule 4: Area vs Waypoint Decision Matrix
+--------------------------------------------------------------------------------
+RULE 4: AREA VS WAYPOINT DECISION MATRIX
+--------------------------------------------------------------------------------
 
-Use this decision tree to determine proper architecture:
+QUESTION 1: Is this logical or physical separation?
+LOGICAL (VRF, VLAN, security zones):
+  - Use: Single area with all devices
+  - Implement: VRF via L3 instances, VLAN via L2 segments
+  - Layout: Preserve diagram positioning with _AIR_ for spacing
+  - Do NOT use: Multiple areas or waypoints
+PHYSICAL (different buildings, cities, sites):
+  - Continue to Question 2
 
-### Question 1: Is this logical or physical separation?
+QUESTION 2: Are devices in the same physical location?
+SAME LOCATION (same building/data center/floor):
+  - Use: Single area containing all devices
+  - Connect: Direct L1 links between devices
+  - Layout: Match diagram's visual structure
+  - Exception: If system mandates waypoint, use Building_Backbone_wp_
+DIFFERENT LOCATIONS (different buildings/cities/sites):
+  - Use: Multiple areas (one per location)
+  - Connect: Via waypoint area representing WAN/connection medium
+  - MUST use: Waypoint area for inter-area connections
 
-LOGICAL SEPARATION (VRF, VLAN, security zones):
-- Use: Single area with all devices
-- Implement: VRF via L3 instances, VLAN via L2 segments
-- Layout: Preserve diagram positioning with _AIR_ for spacing
-- Do NOT use: Multiple areas or waypoints
+QUESTION 3: What type of connection between locations?
+- WAN: Internet_wp_, MPLS_wp_, VPN_Gateway_wp_
+- BUILDING BACKBONE: Building_Backbone_wp_, Campus_Riser_wp_
+- DIRECT: Appropriate waypoint for documentation
 
-PHYSICAL SEPARATION (different buildings, cities, sites):
-- Continue to Question 2
+DECISION MATRIX SUMMARY:
+Scenario                     | Areas | Waypoint          | VRF/VLAN    | Layout
+-----------------------------|-------|-------------------|-------------|-------------
+VRF customers, same DC       | 1     | No                | L3 instance | Match diagram
+VLANs on switches            | 1     | No                | L2 segment  | Match diagram
+Switches same building       | 1     | No                | No          | Match diagram
+Multi-site MPLS/Internet     | 3+    | WAN_wp_           | Optional    | Per-area
+Multi-tenant with VRF        | 1     | No                | L3 instance | Match diagram
+Campus buildings fiber       | 2-3   | Campus_Backbone   | No          | Per-area
+Multi-floor MDF-IDF          | 3+    | Building_Backbone | Optional    | Per-area
 
-### Question 2: Are devices in the same physical location?
+--------------------------------------------------------------------------------
+RULE 5: COMMON SCENARIOS AND CORRECT IMPLEMENTATION
+--------------------------------------------------------------------------------
 
-SAME LOCATION (same building, same data center):
-- Use: Single area containing all devices
-- Connect: Direct L1 links between devices
-- Layout: Match diagram's visual structure
-- Do NOT use: Waypoint areas
-
-DIFFERENT LOCATIONS (different buildings, cities, sites):
-- Use: Multiple areas (one per location)
-- Connect: Via waypoint area representing WAN/connection medium
-- Layout: Preserve layout within EACH area separately
-- MUST use: Waypoint area for inter-area connections
-
-### Question 3: What type of connection between locations?
-
-WAN CONNECTION (Internet, MPLS, VPN, leased line):
-- Create: Waypoint area (name ending with _wp_)
-- Waypoint represents: WAN cloud, ISP network, transport medium
-- Example: Internet_wp_, MPLS_wp_, VPN_Gateway_wp_
-
-DIRECT CONNECTION (cross-connect, dark fiber within campus):
-- Consider: If truly same physical location, use single area
-- If separate buildings: Still use waypoint for clarity
-- Waypoint represents: Cross-connect point, fiber path
-
-### Decision Matrix Summary:
-
-| Scenario | Areas | Waypoint | VRF/VLAN | Layout Priority |
-|----------|-------|----------|----------|-----------------|
-| VRF customers, same DC | 1 area | No | Yes (L3 instance) | Match diagram |
-| VLANs on switches | 1 area | No | Yes (L2 segment) | Match diagram |
-| Two switches in same building | 1 area | No | No | Match diagram |
-| Two offices connected via MPLS | 3 areas | Yes (MPLS_wp_) | Optional | Per-area layout |
-| HQ and branch via Internet | 3 areas | Yes (Internet_wp_) | Optional | Per-area layout |
-| Multi-tenant with VRF | 1 area | No | Yes (L3 instance) | Match diagram |
-| Campus buildings with fiber | 2-3 areas | Yes (Campus_Backbone_wp_) | No | Per-area layout |
-
-## Rule 5: Common Scenarios and Correct Implementation
-
-### Scenario A: Service Provider with VRF Customers (Same Data Center)
-
-Diagram shows:
-        CUST-X              CUST-Y
-          |         SP         |
-       CX-A CX-B           CY-A CY-B
-
+SCENARIO A: SERVICE PROVIDER WITH VRF CUSTOMERS (SAME DATA CENTER)
 Analysis:
 - Service provider router (SP) at center/top
-- Customer X sites: CX-A, CX-B (left side)
-- Customer Y sites: CY-A, CY-B (right side)
+- Customer X: CX-A, CX-B (left side)
+- Customer Y: CY-A, CY-B (right side)
 - VRF CUST-X and CUST-Y (logical separation)
 - All in same data center (physical colocation)
 
-✅ CORRECT Implementation (with layout preservation):
-
-# Single area - all devices in same physical location
+CORRECT Implementation:
 python "script" add area_location "[['ServiceProvider_DC']]" --master "file"
-
-# All devices in one area - PRESERVE DIAGRAM LAYOUT
-# SP centered at top, customers distributed below in groups
 python "script" add device_location "['ServiceProvider_DC',[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]]" --master "file"
-
-# Direct L1 links (same location)
 python "script" add l1_link_bulk "[['CX-A','SP','FastEthernet 0/0','FastEthernet 0/0'],['CX-B','SP','FastEthernet 0/0','FastEthernet 0/1'],['CY-A','SP','FastEthernet 0/0','FastEthernet 1/0'],['CY-B','SP','FastEthernet 0/0','FastEthernet 1/1']]" --master "file"
-
-# VRF as L3 instances (logical separation)
 python "script" rename l3_instance "SP" "FastEthernet 0/0" "CUST-X" --master "file"
 python "script" rename l3_instance "SP" "FastEthernet 0/1" "CUST-X" --master "file"
 python "script" rename l3_instance "SP" "FastEthernet 1/0" "CUST-Y" --master "file"
 python "script" rename l3_instance "SP" "FastEthernet 1/1" "CUST-Y" --master "file"
 
-Layout Explanation:
-- Row 1: [_AIR_, _AIR_, SP, _AIR_, _AIR_] - SP centered with spacing
-- Row 2: [CX-A, CX-B, _AIR_, CY-A, CY-B] - Customers grouped, separated by _AIR_
-- This preserves the visual "hub-and-spoke" and "left-right grouping" from diagram
-
-❌ INCORRECT Implementation (ignores layout):
-
-# WRONG - Creating separate areas for VRFs
-python "script" add area_location "[['CUST-X','ServiceProvider','CUST-Y']]" --master "file"
-
-# WRONG - Compressed layout that loses visual structure
-python "script" add device_location "['ServiceProvider_DC',[['CX-A','SP','CY-A'],['CX-B','_AIR_','CY-B']]]" --master "file"
-
-### Scenario B: Enterprise with HQ and Branch Connected via MPLS
-
-Diagram shows:
-- HQ office with core router (one physical location)
-- Branch office with edge router (different physical location)
-- MPLS cloud connecting them (WAN infrastructure)
-- Different physical locations requiring waypoint
-
-✅ CORRECT Implementation (with per-area layout):
-
-# Three areas: HQ, MPLS waypoint, Branch
+SCENARIO B: ENTERPRISE HQ AND BRANCH VIA MPLS
 python "script" add area_location "[['HQ','MPLS_wp_','Branch']]" --master "file"
-
-# Devices in respective areas (preserve layout within each)
 python "script" add device_location "['HQ',[['HQ-Core-Router','HQ-Switch']]]" --master "file"
 python "script" add device_location "['MPLS_wp_',[['MPLS-Cloud']]]" --master "file"
 python "script" add device_location "['Branch',[['Branch-Router','Branch-Switch']]]" --master "file"
-
-# Connections via waypoint
 python "script" add l1_link_bulk "[['HQ-Core-Router','HQ-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24'],['HQ-Core-Router','MPLS-Cloud','GigabitEthernet 0/0','port 0'],['MPLS-Cloud','Branch-Router','port 1','GigabitEthernet 0/0'],['Branch-Router','Branch-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24']]" --master "file"
 
-❌ INCORRECT Implementation:
-
-# WRONG - Direct connection between areas without waypoint
-python "script" add l1_link "HQ-Core-Router" "Branch-Router" "GigabitEthernet 0/0" "GigabitEthernet 0/0" --master "file"
-
-### Scenario C: Multi-Site with Hub-and-Spoke MPLS
-
-Diagram shows:
-- Central HQ (hub)
-- Three branch sites (spokes)
-- MPLS cloud in center connecting all
-- All branches connect to HQ via MPLS
-
-✅ CORRECT Implementation:
-
-# Five areas: HQ, MPLS waypoint, three branches
+SCENARIO C: MULTI-SITE HUB-AND-SPOKE MPLS
 python "script" add area_location "[['HQ'],['MPLS_wp_'],['Branch1','Branch2','Branch3']]" --master "file"
-
-# Devices (preserve any internal layout per area)
 python "script" add device_location "['HQ',[['HQ-Router']]]" --master "file"
 python "script" add device_location "['MPLS_wp_',[['MPLS-Hub']]]" --master "file"
 python "script" add device_location "['Branch1',[['B1-Router']]]" --master "file"
 python "script" add device_location "['Branch2',[['B2-Router']]]" --master "file"
 python "script" add device_location "['Branch3',[['B3-Router']]]" --master "file"
-
-# Hub-and-spoke connections via waypoint
 python "script" add l1_link_bulk "[['HQ-Router','MPLS-Hub','GigabitEthernet 0/0','port 0'],['MPLS-Hub','B1-Router','port 1','GigabitEthernet 0/0'],['MPLS-Hub','B2-Router','port 2','GigabitEthernet 0/0'],['MPLS-Hub','B3-Router','port 3','GigabitEthernet 0/0']]" --master "file"
 
-### Scenario D: Data Center with VRF and External WAN
-
-Diagram shows:
-- Data center with multiple VRF tenants (logical separation)
-- WAN connection to external sites (physical separation)
-- VRFs for logical separation within DC
-- Physical WAN for site connectivity
-
-✅ CORRECT Implementation:
-
-# Two areas: DC (with VRFs) and WAN waypoint for external connectivity
+SCENARIO D: DATA CENTER WITH VRF AND EXTERNAL WAN
 python "script" add area_location "[['DataCenter','WAN_wp_']]" --master "file"
-
-# DC devices (all in one area despite VRFs) - preserve diagram layout
 python "script" add device_location "['DataCenter',[['Core-Router','Tenant-A-Router','Tenant-B-Router']]]" --master "file"
 python "script" add device_location "['WAN_wp_',[['Internet-Gateway']]]" --master "file"
-
-# Internal connections (same area)
 python "script" add l1_link_bulk "[['Core-Router','Tenant-A-Router','GigabitEthernet 0/1','GigabitEthernet 0/0'],['Core-Router','Tenant-B-Router','GigabitEthernet 0/2','GigabitEthernet 0/0']]" --master "file"
-
-# External connection (via waypoint)
 python "script" add l1_link "Core-Router" "Internet-Gateway" "GigabitEthernet 0/0" "port 0" --master "file"
-
-# VRFs for tenants (logical separation)
 python "script" rename l3_instance "Core-Router" "GigabitEthernet 0/1" "Tenant-A" --master "file"
 python "script" rename l3_instance "Core-Router" "GigabitEthernet 0/2" "Tenant-B" --master "file"
 
-## Rule 6: Error Detection and Correction
+--------------------------------------------------------------------------------
+RULE 6: ERROR DETECTION AND CORRECTION
+--------------------------------------------------------------------------------
 
-### Red Flags Indicating Incorrect Architecture:
+RED FLAGS INDICATING INCORRECT ARCHITECTURE:
+1. VRF names as area names -> Use L3 instances instead
+2. Direct inter-area device connections -> Insert waypoint area
+3. Customer names as separate areas in VRF -> Use single area + VRF L3 instances
+4. Waypoint areas for logical separation -> Use L2/L3 instances instead
+5. Multiple areas same building no waypoint -> Consolidate to single area
+6. Wrong waypoint type -> Building_Backbone_wp_ (intra), WAN_wp_ (inter-site)
+7. Layout doesn't match diagram -> Analyze positioning, use _AIR_ for spacing
+8. Multiple L2 segments trunked to L3 physical port -> Convert to L2 port + SVI (see Rule 12)
 
-⚠️ If you see these patterns, STOP and reconsider:
+CORRECTION WORKFLOW:
+1. Identify issue from red flags above
+2. Determine: Physical or logical separation?
+3. If physical: WAN or Building Backbone connection type?
+4. Analyze diagram layout: Visual structure?
+5. Redesign:
+   - Logical -> Single area + L3/L2 instances + layout preservation
+   - Physical WAN -> Multiple areas + WAN waypoint + per-area layout
+   - Physical Building -> Multiple areas + Building Backbone waypoint + per-area
+   - L2/L3 port mismatch -> Convert L3 port to L2 port + SVI (see Rule 12)
+6. Regenerate commands
+7. Verify with show commands
 
-1. VRF names as area names
-   - Seeing: "CUST-X", "CUST-Y" as area names
-   - Problem: VRFs are logical, not physical areas
-   - Fix: Create single area, use L3 instances for VRFs, preserve layout
+--------------------------------------------------------------------------------
+RULE 7: COMMAND GENERATION DECISION TREE
+--------------------------------------------------------------------------------
 
-2. Direct inter-area device connections
-   - Seeing: Device in Area-A directly connected to Device in Area-B
-   - Problem: Missing waypoint area
-   - Fix: Insert waypoint area between them
+DECISION FLOW:
+Q0: Analyze diagram visual layout (central/hub, edge/leaf, groupings, spacing)
+Q1: Different PHYSICAL locations?
+  NO -> Q2
+  YES -> Q4
+Q2: VRFs, VLANs, or logical separation?
+  YES -> SOLUTION A (Single area, VRF as L3 instances)
+  NO -> Q3
+Q3: All devices in same physical space?
+  YES -> SOLUTION B (Single area, direct connections)
+  NO -> Q4
+Q4: How many physical locations?
+  2 locations -> Q5
+  3+ locations -> Q6
+Q5: What connects the two locations?
+  WAN -> SOLUTION C (3 areas: Site1, WAN_wp_, Site2)
+  Building Backbone -> SOLUTION D (3 areas: MDF, Building_Backbone_wp_, IDF)
+Q6: Topology between sites?
+  Hub-and-spoke -> SOLUTION E (Hub, Waypoint_wp_, spokes)
+  Mesh -> SOLUTION F (Sites, central Waypoint_wp_)
+  Multi-floor -> SOLUTION D (MDF, Building_Backbone_wp_, IDFs)
 
-3. Customer names as separate areas in VRF scenario
-   - Seeing: "CustomerA_Area", "CustomerB_Area"
-   - Problem: Mixing logical (customer) with physical (area)
-   - Fix: Single area with VRF L3 instances, layout shows grouping
+SOLUTION TEMPLATES:
+A: Single Area with VRF (1 area, no waypoints, VRF via L3, preserve layout)
+B: Single Area Direct (1 area, no waypoints, direct L1 links, preserve layout)
+C: Two Sites via WAN (3 areas: Site1, WAN_wp_, Site2, per-area layout)
+D: Multi-Floor MDF-IDF (M+2 areas: 1 MDF, 1 Building_Backbone_wp_, M IDFs)
+E: Hub-and-Spoke Multi-Site (N+2 areas: Hub, Waypoint_wp_, N spokes)
+F: Mesh Network (N+1 areas: N sites, 1 central Waypoint_wp_)
 
-4. Waypoint areas for logical separation
-   - Seeing: "VLAN100_wp_", "VRF-A_wp_"
-   - Problem: Waypoints are for physical WAN, not logical separation
-   - Fix: Remove waypoint, use L2/L3 instances, preserve diagram layout
+================================================================================
+SECTION 2: EXECUTION AND CONFIGURATION RULES (RULES 8-12)
+================================================================================
 
-5. Multiple areas in same building without waypoint
-   - Seeing: "Floor1", "Floor2" areas with direct device connections
-   - Problem: Either use single area OR add waypoint
-   - Fix: Consolidate to single area if same building
+--------------------------------------------------------------------------------
+RULE 8: COMMAND EXECUTION SEQUENCE
+--------------------------------------------------------------------------------
 
-6. Layout doesn't match diagram
-   - Seeing: Grid layout compressed or rearranged arbitrarily
-   - Problem: Loses visual structure and relationships from original diagram
-   - Fix: Analyze diagram positioning, use _AIR_ for spacing, preserve symmetry
+CRITICAL: Execute commands in correct order to prevent data corruption.
+NOTE: All names and addresses in examples are SAMPLES. Replace with actual.
 
-### Correction Workflow:
+================================================================================
+SUBSECTION 8.1: ADD COMMAND EXECUTION SEQUENCE
+================================================================================
 
-1. Identify the issue from red flags above
-2. Determine true requirement: Physical or logical separation?
-3. Analyze diagram layout: What's the visual structure?
-4. Redesign architecture:
-   - Logical → Single area + L3/L2 instances + layout preservation
-   - Physical → Multiple areas + waypoint + per-area layout
-5. Regenerate commands with correct structure and layout
-6. Verify with show commands
-7. Check if grid output matches diagram structure
+MANDATORY EXECUTION SEQUENCE FOR ADDING CONFIGURATIONS:
 
-## Rule 7: Command Generation Decision Tree with Waypoint and Layout Logic
+PHASE 1: NETWORK STRUCTURE
+1. add area_location (define all areas once)
+2. add device_location (batch - PREFERRED) OR add device/add waypoint (incremental)
 
-### WHEN USER PROVIDES NETWORK DIAGRAM:
+PHASE 2: PHYSICAL CONNECTIVITY
+3. add l1_link_bulk (batch - PREFERRED) OR add l1_link (individual)
 
-Question 0: Analyze diagram visual layout
-- Identify: Central/hub devices
-- Identify: Edge/peripheral devices
-- Note: Left-right groupings
-- Note: Vertical relationships
-- Note: Spacing and symmetry
+PHASE 3: LAYER 2 CONFIGURATION
+4. add portchannel (create LAG first)
+5. add virtual_port (create SVIs/Loopback)
+6. add vport_l1if_direct_binding (subinterfaces)
+7. add l2_segment (add VLANs)
+8. add vport_l2_direct_binding (VLAN tagging on subinterfaces)
 
-Question 1: Does the diagram show different PHYSICAL locations?
-- NO → Go to Question 2
-- YES → Go to Question 4
+PHASE 4: LAYER 3 CONFIGURATION
+9. add ip_address (assign IPs)
+10. rename l3_instance (configure VRF - optional)
 
-Question 2: Does the diagram show VRFs, VLANs, or logical separation?
-- YES → SOLUTION A: Single area, VRF as L3 instances, preserve diagram layout
-- NO → Go to Question 3
+PHASE 5: MODIFICATIONS (if needed)
+11. rename area
+12. rename device
+13. rename port
 
-Question 3: Are all devices in same physical space?
-- YES → SOLUTION B: Single area, direct connections, preserve diagram layout
-- NO → Go to Question 4
+PHASE 6: VERIFICATION
+14. show commands (verify at each phase)
 
-Question 4: How many physical locations?
-- 2 locations → Go to Question 5
-- 3+ locations → Go to Question 6
+PHASE EXECUTION RULES:
+CORRECT:
+- Execute add area_location once with complete structure
+- Use add device_location for batch (2+ devices)
+- Use add l1_link_bulk for multiple connections (2+ links)
+- Complete each phase before moving to next
+- Verify after each phase
 
-Question 5: What connects the two locations?
-- WAN (Internet, MPLS, VPN) → SOLUTION C: 3 areas (Site1, Waypoint_wp_, Site2), per-area layout
-- Direct fiber/cable → SOLUTION C: 3 areas with waypoint, per-area layout
+INCORRECT:
+- Mixing add device_location and multiple add device for same area
+- Creating links before devices exist
+- Adding L2 segments before port-channels
+- Skipping verification
 
-Question 6: What is the topology between sites?
-- Hub-and-spoke → SOLUTION D: Hub area, Waypoint_wp_, spoke areas, per-area layout
-- Full mesh → SOLUTION E: All site areas, central Waypoint_wp_, per-area layout
-- Partial mesh → SOLUTION E: Site areas, Waypoint_wp_ for each path, per-area layout
+KEY COMMAND DEPENDENCIES:
+Phase Dependencies:
+- Phase 2 requires: Phase 1 complete (devices exist)
+- Phase 3 requires: Phase 2 complete (L1 interfaces exist)
+- Phase 4 requires: Phase 3 complete (L3 interfaces exist)
+- Phase 5: Independent (anytime after object creation)
 
-### SOLUTION TEMPLATES:
+Critical Dependencies:
+- add portchannel -> L1 interface must exist
+- add l2_segment -> Interface (physical/virtual) must exist
+- add ip_address -> L3 interface must exist
+- rename l3_instance -> L3 interface must exist
 
-SOLUTION A: Single Area with VRF (Logical Separation)
-Areas: 1 (e.g., "DataCenter")
-Waypoints: None
-Devices: All in single area
-Layout: PRESERVE diagram positioning with _AIR_ for spacing
-VRF: L3 instances on router interfaces
+COMMON DEPLOYMENT SCENARIOS:
+Scenario 1 (Simple Office): Phase 1 (1 area, 3 devices), Phase 2 (L1 links), Phase 4 (IPs)
+Scenario 2 (Campus VLANs): Phase 1-4 (all phases)
+Scenario 3 (Subinterfaces): Phase 1-4 (vport_l1if + vport_l2_direct_binding)
+Scenario 4 (VRF): See Rule 5 Scenario A
+Scenario 5 (Multi-Site WAN): See Rule 5 Scenario B
+Scenario 6 (Port-channel): Phase 1-3 (port-channel MUST be after L1 links)
 
-Example Grid Construction:
-- Identify central device (SP router) → Place in center column
-- Identify left group (Customer X) → Place in left columns
-- Identify right group (Customer Y) → Place in right columns
-- Use _AIR_ to create spacing matching diagram
-- Maintain vertical relationships (hub top, leaves bottom)
+================================================================================
+SUBSECTION 8.2: DELETE COMMAND EXECUTION AND CASCADE BEHAVIOR
+================================================================================
 
-SOLUTION B: Single Area Direct Connection (Same Location)
-Areas: 1 (e.g., "Office")
-Waypoints: None
-Devices: All in single area with direct L1 links
-Layout: PRESERVE diagram positioning
-VRF: Optional (L3 instances if needed)
+CRITICAL CASCADE DELETION RULE:
+delete l1_link performs CASCADE DELETION of all associated Layer 2 and Layer 3
+configurations automatically. Single command completes all deletions.
 
-SOLUTION C: Two Sites via WAN (Physical Separation)
-Areas: 3 (Site1, WAN_wp_, Site2)
-Waypoints: 1 (WAN connection medium)
-Devices: Site1 → Waypoint → Site2
-Layout: Preserve layout WITHIN each site area separately
-Pattern: [Device-A] <-L1-> [Waypoint] <-L1-> [Device-B]
+--------------------------------------------------------------------------------
+8.2.1: CASCADE DELETION MECHANISM
+--------------------------------------------------------------------------------
 
-SOLUTION D: Hub-and-Spoke (Multiple Sites, Central Hub)
-Areas: N+2 (Hub, Waypoint_wp_, N spokes)
-Waypoints: 1 (central WAN hub)
-Devices: All spokes connect to hub via waypoint
-Layout: Preserve layout within each area independently
-Pattern:
-  [Hub] <-L1-> [Waypoint]
-  [Waypoint] <-L1-> [Spoke1]
-  [Waypoint] <-L1-> [Spoke2]
-  [Waypoint] <-L1-> [SpokeN]
+WHAT GETS AUTOMATICALLY DELETED BY delete l1_link:
 
-SOLUTION E: Mesh Network (Multiple Interconnected Sites)
-Areas: N+1 (N sites, 1 Waypoint_wp_)
-Waypoints: 1 (represents mesh network cloud)
-Devices: All sites connect to central waypoint
-Layout: Preserve layout within each area
-Pattern: All sites have L1 links to waypoint
+PHASE 1 (Explicit Deletion):
+- Physical link between two devices
 
-### FINAL VERIFICATION CHECKLIST:
+PHASE 2 (Automatic Cascade - Layer 2):
+- Port-channel membership (if the interface is a member)
+- ALL L2 segments (VLANs) configured on the interface
+- ALL subinterfaces (virtual ports) bound to the interface
+- ALL L2 direct bindings on subinterfaces
+
+PHASE 3 (Automatic Cascade - Layer 3):
+- ALL IP addresses on subinterfaces
+- ALL IP addresses on the physical interface
+- If ALL member interfaces of Port-channel are deleted:
+  * The entire Port-channel interface
+  * ALL L3 configurations on the Port-channel
+
+--------------------------------------------------------------------------------
+8.2.2: CASCADE DELETION EXAMPLES
+--------------------------------------------------------------------------------
+
+EXAMPLE 1: BASIC SUBINTERFACE DELETION
+
+Initial Configuration:
+  Device: WAN-Dum3
+  Interface: GigabitEthernet 0/21
+    L1 Link: Connected to Sever-14~1~ GigabitEthernet 0/21
+    Subinterface: GigabitEthernet 0/21.100
+      L2 Segment: Vlan200
+      IP Address: 10.0.1.2/29
+
+CORRECT (Single Command - Cascade Deletion):
+python "script" delete l1_link "WAN-Dum3" "GigabitEthernet 0/21" --master "file"
+
+Result - ALL automatically deleted:
+- L1 link (WAN-Dum3 <-> Sever-14~1~)
+- Subinterface (GigabitEthernet 0/21.100)
+- L2 segment (Vlan200) on subinterface
+- IP address (10.0.1.2/29) on subinterface
+
+INCORRECT (Manual Multi-Step - UNNECESSARY):
+python "script" delete ip_address "WAN-Dum3" "GigabitEthernet 0/21.100" "10.0.1.2/29" --master "file"
+python "script" delete vport_l2_direct_binding "WAN-Dum3" "GigabitEthernet 0/21.100" "Vlan200" --master "file"
+python "script" delete vport_l1if_direct_binding "WAN-Dum3" "GigabitEthernet 0/21.100" --master "file"
+python "script" delete l1_link "WAN-Dum3" "GigabitEthernet 0/21" --master "file"
+Reason: Inefficient and redundant - delete l1_link does all automatically
+
+EXAMPLE 2: PORT-CHANNEL CASCADE DELETION
+
+Initial Configuration:
+  Device: Access-Stack1
+    Interface: TenGigE 1/1/1 (member of Port-channel 1)
+      Port-channel: Port-channel 1
+      L2 Segments: VLAN10, VLAN100, VLAN200
+    Interface: TenGigE 1/1/2 (member of Port-channel 1)
+      Port-channel: Port-channel 1
+    Port-channel 1 (L3 Interface):
+      IP Address: 10.1.10.1/24
+
+Deleting ONE member interface:
+python "script" delete l1_link "Access-Stack1" "TenGigE 1/1/1" --master "file"
+Result:
+- L1 link deleted
+- TenGigE 1/1/1 removed from Port-channel 1
+- L2 segments removed from TenGigE 1/1/1
+- Port-channel 1 STILL EXISTS (TenGigE 1/1/2 still member)
+- IP address on Port-channel 1 STILL EXISTS
+
+Deleting ALL member interfaces:
+python "script" delete l1_link "Access-Stack1" "TenGigE 1/1/1" --master "file"
+python "script" delete l1_link "Access-Stack1" "TenGigE 1/1/2" --master "file"
+Result:
+- Both L1 links deleted
+- TenGigE 1/1/1 and 1/1/2 removed from Port-channel 1
+- L2 segments removed from both interfaces
+- Port-channel 1 DELETED (no remaining members)
+- IP address 10.1.10.1/24 DELETED (Port-channel removed)
+
+--------------------------------------------------------------------------------
+8.2.3: VERIFICATION AFTER CASCADE DELETION
+--------------------------------------------------------------------------------
+
+VERIFICATION WORKFLOW:
+After executing delete l1_link, verify in order:
+
+STEP 1: Verify L1 Link Removal
+python "script" show l1_link --master "file" | grep "Device.*Interface"
+Expected: Interface not found in L1 link list
+
+STEP 2: Verify L2 Configuration Removal
+python "script" show l2_interface --master "file" | grep "Device.*Interface"
+Expected: Interface shows empty L2 configuration or baseline state
+
+STEP 3: Verify L3 Configuration Removal
+python "script" show l3_interface --master "file" | grep "Device.*Interface"
+Expected: Interface not found (if subinterface) or empty configuration
+
+STEP 4: Verify Port-Channel Removal (if applicable)
+python "script" show l2_interface --master "file" | grep "Device.*Port-channel"
+python "script" show l3_interface --master "file" | grep "Device.*Port-channel"
+Expected: Port-channel removed if all member interfaces deleted
+
+CASCADE DELETION VERIFICATION CHECKLIST:
+After delete l1_link execution:
+- L1 link removed (show l1_link)
+- L2 segments removed from interface (show l2_interface)
+- Subinterfaces removed (show l2_interface, show l3_interface)
+- IP addresses removed from subinterfaces (show l3_interface)
+- Port-channel removed if all members deleted (show l2_interface, l3_interface)
+- Port-channel membership updated if partial deletion (show l2_interface)
+
+Use with Caution: Single delete l1_link command removes extensive configuration.
+Always verify impact before execution.
+
+--------------------------------------------------------------------------------
+8.2.4: WHEN TO USE MANUAL DELETION VS CASCADE DELETION
+--------------------------------------------------------------------------------
+
+USE delete l1_link (CASCADE DELETION) WHEN:
+- Removing physical connection AND ALL associated configurations
+- Decommissioning an interface completely
+- Removing a link between devices
+- Want single command to clean up everything
+
+USE MANUAL DELETION COMMANDS WHEN:
+Keeping L1 link but removing specific L2/L3 configurations:
+- delete ip_address: Remove specific IP while keeping interface
+- delete l2_segment: Remove specific VLAN while keeping others
+- delete vport_l2_direct_binding: Remove VLAN from subinterface
+- delete vport_l1if_direct_binding: Remove subinterface, keep physical link
+- delete portchannel: Remove Port-channel membership, keep L1 link
+
+CASCADE DELETION DECISION MATRIX:
+Goal                                  | Command              | Cascade Effect
+--------------------------------------|----------------------|------------------
+Remove physical link + all configs    | delete l1_link       | Everything deleted
+Remove IP only                        | delete ip_address    | No cascade
+Remove VLAN only                      | delete l2_segment    | No cascade
+Remove subinterface only              | delete vport_l1if... | Removes L2/L3 on subif
+Remove Port-channel membership        | delete portchannel   | Removes L2 from port
+
+--------------------------------------------------------------------------------
+8.2.5: REAL-WORLD CASCADE DELETION WORKFLOW
+--------------------------------------------------------------------------------
+
+SCENARIO: Remove connection between WAN-Dum3 and Sever-14~1~
+
+BEFORE DELETION:
+WAN-Dum3 GigabitEthernet 0/21:
+  - L1 Link: <-> Sever-14~1~ GigabitEthernet 0/21
+  - Subinterface: GigabitEthernet 0/21.100
+    - VLAN: Vlan200
+    - IP: 10.0.1.2/29
+
+EXECUTION STEPS:
+
+Step 1: Backup Master file
+python "script" export master_file_backup --master "file"
+
+Step 2: Single Cascade Deletion Command
+python "script" delete l1_link "WAN-Dum3" "GigabitEthernet 0/21" --master "file"
+
+Expected Output:
+--- Layer 1 link deleted --- WAN-Dum3 GigabitEthernet 0/21 <-> Sever-14~1~ GigabitEthernet 0/21
+
+AFTER DELETION:
+WAN-Dum3 GigabitEthernet 0/21:
+  - L1 Link: None (removed)
+  - Subinterface: None (removed)
+  - VLAN: None (removed)
+  - IP: None (removed)
+
+VERIFICATION:
+
+Step 1: Verify L1 link removed
+python "script" show l1_link --master "file" | grep "WAN-Dum3.*GigabitEthernet 0/21"
+Expected: No output
+
+Step 2: Verify L2 config removed
+python "script" show l2_interface --master "file" | grep "WAN-Dum3.*GigabitEthernet 0/21"
+Expected: ['WAN-Dum3', 'GigabitEthernet 0/21', '', '', '']
+
+Step 3: Verify L3 config removed
+python "script" show l3_interface --master "file" | grep "WAN-Dum3.*GigabitEthernet 0/21"
+Expected: No output (subinterface removed)
+
+--------------------------------------------------------------------------------
+8.2.6: CASCADE DELETION SUMMARY AND BEST PRACTICES
+--------------------------------------------------------------------------------
+
+KEY PRINCIPLES FOR CASCADE DELETION:
+1. delete l1_link is PRIMARY deletion method for interfaces
+2. Single command removes physical link + ALL dependent configurations
+3. Manual deletion commands only needed for selective config removal
+4. Always backup before cascade deletion
+5. Always verify cascade impact with show commands first
+6. Cascade deletion is irreversible without backup
+
+CASCADE DELETION COMMAND PATTERN:
+For complete interface removal:
+  Step 1: Backup
+  Step 2: delete l1_link [device] [interface]
+  Step 3: Verify with show l1_link, show l2_interface, show l3_interface
+
+For selective configuration removal:
+  Step 1: Backup
+  Step 2: Use specific delete command (delete ip_address, delete l2_segment, etc.)
+  Step 3: Verify with appropriate show command
+
+CRITICAL WARNINGS:
+1. CASCADE DELETION CANNOT BE UNDONE without backup
+2. Always check show l1_link FIRST to identify peer device/interface
+3. Cascade deletion affects BOTH ends of connection
+4. Port-channel cascade occurs only when ALL members deleted
+5. Verify impact scope before execution
+
+ERROR PREVENTION FOR DELETION:
+DO:
+- ALWAYS backup before deletion (export master_file_backup)
+- ALWAYS verify what will be deleted (show commands)
+- ALWAYS use delete l1_link for complete interface removal
+- ALWAYS verify cascade results after deletion
+
+DON'T:
+- Delete without backup
+- Use manual multi-step deletion for complete interface removal
+- Skip verification after deletion
+- Assume partial deletion when full cascade occurs
+
+================================================================================
+SUBSECTION 8.3: EXECUTION CHECKLISTS
+================================================================================
+
+EXECUTION CHECKLIST FOR ADD COMMANDS:
+
+PHASE 1: STRUCTURE
+- Backup created (if modifying existing)
+- Area structure defined and verified
+- All devices placed per area (batch)
+- Device placement verified
+
+PHASE 2: CONNECTIVITY
+- Physical connections created (batch preferred)
+- Connections verified
+
+PHASE 3: LAYER 2
+- Port channels created (if needed)
+- Virtual ports created (if needed)
+- Subinterfaces created (if needed)
+- VLANs assigned (if needed)
+- Layer 2 verified
+- L2/L3 port type mismatch checked (see Rule 12)
+
+PHASE 4: LAYER 3
+- IP addresses assigned
+- VRF configured (if needed)
+- Layer 3 verified
+- L3 broadcast domains checked for multiple L2 segments on L3 ports (see Rule 12)
+
+PHASE 5: MODIFICATIONS
+- Objects renamed (if needed)
+- Renames verified
+
+PHASE 6: FINAL VERIFICATION
+- Complete verification done
+- Cascade deletion impact verified (if delete l1_link used)
+- L2/L3 trunk configuration validated (see Rule 12)
+- AI context exported (optional)
+
+EXECUTION CHECKLIST FOR DELETE COMMANDS:
+
+PRE-DELETION:
+- Backup created
+- Target interface/link identified
+- Peer device/interface identified (show l1_link)
+- Expected cascade impact assessed
+- Verification commands prepared
+
+DELETION:
+- Appropriate delete command selected
+- Command executed (delete l1_link for complete removal)
+- Command output reviewed
+
+POST-DELETION VERIFICATION:
+- L1 link removed (show l1_link)
+- L2 configurations removed (show l2_interface)
+- L3 configurations removed (show l3_interface)
+- Port-channel status checked (show l2_interface, show l3_interface)
+- Peer device interface status checked
+- No unexpected deletions occurred
+
+ERROR PREVENTION RULES (COMPREHENSIVE):
+1. ALWAYS use batch operations for 2+ items
+2. NEVER mix add device_location and add device for same area
+3. ALWAYS complete Phase 1 before Phase 2
+4. ALWAYS create port-channels BEFORE adding L2 segments
+5. ALWAYS create virtual ports BEFORE assigning IPs
+6. ALWAYS verify after each phase
+7. ALWAYS backup before modifying existing configs
+8. ALWAYS use delete l1_link for complete interface removal (CASCADE)
+9. NEVER manually delete L2/L3 before delete l1_link (REDUNDANT)
+10. ALWAYS verify cascade deletion impact before execution
+11. ALWAYS backup before ANY deletion operation
+12. ALWAYS identify peer device/interface before deletion
+13. ALWAYS verify cascade results after deletion
+14. ALWAYS check for L2/L3 trunk port type mismatch (see Rule 12)
+
+QUICK REFERENCE: COMMAND SELECTION (UPDATED):
+Task                       | Number    | Use                    | Alternative
+---------------------------|-----------|------------------------|-------------------
+Add area structure         | Multiple  | add area_location      | N/A
+Place devices in area      | 1 device  | add device             | add device_location
+Place devices in area      | 2+ devices| add device_location    | Multiple add device
+Create L1 connections      | 1 link    | add l1_link            | add l1_link_bulk
+Create L1 connections      | 2+ links  | add l1_link_bulk       | Multiple add l1_link
+Remove L1 + all configs    | Per link  | delete l1_link         | Manual (NOT recommended)
+Remove device completely   | Per device| delete device          | Manual link deletion
+Remove area completely     | Per area  | delete area            | Manual device deletion
+Remove IP only             | Per IP    | delete ip_address      | N/A
+Remove VLAN only           | Per VLAN  | delete l2_segment      | N/A
+Remove subinterface only   | Per subif | delete vport_l1if...   | delete l1_link (cascade)
+Remove Port-channel member | Per port  | delete portchannel     | delete l1_link (cascade)
+Create port-channel        | Per port  | add portchannel        | N/A
+Create virtual interface   | Per if    | add virtual_port       | N/A
+Bind subinterface to L1    | Per subif | add vport_l1if_direct_binding | N/A
+Add VLAN to interface      | Per VLAN  | add l2_segment         | N/A
+Add VLAN to subinterface   | Per VLAN  | add vport_l2_direct_binding | N/A
+Assign IP address          | Per IP    | add ip_address         | N/A
+Configure VRF              | Per if    | rename l3_instance     | N/A
+
+================================================================================
+SUBSECTION 8.4: FINAL VERIFICATION CHECKLIST (UPDATED)
+================================================================================
 
 Before generating commands, verify:
-- ✅ VRF names are L3 instances, NOT area names
-- ✅ VLAN names are L2 segments, NOT area names
-- ✅ Physical locations are separate areas
-- ✅ Inter-area connections have waypoint area (_wp_)
-- ✅ Waypoint areas represent WAN/physical connection medium
-- ✅ Direct L1 links only between devices in same area OR device-to-waypoint
-- ✅ No direct device-to-device links across different areas without waypoint
-- ✅ **Grid layout matches diagram's visual structure**
-- ✅ **Central/hub devices are in center columns**
-- ✅ **Left-side devices are in left columns**
-- ✅ **Right-side devices are in right columns**
-- ✅ **_AIR_ is used to preserve spacing and symmetry**
-- ✅ **Vertical relationships match diagram (top-bottom)**
+
+ARCHITECTURE (Rules 0-7):
+- VRF names are L3 instances, NOT area names
+- VLAN names are L2 segments, NOT area names
+- Physical locations are separate areas
+- Inter-area connections have waypoint area (_wp_)
+- Grid layout matches diagram's visual structure
+- Central/hub devices in center columns
+- _AIR_ used for spacing and symmetry
+- Vertical relationships match diagram
+- WAN waypoints for inter-site
+- Building Backbone waypoints for intra-building MDF-IDF
+
+VIRTUALIZED DEVICES (Rule 9):
+- Device name includes member IDs and technology tag
+- Interfaces numbered by member (1/0/x, 2/0/x)
+- Port-channels include interfaces from multiple members
+- VLANs/SVIs configured once (not per member)
+
+PORT-CHANNEL CONFIGURATION (Rule 10):
+- Port-channels created on both ends
+- Same VLANs configured on both Port-channel interfaces
+- VLAN list matches on Device A and B Port-channels
+- Trunk configuration symmetric
+- VLAN symmetry verified with show l2_interface
+
+IP ADDRESSING (Rule 11):
+- All IPv4 octets within valid range (0-255)
+- VLAN <= 255: Option 1 or Option 3
+- VLAN > 255: Option 2 or Option 3 mapping
+- Addressing scheme selected and documented
+- Scheme applied consistently
+- No octet exceeds 255
+- IP addresses verified with show l3_interface
+- Gateway IPs use .1 (recommended)
+- No conflicts with network/broadcast addresses
+
+L2/L3 TRUNK PORT TYPE VALIDATION (Rule 12):
+- No multiple L2 segments trunked to L3 physical port
+- Single L2 segment trunk to L3 port is allowed
+- Multiple L2 segments require L2 port + SVI configuration
+- L3 broadcast domain checked for port type mismatches
+- Peer device port type verified for compatibility
+
+CASCADE DELETION (when using delete l1_link):
+- Understand delete l1_link removes ALL associated L2/L3 configs
+- Backup created before deletion
+- Impact verified with show commands (what will be deleted)
+- Peer device/interface identified
+- Verification planned after deletion (show commands)
+- Manual deletion commands NOT used before delete l1_link
+- Single delete l1_link command used instead of multi-step manual deletion
+- Cascade deletion results verified after execution
+
+--------------------------------------------------------------------------------
+RULE 9: VIRTUALIZED MULTI-CHASSIS DEVICE NAMING CONVENTION
+--------------------------------------------------------------------------------
+
+PURPOSE:
+When multiple physical hardware units operate as single logical device
+(StackWise, StackWise Virtual, VSS, vPC, MC-LAG), represent as unified device.
+
+NAMING CONVENTION STANDARD:
+CORRECT Format: [DeviceName]-[Member1ID]-[Member2ID]...(Technology)
+
+Examples:
+- Dist-SW1-2(StackVirtual) - Two distribution switches
+- Access-SW1-2-3-4(Stack) - Four access switches
+- Core-SW1-2(VSS) - Two core switches (legacy)
+- Nexus-SW1-2(vPC) - Two Nexus switches
+- AGG-SW1-2-3(Stack) - Three aggregation switches
+
+Format Components:
+1. Base Name: Functional role (Dist-SW, Access-SW, Core-SW)
+2. Member IDs: Hyphen-separated (1-2, 1-2-3-4)
+3. Technology Tag: (Stack, StackVirtual, VSS, vPC, MC-LAG)
+
+INCORRECT:
+Dist-SW1 and Dist-SW2 as separate, DistributionStack, Dist-SW-Pair,
+Dist-SW1-2 without tag
+
+SUPPORTED VIRTUALIZATION TECHNOLOGIES:
+Technology              | Naming Tag      | Example
+------------------------|-----------------|------------------------
+StackWise (up to 8)     | (Stack)         | Access-SW1-2-3-4(Stack)
+StackWise Virtual (2)   | (StackVirtual)  | Dist-SW1-2(StackVirtual)
+VSS (2, legacy)         | (VSS)           | Core-SW1-2(VSS)
+vPC (Nexus)             | (vPC)           | Nexus-SW1-2(vPC)
+MC-LAG                  | (MC-LAG)        | AGG-SW1-2(MC-LAG)
+
+INTERFACE NAMING CONVENTION:
+2-member systems (StackVirtual, vPC, VSS):
+- Member 1: GigabitEthernet 1/0/x, TenGigabitEthernet 1/0/x
+- Member 2: GigabitEthernet 2/0/x, TenGigabitEthernet 2/0/x
+
+Multi-member stacks (StackWise):
+- Member 1: GigabitEthernet 1/0/x
+- Member 2: GigabitEthernet 2/0/x
+- Member N: GigabitEthernet N/0/x
+
+PORT-CHANNEL CONFIGURATION:
+CORRECT Approach:
+1. Create L1 links to BOTH members
+2. Add port-channel to remote device's interfaces
+3. Add port-channel to virtualized device's interfaces (one per member)
+4. Result: Redundant, load-balanced MEC/cross-stack connection
+
+Example:
+python "script" add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/2','GigabitEthernet 2/0/11']]" --master "file"
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/1" "Port-channel 1" --master "file"
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/2" "Port-channel 1" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 1/0/11" "Port-channel 11" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 2/0/11" "Port-channel 11" --master "file"
+
+HIGH AVAILABILITY DESIGN PATTERNS:
+Pattern 1 (Dual-Homed): [SW1] Po1 <-> [Dist-SW1-2(StackVirtual)] Po11 (Gi1/0/11 + Gi2/0/11)
+Pattern 2 (Stack to StackVirtual): [Access-SW1-2-3-4(Stack)] Po1 <-> [Dist-SW1-2(StackVirtual)] Po11
+Pattern 3 (Multiple Stacks): Multiple Access-Stack to single Dist-SW1-2(StackVirtual) with Po11-14
+
+CONFIGURATION REQUIREMENTS:
+Mandatory Elements:
+1. Device Name: [Name]-[Members](Technology)
+2. Interface Naming: Member-specific (1/0/x, 2/0/x, N/0/x)
+3. Port-Channel: One interface per member
+4. VLAN/SVI: Configured once on logical device
+
+BEST PRACTICES:
+DO:
+- Use technology tag in device name
+- Use member-specific interface numbering
+- Create port-channels with one interface per member
+- Configure VLANs/SVIs once on logical device
+
+DON'T:
+- Represent as separate physical devices
+- Omit technology tag
+- Use identical interface numbers for different members
+- Duplicate VLAN/SVI configuration
+
+VERIFICATION:
+After configuration:
+1. Device name includes member IDs and technology tag
+2. Interfaces numbered by member (1/0/x, 2/0/x)
+3. Port-channels include interfaces from multiple members
+4. L1 links connect to different member interfaces
+5. VLANs/SVIs configured once (not per member)
+6. IP addresses assigned once to logical interface
+
+--------------------------------------------------------------------------------
+RULE 10: PORT-CHANNEL VLAN SYMMETRY RULE
+--------------------------------------------------------------------------------
+
+CRITICAL: Port-channels connecting two devices MUST have identical VLAN
+configuration on BOTH ends.
+
+CORE PRINCIPLE:
+BOTH Port-channel interfaces must carry the SAME VLANs
+
+WHY THIS MATTERS:
+Technical Reasons:
+1. Port-channel is trunk link carrying multiple VLANs
+2. Asymmetric VLAN causes: Traffic black-holing, VLAN inconsistency errors,
+   Spanning-tree issues, Forwarding failures
+
+Design Intent:
+- If VLAN 100 needs to traverse Access to Distribution
+- VLAN 100 must exist on Port-channel at BOTH Access AND Distribution layers
+
+CONFIGURATION WORKFLOW:
+Step 1: Create Port-channels on both devices
+Step 2: Add VLANs to BOTH Port-channels (symmetric configuration)
+Step 3: Verify symmetry
+
+Example:
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/1" "Port-channel 1" --master "file"
+python "script" add portchannel "Access-Stack1" "TenGigE 1/1/2" "Port-channel 1" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 1/0/11" "Port-channel 11" --master "file"
+python "script" add portchannel "Dist-SW1-2(StackVirtual)" "GigabitEthernet 2/0/11" "Port-channel 11" --master "file"
+
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN10" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN100" --master "file"
+python "script" add l2_segment "Access-Stack1" "Port-channel 1" "VLAN200" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN10" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN100" --master "file"
+python "script" add l2_segment "Dist-SW1-2(StackVirtual)" "Port-channel 11" "VLAN200" --master "file"
+
+python "script" show l2_interface --master "file"
+
+COMMON MISTAKES:
+Mistake 1: VLANs only on one side
+Mistake 2: Different VLANs on each side
+Mistake 3: Adding VLANs only to physical interfaces
+
+CORRECT: VLANs added to Port-channel interface (logical aggregation),
+         SAME VLANs on BOTH ends
+
+PORT-CHANNEL VLAN SYMMETRY CHECKLIST:
+Device A:
+- Port-channel created
+- Physical interfaces added to Port-channel
+- VLAN list identified
+- ALL VLANs added to Device A's Port-channel
+
+Device B:
+- Port-channel created
+- Physical interfaces added to Port-channel
+- SAME VLAN list
+- ALL SAME VLANs added to Device B's Port-channel
+
+Verification:
+- show l2_interface shows symmetric VLAN lists
+- VLAN lists match exactly on both Port-channels
+- No missing VLANs on either side
+
+KEY PRINCIPLES:
+1. Port-channel = Logical trunk interface
+2. VLANs on Port-channel must be symmetric
+3. Configure VLANs on Port-channel, not on physical member interfaces
+4. Same VLAN list on both ends of connection
+5. Verify symmetry before moving to next phase
+
+QUICK MNEMONIC: "Two devices, one link, same VLANs"
+
+COMMAND PATTERN:
+For each Port-channel connection:
+1. Create Port-channel on Device A
+2. Create Port-channel on Device B
+3. Add VLAN-X to Device A Port-channel
+4. Add VLAN-X to Device B Port-channel (IMMEDIATELY AFTER step 3)
+5. Repeat steps 3-4 for all required VLANs
+6. Verify symmetry
+
+--------------------------------------------------------------------------------
+RULE 11: VALID IPV4 ADDRESS RANGE CONSTRAINTS
+--------------------------------------------------------------------------------
+
+QUICK DECISION GUIDE:
+1. Is VLAN ID <= 255?
+   YES -> Option 1 (10.1.VLAN.1/24) or Option 3 for consistency
+   NO -> Q2
+2. Is VLAN ID <= 2550?
+   YES -> Option 3: 10.1.(VLAN/10).1/24
+   NO -> Option 2: 10.(VLAN/100).(VLAN%100).1/24
+3. Execute validation before command generation
+
+EXAMPLE QUICK REFERENCE:
+- VLAN 10 -> 10.1.1.1/24 (Option 3: 10/10=1)
+- VLAN 100 -> 10.1.10.1/24 (Option 3: 100/10=10)
+- VLAN 300 -> 10.1.30.1/24 (Option 3: 300/10=30)
+- VLAN 3000 -> 10.30.0.1/24 (Option 2: 3000/100=30, 3000%100=0)
+
+IPV4 ADDRESS FORMAT VALIDATION:
+CRITICAL: All IPv4 addresses must comply with valid octet ranges (0-255).
+Valid Format: X.X.X.X/subnet_mask (each octet 0 <= value <= 255)
+Example: 10.1.100.1/24 VALID
+Invalid: 10.1.300.1/24 INVALID (300 > 255)
+
+COMMON MISTAKES:
+INCORRECT:
+1. Using VLAN ID directly as third octet when VLAN > 255
+   VLAN 300 -> 10.1.300.1/24 INVALID
+2. Using sequential numbering without validation
+   192.168.256.1/24 INVALID (256 > 255)
+
+CORRECT:
+1. Map large VLAN IDs to valid IP ranges
+   VLAN 300 -> 10.3.0.1/24 (Option 2) or 10.1.30.1/24 (Option 3)
+2. Use simple sequential mapping
+   VLAN 300 -> 10.1.30.1/24
+
+RECOMMENDED IP ADDRESSING SCHEMES:
+Option 1 (VLAN <= 255): 10.1.VLAN.0/24 (Gateway: 10.1.VLAN.1)
+  VLAN 10 -> 10.1.10.0/24 (Gateway: 10.1.10.1)
+  VLAN 100 -> 10.1.100.0/24 (Gateway: 10.1.100.1)
+
+Option 2 (VLAN > 255): 10.FLOOR(VLAN/100).VLAN%100.0/24
+  VLAN 300 -> 10.3.0.0/24 (Gateway: 10.3.0.1)
+  VLAN 999 -> 10.9.99.0/24 (Gateway: 10.9.99.1)
+
+Option 3 (RECOMMENDED DEFAULT): 10.1.(VLAN/10).0/24 - Works for VLANs 1-2550
+  VLAN 10 -> 10.1.1.0/24 (Gateway: 10.1.1.1)
+  VLAN 100 -> 10.1.10.0/24 (Gateway: 10.1.10.1)
+  VLAN 300 -> 10.1.30.0/24 (Gateway: 10.1.30.1)
+  VLAN 999 -> 10.1.99.0/24 (Gateway: 10.1.99.1)
+
+RECOMMENDED DEFAULT SCHEME:
+Primary: Option 3 (Simple Compression) - VLANs 1-2550
+Fallback: Option 2 (Divided Mapping) - VLANs 1-4094
+
+Rationale:
+- Easy to remember and troubleshoot
+- Clear correlation between VLAN and subnet
+- Sufficient address space for most deployments
+- Mathematically guaranteed to produce valid addresses
+
+VALIDATION LOGIC PSEUDOCODE:
+def validate_and_generate_ip(vlan_id, base_network="10.1", scheme="option3"):
+    if scheme == "option3":
+        third_octet = vlan_id // 10
+        if third_octet > 255:
+            return validate_and_generate_ip(vlan_id, base_network, "option2")
+        ip_address = f"{base_network}.{third_octet}.1/24"
+    elif scheme == "option2":
+        second_octet = vlan_id // 100
+        third_octet = vlan_id % 100
+        ip_address = f"10.{second_octet}.{third_octet}.1/24"
+    # Final validation
+    octets = ip_address.split('/')[0].split('.')
+    for i, octet in enumerate(octets):
+        if int(octet) < 0 or int(octet) > 255:
+            raise ValueError(f"Invalid octet {i+1}")
+    return ip_address
+
+MANDATORY PRE-COMMAND VALIDATION:
+BEFORE executing any add ip_address command:
+Step 1: Parse the IP address
+Step 2: Extract each octet
+Step 3: Verify each octet <= 255
+Step 4: If validation fails:
+   - Identify which octet is invalid
+   - Apply appropriate mapping scheme
+   - Regenerate IP address
+   - Re-validate
+Step 5: Only execute command after successful validation
+
+EXAMPLE VALIDATION WORKFLOW:
+User: "Configure VLAN 300 with gateway"
+LLM:
+1. Identify VLAN: 300
+2. Check scheme: Using Option 3 (default)
+3. Calculate: 300 / 10 = 30 (integer division)
+4. Generate: 10.1.30.1/24
+5. Validate: 10 OK, 1 OK, 30 OK, 1 OK (all <= 255)
+6. Output: add ip_address "Device" "Vlan 300" "10.1.30.1/24"
+
+ERROR RECOVERY EXAMPLES:
+Error 1: add ip_address "Switch" "Vlan 300" "10.1.300.1/24"
+Analysis: Third octet 300 > 255
+Fix (Option 3): 10.1.30.1/24 (300 / 10 = 30)
+Corrected: add ip_address "Switch" "Vlan 300" "10.1.30.1/24"
+
+Error 2: add ip_address "Router" "Vlan 999" "10.1.999.1/24"
+Analysis: Third octet 999 > 255
+Fix (Option 3): 10.1.99.1/24 (999 / 10 = 99)
+Corrected: add ip_address "Router" "Vlan 999" "10.1.99.1/24"
+
+QUICK REFERENCE CONVERSION TABLE:
+VLAN Range  | Scheme              | Example
+------------|---------------------|------------------------
+1-255       | Option 1 (Direct)   | VLAN 100 -> 10.1.100.1/24
+256-999     | Option 3 (/10)      | VLAN 300 -> 10.1.30.1/24
+1000-2550   | Option 3 (/10)      | VLAN 1500 -> 10.1.150.1/24
+2551-4094   | Option 2 (/100)     | VLAN 3000 -> 10.30.0.1/24
+
+ERROR PREVENTION CHECKLIST:
+Before executing add ip_address command:
+- All octets in range 0-255
+- VLAN-to-IP mapping scheme selected and documented
+- No IP address conflicts with existing subnets
+- Subnet mask is valid (/8, /16, /24, /30, etc.)
+- Gateway IP is within subnet range
+- Gateway IP is not network or broadcast address
+- Scheme consistently applied across all VLANs
+
+COMMON CAMPUS VLAN NAMING AND IP SCHEME (Option 3):
+VLAN | Purpose            | IP Subnet     | Gateway    | Calculation
+-----|-------------------|---------------|------------|-------------
+1    | Native (unused)   | -             | -          | Reserved
+10   | Management        | 10.1.1.0/24   | 10.1.1.1   | 10/10=1
+20   | Voice             | 10.1.2.0/24   | 10.1.2.1   | 20/10=2
+30   | Video             | 10.1.3.0/24   | 10.1.3.1   | 30/10=3
+100  | Employee Data     | 10.1.10.0/24  | 10.1.10.1  | 100/10=10
+200  | Guest Wireless    | 10.1.20.0/24  | 10.1.20.1  | 200/10=20
+300  | Employee Wireless | 10.1.30.0/24  | 10.1.30.1  | 300/10=30
+400  | IoT Devices       | 10.1.40.0/24  | 10.1.40.1  | 400/10=40
+500  | Security/Cameras  | 10.1.50.0/24  | 10.1.50.1  | 500/10=50
+999  | Quarantine        | 10.1.99.0/24  | 10.1.99.1  | 999/10=99
+
+SUMMARY - KEY TAKEAWAYS:
+1. ALWAYS validate IPv4 octets <= 255 before generating commands
+2. Use Option 3 (Simple Compression) as default for VLANs 1-2550
+3. Automatically fallback to Option 2 for VLANs > 2550
+4. Never directly map VLAN ID to IP when VLAN > 255
+5. Document addressing scheme for consistency
+6. Use integer division for all calculations
+7. Verify with show commands after IP assignment
+
+FINAL COMMAND GENERATION RULES:
+DO:
+- Calculate third octet: VLAN_ID / 10 (Option 3, integer division)
+- Validate all octets <= 255 BEFORE command generation
+- Use consistent scheme across all VLANs
+- Document the mapping logic
+- Provide conversion table when generating multiple IPs
+- Use .1 for gateway addresses (recommended)
+
+DON'T:
+- Use VLAN ID directly as octet when > 255
+- Generate commands without validation
+- Mix different schemes randomly without documentation
+- Assume user will manually fix invalid IPs
+- Use floating-point division (always use integer division)
+
+--------------------------------------------------------------------------------
+RULE 12: LAYER 2/LAYER 3 TRUNK PORT TYPE COMPATIBILITY
+--------------------------------------------------------------------------------
+
+CRITICAL PORT TYPE RULE:
+A Layer 2 trunk port carrying MULTIPLE VLANs CANNOT connect directly to a
+Layer 3 physical port. This creates an invalid configuration state in Network
+Sketcher.
+
+================================================================================
+SUBSECTION 12.1: UNDERSTANDING PORT TYPES
+================================================================================
+
+LAYER 2 PORT (Switchport):
+- Carries Layer 2 frames (Ethernet frames with VLAN tags)
+- Can carry multiple VLANs (trunk mode) or single VLAN (access mode)
+- Does NOT have IP address assigned to physical interface
+- L3 functionality provided by SVIs (Switched Virtual Interfaces)
+
+LAYER 3 PORT (Routed Port):
+- Carries Layer 3 packets (IP packets)
+- Does NOT carry VLAN tags on physical interface
+- HAS IP address assigned directly to physical interface
+- Acts as router interface, not switch port
+
+NETWORK SKETCHER REPRESENTATION:
+L2 Port: Physical interface with L2 segments in show l2_interface
+L3 Port: Physical interface with IP address in show l3_interface
+
+================================================================================
+SUBSECTION 12.2: INVALID CONFIGURATION DETECTION
+================================================================================
+
+INVALID: MULTIPLE L2 SEGMENTS TRUNKED TO L3 PHYSICAL PORT
+
+Error Condition:
+Device A (L2 Port - Trunk with Multiple VLANs) <-> Device B (L3 Port - Routed)
+
+Example (ERROR STATE):
+show l2_interface output:
+['sw1', 'GigabitEthernet 9/0', '', '100,200', '']  <- L2 port, MULTIPLE VLANs
+['sw2', 'GigabitEthernet 9/0', '', '', '']          <- Empty L2 config
+
+show l3_interface output:
+['sw1', 'Vlan 100', '', '10.0.0.1/29']              <- SVI on sw1
+['sw1', 'Vlan 200', '', '10.0.0.2/29']              <- SVI on sw1
+['sw2', 'GigabitEthernet 9/0', '', '10.0.0.3/29']   <- L3 port on PHYSICAL interface
+
+show l3_broadcast_domain output:
+[[[1, 2, 3], [['sw1', 'Vlan 100'], ['sw1', 'Vlan 200'], ['sw2', 'GigabitEthernet 9/0']]]]
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                                       Problem: Multiple SVIs + L3 port
+                                                       in same broadcast domain
+
+WHY THIS IS INVALID:
+1. sw1 GigabitEthernet 9/0 is L2 trunk carrying VLAN 100 and VLAN 200
+2. sw2 GigabitEthernet 9/0 is L3 routed port (has IP directly on physical)
+3. L2 trunk CANNOT connect to L3 routed port
+4. Multiple L2 segments (100, 200) from sw1 converge on single L3 port on sw2
+5. This creates ambiguous Layer 3 broadcast domain
+
+DETECTION METHOD:
+Check show l3_broadcast_domain for:
+- Same broadcast domain containing multiple SVIs from one device
+- Plus physical L3 port from peer device
+- Pattern: [[domain_id, [['DeviceA', 'Vlan X'], ['DeviceA', 'Vlan Y'], ['DeviceB', 'Physical_Port']]]]
+
+VALID: SINGLE L2 SEGMENT TRUNKED TO L3 PHYSICAL PORT (EXCEPTION)
+
+Allowed Condition:
+Device A (L2 Port - Trunk with SINGLE VLAN) <-> Device B (L3 Port - Routed)
+
+Example (VALID STATE):
+show l2_interface output:
+['sw1', 'GigabitEthernet 9/0', '', '100', '']       <- L2 port, SINGLE VLAN only
+['sw2', 'GigabitEthernet 9/0', '', '', '']          <- Empty L2 config
+
+show l3_interface output:
+['sw1', 'Vlan 100', '', '10.0.0.1/29']              <- SVI on sw1
+['sw2', 'GigabitEthernet 9/0', '', '10.0.0.3/29']   <- L3 port on PHYSICAL interface
+
+show l3_broadcast_domain output:
+[[[1, 2], [['sw1', 'Vlan 100'], ['sw2', 'GigabitEthernet 9/0']]]]
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                Valid: Single SVI + L3 port in broadcast domain
+
+WHY THIS IS VALID:
+1. sw1 GigabitEthernet 9/0 carries only SINGLE VLAN (100)
+2. sw2 GigabitEthernet 9/0 is L3 routed port
+3. Single L2 segment creates unambiguous point-to-point L3 connection
+4. No conflict in Layer 3 broadcast domain
+
+================================================================================
+SUBSECTION 12.3: ERROR CORRECTION PROCEDURE
+================================================================================
+
+CORRECTION WORKFLOW FOR MULTIPLE L2 SEGMENTS TO L3 PORT:
+
+SCENARIO: Convert invalid multi-VLAN trunk to L3 port into valid configuration
+
+BEFORE (ERROR STATE):
+sw1: L2 trunk with VLAN 100, 200 -> sw2: L3 routed port
+
+CORRECTION STEPS:
+
+Step 1: Identify the error
+python "script" show l3_broadcast_domain --master "file"
+Look for: Multiple SVIs from one device + Physical L3 port from peer
+
+Step 2: Decide which VLAN to use for trunk
+Selection criteria:
+- Default VLAN (if applicable)
+- Lowest VLAN ID (if no default VLAN)
+- Management VLAN (if specified)
+- Primary data VLAN (user-specified)
+
+Step 3: Convert L3 physical port to L2 switchport
+On Device B (sw2):
+a. Remove IP address from physical interface
+b. Add L2 segment to physical interface (selected VLAN)
+c. Create SVI (Virtual Port) for L3 functionality
+
+Step 4: Execute correction commands
+# Remove IP from L3 physical port
+python "script" delete ip_address "sw2" "GigabitEthernet 9/0" "10.0.0.3/29" --master "file"
+
+# Add L2 segment to convert to switchport (selecting VLAN 100 - lowest VLAN ID)
+python "script" add l2_segment "sw2" "GigabitEthernet 9/0" "100" --master "file"
+
+# Create SVI for L3 functionality
+python "script" add virtual_port "sw2" "Vlan 100" --master "file"
+
+# Optionally: Assign IP to SVI if needed
+python "script" add ip_address "sw2" "Vlan 100" "10.0.0.3/29" --master "file"
+
+AFTER (CORRECTED STATE):
+sw1: L2 trunk with VLAN 100, 200 -> sw2: L2 switchport with VLAN 100 + SVI
+
+show l2_interface output:
+['sw1', 'GigabitEthernet 9/0', '', '100,200', '']   <- L2 trunk (multiple VLANs)
+['sw2', '', 'Vlan 100', '100', '']                  <- SVI created
+['sw2', 'GigabitEthernet 9/0', '', '100', '']       <- L2 switchport (single VLAN)
+
+show l3_interface output:
+['sw1', 'Vlan 100', '', '10.0.0.1/29']
+['sw1', 'Vlan 200', '', '10.0.0.2/29']
+['sw2', 'Vlan 100', '', '10.0.0.3/29']              <- IP on SVI, not physical port
+
+show l3_broadcast_domain output:
+[[[1, 3], [['sw1', 'Vlan 100'], ['sw2', 'Vlan 100']]],
+ [[2], [['sw1', 'Vlan 200']]]]
+Valid: Each broadcast domain has consistent port types
+
+================================================================================
+SUBSECTION 12.4: VLAN SELECTION CRITERIA FOR CORRECTION
+================================================================================
+
+When correcting multiple L2 segments to L3 port error, select VLAN using:
+
+PRIORITY ORDER:
+1. User-specified VLAN (if explicitly mentioned)
+2. Default VLAN (VLAN 1) if present in trunk
+3. Management VLAN (typically VLAN 10) if present
+4. Lowest VLAN ID in the trunk
+
+SELECTION LOGIC:
+def select_vlan_for_l3_port_conversion(l2_segment_list):
+    """
+    Select appropriate VLAN when converting L3 port to L2 port + SVI
+
+    Args:
+        l2_segment_list: List of L2 segment names (e.g., ['100', '200'])
+
+    Returns:
+        Selected VLAN name for trunk connection
+    """
+    # Priority 1: Check for Default VLAN
+    if 'DefaultVlan' in l2_segment_list or '1' in l2_segment_list:
+        return 'DefaultVlan' if 'DefaultVlan' in l2_segment_list else '1'
+
+    # Priority 2: Check for Management VLAN (typically 10)
+    if '10' in l2_segment_list:
+        return '10'
+
+    # Priority 3: Select lowest VLAN ID
+    vlan_ids = [int(v) for v in l2_segment_list if v.isdigit()]
+    if vlan_ids:
+        return str(min(vlan_ids))
+
+    # Priority 4: First VLAN in list
+    return l2_segment_list[0]
+
+EXAMPLE VLAN SELECTION:
+Trunk with VLANs: ['100', '200', '300']
+  Selected VLAN: 100 (lowest VLAN ID)
+
+Trunk with VLANs: ['DefaultVlan', '100', '200']
+  Selected VLAN: DefaultVlan (default VLAN priority)
+
+Trunk with VLANs: ['10', '100', '200']
+  Selected VLAN: 10 (management VLAN priority)
+
+================================================================================
+SUBSECTION 12.5: ERROR DETECTION WORKFLOW
+================================================================================
+
+AUTOMATIC ERROR DETECTION:
+When generating commands, check for L2/L3 trunk port type mismatch:
+
+Step 1: Analyze show l1_link output
+Identify all connected interface pairs
+
+Step 2: For each connection, check show l2_interface
+Extract L2 segment configuration for both ends
+
+Step 3: For each connection, check show l3_interface
+Extract L3 configuration for both ends
+
+Step 4: Identify error pattern
+If Device A interface has:
+- Multiple L2 segments (e.g., '100,200')
+AND Device B interface has:
+- No L2 segments (empty '')
+- IP address on physical interface
+THEN: Error detected
+
+Step 5: Apply correction procedure (SUBSECTION 12.3)
+
+ERROR DETECTION EXAMPLE:
+
+Analyzing connection: sw1 GigabitEthernet 9/0 <-> sw2 GigabitEthernet 9/0
+
+show l2_interface check:
+sw1 GigabitEthernet 9/0: L2 segments = '100,200' (2 VLANs)
+sw2 GigabitEthernet 9/0: L2 segments = '' (none)
+
+show l3_interface check:
+sw1 GigabitEthernet 9/0: No IP on physical interface
+sw2 GigabitEthernet 9/0: IP = '10.0.0.3/29' (L3 routed port)
+
+Analysis:
+- sw1: L2 trunk with MULTIPLE VLANs (100, 200)
+- sw2: L3 routed port
+- ERROR: Multiple L2 segments trunked to L3 physical port
+
+Correction:
+Select VLAN: 100 (lowest VLAN ID)
+Convert sw2 GigabitEthernet 9/0 to L2 switchport with VLAN 100
+Create sw2 Vlan 100 SVI for L3 functionality
+
+================================================================================
+SUBSECTION 12.6: VALID CONFIGURATION PATTERNS
+================================================================================
+
+PATTERN 1: L2 TRUNK (MULTIPLE VLANS) TO L2 SWITCHPORT (VALID)
+Device A (L2 Port): Multiple VLANs (100, 200, 300)
+Device B (L2 Port): Same multiple VLANs (100, 200, 300)
+Result: Valid Layer 2 trunk configuration
+
+PATTERN 2: L2 TRUNK (SINGLE VLAN) TO L3 ROUTED PORT (VALID - EXCEPTION)
+Device A (L2 Port): Single VLAN (100)
+Device B (L3 Port): IP address on physical interface
+Result: Valid - Single VLAN creates unambiguous point-to-point
+
+PATTERN 3: L3 ROUTED PORT TO L3 ROUTED PORT (VALID)
+Device A (L3 Port): IP address on physical interface
+Device B (L3 Port): IP address on physical interface
+Result: Valid point-to-point Layer 3 connection
+
+PATTERN 4: L2 TRUNK (MULTIPLE VLANS) TO L2 SWITCHPORT WITH SVI (VALID)
+Device A (L2 Port): Multiple VLANs (100, 200, 300)
+Device B (L2 Port): Multiple VLANs (100, 200, 300) + SVIs for L3
+Result: Valid Layer 2 trunk with Layer 3 gateway on Device B
+
+PATTERN 5 (INVALID): L2 TRUNK (MULTIPLE VLANS) TO L3 ROUTED PORT
+Device A (L2 Port): Multiple VLANs (100, 200, 300)
+Device B (L3 Port): IP address on physical interface
+Result: INVALID - Must convert to Pattern 4
+
+================================================================================
+SUBSECTION 12.7: CORRECTION COMMAND EXAMPLES
+================================================================================
+
+EXAMPLE 1: CORRECTING MULTIPLE VLAN TRUNK TO L3 PORT
+
+BEFORE (ERROR):
+sw1 GigabitEthernet 9/0: L2 trunk with VLAN 100, 200
+sw2 GigabitEthernet 9/0: L3 routed port with IP 10.0.0.3/29
+
+Detection:
+python "script" show l2_interface --master "file"
+['sw1', 'GigabitEthernet 9/0', '', '100,200', '']
+['sw2', 'GigabitEthernet 9/0', '', '', '']
+
+python "script" show l3_interface --master "file"
+['sw2', 'GigabitEthernet 9/0', '', '10.0.0.3/29']
+
+Correction Commands:
+# Step 1: Remove IP from physical interface
+python "script" delete ip_address "sw2" "GigabitEthernet 9/0" "10.0.0.3/29" --master "file"
+
+# Step 2: Convert to L2 switchport (select VLAN 100 - lowest VLAN ID)
+python "script" add l2_segment "sw2" "GigabitEthernet 9/0" "100" --master "file"
+
+# Step 3: Create SVI for L3 functionality
+python "script" add virtual_port "sw2" "Vlan 100" --master "file"
+
+# Step 4 (Optional): Assign IP to SVI if needed
+python "script" add ip_address "sw2" "Vlan 100" "10.0.0.3/29" --master "file"
+
+AFTER (CORRECTED):
+sw1 GigabitEthernet 9/0: L2 trunk with VLAN 100, 200
+sw2 GigabitEthernet 9/0: L2 switchport with VLAN 100
+sw2 Vlan 100: SVI with IP 10.0.0.3/29
+
+Verification:
+python "script" show l2_interface --master "file"
+['sw1', 'GigabitEthernet 9/0', '', '100,200', '']
+['sw2', '', 'Vlan 100', '100', '']
+['sw2', 'GigabitEthernet 9/0', '', '100', '']
+
+python "script" show l3_interface --master "file"
+['sw1', 'Vlan 100', '', '10.0.0.1/29']
+['sw1', 'Vlan 200', '', '10.0.0.2/29']
+['sw2', 'Vlan 100', '', '10.0.0.3/29']
+
+EXAMPLE 2: VALID SINGLE VLAN TRUNK TO L3 PORT (NO CORRECTION NEEDED)
+
+Configuration:
+sw1 GigabitEthernet 9/0: L2 trunk with VLAN 100 ONLY
+sw2 GigabitEthernet 9/0: L3 routed port with IP 10.0.0.3/29
+
+Detection:
+python "script" show l2_interface --master "file"
+['sw1', 'GigabitEthernet 9/0', '', '100', '']       <- SINGLE VLAN only
+['sw2', 'GigabitEthernet 9/0', '', '', '']
+
+python "script" show l3_interface --master "file"
+['sw1', 'Vlan 100', '', '10.0.0.1/29']
+['sw2', 'GigabitEthernet 9/0', '', '10.0.0.3/29']
+
+Analysis: VALID - Single VLAN trunk to L3 port is allowed (exception)
+Action: No correction needed
+
+================================================================================
+SUBSECTION 12.8: VALIDATION CHECKLIST FOR L2/L3 TRUNK COMPATIBILITY
+================================================================================
+
+VALIDATION WORKFLOW:
+For each L1 link in the network:
+
+Step 1: Extract L2 configuration for both interfaces
+Device A L2 segments: [list of VLANs]
+Device B L2 segments: [list of VLANs]
+
+Step 2: Extract L3 configuration for both interfaces
+Device A L3 config: IP on physical? SVI?
+Device B L3 config: IP on physical? SVI?
+
+Step 3: Count L2 segments on each side
+Device A VLAN count: N
+Device B VLAN count: M
+
+Step 4: Apply validation rules
+IF (N > 1 AND Device B has IP on physical interface):
+  ERROR: Multiple L2 segments trunked to L3 port
+  Action: Apply correction procedure
+ELIF (M > 1 AND Device A has IP on physical interface):
+  ERROR: Multiple L2 segments trunked to L3 port
+  Action: Apply correction procedure
+ELIF (N == 1 AND Device B has IP on physical interface):
+  VALID: Single L2 segment trunk to L3 port (exception allowed)
+ELIF (M == 1 AND Device A has IP on physical interface):
+  VALID: Single L2 segment trunk to L3 port (exception allowed)
+ELSE:
+  VALID: Configuration is correct
+
+Step 5: Document validation result
+
+L2/L3 TRUNK PORT TYPE COMPATIBILITY CHECKLIST:
+For each interface pair:
+- L2 segment count checked on both interfaces
+- L3 configuration type identified (physical port vs SVI)
+- Multiple L2 segments to L3 physical port error detected
+- Single L2 segment to L3 physical port exception validated
+- Correction applied if needed
+- Post-correction verification completed
+
+ERROR DETECTION SUMMARY:
+INVALID Configurations:
+1. L2 Port (2+ VLANs) <-> L3 Physical Port
+2. L2 Port (2+ VLANs) <-> L3 Physical Port with IP
+
+VALID Configurations:
+1. L2 Port (2+ VLANs) <-> L2 Port (2+ VLANs)
+2. L2 Port (1 VLAN) <-> L3 Physical Port (exception)
+3. L3 Physical Port <-> L3 Physical Port
+4. L2 Port (2+ VLANs) <-> L2 Port (matching VLANs) + SVIs
+
+CORRECTION APPROACH:
+Convert L3 Physical Port to L2 Switchport + SVI:
+1. Delete IP from physical interface
+2. Add L2 segment to physical interface (selected VLAN)
+3. Create SVI (Virtual Port)
+4. Optionally assign IP to SVI
+
+VLAN SELECTION FOR CORRECTION:
+Priority: Default VLAN > Management VLAN > Lowest VLAN ID > First in list
+
+================================================================================
+SUBSECTION 12.9: INTEGRATION WITH OTHER RULES
+================================================================================
+
+RULE 12 INTEGRATION WITH RULE 10 (PORT-CHANNEL VLAN SYMMETRY):
+When correcting L2/L3 trunk error on Port-channel:
+- Apply correction to physical interfaces first
+- Port-channel VLAN symmetry must still be maintained
+- Both Port-channel ends must have matching L2 configuration after correction
+
+RULE 12 INTEGRATION WITH RULE 8 (CASCADE DELETION):
+When deleting interface with L2/L3 trunk error:
+- Use delete l1_link for cascade deletion
+- All L2/L3 configurations automatically removed
+- No separate correction needed (entire configuration deleted)
+
+RULE 12 INTEGRATION WITH RULE 11 (IP ADDRESSING):
+When assigning IP to corrected SVI:
+- Follow IP addressing rules (Option 3 recommended)
+- Validate octets <= 255
+- Use gateway .1 convention
+- Match VLAN ID to IP subnet using standard mapping
+
+VERIFICATION INTEGRATION:
+Phase 3 verification (Layer 2):
+- Check for L2/L3 trunk port type mismatch (Rule 12)
+- Verify Port-channel VLAN symmetry (Rule 10)
+
+Phase 4 verification (Layer 3):
+- Check L3 broadcast domains for invalid patterns (Rule 12)
+- Validate IP address format (Rule 11)
+
+FINAL VERIFICATION (Phase 6):
+- No multiple L2 segments trunked to L3 physical port
+- Single L2 segment trunk to L3 port documented as exception
+- All corrected configurations verified with show commands
+
+================================================================================
+SUBSECTION 12.10: SUMMARY - RULE 12 KEY TAKEAWAYS
+================================================================================
+
+CORE PRINCIPLE:
+Multiple Layer 2 segments (VLANs) on trunk CANNOT connect directly to Layer 3
+physical routed port. This creates invalid configuration in Network Sketcher.
+
+EXCEPTION:
+Single Layer 2 segment on trunk CAN connect to Layer 3 physical routed port.
+This is valid point-to-point configuration.
+
+CORRECTION METHOD:
+Convert L3 physical port to L2 switchport + SVI:
+1. Remove IP from physical interface (delete ip_address)
+2. Add L2 segment to physical interface (add l2_segment)
+3. Create SVI (add virtual_port)
+4. Assign IP to SVI if needed (add ip_address)
+
+VLAN SELECTION:
+Priority: Default VLAN > Management VLAN (10) > Lowest VLAN ID > First in list
+
+ERROR DETECTION:
+Check show l3_broadcast_domain for:
+- Multiple SVIs from one device + Physical L3 port from peer in same domain
+- Pattern indicates multiple L2 segments converging on single L3 physical port
+
+VALIDATION:
+For each interface pair:
+1. Count L2 segments on both sides
+2. Identify L3 configuration type (physical port vs SVI)
+3. Apply validation rules:
+   - Multiple L2 segments to L3 physical port -> ERROR
+   - Single L2 segment to L3 physical port -> VALID (exception)
+   - L2 port to L2 port -> VALID
+   - L3 port to L3 port -> VALID
+
+INTEGRATION:
+- Combine with Port-channel VLAN symmetry (Rule 10)
+- Use cascade deletion for removal (Rule 8)
+- Follow IP addressing rules for SVI (Rule 11)
+- Always verify after correction with show commands
+
+REMEMBER:
+"Multiple VLANs to L3 physical port = ERROR. Convert to L2 port + SVI."
+"Single VLAN to L3 physical port = VALID exception."
+
+================================================================================
+END OF CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
+================================================================================
+
 
 
 
