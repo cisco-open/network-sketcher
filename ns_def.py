@@ -1941,11 +1941,11 @@ class  get_l2_broadcast_domains():
                 tmp_source_count = 0
                 tmp_target_count = 0
                 for tmp_l2name_count_array in l2name_count_array:
+                    #print(tmp_l2name_count_array)
                     if device_name == tmp_l2name_count_array[0] and if_name == tmp_l2name_count_array[1]:
                         tmp_source_count = tmp_l2name_count_array[2]
                     if tmp_opposite_if_array[0] == tmp_l2name_count_array[0] and if_name == tmp_opposite_if_array[1]:
                         tmp_target_count = tmp_l2name_count_array[2]
-
                 #get opposite l2segment number and name
                 opposite_l2seg_name = ''
                 opposite_l2seg_num = 0

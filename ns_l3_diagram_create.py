@@ -1564,28 +1564,82 @@ class  ns_l3_diagram_create():
                                         inche_from_connect_y = tmp_all_l3if_tag_array[2]
                                         inche_to_connect_y = tmp_tmp_l3segment_line_array + shape_hight * 0.5
 
-                                    '''check to exist the near vertical line. if there is near line, make between size to about 0.1 inches'''
-                                    for tmp_all_written_line_position_array in self.all_written_line_position_array:
-                                        if tmp_all_written_line_position_array[2] < inche_from_connect_y < tmp_all_written_line_position_array[4] or tmp_all_written_line_position_array[2] > inche_from_connect_y > tmp_all_written_line_position_array[4] \
-                                                or tmp_all_written_line_position_array[2] < inche_to_connect_y < tmp_all_written_line_position_array[4] or tmp_all_written_line_position_array[2] > inche_to_connect_y > tmp_all_written_line_position_array[4]:
-                                            if inche_from_connect_x - min_between_line <  tmp_all_written_line_position_array[1]   < inche_from_connect_x + min_between_line:
-                                                if inche_from_connect_y != tmp_all_written_line_position_array[2] and inche_to_connect_y != tmp_all_written_line_position_array[2] and inche_from_connect_y != tmp_all_written_line_position_array[4] and inche_to_connect_y != tmp_all_written_line_position_array[4]:
-                                                    if (inche_from_connect_x - tmp_all_written_line_position_array[1]) < 0:
-                                                        offset_if_line = min_between_line + (inche_from_connect_x - tmp_all_written_line_position_array[1])
-                                                    else:
-                                                        offset_if_line = (inche_from_connect_x - tmp_all_written_line_position_array[1]) - min_between_line
+                                    '''check to exist the near vertical line. if there is near line, make between size to about 0.075 inches'''
 
-                                                    inche_from_connect_x -= offset_if_line
-                                                    inche_to_connect_x -= offset_if_line
+                                    def _norm_y(y1, y2):
+                                        return (y1, y2) if y1 <= y2 else (y2, y1)
 
-                                    if self.click_value_VPN == 'VPN-1-3':  # add ver 2.3.2
-                                        if [tmp_all_l3if_tag_array[7],tmp_all_l3if_tag_array[6]] in self.vpn_hostname_if_list:
+                                    def _overlap_y(a0, a1, b0, b1):
+                                        # overlap if max(starts) <= min(ends)
+                                        return max(a0, b0) <= min(a1, b1)
+
+                                    def _is_nearly_same_line(x1, y1_start, y1_end, x2, y2_start, y2_end, tolerance=0.01):
+                                        """
+                                        Determines if two lines are at nearly the same position
+                                        Returns True if both X-axis distance and Y-axis endpoints are within tolerance
+                                        """
+                                        y1_0, y1_1 = _norm_y(y1_start, y1_end)
+                                        y2_0, y2_1 = _norm_y(y2_start, y2_end)
+
+                                        x_distance = abs(x1 - x2)
+                                        y_start_distance = abs(y1_0 - y2_0)
+                                        y_end_distance = abs(y1_1 - y2_1)
+
+                                        return (x_distance <= tolerance and
+                                                y_start_distance <= tolerance and
+                                                y_end_distance <= tolerance)
+
+                                    def _has_conflict(x_candidate, new_y0, new_y1, written_lines, min_between_line,
+                                                      current_x, current_y_start, current_y_end):
+                                        """
+                                        Conflict check (excludes nearly identical lines)
+                                        """
+                                        for tmp_line in written_lines:
+                                            old_x = tmp_line[1]
+                                            old_y0, old_y1 = _norm_y(tmp_line[2], tmp_line[4])
+
+                                            # Skip if lines are nearly identical (exclude from shifting)
+                                            if _is_nearly_same_line(current_x, current_y_start, current_y_end,
+                                                                    old_x, old_y0, old_y1):
+                                                continue
+
+                                            if not (x_candidate - min_between_line < old_x < x_candidate + min_between_line):
+                                                continue
+
+                                            if _overlap_y(new_y0, new_y1, old_y0, old_y1):
+                                                return True
+                                        return False
+
+                                    # --- candidate select (Pattern B) ---
+                                    new_y0, new_y1 = _norm_y(inche_from_connect_y, inche_to_connect_y)
+                                    x0 = inche_from_connect_x
+                                    step = min_between_line
+
+                                    candidates = [x0, x0 + step, x0 - step]
+
+                                    chosen_x = x0
+                                    for x_candidate in candidates:
+                                        if not _has_conflict(
+                                                x_candidate, new_y0, new_y1,
+                                                self.all_written_line_position_array,
+                                                min_between_line,
+                                                inche_from_connect_x,  # Current line's X coordinate
+                                                inche_from_connect_y,  # Current line's Y start coordinate
+                                                inche_to_connect_y  # Current line's Y end coordinate
+                                        ):
+                                            chosen_x = x_candidate
+                                            break
+
+                                    inche_from_connect_x = chosen_x
+                                    inche_to_connect_x = chosen_x
+
+                                    # Rest of the code remains unchanged
+                                    if self.click_value_VPN == 'VPN-1-3':
+                                        if [tmp_all_l3if_tag_array[7], tmp_all_l3if_tag_array[6]] in self.vpn_hostname_if_list:
                                             line_type = 'L3_SEGMENT-VPN'
 
-                                            # Skip connectors on 1st pass (All Areas mode only)
                                     skip_connectors = (self.click_value_l3 == 'L3-4-1' and self.flag_re_create == False and self.flag_second_page == False)
 
-                                    # print(line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
                                     if action_type == 'CREATE' and not skip_connectors:
                                         ns_ddx_figure.extended.add_line(self, line_type, inche_from_connect_x, inche_from_connect_y, inche_to_connect_x, inche_to_connect_y)
 
