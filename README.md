@@ -153,34 +153,11 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Generate L1/L2/L3 topology diagrams | ✅ | ❌ |
 
 # SAMPLE
-## Input ppt file (rough sketch)
-![image](https://github.com/user-attachments/assets/35e13f4b-d81e-42df-a036-b018b47a199a)
+<img alt="image" src="https://github.com/user-attachments/assets/752a5a6d-fcb8-4bf2-a709-91c4c8f862c5" />
 
-[Sample-rough5.pptx](https://github.com/user-attachments/files/18668273/Sample-rough5.pptx)
+Download : [Sample.figure5.zip](https://github.com/user-attachments/files/24335488/Sample.figure5.zip)
 
-## Output
-### L1 figure(PPT)
-![image](https://github.com/user-attachments/assets/e28aef48-411c-48fe-8700-336b298a658f)
 
-[[L1_DIAGRAM]AllAreasTag_Sample.figure5.pptx](https://github.com/user-attachments/files/18611145/L1_DIAGRAM.AllAreasTag_Sample.figure5.pptx)
-
-### L2 figure(PPT)
-![image](https://github.com/user-attachments/assets/8a62d5ed-f244-4e87-85a0-89925aaa339f)
-
-[[L2_DIAGRAM]DC-TOP1_Sample.figure5.pptx](https://github.com/user-attachments/files/18611147/L2_DIAGRAM.DC-TOP1_Sample.figure5.pptx)
-
-### L3 figure(PPT)
-![image](https://github.com/user-attachments/assets/0e0b6e8c-628b-4af5-a20a-a940eab4877a)
-
-[[L3_DIAGRAM]AllAreas_old_Sample.figure5.pptx](https://github.com/user-attachments/files/18611149/L3_DIAGRAM.AllAreas_old_Sample.figure5.pptx)
-
-### Device table(Excel)
-![image](https://github.com/user-attachments/assets/33f95b5c-03d3-419e-bbee-5786efe9deb7)
-
-[[DEVICE]Sample.figure5.xlsx](https://github.com/user-attachments/files/18611140/DEVICE.Sample.figure5.xlsx)
-
-### Master file(Excel)
-[[MASTER]Sample.figure5.xlsx](https://github.com/user-attachments/files/18918397/MASTER_Sample.figure5.zip)
 
 # Author
  
@@ -202,6 +179,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
