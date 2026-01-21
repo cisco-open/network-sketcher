@@ -481,14 +481,25 @@ class  ns_ddx_figure_run():
                         ###write normal shape
                         #add  and _AIR_ not included at ver 2.2.2(a)
                         if self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value != None and segment_flag == False and '_AIR_' not in str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value):
+                            # Get shape text for shapes_size_array (needed for L2-3-2 mode)
+                            if '<' in str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value):
+                                current_shape_text = str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value).split('<')[0]
+                            else:
+                                current_shape_text = str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value)
+
+                            # L2-3-2 mode: Only add to shapes_size_array, skip drawing the shape
+                            # (The device frame will be drawn in add_l2_material with calculated L2 size)
+                            if self.click_value == 'L2-3-2':
+                                self.shapes_size_array.append([current_shape_text, [shape_left, shape_top, shape_width, shape_hight]])
+                                # Skip the rest of shape drawing and styling for L2-3-2 mode
+                                shape_left = shape_left + shape_width
+                                continue
+
+                            # Normal mode: Draw the shape
                             self.shape = self.slide.shapes
                             self.shape = self.shape.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(shape_left), Inches(shape_top), Inches(shape_width), Inches(shape_hight))
                             ## write text and reflected TAG function in the shape
-
-                            if '<' in str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value):
-                                self.shape.text = str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value).split('<')[0]
-                            else:
-                                self.shape.text = str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value)
+                            self.shape.text = current_shape_text
 
                             self.shapes_size_array.append([self.shape.text,[shape_left, shape_top, shape_width, shape_hight]])  #add ver 2.0 for writing l2 shapes
 
@@ -3147,6 +3158,8 @@ class extended():
             if self.click_value == 'L2-3-3':
                 self.shape.title.text = '[L2] ' + input_device_name
 
+
+
         ### default parameter ###
         self.folder_font_type = 'Calibri'
         self.folder_font_size = 10  # Pt
@@ -4583,3 +4596,96 @@ class extended():
                     if shape_text in increments:
                         shp.width = shp.width + Inches(increments[shape_text])
 
+        # ============================================================
+        # L2-3-2 mode: Adjust Outline and Folder widths, reorder layers
+        # ============================================================
+        if self.click_value == 'L2-3-2' and hasattr(self, "active_ppt") and self.active_ppt:
+            margin = 0.6  # margin between device edge and folder/outline (inches)
+
+            for slide in self.active_ppt.slides:
+                # Step 1: Find all DEVICE_FRAME shapes and calculate max right edge
+                max_device_right_edge = 0.0
+                device_frames = []
+                outline_shape = None
+                folder_shape = None
+
+                for shp in slide.shapes:
+                    # Get shape text
+                    shape_text = ""
+                    if hasattr(shp, "text"):
+                        shape_text = (shp.text or "").strip()
+
+                    # Identify shape types by name pattern
+                    shape_name = shp.name if hasattr(shp, "name") else ""
+
+                    # Rectangle without text = Outline (root folder border)
+                    if "Rectangle" in shape_name and "Rounded" not in shape_name:
+                        if not shape_text:  # No text = Outline
+                            outline_shape = shp
+
+                    # Rounded Rectangle with folder name = Folder (e.g., Site1)
+                    # Check if it's a large shape that contains other shapes (folder)
+                    if "Rounded Rectangle" in shape_name and shape_text:
+                        # Check if this shape is in shapes_size_array (device) or folder
+                        is_device = False
+                        if hasattr(self, "shapes_size_array"):
+                            for device_info in self.shapes_size_array:
+                                if device_info[0] == shape_text:
+                                    is_device = True
+                                    break
+
+                        if is_device:
+                            # This is a DEVICE_FRAME
+                            device_frames.append(shp)
+                            right_edge = shp.left.inches + shp.width.inches
+                            if right_edge > max_device_right_edge:
+                                max_device_right_edge = right_edge
+                        else:
+                            # This is likely a folder (like Site1)
+                            # Check if it's larger than typical device (folder is usually large)
+                            if shp.width.inches > 5.0 and shp.height.inches > 5.0:
+                                folder_shape = shp
+
+                # Step 2: Expand Outline and Folder widths if devices exceed their bounds
+                if outline_shape and max_device_right_edge > 0:
+                    outline_right_edge = outline_shape.left.inches + outline_shape.width.inches
+                    required_right_edge = max_device_right_edge + margin
+
+                    if required_right_edge > outline_right_edge:
+                        width_increase = required_right_edge - outline_right_edge
+                        outline_shape.width = Inches(outline_shape.width.inches + width_increase)
+
+                if folder_shape and max_device_right_edge > 0:
+                    folder_right_edge = folder_shape.left.inches + folder_shape.width.inches
+                    required_right_edge = max_device_right_edge + margin
+
+                    if required_right_edge > folder_right_edge:
+                        width_increase = required_right_edge - folder_right_edge
+                        folder_shape.width = Inches(folder_shape.width.inches + width_increase)
+
+                # Step 2.5: Ensure Outline is 0.2 inches wider than Folder on right side
+                if outline_shape and folder_shape:
+                    outline_margin = 0.2  # inches
+                    folder_right = folder_shape.left.inches + folder_shape.width.inches
+                    required_outline_right = folder_right + outline_margin
+                    current_outline_right = outline_shape.left.inches + outline_shape.width.inches
+
+                    if current_outline_right < required_outline_right:
+                        width_increase = required_outline_right - current_outline_right
+                        outline_shape.width = Inches(outline_shape.width.inches + width_increase)
+
+                # Step 3: Move Outline to back layer (behind all other shapes)
+                if outline_shape:
+                    sp_tree = slide.shapes._spTree
+                    outline_element = outline_shape._element
+                    sp_tree.remove(outline_element)
+                    # Insert at position 2 (after slide background elements)
+                    sp_tree.insert(2, outline_element)
+
+                # Step 4: Move Folder to just above Outline (second from back)
+                if folder_shape:
+                    sp_tree = slide.shapes._spTree
+                    folder_element = folder_shape._element
+                    sp_tree.remove(folder_element)
+                    # Insert at position 3 (after outline)
+                    sp_tree.insert(3, folder_element)
