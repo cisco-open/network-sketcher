@@ -21,6 +21,7 @@ import tkinter as tk ,tkinter.ttk , openpyxl
 import ipaddress, sys, os, re, shutil
 import numpy as np
 import networkx as nx
+import subprocess
 
 #add at ver 2.5.2
 class ai_context():
@@ -44,11 +45,6 @@ class ai_context():
         print(self.ai_context_file)
 
         content_to_append = ''
-
-        content_to_append += '\'\'\'' + '\n' + 'File path information used in the command reference'+ '\n' + '\'\'\'' + '\n'
-        content_to_append += '[file path]/network_sketcher.py = "' + os.path.dirname(os.path.abspath(__file__))+ '/network_sketcher.py"' +'\n'
-        content_to_append += '[master file path] = "'+ excel_maseter_file + '"'+'\n' + '\n'
-
         content_to_append += '\'\'\'' + '\n' + 'Basic response policy'+ '\n' + '\'\'\'' + '\n'
         content_to_append += '* You are a network specialist and technical consultant at Cisco.' + '\n'
         content_to_append += '* You provide specific, logical answers to broad and technical questions or consultations, including your reasoning, and you possess a high level of analytical ability.' + '\n'
@@ -57,45 +53,43 @@ class ai_context():
         content_to_append += '\'\'\'' + '\n' + 'All data in the master file'+ '\n' + '\'\'\'' + '\n'
 
         export_num = 0
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_area' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_area_device' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_device'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_area_location' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_location'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_attribute' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
-        content_to_append += '** show_attribute_color' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute_color'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_device' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_device_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_device_location' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_location'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_l1_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_l1_link' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_link'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_l2_broadcast_domain' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_broadcast_domain'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_l2_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_l3_broadcast_domain' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_broadcast_domain'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_l3_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_waypoint' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/16')
+        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
         content_to_append += '** show_waypoint_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'+ '\n'
 
-        #add commands's guide
+        # add commands's guide
         def resource_path(relative_path):
             try:
                 base_path = sys._MEIPASS
             except Exception:
-                base_path = os.path.abspath(".")
+                base_path = os.path.abspath(os.path.dirname(__file__))
 
             return os.path.join(base_path, relative_path)
 
@@ -1524,3 +1518,794 @@ class  summary_diagram():
         offset_column = 0
         ns_def.clear_section_sheet('Master_Data', self.excel_maseter_file_backup, self.positoin_line_tuple)
         ns_def.write_excel_meta(last_positoin_line_tuple, self.excel_maseter_file_backup, 'Master_Data',write_to_section, offset_row, offset_column)
+
+
+class cli_on_gui():
+    """
+    CLI command input GUI for Network Sketcher
+    """
+
+    def __init__(self):
+        """
+        Initialize CLI GUI handler
+        """
+        self.root = None
+        self.full_filepath = None
+        self.cli_window = None
+        self.cli_text = None
+        self.from_master_panel = False  # Flag to indicate if opened from Master Panel
+
+
+    def load_cli_from_file(self):
+        """
+        Load CLI commands from a file
+        """
+        fTyp = [("Text files", "*.txt"), ("All files", "*.*")]
+        iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
+        file_path = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
+
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.cli_text.delete('1.0', 'end')
+                self.cli_text.insert('1.0', content)
+                self.cli_text.config(fg='black')
+            except Exception as e:
+                tkinter.messagebox.showerror('Error', f'Failed to load file:\n{str(e)}')
+
+    def execute_cli_commands(self):
+        """
+        Execute the inputted CLI commands using subprocess
+        """
+        cli_commands = self.cli_text.get('1.0', 'end-1c').strip()
+
+        if not cli_commands:
+            tkinter.messagebox.showwarning('Warning', 'Please enter valid CLI commands.')
+            return
+
+        try:
+            # Split CLI commands by line and filter out comments and empty lines
+            command_lines = []
+            for line in cli_commands.split('\n'):
+                line = line.strip()
+                # Skip empty lines and comment lines (starting with #)
+                if line and not line.startswith('#'):
+                    command_lines.append(line)
+
+            if not command_lines:
+                tkinter.messagebox.showwarning('Warning', 'No valid commands found. All lines are comments or empty.')
+                return
+
+            # Prepare Master file path (use the path from the main window entry)
+            master_file = self.full_filepath
+
+            # Get network_sketcher.py path
+            if getattr(sys, 'frozen', False):
+                # Running as compiled executable
+                sketcher_path = sys.executable
+            else:
+                # Running as script
+                sketcher_path = os.path.abspath(sys.argv[0])
+
+            # Get python executable path
+            python_executable = sys.executable
+
+            # Execute each command
+            success_count = 0
+            error_count = 0
+            error_messages = []
+            executed_commands = []
+            command_outputs = []
+
+            for cmd_index, cmd in enumerate(command_lines, 1):
+                try:
+                    print(f"\n[{cmd_index}/{len(command_lines)}] Executing: {cmd}")
+
+                    # Parse command line more carefully using shlex for proper quote handling
+                    import shlex
+
+                    # First, try to parse with shlex to handle quotes properly
+                    try:
+                        parts = shlex.split(cmd)
+                    except ValueError:
+                        # If shlex fails, fall back to simple split
+                        parts = cmd.split()
+
+                    # Filter out network_sketcher.py path and --master arguments
+                    filtered_parts = []
+                    skip_next = False
+                    i = 0
+                    while i < len(parts):
+                        part = parts[i]
+
+                        if skip_next:
+                            skip_next = False
+                            i += 1
+                            continue
+
+                        if part.lower() in ['python', 'python.exe']:
+                            i += 1
+                            continue
+
+                        if 'network_sketcher.py' in part.lower():
+                            i += 1
+                            continue
+
+                        if part in ['--master', '-master']:
+                            skip_next = True  # Skip the next argument (master file path)
+                            i += 1
+                            continue
+
+                        filtered_parts.append(part)
+                        i += 1
+
+                    if not filtered_parts:
+                        print(f"[SKIP] Empty command after filtering")
+                        continue
+
+                    # Check if this is an 'export ai_context_file' command
+                    # Show security warning dialog when executed from cli_on_gui
+                    if 'export' in filtered_parts and 'ai_context_file' in filtered_parts:
+                        # Check if --accept-security-risk flag is already present
+                        if '--accept-security-risk' not in filtered_parts:
+                            # Show security warning dialog to user
+                            result = tkinter.messagebox.askyesno(
+                                "Warning",
+                                "The exported AI Context file contains data from the master file, "
+                                "which includes all configuration information for the network (NW). "
+                                "Please be aware that there is a risk of data leakage if the exported file "
+                                "is loaded into a Large Language Model (LLM). "
+                                "Do you fully understand and accept this risk before proceeding with the export?"
+                            )
+
+                            if not result:
+                                # User declined - skip this command
+                                print(f"[SKIP] User declined ai_context_file export")
+                                command_outputs.append({
+                                    'command': ' '.join(filtered_parts),
+                                    'stdout': '[Info] Export cancelled by user via dialog',
+                                    'stderr': '',
+                                    'returncode': 0
+                                })
+                                success_count += 1
+                                executed_commands.append(' '.join(filtered_parts) + ' (cancelled by user)')
+                                continue
+
+                            # User accepted - add the flag to bypass CLI confirmation
+                            filtered_parts.append('--accept-security-risk')
+                            print(f"[INFO] User accepted security risk, added --accept-security-risk flag")
+
+                    # Construct command array for subprocess
+                    # Format: [python_path, sketcher_path, command, args..., '--master', master_file_path]
+                    subprocess_cmd = [python_executable, sketcher_path] + filtered_parts + ['--master', master_file]
+
+                    print(f"Subprocess command: {subprocess_cmd}")
+
+                    # Execute command using subprocess
+                    # stdin=subprocess.DEVNULL prevents blocking on input() calls
+                    result = subprocess.run(
+                        subprocess_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=300,  # 5 minutes timeout
+                        encoding='utf-8',
+                        errors='replace',
+                        stdin=subprocess.DEVNULL
+                    )
+
+                    # Check return code
+                    if result.returncode == 0:
+                        success_count += 1
+                        executed_commands.append(' '.join(filtered_parts))
+                        command_outputs.append({
+                            'command': ' '.join(filtered_parts),
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'returncode': 0
+                        })
+                        print(f"[SUCCESS] Command executed: {' '.join(filtered_parts)}")
+                        if result.stdout:
+                            print(f"Output:\n{result.stdout}")
+                    else:
+                        error_count += 1
+                        error_msg = f"Command: {' '.join(filtered_parts)}\nReturn code: {result.returncode}"
+                        if result.stderr:
+                            error_msg += f"\nError output:\n{result.stderr}"
+                        if result.stdout:
+                            error_msg += f"\nStandard output:\n{result.stdout}"
+                        error_messages.append(error_msg)
+
+                        # Also add to command_outputs for display
+                        command_outputs.append({
+                            'command': ' '.join(filtered_parts),
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'returncode': result.returncode
+                        })
+
+                        print(f"[ERROR] Command failed: {' '.join(filtered_parts)}")
+                        print(f"Return code: {result.returncode}")
+                        if result.stderr:
+                            print(f"Error output:\n{result.stderr}")
+                        if result.stdout:
+                            print(f"Standard output:\n{result.stdout}")
+
+                except subprocess.TimeoutExpired:
+                    error_count += 1
+                    error_msg = f"Command: {' '.join(filtered_parts) if filtered_parts else cmd}\nError: Command timeout (exceeded 5 minutes)"
+                    error_messages.append(error_msg)
+                    print(f"[ERROR] Command timeout: {cmd}")
+
+                except Exception as cmd_error:
+                    error_count += 1
+                    error_msg = f"Command: {' '.join(filtered_parts) if filtered_parts else cmd}\nError: {str(cmd_error)}"
+                    error_messages.append(error_msg)
+                    print(f"[ERROR] Command: {cmd}")
+                    print(f"Error: {str(cmd_error)}")
+                    import traceback
+                    traceback.print_exc()
+
+            print(f"\n=== Execution Summary ===")
+            print(f"Total commands: {len(command_lines)}")
+            print(f"Success: {success_count}")
+            print(f"Failed: {error_count}")
+
+            # Show result summary with proper error handling
+            try:
+                if error_count == 0:
+                    # Show output details in a separate window
+                    try:
+                        self.show_command_output_window(command_outputs)
+                    except Exception as output_error:
+                        print(f"[WARNING] Could not show output window: {output_error}")
+
+                    # Close CLI window
+                    try:
+                        self.cli_window.destroy()
+                    except:
+                        pass
+
+                    # Only open Master Panel if NOT opened from Master Panel
+                    if not self.from_master_panel:
+                        # ★★★ NEW: Check if master file has data before opening Master Panel ★★★
+                        try:
+                            import ns_def
+
+                            # Check if master file has any areas/devices
+                            has_data = False
+                            try:
+                                style_folder_array = ns_def.convert_master_to_array('Master_Data', master_file, '<<STYLE_FOLDER>>')
+                                # Check if there are any areas (rows beyond header rows 1, 2, 3)
+                                for item in style_folder_array:
+                                    if item[0] not in [1, 2, 3] and len(item[1]) > 0 and item[1][0]:
+                                        has_data = True
+                                        break
+                            except Exception as check_error:
+                                print(f"[WARNING] Could not check master file data: {check_error}")
+                                has_data = False
+
+                            if not has_data:
+                                # Master file has no data - don't open Master Panel
+                                print(f"[INFO] Master file has no areas/devices. Master Panel not opened.")
+                                '''tkinter.messagebox.showinfo('Complete',
+                                                            'CLI commands executed successfully!\n\n'
+                                                            'The master file has been updated but contains no areas or devices.\n'
+                                                            'Please add areas and devices using CLI commands or reload the master file.')'''
+                            else:
+                                # Master file has data - open Master Panel
+                                # Automatically reopen the Master Panel
+                                print(f"[INFO] Automatically opening Master Panel...")
+
+                                # Import network_sketcher to access ns_front_run
+                                import network_sketcher
+
+                                # Create a minimal mock instance with required methods
+                                class TempInstance:
+                                    def __init__(self, root, full_filepath, cli_gui_instance):
+                                        self.root = root
+                                        self.full_filepath = full_filepath
+                                        self.filename = os.path.basename(full_filepath)
+                                        self.click_value = ''
+                                        self.click_value_2nd = ''
+                                        self.click_value_3rd = ''
+                                        self.click_value_VPN = ''
+                                        self.cli_flag_no_export = False
+                                        self.flag_summary_diagram = False
+                                        self.keep_root_width = 0.0
+                                        self.keep_root_hight = 0.0
+                                        self.cli_gui_instance = cli_gui_instance
+
+                                    def on_combobox_select(self, event):
+                                        """Handle combobox selection"""
+                                        try:
+                                            import ns_def
+                                            self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(
+                                                self.inFileTxt_L2_3_1.get(),
+                                                self.comboATTR_1_1.get()
+                                            )
+                                        except Exception as e:
+                                            print(f"[WARNING] Could not update attribute tuple: {e}")
+
+                                    def click_action_sub(self, click_value, target_area_name):
+                                        """Delegate to network_sketcher.ns_front_run.click_action_sub"""
+                                        import network_sketcher
+                                        network_sketcher.ns_front_run.click_action_sub(self, click_value, target_area_name)
+
+                                temp_instance = TempInstance(self.root, self.full_filepath, self)
+
+                                file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
+                                network_sketcher.ns_front_run.sub_excel_master_1(temp_instance, file_type_array)
+
+                                print(f"[SUCCESS] Master Panel opened successfully")
+
+                        except Exception as panel_error:
+                            print(f"[WARNING] Could not open Master Panel automatically: {panel_error}")
+                            import traceback
+                            traceback.print_exc()
+                            # Fallback: Show manual instruction
+                            tkinter.messagebox.showinfo('Next Step',
+                                                        'CLI commands executed successfully!\n\n'
+                                                        'Please click "Submit" button in the main window\n'
+                                                        'to open the Master Panel with the updated data.')
+                    else:
+                        # Opened from Master Panel - just show completion message without opening Master Panel
+                        print(f"[INFO] CLI commands executed from Master Panel. Master Panel not reopened.")
+
+                elif success_count > 0:
+                    error_detail = '\n\n'.join(error_messages[:3])  # Show first 3 errors
+                    if len(error_messages) > 3:
+                        error_detail += f'\n\n... and {len(error_messages) - 3} more errors'
+
+                    # Show output details in a separate window
+                    try:
+                        if command_outputs:
+                            self.show_command_output_window(command_outputs)
+                    except Exception as output_error:
+                        print(f"[WARNING] Could not show output window: {output_error}")
+
+                    # Close CLI window
+                    try:
+                        self.cli_window.destroy()
+                    except:
+                        pass
+
+                    # Different message based on where CLI window was opened from
+                    if not self.from_master_panel:
+                        result = tkinter.messagebox.askyesno('Partial Success',
+                                                             f'Executed: {success_count} commands\n'
+                                                             f'Failed: {error_count} commands\n\n'
+                                                             f'Error details:\n{error_detail}\n\n'
+                                                             f'Do you want to open the Master Panel?')
+
+                        if result:
+                            # ★★★ NEW: Check if master file has data before opening Master Panel ★★★
+                            try:
+                                import ns_def
+
+                                # Check if master file has any areas/devices
+                                has_data = False
+                                try:
+                                    style_folder_array = ns_def.convert_master_to_array('Master_Data', master_file, '<<STYLE_FOLDER>>')
+                                    for item in style_folder_array:
+                                        if item[0] not in [1, 2, 3] and len(item[1]) > 0 and item[1][0]:
+                                            has_data = True
+                                            break
+                                except Exception as check_error:
+                                    print(f"[WARNING] Could not check master file data: {check_error}")
+                                    has_data = False
+
+                                if not has_data:
+                                    tkinter.messagebox.showinfo('Info',
+                                                                'The master file contains no areas or devices.\n'
+                                                                'Please add areas and devices using CLI commands first.')
+                                else:
+                                    # Open Master Panel
+                                    import network_sketcher
+
+                                    class TempInstance:
+                                        def __init__(self, root, full_filepath, cli_gui_instance):
+                                            self.root = root
+                                            self.full_filepath = full_filepath
+                                            self.filename = os.path.basename(full_filepath)
+                                            self.click_value = ''
+                                            self.click_value_2nd = ''
+                                            self.click_value_3rd = ''
+                                            self.click_value_VPN = ''
+                                            self.cli_flag_no_export = False
+                                            self.flag_summary_diagram = False
+                                            self.keep_root_width = 0.0
+                                            self.keep_root_hight = 0.0
+                                            self.cli_gui_instance = cli_gui_instance
+
+                                        def on_combobox_select(self, event):
+                                            """Handle combobox selection"""
+                                            try:
+                                                import ns_def
+                                                self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(
+                                                    self.inFileTxt_L2_3_1.get(),
+                                                    self.comboATTR_1_1.get()
+                                                )
+                                            except Exception as e:
+                                                print(f"[WARNING] Could not update attribute tuple: {e}")
+
+                                        def click_action_sub(self, click_value, target_area_name):
+                                            """Delegate to network_sketcher.ns_front_run.click_action_sub"""
+                                            import network_sketcher
+                                            network_sketcher.ns_front_run.click_action_sub(self, click_value, target_area_name)
+
+                                    temp_instance = TempInstance(self.root, self.full_filepath, self)
+
+                                    file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
+                                    network_sketcher.ns_front_run.sub_excel_master_1(temp_instance, file_type_array)
+
+                            except Exception as panel_error:
+                                print(f"[WARNING] Could not open Master Panel: {panel_error}")
+                                import traceback
+                                traceback.print_exc()
+                                tkinter.messagebox.showinfo('Next Step',
+                                                            'Please click "Submit" button in the main window\n'
+                                                            'to open the Master Panel with the updated data.')
+                    else:
+                        # Opened from Master Panel - just show completion message with errors
+                        tkinter.messagebox.showwarning('Partial Success',
+                                                       f'Executed: {success_count} commands\n'
+                                                       f'Failed: {error_count} commands\n\n'
+                                                       f'Error details:\n{error_detail}\n\n'
+                                                       f'The Master file has been partially updated.\n'
+                                                       f'Please refresh or reopen the Master Panel if needed.')
+
+                else:
+                    error_detail = '\n\n'.join(error_messages[:3])  # Show first 3 errors
+                    if len(error_messages) > 3:
+                        error_detail += f'\n\n... and {len(error_messages) - 3} more errors'
+
+                    tkinter.messagebox.showerror('All Commands Failed',
+                                                 f'All {error_count} commands failed.\n\n'
+                                                 f'Error details:\n{error_detail}')
+
+                    # Close CLI window
+                    try:
+                        self.cli_window.destroy()
+                    except:
+                        pass
+
+            except Exception as summary_error:
+                print(f"[ERROR] Error showing summary: {summary_error}")
+                import traceback
+                traceback.print_exc()
+                # Show a simple error message
+                tkinter.messagebox.showinfo('Execution Complete',
+                                            f'Commands executed: {success_count}\n'
+                                            f'Commands failed: {error_count}')
+
+        except Exception as e:
+            # This except block catches errors in the outer try block
+            error_message = f'Failed to execute CLI commands:\n{str(e)}'
+            print(f"[FATAL ERROR] {error_message}")
+            import traceback
+            traceback.print_exc()
+            tkinter.messagebox.showerror('Error', error_message)
+
+
+
+
+    def show_cli_input_window(self):
+        """
+        Display CLI input window when Master file
+        """
+        self.cli_window = tk.Toplevel(self.root)
+        self.cli_window.title('CLI Input')
+        self.cli_window.geometry("900x650+150+150")
+
+        # Main frame
+        main_frame = tk.LabelFrame(
+            self.cli_window,
+            text="Run CLI Commands on the Master File",
+            font=("", 14),
+            background="#FFF3CD",
+            padx=10,
+            pady=10
+        )
+        main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        # Information label
+        info_label = tk.Label(
+            main_frame,
+            text="You can enter and execute multiple CLI commands below.\n - There is no need to specify the path to network.sketcher.py or the master file.\n - File paths entered in the CLI will be ignored.",
+            font=("", 11),
+            background="#FFF3CD",
+            justify='left'
+        )
+        info_label.pack(pady=(0, 10))
+
+        # CLI input area
+        cli_frame = tk.LabelFrame(
+            main_frame,
+            text="CLI Commands",
+            font=("", 12),
+            background="#FFFFFF"
+        )
+        cli_frame.pack(fill='both', expand=True, pady=5)
+
+        # Text area with scrollbar
+        scrollbar = tk.Scrollbar(cli_frame)
+        scrollbar.pack(side='right', fill='y')
+
+        self.cli_text = tk.Text(
+            cli_frame,
+            font=("Courier", 10),
+            wrap='word',
+            yscrollcommand=scrollbar.set
+        )
+        self.cli_text.pack(fill='both', expand=True, padx=5, pady=5)
+        scrollbar.config(command=self.cli_text.yview)
+
+        # Placeholder text - Updated to show proper syntax without quotes around arrays
+        placeholder_text = """# Enter CLI commands here (one per line)\n# show ...\n# add ...\n# delete ...\n# rename ...\n# export ...\n"""
+        self.cli_text.insert('1.0', placeholder_text)
+        self.cli_text.config(fg='gray')
+
+        # Placeholder clear handling
+        def on_focus_in(event):
+            if self.cli_text.get('1.0', 'end-1c') == placeholder_text.strip():
+                self.cli_text.delete('1.0', 'end')
+                self.cli_text.config(fg='black')
+
+        def on_focus_out(event):
+            if not self.cli_text.get('1.0', 'end-1c').strip():
+                self.cli_text.insert('1.0', placeholder_text)
+                self.cli_text.config(fg='gray')
+
+        self.cli_text.bind('<FocusIn>', on_focus_in)
+        self.cli_text.bind('<FocusOut>', on_focus_out)
+
+        # Button frame
+        button_frame = tk.Frame(main_frame, background="#FFF3CD")
+        button_frame.pack(pady=10)
+
+        # Execute button
+        execute_button = tk.Button(
+            button_frame,
+            text="Execute CLI Commands",
+            font=("", 12),
+            command=self.execute_cli_commands,
+            bg="#28a745",
+            fg="white",
+            padx=20,
+            pady=5,
+        )
+        execute_button.pack(side='left', padx=5)
+
+        '''
+        # Cancel button
+        cancel_button = tk.Button(
+            button_frame,
+            text="Cancel",
+            font=("", 12),
+            command=self.cli_window.destroy,
+            bg="#dc3545",
+            fg="white",
+            padx=20,
+            pady=5
+        )
+        cancel_button.pack(side='left', padx=5)
+
+        # Load from file button
+        load_button = tk.Button(
+            button_frame,
+            text="Load from File",
+            font=("", 12),
+            command=self.load_cli_from_file,
+            padx=20,
+            pady=5
+        )
+        load_button.pack(side='left', padx=5)'''
+
+    def show_command_output_window(self, command_outputs):
+        """
+        Display command execution output in a separate window
+        """
+        if not command_outputs:
+            print("[INFO] No command outputs to display")
+            return
+
+        try:
+            output_window = tk.Toplevel(self.root)
+            output_window.title('Command Execution Output')
+            output_window.geometry("800x600+200+200")
+
+            # Main frame
+            main_frame = tk.Frame(output_window)
+            main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+            # Title
+            title_label = tk.Label(
+                main_frame,
+                text=f"Command Execution Results ({len(command_outputs)} commands)",
+                font=("", 12, "bold")
+            )
+            title_label.pack(pady=(0, 10))
+
+            # Text area with scrollbar
+            text_frame = tk.Frame(main_frame)
+            text_frame.pack(fill='both', expand=True)
+
+            scrollbar = tk.Scrollbar(text_frame)
+            scrollbar.pack(side='right', fill='y')
+
+            output_text = tk.Text(
+                text_frame,
+                font=("Courier", 9),
+                wrap='word',
+                yscrollcommand=scrollbar.set
+            )
+            output_text.pack(fill='both', expand=True)
+            scrollbar.config(command=output_text.yview)
+
+            # Error indicators list (case-insensitive matching)
+            ERROR_INDICATORS = [
+                # Error keywords
+                '[error]',
+                'error:',
+                'error ',
+                # Failure keywords
+                'failed',
+                'failure',
+                'failing',
+                # Exception keywords
+                'exception',
+                'traceback',
+                # Warning/Critical keywords (optional - can be removed if too strict)
+                'critical',
+                'fatal',
+                # Denial keywords
+                'denied',
+                'not found',
+                'not exist',
+                'does not exist',
+                'cannot ',
+                'could not',
+                'unable to',
+                # Invalid keywords
+                'invalid',
+                'illegal',
+                'unsupported',
+                # Abort keywords
+                'aborted',
+                'abort:',
+                'terminated',
+                # Permission keywords
+                'permission denied',
+                'access denied',
+                'unauthorized',
+                # Timeout keywords
+                'timeout',
+                'timed out',
+            ]
+
+            # Helper function to check if output contains error
+            def is_error_output(output):
+                """Check if the command output indicates an error"""
+                # Check return code first
+                returncode = output.get('returncode', 0)
+                if returncode != 0:
+                    return True
+
+                # Check stdout for error indicators
+                stdout = output.get('stdout', '')
+                if stdout:
+                    stdout_lower = stdout.lower()
+                    for indicator in ERROR_INDICATORS:
+                        if indicator in stdout_lower:
+                            return True
+
+                # Check stderr for any content (stderr usually indicates issues)
+                stderr = output.get('stderr', '')
+                if stderr and stderr.strip():
+                    stderr_lower = stderr.lower()
+                    for indicator in ERROR_INDICATORS:
+                        if indicator in stderr_lower:
+                            return True
+
+                return False
+
+            # ========== Add Summary Section at TOP ==========
+            try:
+                # Count success and failed commands using enhanced error detection
+                success_count = sum(1 for o in command_outputs if not is_error_output(o))
+                failed_count = len(command_outputs) - success_count
+
+                # Add summary header
+                output_text.insert('end', f"{'=' * 80}\n", 'separator')
+                output_text.insert('end', "EXECUTION SUMMARY\n", 'summary_header')
+                output_text.insert('end', f"{'=' * 80}\n", 'separator')
+
+                # Add statistics
+                output_text.insert('end', f"Total Commands: {len(command_outputs)}\n", 'summary_text')
+                output_text.insert('end', f"Success: ", 'summary_text')
+                output_text.insert('end', f"{success_count}\n", 'success')
+                output_text.insert('end', f"Failed: ", 'summary_text')
+                output_text.insert('end', f"{failed_count}\n", 'failed' if failed_count > 0 else 'success')
+                output_text.insert('end', f"{'=' * 80}\n", 'separator')
+
+                # Add command list summary
+                for idx, output in enumerate(command_outputs, 1):
+                    has_error = is_error_output(output)
+                    status = "FAILED" if has_error else "SUCCESS"
+                    status_tag = 'failed' if has_error else 'success'
+
+                    output_text.insert('end', f"Command {idx}: ", 'summary_text')
+                    output_text.insert('end', f"[{status}] ", status_tag)
+                    output_text.insert('end', f"{output['command']}\n", 'summary_text')
+
+                output_text.insert('end', f"{'=' * 80}\n", 'separator')
+                output_text.insert('end', '\n\n')
+
+            except Exception as summary_error:
+                print(f"[WARNING] Error inserting summary: {summary_error}")
+
+            # ========== Add Detailed Output Section ==========
+            output_text.insert('end', "DETAILED OUTPUT\n", 'summary_header')
+            output_text.insert('end', f"{'=' * 80}\n", 'separator')
+            output_text.insert('end', '\n')
+
+            # Insert command outputs
+            for idx, output in enumerate(command_outputs, 1):
+                try:
+                    output_text.insert('end', f"{'=' * 80}\n", 'separator')
+
+                    # Add return code indicator with enhanced error detection
+                    has_error = is_error_output(output)
+                    status = "FAILED" if has_error else "SUCCESS"
+                    status_tag = 'failed' if has_error else 'success'
+
+                    output_text.insert('end', f"Command {idx}: ", 'command')
+                    output_text.insert('end', f"[{status}] ", status_tag)
+                    output_text.insert('end', f"{output['command']}\n", 'command')
+                    output_text.insert('end', f"{'=' * 80}\n", 'separator')
+
+                    if output.get('stdout'):
+                        output_text.insert('end', f"\nOutput:\n", 'header')
+                        output_text.insert('end', f"{output['stdout']}\n", 'output')
+
+                    if output.get('stderr'):
+                        output_text.insert('end', f"\nErrors/Warnings:\n", 'error_header')
+                        output_text.insert('end', f"{output['stderr']}\n", 'error')
+
+                    output_text.insert('end', '\n\n')
+                except Exception as insert_error:
+                    print(f"[WARNING] Error inserting output for command {idx}: {insert_error}")
+
+            # Configure tags for colored text
+            output_text.tag_config('separator', foreground='gray')
+            output_text.tag_config('command', foreground='blue', font=("Courier", 9, "bold"))
+            output_text.tag_config('success', foreground='green', font=("Courier", 9, "bold"))
+            output_text.tag_config('failed', foreground='red', font=("Courier", 9, "bold"))
+            output_text.tag_config('header', foreground='green', font=("Courier", 9, "bold"))
+            output_text.tag_config('error_header', foreground='red', font=("Courier", 9, "bold"))
+            output_text.tag_config('output', foreground='black')
+            output_text.tag_config('error', foreground='red')
+            output_text.tag_config('summary_header', foreground='blue', font=("Courier", 11, "bold"))
+            output_text.tag_config('summary_text', foreground='black', font=("Courier", 9))
+
+            output_text.config(state='disabled')
+
+            # Close button
+            close_button = tk.Button(
+                main_frame,
+                text="Close",
+                font=("", 11),
+                command=output_window.destroy,
+                padx=20,
+                pady=5
+            )
+            close_button.pack(pady=(10, 0))
+
+            print(f"[INFO] Output window created successfully with {len(command_outputs)} commands")
+
+        except Exception as e:
+            print(f"[ERROR] Failed to create output window: {e}")
+            import traceback
+            traceback.print_exc()
+

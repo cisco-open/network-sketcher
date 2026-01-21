@@ -60,7 +60,7 @@ class ns_front_run():
         self.root = TkinterDnD.Tk()
         style = ttk.Style(self.root)
         style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
-        self.root.title("Network Sketcher  ver 2.6.1e")
+        self.root.title("Network Sketcher  ver 2.6.2")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
@@ -220,15 +220,22 @@ class ns_front_run():
                 ns_front_run.sub_ppt_sketch_1(self,file_type_array)
 
             elif file_type_array[0] == 'EXCEL_MASTER':
-                #print(file_type_array)
+                # print(file_type_array)
                 self.main1_1_label_4 = tk.Label(self.main1_1, textvariable=self.text, font=("", 10), background="#F2FDE3")
                 self.main1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
-                if ns_def.check_data_exists(self.full_filepath) == False: # Added at Ver 2.6.1 for no_data
-                    print('[ERROR] Master file does not contain any data')
+                if ns_def.check_data_exists(self.full_filepath) == False:  # Added at Ver 2.6.1 for no_data
+                    print('[info] Master file does not contain any data')
+                    # Create CLI GUI instance from ns_extensions
+                    cli_gui = ns_extensions.cli_on_gui()
+                    cli_gui.root = self.root
+                    cli_gui.full_filepath = self.full_filepath
+                    cli_gui.show_cli_input_window()
                     return ()
 
                 ns_front_run.sub_excel_master_1(self, file_type_array)
+
+
 
             elif file_type_array[0] == 'EXCEL_DEVICE':
                 #check attribute Table sheet in Excel file at ver 2.4.0
@@ -313,6 +320,17 @@ class ns_front_run():
                 self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
 
                 ns_dev.ns_front_run.click_action(self,'1-4c')
+
+    # Add delegation methods to ns_front_run class
+    def show_cli_input_window(self):
+        """
+        Display CLI input window when Master file contains no data
+        Delegates to cli_on_gui class
+        """
+        cli_gui = ns_extensions.cli_on_gui.cli_on_gui()
+        cli_gui.root = self.root
+        cli_gui.full_filepath = self.full_filepath
+        cli_gui.show_cli_input_window()
 
     '''
     Sketch Panel
@@ -786,12 +804,15 @@ class ns_front_run():
         self.sub2_7_button_1.grid(row=10, column=1, sticky='WE', padx=2, pady=2, ipadx=3)
 
         #add ver 2.5.2
-        self.sub2_A = tk.LabelFrame(self.sub2_1, text='Lab', font=("", 14), height=1, background="#D9D9D9")
-        self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2)
+        self.sub2_A = tk.LabelFrame(self.sub2_1, text='AI-Enabled Feature Lab', font=("", 14), height=1, background="#D9D9D9")
+        self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2, columnspan=3)
 
-        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta5a)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
+        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta6)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
         self.sub2_9_button_1.grid(row=1, column=21, sticky='WE', padx=2, pady=2, ipadx=3)
 
+        # Add CLI window button next to Export AI Context file button
+        self.sub2_10_button_1 = tk.Button(self.sub2_A, text="Run CLI Commands", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_10_button_1', push_array))
+        self.sub2_10_button_1.grid(row=1, column=22, sticky='WE', padx=2, pady=2, ipadx=3)
 
         '''
         Extensions
@@ -1048,15 +1069,15 @@ class ns_front_run():
 
     def click_action_sub(self, click_value, target_area_name):
         if click_value == 'self.sub3_5_button_6':  # select device flow table
-            #print ('--- device flow table ---',variableFLOW_1_1.get())
+            # print ('--- device flow table ---',variableFLOW_1_1.get())
             ns_extensions.flow_report.create_device_flow_table(self, self.inFileTxt_L2_3_1.get(), variableFLOW_1_1.get())
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
 
         if click_value == 'self.sub3_7_button_3':  # select Submit
-            ns_extensions.flow.append_flows_to_diagram(self,variable3_7_y_1,variable3_7_y_2,variable3_7_y_3)
+            ns_extensions.flow.append_flows_to_diagram(self, variable3_7_y_1, variable3_7_y_2, variable3_7_y_3)
 
         if click_value == 'self.sub3_7_button_2':  # select browse
-            fTyp = [("","*.pptx")]
+            fTyp = [("", "*.pptx")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.pptx_full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
             self.pptx_filename = os.path.basename(self.pptx_full_filepath)
@@ -1069,7 +1090,7 @@ class ns_front_run():
             ns_extensions.flow.export_flow_file(self, target_area_name)
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
 
-        #add ver 2.5.2
+        # add ver 2.5.2
         if click_value == 'self.self.sub2_9_button_1':  # Export the AI Context file
             ###Export the AI Context file
             result = tkinter.messagebox.askyesno("Warning", "The exported AI Context file contains data from the master file, which includes all configuration information for the network (NW). Please be aware that there is a risk of data leakage if the exported file is loaded into a Large Language Model (LLM). Do you fully understand and accept this risk before proceeding with the export?")
@@ -1081,7 +1102,16 @@ class ns_front_run():
             else:  # If NO is selected
                 print("--- No action ---")
 
-
+        # Add CLI window button handler
+        if click_value == 'self.self.sub2_10_button_1':  # Open CLI window
+            ###Open CLI window for command input
+            print("--- Opening CLI window from Master Panel ---")
+            # Create CLI GUI instance from ns_extensions
+            cli_gui = ns_extensions.cli_on_gui()
+            cli_gui.root = self.root
+            cli_gui.full_filepath = self.full_filepath
+            cli_gui.from_master_panel = True  # Flag to indicate opened from Master Panel
+            cli_gui.show_cli_input_window()
 
         if click_value == 'self.sub3_5_button_1':  # select IP address table
             ###export_ip_report
@@ -1089,7 +1119,7 @@ class ns_front_run():
             ns_def.messagebox_file_open(str(self.outFileTxt_11_3.get()))
 
         if click_value == 'self.sub3_4_button_1':  # select Run
-            #change target area name to N/A
+            # change target area name to N/A
             if target_area_name == '_WAN(Way_Point)_':
                 target_area_name = 'N/A'
 
@@ -1100,14 +1130,14 @@ class ns_front_run():
             ns_def.get_backup_filename(self.inFileTxt_L3_3_1.get())
 
             ###run_auto_ip
-            ns_extensions.auto_ip_addressing.run_auto_ip(self,target_area_name)
+            ns_extensions.auto_ip_addressing.run_auto_ip(self, target_area_name)
 
             ### messagebox
             tkinter.messagebox.showinfo(title='Complete', message='[MASTER] file has been updated.')
 
         if click_value == 'self.self.sub2_5_button_3' and self.cli_flag_no_export == False:  # Create Device file
             ### check file open
-            if ns_def.check_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]','')) == True:
+            if ns_def.check_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]', '')) == True:
                 return ()
 
             ### create device file and L1 Table
@@ -1125,10 +1155,10 @@ class ns_front_run():
             ns_dev.ns_front_run.click_action(self, 'ATTR-1-1')
 
             if self.click_value_2nd != 'self.sub1_1_button_1' and self.click_value_2nd != 'self.sub3_1_button_3':
-                ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]',''))
+                ns_def.messagebox_file_open(str(self.outFileTxt_11_2.get()).replace('[MASTER]', ''))
 
         if click_value == 'self.self.sub2_6_button_1':  # Click "VPNs on L1"
-            #print('--- Click "VPNs on L1" ---')
+            # print('--- Click "VPNs on L1" ---')
             ### create L1 Table with [VPNs_on_L1]]
             self.click_value = 'VPN-1-1'
             ns_dev.ns_front_run.click_action(self, '2-4-3')
@@ -1136,15 +1166,15 @@ class ns_front_run():
             ### Write VPNs on L1 ###
             ns_vpn_diagram_create.ns_write_vpns_on_l1.__init__(self)
 
-            ns_def.messagebox_file_open(self.output_ppt_file) #Add at Ver 2.3.1(a)
+            ns_def.messagebox_file_open(self.output_ppt_file)  # Add at Ver 2.3.1(a)
 
         if click_value == 'self.self.sub2_6_button_2':  # Click "VPNs on L3"
-            #print('--- Click VPNs on L3 ---')
+            # print('--- Click VPNs on L3 ---')
             self.click_value = 'L3-4-1'
             self.click_value_VPN = 'VPN-1-3'
 
             ### Modify Master file for L3 vpn ###
-            #ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
+            # ns_vpn_diagram_create.ns_modify_master_l3vpn.__init__(self)
 
             ### Create L3 All Areas with l3vpn master file ###
             ns_dev.ns_front_run.click_action(self, 'L3-4-1')

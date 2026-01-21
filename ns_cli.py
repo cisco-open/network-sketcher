@@ -403,30 +403,26 @@ class ns_cli_run():
                 traceback.print_exc()
                 return ([f'[ERROR] Failed to create backup: {str(e)}'])
 
-        # ★★★ Modified: Use --master for output path ★★★
+        # ★★★ Modified: Use fixed filename for master_file_nodata ★★★
         if next_arg == 'master_file_nodata':
             try:
-                # Use master_file_path as output file path
-                output_file_path = master_file_path
+                # ★★★ Use fixed filename [MASTER]no_data.xlsx in the same directory as master_file_path ★★★
+                # Get directory from master_file_path
+                iDir = os.path.dirname(master_file_path)
+                if not iDir:
+                    iDir = os.getcwd()
 
-                # Validate file path
-                # Check if filename starts with [MASTER]
-                filename = os.path.basename(output_file_path)
-                if not filename.startswith('[MASTER]'):
-                    return ([f'[ERROR] Filename must start with "[MASTER]". Current filename: {filename}'])
-
-                # Check if extension is .xlsx
-                if not output_file_path.endswith('.xlsx'):
-                    return ([f'[ERROR] File extension must be ".xlsx". Current file: {output_file_path}'])
+                # Fixed filename for empty master file
+                fixed_filename = '[MASTER]no_data.xlsx'
+                output_file_path = os.path.join(iDir, fixed_filename)
 
                 # Check if directory exists
-                output_dir = os.path.dirname(output_file_path)
-                if output_dir and not os.path.isdir(output_dir):
-                    return ([f'[ERROR] Directory does not exist: {output_dir}'])
+                if iDir and not os.path.isdir(iDir):
+                    return ([f'[ERROR] Directory does not exist: {iDir}'])
 
                 # Check if file already exists
                 if os.path.isfile(output_file_path):
-                    return ([f'[ERROR] File already exists: {output_file_path}\n  Please specify a different filename or delete the existing file.'])
+                    return ([f'[ERROR] File already exists: {output_file_path}\n  Please delete the existing file or use a different directory.'])
 
                 # Create empty master file
                 result = def_common.create_empty_master_file(output_file_path)
@@ -449,12 +445,14 @@ class ns_cli_run():
 
 
 
-    def cli_rename(self, master_file_path, argv_array): # add at ver 2.5.4
+
+    def cli_rename(self, master_file_path, argv_array):  # add at ver 2.5.4
         import ns_def
         import tkinter as tk
         next_arg = get_next_arg(argv_array, 'rename')
         rename_command_list = [ \
             'rename area', \
+            'rename attribute_bulk', \
             'rename device', \
             'rename l3_instance', \
             'rename port', \
@@ -465,6 +463,312 @@ class ns_cli_run():
             for tmp_add_command_list in rename_command_list:
                 print(tmp_add_command_list)
             exit()
+
+        if next_arg == 'attribute_bulk':
+            import ast
+            import ns_def
+            import re
+
+            # Get the array argument from command line
+            idx = argv_array.index('attribute_bulk')
+
+            try:
+                # Reconstruct arguments that were split by whitespace
+                remaining_args = argv_array[idx + 1:]
+
+                # Find where --master or other flags start
+                array_parts = []
+                for arg in remaining_args:
+                    if arg.startswith('--'):
+                        break
+                    array_parts.append(arg)
+
+                # Join the parts back together with space
+                attribute_bulk_array_str = ' '.join(array_parts)
+                attribute_bulk_array_str = attribute_bulk_array_str.strip()
+
+                def reconstruct_array_string(raw_str):
+                    """
+                    Reconstruct a properly formatted array string.
+
+                    Supports mixed entries:
+                    - Device entries with RGB values: [device_name,['attr',[R,G,B]],...]
+                    - Header entries without RGB: ['Device Name','col1','col2',...]
+
+                    Device boundaries: ]]],[   (3 closing brackets)
+                    """
+                    # Try to parse directly first
+                    try:
+                        result = ast.literal_eval(raw_str)
+                        if isinstance(result, list):
+                            return result, None
+                    except Exception:
+                        pass
+
+                    # Validate outer brackets
+                    if not (raw_str.startswith('[[') and raw_str.endswith(']]')):
+                        return None, "Array must start with [[ and end with ]]"
+
+                    # Step 1: Normalize - remove spaces but preserve structure
+                    normalized = re.sub(r'\s+', '', raw_str)
+
+                    # Step 2: Find device entry boundaries (]]],[)
+                    device_split_positions = []
+                    search_pos = 0
+                    while True:
+                        pos = normalized.find(']]],[', search_pos)
+                        if pos == -1:
+                            break
+                        device_split_positions.append(pos)
+                        search_pos = pos + 1
+
+                    # Extract entries
+                    device_entry_strings = []
+
+                    if not device_split_positions:
+                        # Only one entry
+                        inner = normalized[2:-2]
+                        device_entry_strings = [inner]
+                    else:
+                        prev_start = 2  # Skip initial [[
+
+                        for pos in device_split_positions:
+                            entry = normalized[prev_start:pos + 3]  # Include ]]]
+                            device_entry_strings.append(entry)
+                            prev_start = pos + 5  # Skip ]]],[
+
+                        # Add the last entry
+                        if prev_start < len(normalized) - 2:
+                            last_entry = normalized[prev_start:-2]
+                            device_entry_strings.append(last_entry)
+
+                    # Step 3: Process each entry string
+                    result = []
+                    for entry_str in device_entry_strings:
+                        entry_str = entry_str.strip()
+
+                        # Check if this entry contains RGB values
+                        has_rgb_in_entry = bool(re.search(r'\[\d+,\d+,\d+\]', entry_str))
+
+                        if not has_rgb_in_entry:
+                            # Header entry - no RGB values
+                            # Remove outer brackets if present
+                            if entry_str.startswith('[') and entry_str.endswith(']'):
+                                entry_str = entry_str[1:-1]
+
+                            # Split by comma
+                            elements = entry_str.split(',')
+                            elements = [e.strip().strip("'\"") for e in elements]
+                            elements = [e for e in elements if e]  # Remove empty
+
+                            # Check if first element is "DeviceName" (normalized form of "Device Name")
+                            if elements and elements[0] == 'DeviceName':
+                                elements[0] = 'Device Name'  # Restore original form
+
+                            if elements:
+                                result.append(elements)
+                        else:
+                            # Device entry with RGB values
+                            # Remove outer [ ] if present and not part of attribute
+                            while entry_str.startswith('[') and entry_str.endswith(']'):
+                                test_inner = entry_str[1:-1]
+                                if not test_inner.startswith("['"):
+                                    entry_str = test_inner
+                                else:
+                                    break
+
+                            # Find device name (everything before first ['
+                            first_attr_start = entry_str.find("['")
+
+                            if first_attr_start == -1:
+                                device_name = entry_str.strip().strip("'\"").rstrip(',').rstrip(']')
+                                if device_name:
+                                    result.append([device_name])
+                                continue
+
+                            device_name = entry_str[:first_attr_start].strip().rstrip(',')
+
+                            # Extract all attributes using regex
+                            attr_part = entry_str[first_attr_start:]
+
+                            # Match pattern: ['anything',[digits,digits,digits]]
+                            attr_pattern = r"\['([^']*)',\[(\d+),(\d+),(\d+)\]\]"
+                            matches = re.findall(attr_pattern, attr_part)
+
+                            # Build processed entry
+                            processed_entry = [device_name]
+                            for match in matches:
+                                attr_name = match[0]
+                                r = int(match[1])
+                                g = int(match[2])
+                                b = int(match[3])
+
+                                # Validate RGB range
+                                r = r if 0 <= r <= 255 else 255
+                                g = g if 0 <= g <= 255 else 255
+                                b = b if 0 <= b <= 255 else 255
+
+                                processed_entry.append(f"['{attr_name}', [{r}, {g}, {b}]]")
+
+                            if processed_entry and processed_entry[0]:
+                                result.append(processed_entry)
+
+                    if result:
+                        return result, None
+                    else:
+                        return None, "Failed to parse entries"
+
+                # Attempt to reconstruct the array
+                attribute_bulk_array, error = reconstruct_array_string(attribute_bulk_array_str)
+
+                if error:
+                    return ([f'[ERROR] {error}\n'
+                             f'Received string: {attribute_bulk_array_str}\n'])
+
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return ([f'[ERROR] Invalid attribute_bulk array format: {str(e)}\n'])
+
+            # Validate input format
+            if not isinstance(attribute_bulk_array, list):
+                return ([f'[ERROR] attribute_bulk must be a list of attribute definitions'])
+
+            if len(attribute_bulk_array) == 0:
+                return ([f'[ERROR] attribute_bulk array is empty'])
+
+            # Load current ATTRIBUTE array from master file
+            attribute_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
+            ori_attribute_tuple = ns_def.convert_array_to_tuple(attribute_array)
+
+            def validate_rgb(rgb_list):
+                if not isinstance(rgb_list, list) or len(rgb_list) != 3:
+                    return [255, 255, 255]
+                fixed_rgb = []
+                for val in rgb_list:
+                    if isinstance(val, (int, float)):
+                        if val < 0 or val > 255:
+                            fixed_rgb.append(255)
+                        else:
+                            fixed_rgb.append(int(val))
+                    else:
+                        fixed_rgb.append(255)
+                return fixed_rgb
+
+            def parse_attribute_value(attr_str):
+                try:
+                    if isinstance(attr_str, str) and not attr_str.startswith('['):
+                        return (True, attr_str, None)
+
+                    parsed = ast.literal_eval(attr_str) if isinstance(attr_str, str) else attr_str
+
+                    if isinstance(parsed, list) and len(parsed) == 2:
+                        attr_name = parsed[0]
+                        rgb_values = parsed[1]
+                        fixed_rgb = validate_rgb(rgb_values)
+                        return (True, f"['{attr_name}', {fixed_rgb}]", None)
+                    elif isinstance(parsed, str):
+                        return (True, parsed, None)
+                    else:
+                        return (False, None, f"Invalid attribute format: {attr_str}")
+                except Exception as e:
+                    return (False, None, f"Failed to parse attribute: {attr_str}, Error: {str(e)}")
+
+            # Track processing results
+            success_count = 0
+            warning_messages = []
+            updated_devices = []
+
+            # Process each entry in the bulk array
+            for device_entry in attribute_bulk_array:
+                if not isinstance(device_entry, list) or len(device_entry) < 1:
+                    warning_messages.append(f"[Warning] Invalid entry format (skipped): {device_entry}")
+                    continue
+
+                device_name = device_entry[0]
+                attribute_values = device_entry[1:] if len(device_entry) > 1 else []
+
+                if not device_name or device_name.strip() == '':
+                    warning_messages.append(f"[Warning] Empty device name (skipped)")
+                    continue
+
+                # Check if this is a header row (with or without space)
+                is_header_row = (device_name == 'Device Name' or device_name == 'DeviceName')
+
+                device_found = False
+                for item in attribute_array:
+                    if not isinstance(item, list) or len(item) < 2:
+                        continue
+                    if not isinstance(item[1], list) or len(item[1]) == 0:
+                        continue
+
+                    # Process header row (row 2 in attribute_array)
+                    if is_header_row and item[0] == 2:
+                        device_found = True
+                        new_header = ['Device Name']
+                        for idx_attr, attr_val in enumerate(attribute_values):
+                            if isinstance(attr_val, str):
+                                new_header.append(attr_val)
+                            else:
+                                new_header.append(item[1][idx_attr + 1] if idx_attr + 1 < len(item[1]) else '')
+
+                        while len(new_header) < 10:
+                            new_header.append('')
+                        new_header.append('<END>')
+
+                        item[1] = new_header
+                        success_count += 1
+                        updated_devices.append('Device Name (Header)')
+                        break
+
+                    # Process device row
+                    if item[0] > 2 and item[1][0] == device_name:
+                        device_found = True
+
+                        new_row = [device_name]
+
+                        for idx_attr, attr_val in enumerate(attribute_values):
+                            is_valid, parsed_value, warning = parse_attribute_value(attr_val)
+
+                            if is_valid:
+                                new_row.append(parsed_value)
+                            else:
+                                warning_messages.append(f"[Warning] Device '{device_name}', Attr {idx_attr + 1}: {warning}")
+                                if idx_attr + 1 < len(item[1]):
+                                    new_row.append(item[1][idx_attr + 1])
+                                else:
+                                    new_row.append("['<EMPTY>', [255, 255, 255]]")
+
+                        while len(new_row) < 10:
+                            new_row.append("['<EMPTY>', [255, 255, 255]]")
+
+                        item[1] = new_row
+                        success_count += 1
+                        updated_devices.append(device_name)
+                        break
+
+                if not device_found:
+                    warning_messages.append(f"[Warning] Device/Entry '{device_name}' not found (skipped)")
+
+            # Write to Excel
+            if success_count > 0:
+                attribute_tuple = ns_def.convert_array_to_tuple(attribute_array)
+                ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_attribute_tuple)
+                ns_def.write_excel_meta(attribute_tuple, master_file_path, 'Master_Data', '<<ATTRIBUTE>>', 0, 0)
+
+            # Build return message
+            return_text = f'--- Attribute bulk rename completed ---\n'
+            return_text += f'Successfully updated: {success_count} entry(ies)\n'
+
+            if updated_devices:
+                return_text += f'Updated: {", ".join(updated_devices)}\n'
+
+            if warning_messages:
+                return_text += '\nWarnings:\n'
+                for warning in warning_messages:
+                    return_text += f'  {warning}\n'
+
+            return ([return_text.strip()])
 
         if next_arg == 'area':
             idx = argv_array.index('area')
@@ -905,22 +1209,30 @@ class ns_cli_run():
             return_text = '--- l3 instance renamed --- ' + ' ' + hostname + ',' + portname + ',' + add_l3instance_name
             return ([return_text])
 
+
+
+
+
     def cli_add(self, master_file_path, argv_array): # add at ver 2.5.3
         import ns_def
         import tkinter as tk
         next_arg = get_next_arg(argv_array, 'add')
-        add_command_list = [ \
+        add_command_list = [
             'add area_location', # Add this line at ver 2.6.1
             'add device', # Add this line at ver 2.6.1
             'add device_location',  # Add this line at ver 2.6.1
-            'add ip_address', \
+            'add ip_address',
+            'add ip_address_bulk',  # Add this line at ver 2.6.2
             'add l1_link', # Add this line at ver 2.6.1
             'add l1_link_bulk',  # Add this line at ver 2.6.1
-            'add l2_segment', \
-            'add portchannel', \
-            'add virtual_port', \
-            'add vport_l1if_direct_binding', \
-            'add vport_l2_direct_binding', \
+            'add l2_segment',
+            'add l2_segment_bulk',  # Add this line at ver 2.6.2
+            'add portchannel',
+            'add portchannel_bulk',  # Add this line at ver 2.6.2
+            'add virtual_port',
+            'add virtual_port_bulk',  # Add this line at ver 2.6.2
+            'add vport_l1if_direct_binding',
+            'add vport_l2_direct_binding',
             'add waypoint', # Add this line at ver 2.6.1
             ]
 
@@ -929,6 +1241,867 @@ class ns_cli_run():
             for tmp_add_command_list in add_command_list:
                 print(tmp_add_command_list)
             exit()
+
+        if next_arg == 'ip_address_bulk':
+            import ast
+            import re
+            import ipaddress
+            import ns_def
+
+            # ========== Helper functions ==========
+            def normalize_interface_name(if_name):
+                """Normalize interface name for comparison"""
+                if not isinstance(if_name, str):
+                    if_name = str(if_name)
+                if_name = if_name.strip()
+                if_name = re.sub(r'\s+', ' ', if_name)
+                return if_name
+
+            def normalize_ip_address(ip_str):
+                """
+                Normalize IP address:
+                - Remove spaces
+                - Validate format (x.x.x.x/mask)
+                Returns: (normalized_ip, is_valid, error_message)
+                """
+                if not isinstance(ip_str, str):
+                    ip_str = str(ip_str)
+
+                # Remove all spaces
+                ip_str = ip_str.replace(' ', '').replace('　', '').strip()
+
+                if not ip_str:
+                    return (None, False, 'Empty IP address')
+
+                # Check if contains subnet mask
+                if '/' not in ip_str:
+                    return (None, False, f'Missing subnet mask: {ip_str}')
+
+                try:
+                    # Validate using ipaddress module
+                    network = ipaddress.ip_interface(ip_str)
+                    # Return normalized format
+                    return (str(network), True, None)
+                except ValueError as e:
+                    return (None, False, f'Invalid IP: {ip_str} ({str(e)})')
+
+            def sort_ip_addresses(ip_list):
+                """
+                Sort IP addresses numerically
+                """
+
+                def ip_sort_key(ip_str):
+                    try:
+                        iface = ipaddress.ip_interface(ip_str)
+                        return (0, int(iface.ip))
+                    except:
+                        return (1, ip_str)
+
+                return sorted(ip_list, key=ip_sort_key)
+
+            # Get the array argument from command line
+            idx = argv_array.index('ip_address_bulk')
+            try:
+                ip_address_bulk_array_str = argv_array[idx + 1]
+                ip_address_bulk_array = ast.literal_eval(ip_address_bulk_array_str)
+            except (IndexError, ValueError, SyntaxError) as e:
+                return ([f'[ERROR] Invalid ip_address_bulk array format: {str(e)}'])
+
+            if not isinstance(ip_address_bulk_array, list) or len(ip_address_bulk_array) == 0:
+                return ([f'[ERROR] ip_address_bulk must be a non-empty list'])
+
+            # ========== STEP 1: Load L3 array ONCE ==========
+            l3_attribute_array = ns_def.convert_master_to_array('Master_Data_L3', master_file_path, '<<L3_TABLE>>')
+
+            TARGET_LEN = 6
+            for row in l3_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            # ========== STEP 2: Process all entries IN MEMORY ==========
+            added_ips = []
+            skipped_ips = []
+            error_entries = []
+            affected_interfaces = 0
+
+            for entry_idx, entry in enumerate(ip_address_bulk_array):
+                # Validate entry format: [device_name, port_name, [ip_list]] or [device_name, port_name, ip_address]
+                if not isinstance(entry, list) or len(entry) != 3:
+                    error_entries.append({'idx': entry_idx, 'err': 'Invalid format (expected [device, port, [ips]])'})
+                    continue
+
+                hostname = str(entry[0]).strip()
+                portname = normalize_interface_name(entry[1])
+                ip_list = entry[2]
+
+                # Handle single IP as string
+                if isinstance(ip_list, str):
+                    ip_list = [ip_list]
+                elif not isinstance(ip_list, list):
+                    error_entries.append({'idx': entry_idx, 'err': 'IPs must be a list or string'})
+                    continue
+
+                # Normalize and validate all IP addresses
+                valid_ips = []
+                for ip in ip_list:
+                    normalized_ip, is_valid, err_msg = normalize_ip_address(ip)
+                    if is_valid:
+                        valid_ips.append(normalized_ip)
+                    else:
+                        error_entries.append({'idx': entry_idx, 'err': err_msg})
+
+                if not valid_ips:
+                    continue
+
+                # Find matching row in l3_attribute_array
+                match_found = False
+                target_row = None
+
+                for row in l3_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        # Check L3 port name (index 2)
+                        db_port = normalize_interface_name(values[2]) if len(values) > 2 else ''
+
+                        if db_port == portname:
+                            match_found = True
+                            target_row = row
+                            break
+
+                if not match_found:
+                    error_entries.append({'idx': entry_idx, 'err': f'L3 interface not found: {hostname}:{portname}'})
+                    continue
+
+                # Add IP addresses to the row (index 4)
+                current_value = target_row[1][4] if len(target_row[1]) > 4 else ''
+
+                # Parse existing IPs and normalize them
+                if current_value and current_value.strip():
+                    existing_ips = []
+                    for ip in current_value.split(','):
+                        normalized_ip, is_valid, _ = normalize_ip_address(ip)
+                        if is_valid:
+                            existing_ips.append(normalized_ip)
+                else:
+                    existing_ips = []
+
+                ips_added_this_entry = []
+                ips_skipped_this_entry = []
+
+                for ip in valid_ips:
+                    if ip not in existing_ips:
+                        existing_ips.append(ip)
+                        ips_added_this_entry.append(ip)
+                    else:
+                        ips_skipped_this_entry.append(ip)
+
+                if ips_added_this_entry:
+                    # Sort IP addresses
+                    sorted_ips = sort_ip_addresses(existing_ips)
+                    target_row[1][4] = ','.join(sorted_ips)
+
+                    added_ips.append({
+                        'device': hostname,
+                        'port': portname,
+                        'ips': ips_added_this_entry,
+                        'final_list': sorted_ips
+                    })
+                    affected_interfaces += 1
+
+                if ips_skipped_this_entry:
+                    skipped_ips.append({
+                        'device': hostname,
+                        'port': portname,
+                        'ips': ips_skipped_this_entry
+                    })
+
+            # Error check
+            if error_entries and not added_ips:
+                error_msg = f'[ERROR] All entries failed:\n'
+                for err in error_entries[:5]:
+                    error_msg += f"  Entry {err['idx'] + 1}: {err['err']}\n"
+                if len(error_entries) > 5:
+                    error_msg += f"  ... +{len(error_entries) - 5} more error(s)\n"
+                return ([error_msg])
+
+            # ========== STEP 3: Write to Excel ONCE ==========
+            if added_ips:
+                excel_master_ws_name_l3 = 'Master_Data_L3'
+                last_l3_table_tuple = ns_def.convert_array_to_tuple(l3_attribute_array)
+
+                ns_def.remove_excel_sheet(master_file_path, excel_master_ws_name_l3)
+                ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l3)
+                ns_def.write_excel_meta(last_l3_table_tuple, master_file_path, excel_master_ws_name_l3, '_template_', 0, 0)
+
+            # ========== Build return message ==========
+            total_ips_added = sum(len(i['ips']) for i in added_ips)
+            total_ips_skipped = sum(len(i['ips']) for i in skipped_ips)
+
+            return_msg = f'--- Added IP address(es) in bulk ---\n'
+
+            for ip_info in added_ips[:10]:
+                return_msg += f"  {ip_info['device']}({ip_info['port']}) <- {', '.join(ip_info['ips'])}\n"
+
+            if len(added_ips) > 10:
+                return_msg += f"  ... +{len(added_ips) - 10} more interface(s)\n"
+
+            return_msg += f'\nSummary:\n'
+            return_msg += f'  IP addresses added: {total_ips_added}\n'
+            return_msg += f'  Interfaces affected: {affected_interfaces}\n'
+
+            if total_ips_skipped > 0:
+                return_msg += f'  IP addresses skipped (already exist): {total_ips_skipped}\n'
+
+            if error_entries:
+                return_msg += f'\nWarnings: {len(error_entries)} entry(ies) with errors\n'
+                for err in error_entries[:3]:
+                    return_msg += f"  Entry {err['idx'] + 1}: {err['err']}\n"
+
+            return ([return_msg.strip()])
+
+
+
+        if next_arg == 'portchannel_bulk':
+            import ast
+            import re
+            import ns_def
+
+            # ========== Helper functions ==========
+            def normalize_interface_name(if_name):
+                """Normalize interface name for comparison"""
+                if not isinstance(if_name, str):
+                    if_name = str(if_name)
+                if_name = if_name.strip()
+                if_name = re.sub(r'\s+', ' ', if_name)
+                return if_name
+
+            # Get the array argument from command line
+            idx = argv_array.index('portchannel_bulk')
+            try:
+                portchannel_bulk_array_str = argv_array[idx + 1]
+                portchannel_bulk_array = ast.literal_eval(portchannel_bulk_array_str)
+            except (IndexError, ValueError, SyntaxError) as e:
+                return ([f'[ERROR] Invalid portchannel_bulk array format: {str(e)}'])
+
+            if not isinstance(portchannel_bulk_array, list) or len(portchannel_bulk_array) == 0:
+                return ([f'[ERROR] portchannel_bulk must be a non-empty list'])
+
+            # ========== STEP 1: Load L2 array ONCE ==========
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path, '<<L2_TABLE>>')
+
+            TARGET_LEN = 9
+            for row in l2_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            # ========== STEP 2: Validate port-channel names ==========
+            for entry_idx, entry in enumerate(portchannel_bulk_array):
+                if not isinstance(entry, list) or len(entry) != 3:
+                    return ([f'[ERROR] Entry {entry_idx + 1}: Invalid format (expected [device, [ports], portchannel_name])'])
+
+                portchannel_name = str(entry[2]).strip()
+                if ns_def.get_if_value(portchannel_name) == -1:
+                    return ([f'[ERROR] Entry {entry_idx + 1}: Invalid port-channel name: {portchannel_name}'])
+
+            # ========== STEP 3: Process all entries IN MEMORY ==========
+            configured_interfaces = []
+            created_portchannels = []
+            error_entries = []
+
+            for entry_idx, entry in enumerate(portchannel_bulk_array):
+                hostname = str(entry[0]).strip()
+                port_list = entry[1]
+                portchannel_name = normalize_interface_name(entry[2])
+
+                # Handle single port as string
+                if isinstance(port_list, str):
+                    port_list = [port_list]
+                elif not isinstance(port_list, list):
+                    error_entries.append({'idx': entry_idx, 'err': 'Ports must be a list or string'})
+                    continue
+
+                # Normalize port names
+                port_list = [normalize_interface_name(port) for port in port_list]
+                port_list = [port for port in port_list if port]
+
+                if not port_list:
+                    error_entries.append({'idx': entry_idx, 'err': 'No valid ports'})
+                    continue
+
+                # Find and update matching rows
+                ports_configured = []
+                for port in port_list:
+                    port_found = False
+                    for row in l2_attribute_array[2:]:
+                        values = row[1]
+                        if len(values) > 1 and values[1] == hostname:
+                            db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
+
+                            if db_physical_port == port:
+                                # Check if already has a port-channel
+                                existing_pc = values[5] if len(values) > 5 else ''
+                                if existing_pc and existing_pc != portchannel_name:
+                                    error_entries.append({
+                                        'idx': entry_idx,
+                                        'err': f'{hostname}:{port} already in {existing_pc}'
+                                    })
+                                else:
+                                    # Set port-channel name (index 5)
+                                    row[1][5] = portchannel_name
+                                    ports_configured.append(port)
+                                port_found = True
+                                break
+
+                    if not port_found:
+                        error_entries.append({'idx': entry_idx, 'err': f'Port not found: {hostname}:{port}'})
+
+                if ports_configured:
+                    configured_interfaces.append({
+                        'device': hostname,
+                        'ports': ports_configured,
+                        'portchannel': portchannel_name
+                    })
+                    if (hostname, portchannel_name) not in [(p['device'], p['portchannel']) for p in created_portchannels]:
+                        created_portchannels.append({
+                            'device': hostname,
+                            'portchannel': portchannel_name
+                        })
+
+            # Error check
+            if error_entries and not configured_interfaces:
+                error_msg = f'[ERROR] All entries failed:\n'
+                for err in error_entries[:5]:
+                    error_msg += f"  Entry {err['idx'] + 1}: {err['err']}\n"
+                return ([error_msg])
+
+            # ========== STEP 4: Write to Excel ONCE ==========
+            if configured_interfaces:
+                excel_master_ws_name_l2 = 'Master_Data_L2'
+                last_l2_table_tuple = ns_def.convert_array_to_tuple(l2_attribute_array)
+
+                ns_def.remove_excel_sheet(master_file_path, excel_master_ws_name_l2)
+                ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l2)
+                ns_def.write_excel_meta(last_l2_table_tuple, master_file_path, excel_master_ws_name_l2, '_template_', 0, 0)
+
+                # ========== STEP 5: Sync with L3 ONCE ==========
+                dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name):
+                    os.remove(tmp_delete_excel_name)
+
+                dummy_tk.destroy()
+
+            # Build return message
+            total_interfaces = sum(len(c['ports']) for c in configured_interfaces)
+
+            return_msg = f'--- Added port-channel(s) in bulk ---\n'
+            for cfg in configured_interfaces[:5]:
+                return_msg += f"  {cfg['device']}: {', '.join(cfg['ports'])} -> {cfg['portchannel']}\n"
+            if len(configured_interfaces) > 5:
+                return_msg += f"  ... +{len(configured_interfaces) - 5} more\n"
+
+            return_msg += f'\nSummary: {total_interfaces} interface(s) configured, {len(created_portchannels)} port-channel(s) created'
+
+            if error_entries:
+                return_msg += f'\nWarnings: {len(error_entries)} error(s)'
+
+            return ([return_msg.strip()])
+
+        if next_arg == 'virtual_port_bulk':
+            import ast
+            import re
+            import ns_def
+            from bisect import bisect_left
+
+            # ========== Helper functions ==========
+            def normalize_interface_name(if_name):
+                """Normalize interface name for comparison"""
+                if not isinstance(if_name, str):
+                    if_name = str(if_name)
+                if_name = if_name.strip()
+                if_name = re.sub(r'\s+', ' ', if_name)
+                return if_name
+
+            def sort_virtual_ports(vport_list):
+                """Sort virtual ports by interface value"""
+
+                def sort_key(vport):
+                    val = ns_def.get_if_value(vport)
+                    return val if val != -1 else float('inf')
+
+                return sorted(vport_list, key=sort_key)
+
+            # Get the array argument from command line
+            idx = argv_array.index('virtual_port_bulk')
+            try:
+                virtual_port_bulk_array_str = argv_array[idx + 1]
+                virtual_port_bulk_array = ast.literal_eval(virtual_port_bulk_array_str)
+            except (IndexError, ValueError, SyntaxError) as e:
+                return ([f'[ERROR] Invalid virtual_port_bulk array format: {str(e)}'])
+
+            if not isinstance(virtual_port_bulk_array, list) or len(virtual_port_bulk_array) == 0:
+                return ([f'[ERROR] virtual_port_bulk must be a non-empty list'])
+
+            # ========== STEP 1: Load L2 array ONCE ==========
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path, '<<L2_TABLE>>')
+
+            TARGET_LEN = 9
+            for row in l2_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            # ========== STEP 2: Collect all existing virtual ports and L1 interfaces per device ==========
+            existing_vports_per_device = {}  # {hostname: [vport_names]}
+            existing_l1_ports_per_device = {}  # {hostname: [l1_port_names]}
+            device_area_map = {}  # {hostname: area_name}
+            device_first_index = {}  # {hostname: first_row_index}
+
+            for idx_row, row in enumerate(l2_attribute_array[2:], start=2):
+                values = row[1]
+                if len(values) > 1:
+                    hostname = values[1]
+                    area = values[0] if len(values) > 0 else ''
+
+                    if hostname not in device_area_map:
+                        device_area_map[hostname] = area
+                        device_first_index[hostname] = idx_row
+                        existing_vports_per_device[hostname] = []
+                        existing_l1_ports_per_device[hostname] = []
+
+                    # Collect existing virtual ports (index 5, where index 3 is empty)
+                    if len(values) > 5 and values[5] and (len(values) <= 3 or not values[3]):
+                        existing_vports_per_device[hostname].append(normalize_interface_name(values[5]))
+
+                    # Collect existing L1 ports (index 3)
+                    if len(values) > 3 and values[3]:
+                        existing_l1_ports_per_device[hostname].append(normalize_interface_name(values[3]))
+
+            # ========== STEP 3: Process all entries and collect new virtual ports ==========
+            added_vports = []
+            error_entries = []
+            new_rows_to_add = []  # [(hostname, area, vport_name, insert_index)]
+
+            for entry_idx, entry in enumerate(virtual_port_bulk_array):
+                if not isinstance(entry, list) or len(entry) != 2:
+                    error_entries.append({'idx': entry_idx, 'err': 'Invalid format (expected [device, [vports]])'})
+                    continue
+
+                hostname = str(entry[0]).strip()
+                vport_list = entry[1]
+
+                # Handle single vport as string
+                if isinstance(vport_list, str):
+                    vport_list = [vport_list]
+                elif not isinstance(vport_list, list):
+                    error_entries.append({'idx': entry_idx, 'err': 'Virtual ports must be a list or string'})
+                    continue
+
+                # Normalize virtual port names
+                vport_list = [normalize_interface_name(vp) for vp in vport_list]
+                vport_list = [vp for vp in vport_list if vp]
+
+                if not vport_list:
+                    error_entries.append({'idx': entry_idx, 'err': 'No valid virtual ports'})
+                    continue
+
+                # Check if hostname exists
+                if hostname not in device_area_map:
+                    error_entries.append({'idx': entry_idx, 'err': f'Device not found: {hostname}'})
+                    continue
+
+                area = device_area_map[hostname]
+                vports_added = []
+
+                for vport in vport_list:
+                    # Validate virtual port name
+                    if ns_def.get_if_value(vport) == -1:
+                        error_entries.append({'idx': entry_idx, 'err': f'Invalid vport name: {vport}'})
+                        continue
+
+                    # Check if already exists as virtual port
+                    if vport in existing_vports_per_device.get(hostname, []):
+                        error_entries.append({'idx': entry_idx, 'err': f'{vport} already exists on {hostname}'})
+                        continue
+
+                    # Check if conflicts with L1 interface name
+                    if vport in existing_l1_ports_per_device.get(hostname, []):
+                        error_entries.append({'idx': entry_idx, 'err': f'{vport} conflicts with L1 interface on {hostname}'})
+                        continue
+
+                    # Calculate insert position based on interface value
+                    existing_vport_values = [ns_def.get_if_value(vp) for vp in existing_vports_per_device.get(hostname, [])]
+                    target_value = ns_def.get_if_value(vport)
+                    insert_idx = bisect_left(existing_vport_values, target_value)
+
+                    # Add to tracking
+                    existing_vports_per_device[hostname].append(vport)
+                    existing_vports_per_device[hostname] = sort_virtual_ports(existing_vports_per_device[hostname])
+
+                    new_rows_to_add.append({
+                        'hostname': hostname,
+                        'area': area,
+                        'vport': vport,
+                        'insert_idx': insert_idx
+                    })
+                    vports_added.append(vport)
+
+                if vports_added:
+                    added_vports.append({
+                        'device': hostname,
+                        'vports': vports_added
+                    })
+
+            # Error check
+            if error_entries and not added_vports:
+                error_msg = f'[ERROR] All entries failed:\n'
+                for err in error_entries[:5]:
+                    error_msg += f"  Entry {err['idx'] + 1}: {err['err']}\n"
+                return ([error_msg])
+
+            # ========== STEP 4: Add new rows to l2_attribute_array ==========
+            if new_rows_to_add:
+                # Group by hostname and sort by vport for proper insertion order
+                from collections import defaultdict
+                rows_by_hostname = defaultdict(list)
+                for row_info in new_rows_to_add:
+                    rows_by_hostname[row_info['hostname']].append(row_info)
+
+                # Sort each hostname's vports
+                for hostname in rows_by_hostname:
+                    rows_by_hostname[hostname] = sorted(
+                        rows_by_hostname[hostname],
+                        key=lambda x: ns_def.get_if_value(x['vport'])
+                    )
+
+                # Insert rows (process in reverse to maintain correct indices)
+                all_new_rows = []
+                for hostname, row_infos in rows_by_hostname.items():
+                    base_index = device_first_index.get(hostname, len(l2_attribute_array))
+                    for offset, row_info in enumerate(row_infos):
+                        new_entry = [0, [
+                            row_info['area'],
+                            row_info['hostname'],
+                            '',  # Port Mode
+                            '',  # Port Name (empty for virtual port)
+                            '',  # Virtual Port Mode
+                            row_info['vport'],  # Virtual Port Name
+                            '',  # L2 Segment
+                            ''  # L2 direct binding
+                        ]]
+                        all_new_rows.append((base_index + offset, new_entry))
+
+                # Sort by index (descending) to insert from bottom up
+                all_new_rows.sort(key=lambda x: x[0], reverse=True)
+
+                for insert_pos, new_entry in all_new_rows:
+                    l2_attribute_array.insert(insert_pos, new_entry)
+
+                # Renumber all entries
+                for i, entry in enumerate(l2_attribute_array):
+                    entry[0] = i + 1
+
+            # ========== STEP 5: Write to Excel ONCE ==========
+            if added_vports:
+                excel_master_ws_name_l2 = 'Master_Data_L2'
+                last_l2_table_tuple = ns_def.convert_array_to_tuple(l2_attribute_array)
+
+                ns_def.remove_excel_sheet(master_file_path, excel_master_ws_name_l2)
+                ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l2)
+                ns_def.write_excel_meta(last_l2_table_tuple, master_file_path, excel_master_ws_name_l2, '_template_', 0, 0)
+
+                # ========== STEP 6: Sync with L3 ONCE ==========
+                dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name):
+                    os.remove(tmp_delete_excel_name)
+
+                dummy_tk.destroy()
+
+            # Build return message
+            total_vports = sum(len(v['vports']) for v in added_vports)
+
+            return_msg = f'--- Added virtual port(s) in bulk ---\n'
+            for vport_info in added_vports[:5]:
+                return_msg += f"  {vport_info['device']} <- {', '.join(vport_info['vports'])}\n"
+            if len(added_vports) > 5:
+                return_msg += f"  ... +{len(added_vports) - 5} more device(s)\n"
+
+            return_msg += f'\nSummary: {total_vports} virtual port(s) added on {len(added_vports)} device(s)'
+
+            if error_entries:
+                return_msg += f'\nWarnings: {len(error_entries)} error(s)'
+
+            return ([return_msg.strip()])
+
+
+        if next_arg == 'l2_segment_bulk':
+            import ast
+            import re
+            import ns_def
+
+            # ========== Helper functions ==========
+            def normalize_interface_name(if_name):
+                """
+                Normalize interface name for comparison:
+                - Strip leading/trailing whitespace
+                - Normalize multiple spaces to single space
+                - Preserve subinterface notation (e.g., .100)
+                """
+                if not isinstance(if_name, str):
+                    if_name = str(if_name)
+                if_name = if_name.strip()
+                if_name = re.sub(r'\s+', ' ', if_name)
+                return if_name
+
+            def normalize_segment_name(seg_name):
+                """
+                Normalize segment name:
+                - Remove ALL spaces (both half-width and full-width)
+                """
+                if not isinstance(seg_name, str):
+                    seg_name = str(seg_name)
+                return seg_name.replace(' ', '').replace('　', '')
+
+            def sort_segments(segment_list):
+                """
+                Sort segments with intelligent ordering:
+                - Numeric VLANs sorted numerically
+                - Other segments sorted alphabetically
+                """
+
+                def segment_sort_key(seg):
+                    match = re.match(r'([a-zA-Z]+)(\d+)', seg.lower())
+                    if match:
+                        prefix = match.group(1)
+                        number = int(match.group(2))
+                        return (0, prefix, number)
+                    else:
+                        return (1, seg.lower(), 0)
+
+                return sorted(segment_list, key=segment_sort_key)
+
+            # Get the array argument from command line
+            idx = argv_array.index('l2_segment_bulk')
+            try:
+                l2_segment_bulk_array_str = argv_array[idx + 1]
+                l2_segment_bulk_array = ast.literal_eval(l2_segment_bulk_array_str)
+            except (IndexError, ValueError, SyntaxError) as e:
+                return ([f'[ERROR] Invalid l2_segment_bulk array format: {str(e)}'])
+
+            if not isinstance(l2_segment_bulk_array, list) or len(l2_segment_bulk_array) == 0:
+                return ([f'[ERROR] l2_segment_bulk must be a non-empty list'])
+
+            # ========== STEP 1: Load L2 array ONCE ==========
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data_L2', master_file_path, '<<L2_TABLE>>')
+
+            TARGET_LEN = 9
+            for row in l2_attribute_array:
+                if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], list):
+                    vals = row[1]
+                    if len(vals) < TARGET_LEN:
+                        vals += [''] * (TARGET_LEN - len(vals))
+
+            # ========== STEP 2: Process all entries IN MEMORY ==========
+            added_segments = []
+            skipped_segments = []
+            error_entries = []
+            affected_interfaces = 0
+
+            for entry_idx, entry in enumerate(l2_segment_bulk_array):
+                if not isinstance(entry, list) or len(entry) != 3:
+                    error_entries.append({'idx': entry_idx, 'err': 'Invalid format'})
+                    continue
+
+                hostname = str(entry[0]).strip()
+
+                # ★★★ Normalize interface name ★★★
+                portname = normalize_interface_name(entry[1])
+
+                segment_list = entry[2]
+
+                if isinstance(segment_list, str):
+                    segment_list = [segment_list]
+                elif not isinstance(segment_list, list):
+                    error_entries.append({'idx': entry_idx, 'err': 'Segments must be a list or string'})
+                    continue
+
+                # Normalize segment names
+                segment_list = [normalize_segment_name(seg) for seg in segment_list]
+                segment_list = [seg for seg in segment_list if seg]
+
+                if not segment_list:
+                    error_entries.append({'idx': entry_idx, 'err': 'No valid segments'})
+                    continue
+
+                # Find matching row
+                match_found = False
+                target_row = None
+
+                for row in l2_attribute_array[2:]:
+                    values = row[1]
+                    if len(values) > 1 and values[1] == hostname:
+                        # ★★★ Normalize DB interface name for comparison ★★★
+                        db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
+                        db_virtual_port = normalize_interface_name(values[5]) if len(values) > 5 else ''
+
+                        # Check physical port (exact match after normalization)
+                        if db_physical_port == portname:
+                            if len(values) > 7 and values[7] != '':
+                                error_entries.append({
+                                    'idx': entry_idx,
+                                    'err': f'vport_l2_direct_binding conflict: {hostname}:{portname}'
+                                })
+                                break
+                            match_found = True
+                            target_row = row
+                            break
+                        # Check virtual port (exact match after normalization)
+                        elif db_virtual_port == portname:
+                            if len(values) > 7 and values[7] != '':
+                                error_entries.append({
+                                    'idx': entry_idx,
+                                    'err': f'vport_l2_direct_binding conflict: {hostname}:{portname}'
+                                })
+                                break
+                            match_found = True
+                            target_row = row
+                            break
+
+                if not match_found:
+                    if not any(e['idx'] == entry_idx for e in error_entries):
+                        error_entries.append({'idx': entry_idx, 'err': f'Not found: {hostname}:{portname}'})
+                    continue
+
+                # Add segments with deduplication and sorting
+                current_value = target_row[1][6] if len(target_row[1]) > 6 else ''
+
+                if current_value and current_value.strip():
+                    existing_segs = [normalize_segment_name(seg) for seg in current_value.split(',')]
+                    existing_segs = [seg for seg in existing_segs if seg]
+                else:
+                    existing_segs = []
+
+                segments_added = []
+                segments_skipped = []
+
+                for seg in segment_list:
+                    if seg not in existing_segs:
+                        existing_segs.append(seg)
+                        segments_added.append(seg)
+                    else:
+                        segments_skipped.append(seg)
+
+                if segments_added:
+                    sorted_segs = sort_segments(existing_segs)
+                    target_row[1][6] = ','.join(sorted_segs)
+                    added_segments.append({
+                        'device': hostname,
+                        'port': portname,
+                        'segments': segments_added,
+                        'final_list': sorted_segs
+                    })
+                    affected_interfaces += 1
+
+                if segments_skipped:
+                    skipped_segments.append({
+                        'device': hostname,
+                        'port': portname,
+                        'segments': segments_skipped
+                    })
+
+            # Error check
+            if error_entries and not added_segments:
+                error_msg = f'[ERROR] All entries failed:\n'
+                for err in error_entries[:5]:
+                    error_msg += f"  Entry {err['idx'] + 1}: {err['err']}\n"
+                return ([error_msg])
+
+            # ========== STEP 3: Write to Excel ONCE ==========
+            if added_segments:
+                excel_master_ws_name_l2 = 'Master_Data_L2'
+                last_l2_table_tuple = ns_def.convert_array_to_tuple(l2_attribute_array)
+
+                ns_def.remove_excel_sheet(master_file_path, excel_master_ws_name_l2)
+                ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l2)
+                ns_def.write_excel_meta(last_l2_table_tuple, master_file_path, excel_master_ws_name_l2, '_template_', 0, 0)
+
+                # Sync with L3
+                dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_11_2.insert(tk.END, master_file_path)
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+                tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L3_TABLE]')
+
+                import ns_l3_table_from_master
+                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+
+                if os.path.isfile(tmp_delete_excel_name):
+                    os.remove(tmp_delete_excel_name)
+
+                dummy_tk.destroy()
+
+            # Build return message
+            total_added = sum(len(s['segments']) for s in added_segments)
+            total_skipped = sum(len(s['segments']) for s in skipped_segments)
+
+            return_msg = f'--- Added L2 segment(s) in bulk ---\n'
+            for seg_info in added_segments[:5]:
+                return_msg += f"  {seg_info['device']}({seg_info['port']}) <- {', '.join(seg_info['segments'])}\n"
+            if len(added_segments) > 5:
+                return_msg += f"  ... +{len(added_segments) - 5} more\n"
+
+            return_msg += f'\nSummary: {total_added} added, {total_skipped} skipped, {affected_interfaces} interfaces'
+
+            return ([return_msg.strip()])
+
 
         if next_arg == 'l1_link_bulk':
             import ast
@@ -2580,7 +3753,6 @@ class ns_cli_run():
             'show area_location',
             'show area_waypoint',
             'show attribute',
-            'show attribute_color',
             'show device',
             'show device_interface',
             'show device_location',
@@ -3054,43 +4226,42 @@ class ns_cli_run():
 
                 return (self.target_l2_broadcast_group_array)
 
-        if next_arg == 'attribute' or 'attribute_color':
+        if next_arg == 'attribute':
             import ns_def
-            l2_attribute_array = ns_def.convert_master_to_array('Master_Data', master_file_path,'<<ATTRIBUTE>>')
+            l2_attribute_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
 
             update_attribute_array = []
             for tmp_attribute_array in l2_attribute_array:
                 if tmp_attribute_array[0] != 1:
-                    update_attribute_array.append(tmp_attribute_array[1][1:])
+                    # Copy and append to avoid modifying the original data when using del later
+                    update_attribute_array.append(tmp_attribute_array[1])
 
-            update_padded_data = []
+            # Remove the last element from each row
+            for row in update_attribute_array:
+                if len(row) > 0:
+                    del row[-1]
 
-            for tmp_padded_data in update_attribute_array:
-                del tmp_padded_data[-1]
-                update_padded_data.append(tmp_padded_data)
+            # --- Modified section: Keep the first row fixed, sort only from the second row onwards ---
+            if len(update_attribute_array) > 1:
+                header = update_attribute_array[:1]  # Get the first row
+                body = update_attribute_array[1:]  # Get rows from the second onwards
 
-            update_padded_data = sorted(update_attribute_array, key=lambda x: (x[0]), reverse=False)
+                # Sort only the rows from the second onwards
+                sorted_body = sorted(body, key=lambda x: (x[0]), reverse=False)
 
-            if next_arg == 'attribute_color':
-                kari_return_attribute = []
-                for row in update_padded_data:
-                    transformed_row = [item.replace('<EMPTY>', '') for item in row]
-                    kari_return_attribute.append(transformed_row)
-                return (kari_return_attribute)
+                # Concatenate the first row with the sorted remaining rows
+                update_padded_data = header + sorted_body
+            else:
+                # If there is one row or less, keep it as is
+                update_padded_data = update_attribute_array
+            # -----------------------------------------------------------------------------------------
 
-            output_data = []
-            for line in update_padded_data:
-                if isinstance(line[0], str) and not line[0].startswith('['):
-                    # Add header directly to output
-                    output_data.append(line)
-                else:
-                    # Extract the first element from each formatted string and replace '<EMPTY>' with ''
-                    extracted_elements = [eval(element)[0] if eval(element)[0] != '<EMPTY>' else '' for element in line]
-                    output_data.append(extracted_elements)
+            kari_return_attribute = []
+            for row in update_padded_data:
+                transformed_row = [item.replace('<EMPTY>', '') for item in row]
+                kari_return_attribute.append(transformed_row)
 
-            if next_arg == 'attribute':
-                return (output_data)
-
+            return (kari_return_attribute)
 
 class def_common():
 
