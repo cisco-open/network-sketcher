@@ -143,13 +143,13 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Change Layer 2 segments (VLAN) | ✅ | ✅ |
 | Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ |
 | Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ |
-| Change attributes | ✅ | ❌ |
+| Change attributes | ✅ | ✅ |
 | Add / delete VPNs | ✅ | ❌ |
 | Flow management | ✅ | ❌ |
 | Export various reports | ✅ | ❌ |
 | Export empty master files (no data) | ❌ | ✅ |
 | Export AI context files | ✅ | ✅ |
-| Export device files | ✅ | ❌ |
+| Export device files | ✅ | ✅ |
 | Generate L1/L2/L3 topology diagrams | ✅ | ❌ |
 
 # SAMPLE
@@ -186,6 +186,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
