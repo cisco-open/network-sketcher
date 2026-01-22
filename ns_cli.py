@@ -1975,9 +1975,15 @@ class ns_cli_run():
                     error_entries.append({'idx': entry_idx, 'err': 'No valid segments'})
                     continue
 
-                # Find matching row
+                # Find matching row(s) - including Port-channel members
                 match_found = False
-                target_row = None
+                target_rows = []  # Changed from single target_row to list for multiple matches
+                is_portchannel = False
+
+                # ★★★ Check if portname is a Port-channel ★★★
+                portname_lower = portname.lower().replace(' ', '').replace('-', '')
+                if portname_lower.startswith('portchannel') or portname_lower.startswith('po'):
+                    is_portchannel = True
 
                 for row in l2_attribute_array[2:]:
                     values = row[1]
@@ -1995,8 +2001,10 @@ class ns_cli_run():
                                 })
                                 break
                             match_found = True
-                            target_row = row
-                            break
+                            target_rows.append(row)
+                            # Don't break - continue to find Port-channel members if applicable
+                            if not is_portchannel:
+                                break
                         # Check virtual port (exact match after normalization)
                         elif db_virtual_port == portname:
                             if len(values) > 7 and values[7] != '':
@@ -2006,50 +2014,81 @@ class ns_cli_run():
                                 })
                                 break
                             match_found = True
-                            target_row = row
-                            break
+                            target_rows.append(row)
+                            # Don't break - continue to find all members
+
+                # ★★★ NEW: If Port-channel specified, find all member interfaces ★★★
+                if is_portchannel and match_found:
+                    # Search for all rows with same hostname and same Virtual Port Name (Port-channel)
+                    for row in l2_attribute_array[2:]:
+                        values = row[1]
+                        if len(values) > 1 and values[1] == hostname:
+                            db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
+                            db_virtual_port = normalize_interface_name(values[5]) if len(values) > 5 else ''
+
+                            # Find rows where Virtual Port Name matches the specified Port-channel
+                            # and Physical Port exists (these are the member interfaces)
+                            if db_virtual_port == portname and db_physical_port:
+                                # Check if this row is already in target_rows
+                                if row not in target_rows:
+                                    # Check for vport_l2_direct_binding conflict
+                                    if len(values) > 7 and values[7] != '':
+                                        # Skip this member but don't error - just log
+                                        skipped_segments.append({
+                                            'device': hostname,
+                                            'port': db_physical_port,
+                                            'segments': segment_list,
+                                            'reason': 'vport_l2_direct_binding conflict'
+                                        })
+                                    else:
+                                        target_rows.append(row)
 
                 if not match_found:
                     if not any(e['idx'] == entry_idx for e in error_entries):
                         error_entries.append({'idx': entry_idx, 'err': f'Not found: {hostname}:{portname}'})
                     continue
 
-                # Add segments with deduplication and sorting
-                current_value = target_row[1][6] if len(target_row[1]) > 6 else ''
+                # ★★★ Apply segments to ALL target rows (Port-channel + members) ★★★
+                for target_row in target_rows:
+                    # Get current port name for logging
+                    current_port = normalize_interface_name(target_row[1][3]) if len(target_row[1]) > 3 and target_row[1][3] else portname
 
-                if current_value and current_value.strip():
-                    existing_segs = [normalize_segment_name(seg) for seg in current_value.split(',')]
-                    existing_segs = [seg for seg in existing_segs if seg]
-                else:
-                    existing_segs = []
+                    # Add segments with deduplication and sorting
+                    current_value = target_row[1][6] if len(target_row[1]) > 6 else ''
 
-                segments_added = []
-                segments_skipped = []
-
-                for seg in segment_list:
-                    if seg not in existing_segs:
-                        existing_segs.append(seg)
-                        segments_added.append(seg)
+                    if current_value and current_value.strip():
+                        existing_segs = [normalize_segment_name(seg) for seg in current_value.split(',')]
+                        existing_segs = [seg for seg in existing_segs if seg]
                     else:
-                        segments_skipped.append(seg)
+                        existing_segs = []
 
-                if segments_added:
-                    sorted_segs = sort_segments(existing_segs)
-                    target_row[1][6] = ','.join(sorted_segs)
-                    added_segments.append({
-                        'device': hostname,
-                        'port': portname,
-                        'segments': segments_added,
-                        'final_list': sorted_segs
-                    })
-                    affected_interfaces += 1
+                    segments_added = []
+                    segments_skipped_local = []
 
-                if segments_skipped:
-                    skipped_segments.append({
-                        'device': hostname,
-                        'port': portname,
-                        'segments': segments_skipped
-                    })
+                    for seg in segment_list:
+                        if seg not in existing_segs:
+                            existing_segs.append(seg)
+                            segments_added.append(seg)
+                        else:
+                            segments_skipped_local.append(seg)
+
+                    if segments_added:
+                        sorted_segs = sort_segments(existing_segs)
+                        target_row[1][6] = ','.join(sorted_segs)
+                        added_segments.append({
+                            'device': hostname,
+                            'port': current_port,
+                            'segments': segments_added,
+                            'final_list': sorted_segs
+                        })
+                        affected_interfaces += 1
+
+                    if segments_skipped_local:
+                        skipped_segments.append({
+                            'device': hostname,
+                            'port': current_port,
+                            'segments': segments_skipped_local
+                        })
 
             # Error check
             if error_entries and not added_segments:
@@ -9070,4 +9109,3 @@ def get_device_waypoint_array(master_file_path):
                 area_device_list_array.append([tmp_new_l2_table_array[1][0], tmp_new_l2_table_array[1][1]])
 
     return ([device_list_array,wp_list_array])
-
