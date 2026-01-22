@@ -5081,11 +5081,15 @@ class def_common():
                         result.append(i * dist)
                     return result
 
-            # Clear offsets
+            # Clear offsets - ONLY for the specific side being recalculated
+            # Fix: Previously cleared all offsets when either side was affected,
+            # which caused offsets to be lost when adding links incrementally
             for item in position_line_array[2:]:
                 cd = item[1]
-                if cd[0] in all_affected_hostnames or cd[1] in all_affected_hostnames:
-                    cd[6] = cd[7] = cd[8] = cd[9] = ''
+                if cd[0] in all_affected_hostnames:
+                    cd[6] = cd[7] = ''  # Clear only From side offsets (X, Y)
+                if cd[1] in all_affected_hostnames:
+                    cd[8] = cd[9] = ''  # Clear only To side offsets (X, Y)
 
             # Calculate per device
             for proc_idx, hostname in enumerate(sorted(all_affected_hostnames)):
