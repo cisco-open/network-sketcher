@@ -5798,6 +5798,189 @@ class def_common():
                 ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
                 ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
 
+            # ========== BATCH STEP 4.5: Recalculate From_Side/To_Side for existing connections ==========
+            # Fix: When device positions change, the connection direction (LEFT/RIGHT vs UP/DOWN) may change
+            # This step recalculates From_Side and To_Side based on new device positions
+            print('[Info] Recalculating connection directions...')
+
+            # Reload arrays after POSITION_SHAPE update
+            position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
+            position_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
+            position_line_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
+
+            # Get all devices that were moved (existing devices that are still present)
+            moved_devices = set(new_devices) & set(current_devices)
+
+            if moved_devices and len(position_line_array) > 2:
+                connections_updated = 0
+
+                for item in position_line_array[2:]:
+                    if len(item) < 2 or not isinstance(item[1], list) or len(item[1]) < 6:
+                        continue
+
+                    cd = item[1]
+                    from_hostname = cd[0]
+                    to_hostname = cd[1]
+
+                    # Check if either endpoint is a moved device
+                    if from_hostname in moved_devices or to_hostname in moved_devices:
+                        # Recalculate direction based on new positions
+                        new_direction = def_common.check_hostnames_in_same_element_static(
+                            position_shape_array, from_hostname, to_hostname, position_folder_array
+                        )
+
+                        # Determine new From_Side and To_Side
+                        if new_direction == 'RIGHT_LEFT':
+                            new_from_side = 'RIGHT'
+                            new_to_side = 'LEFT'
+                        elif new_direction == 'LEFT_RIGHT':
+                            new_from_side = 'LEFT'
+                            new_to_side = 'RIGHT'
+                        else:
+                            # UP_DOWN or DOWN_UP - no side specification needed
+                            new_from_side = ''
+                            new_to_side = ''
+
+                        old_from_side = cd[4] if cd[4] else ''
+                        old_to_side = cd[5] if cd[5] else ''
+
+                        # Update if changed
+                        if old_from_side != new_from_side or old_to_side != new_to_side:
+                            cd[4] = new_from_side
+                            cd[5] = new_to_side
+                            # Clear offsets since direction changed - they need to be recalculated
+                            cd[6] = cd[7] = cd[8] = cd[9] = ''
+                            connections_updated += 1
+
+                if connections_updated > 0:
+                    print(f'[Info] Updated {connections_updated} connection direction(s)')
+
+                    # Write updated POSITION_LINE
+                    position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+                    ori_position_line_tuple = ns_def.convert_array_to_tuple(
+                        ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
+                    )
+                    ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
+                    ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
+
+                    # Recalculate offsets for affected devices
+                    print('[Info] Recalculating offsets for affected connections...')
+
+                    # Build hostname_position from updated position_shape_array
+                    hostname_position = {}
+                    for row_idx, ps_item in enumerate(position_shape_array):
+                        if len(ps_item) >= 2 and isinstance(ps_item[1], list):
+                            for col_idx, hostname in enumerate(ps_item[1]):
+                                if hostname not in ['_AIR_', '<END>', '', '<<POSITION_SHAPE>>', None]:
+                                    hostname_position[hostname] = (row_idx, col_idx)
+
+                    # Get affected hostnames
+                    affected_hostnames = set()
+                    for item in position_line_array[2:]:
+                        if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) >= 2:
+                            cd = item[1]
+                            if cd[0] in moved_devices or cd[1] in moved_devices:
+                                affected_hostnames.add(cd[0])
+                                affected_hostnames.add(cd[1])
+
+                    line_distance = 0.2
+
+                    def calc_offsets_local(count, dist):
+                        if count == 0: return []
+                        if count == 1: return [0]
+                        if count % 2 == 0:
+                            half = dist / 2
+                            result = []
+                            for i in range(count // 2):
+                                result.insert(0, -(half + i * dist))
+                                result.append(half + i * dist)
+                            return result
+                        else:
+                            result = [0]
+                            for i in range(1, (count + 1) // 2):
+                                result.insert(0, -i * dist)
+                                result.append(i * dist)
+                            return result
+
+                    # Clear offsets for affected connections
+                    for item in position_line_array[2:]:
+                        cd = item[1]
+                        if cd[0] in affected_hostnames:
+                            cd[6] = cd[7] = ''
+                        if cd[1] in affected_hostnames:
+                            cd[8] = cd[9] = ''
+
+                    # Calculate offsets per device
+                    for hostname in sorted(affected_hostnames):
+                        dir_groups = {'UP': [], 'DOWN': [], 'LEFT': [], 'RIGHT': []}
+
+                        for item in position_line_array[2:]:
+                            cd = item[1]
+                            if hostname not in [cd[0], cd[1]]:
+                                continue
+
+                            from_side = cd[4] if len(cd) > 4 else ''
+                            to_side = cd[5] if len(cd) > 5 else ''
+
+                            if from_side in ['RIGHT', 'LEFT'] and to_side in ['RIGHT', 'LEFT']:
+                                conn_dir = 'RIGHT_LEFT' if from_side == 'RIGHT' else 'LEFT_RIGHT'
+                            else:
+                                conn_dir = def_common.check_hostnames_in_same_element_static(
+                                    position_shape_array, cd[0], cd[1], position_folder_array
+                                )
+
+                            other = cd[1] if hostname == cd[0] else cd[0]
+                            other_pos = hostname_position.get(other, (999, 999))
+
+                            if hostname == cd[0]:
+                                if conn_dir == 'RIGHT_LEFT':
+                                    dir_groups['RIGHT'].append((other_pos[1], item))
+                                elif conn_dir == 'LEFT_RIGHT':
+                                    dir_groups['LEFT'].append((other_pos[1], item))
+                                elif conn_dir == 'UP_DOWN':
+                                    dir_groups['DOWN'].append((other_pos[1], item))
+                                elif conn_dir == 'DOWN_UP':
+                                    dir_groups['UP'].append((other_pos[1], item))
+                            else:
+                                if conn_dir == 'RIGHT_LEFT':
+                                    dir_groups['LEFT'].append((other_pos[1], item))
+                                elif conn_dir == 'LEFT_RIGHT':
+                                    dir_groups['RIGHT'].append((other_pos[1], item))
+                                elif conn_dir == 'UP_DOWN':
+                                    dir_groups['UP'].append((other_pos[1], item))
+                                elif conn_dir == 'DOWN_UP':
+                                    dir_groups['DOWN'].append((other_pos[1], item))
+
+                        for direction, items_pos in dir_groups.items():
+                            if not items_pos:
+                                continue
+
+                            items_pos.sort(key=lambda x: x[0])
+                            items = [x[1] for x in items_pos]
+                            offsets = calc_offsets_local(len(items), line_distance)
+
+                            for i, line_item in enumerate(items):
+                                if i >= len(offsets):
+                                    continue
+
+                                cd = line_item[1]
+                                off = offsets[i]
+
+                                if direction in ['LEFT', 'RIGHT']:
+                                    idx_set = 7 if hostname == cd[0] else 9
+                                    cd[idx_set] = off
+                                else:
+                                    idx_set = 6 if hostname == cd[0] else 8
+                                    cd[idx_set] = off
+
+                    # Write final POSITION_LINE with recalculated offsets
+                    position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+                    ori_position_line_tuple = ns_def.convert_array_to_tuple(
+                        ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
+                    )
+                    ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
+                    ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
+
             # ========== BATCH STEP 5: Recalculate POSITION_FOLDER ONCE ==========
             print('[Info] Recalculating POSITION_FOLDER...')
 
