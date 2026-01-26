@@ -11,10 +11,10 @@ https://github.com/user-attachments/assets/9ff207f8-c6b3-4584-b166-98ae4e4c8297
 NoLang (no-lang.com)
 Otologic (https://otologic.jp) CC BY 4.0
 
-### Demo video of Network Sketcher
+### Demo video of basic usage
 https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
-### Demo video of AI (LLM) compatible function
+### AI(LLM) utilization demo video
 
 https://private-user-images.githubusercontent.com/13013736/538397681-c281c254-223f-4872-af4e-765b0bbec4c2.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjkzODcwOTUsIm5iZiI6MTc2OTM4Njc5NSwicGF0aCI6Ii8xMzAxMzczNi81MzgzOTc2ODEtYzI4MWMyNTQtMjIzZi00ODcyLWFmNGUtNzY1YjBiYmVjNGMyLm1wND9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjAxMjYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwMTI2VDAwMTk1NVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTNhYWQ2Yjg5Mzk4N2I1MTg1ZmE5ZmRlMWQ0ZTZiZmIzMWMyYTNjZGEyMWM2NjhmYzJiN2EzMzk0ZmM4MDQzNDkmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.h3X-0yZ9l7sfPPo0HQJRhSYn-uLGd8qsYHlAWzlP7_U
 
@@ -196,6 +196,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
