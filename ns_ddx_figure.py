@@ -93,7 +93,6 @@ class  ns_ddx_figure_run():
             if self.click_value == 'L2-3-2':
                 ns_ddx_figure_run.prepare_l2_shared_data(self)
                 self.new_direction_if_2_array = self.shared_new_direction_if_array
-                self.if_tag_left_array = []
                 ns_ddx_figure_run.add_l2_material(self)
                 ns_ddx_figure_run.add_l2_line(self)
                 extended.offset_device_width(self)
@@ -1865,11 +1864,17 @@ class  ns_ddx_figure_run():
 
                 last_tag_left = tag_left
                 last_tag_width = tag_width
-                l2seg_rightside = l2seg_size_array[-1][0] + l2seg_size_array[-1][2] + l2seg_size_margin
-                if_tag_leftside = tag_left + tag_width + l2seg_size_margin
 
-                if if_tag_leftside > l2seg_rightside:
-                    device_size_array[2] += (if_tag_leftside - l2seg_rightside)
+                # Calculate rightside of L2 segment and Physical IF, use the maximum
+                l2seg_rightside = l2seg_size_array[-1][0] + l2seg_size_array[-1][2]
+                if_tag_rightside = tag_left + tag_width
+                max_rightside = max(l2seg_rightside, if_tag_rightside)
+
+                # Adjust device width based on the maximum rightside + margin
+                required_device_right = max_rightside + l2seg_size_margin
+                current_device_right = device_size_array[0] + device_size_array[2]
+                if required_device_right > current_device_right:
+                    device_size_array[2] += (required_device_right - current_device_right)
 
             ''' write virtual if of target shape [UP]'''
             used_vport_name_array = []
@@ -1937,8 +1942,12 @@ class  ns_ddx_figure_run():
                                 self.shape = self.slide.shapes
                                 ns_ddx_figure.extended.add_shape(self, 'L2SEG_TEXT', tag_left + offset_left, tag_top + offset_hight, tag_width, tag_hight, tmp_tmp_l2seg)
 
-                if (tag_left + tag_width + l2seg_size_margin) > (device_size_array[0] + device_size_array[2]):
-                    device_size_array[2] += ((tag_left + tag_width + l2seg_size_margin) - (device_size_array[0] + device_size_array[2]))
+                # Adjust device width based on Virtual port position (L2seg and Physical IF already considered)
+                vport_rightside = tag_left + tag_width
+                required_device_right = vport_rightside + l2seg_size_margin
+                current_device_right = device_size_array[0] + device_size_array[2]
+                if required_device_right > current_device_right:
+                    device_size_array[2] += (required_device_right - current_device_right)
 
             '''write physical if of target shape [DOWN]'''
             tmp_down_tag_distance_sum = l2seg_size_array[0][0]
@@ -2065,12 +2074,6 @@ class  ns_ddx_figure_run():
                     tag_width = tmp_if_distance
                     tag_hight = ns_def.get_description_width_hight(self.shae_font_size, tmp_if_name)[1]
                     tag_name = tmp_if_name
-
-                    # bug fix at ver 2.5.5
-                    if not any(row[0] == target_device_name for row in self.if_tag_left_array):
-                        device_left_offset_bugfix = device_size_array[0] + device_size_array[2] - (tmp_shapes_size_array[1][0] + tmp_shapes_size_array[1][2])
-                        if device_left_offset_bugfix > 0.01:
-                            self.if_tag_left_array.append([target_device_name, device_left_offset_bugfix])
 
                     tag_type = 'GRAY_TAG'
                     for tmp_update_l2_table_array in update_l2_table_array:
@@ -4554,47 +4557,6 @@ class extended():
     def offset_device_width(self): #bug fix at ver 2.5.5
         from pptx.util import Inches
         from pptx.enum.shapes import MSO_SHAPE_TYPE
-        # Use the already opened Presentation object `self.active_ppt` and match shapes by visible text for all pairs in `self.if_tag_left_array`.
-        # Build a map of target visible text -> width increment (inches), summing duplicates.
-        increments = {}
-        if hasattr(self, "if_tag_left_array") and self.if_tag_left_array:
-            for item in self.if_tag_left_array:
-                if isinstance(item, (list, tuple)) and len(item) >= 2:
-                    key = str(item[0]).strip()
-                    try:
-                        val = float(item[1])
-                    except (TypeError, ValueError):
-                        val = 0.0
-                    if key and val:
-                        increments[key] = increments.get(key, 0.0) + val
-
-        # Apply width increments to any shape whose visible text matches keys in `increments`.
-        if increments and hasattr(self, "active_ppt") and self.active_ppt:
-            for slide in self.active_ppt.slides:
-                stack = list(slide.shapes)
-                while stack:
-                    shp = stack.pop()
-
-                    # Extract visible text from the shape.
-                    shape_text = None
-                    if hasattr(shp, "has_text_frame") and shp.has_text_frame:
-                        try:
-                            txt = []
-                            for p in shp.text_frame.paragraphs:
-                                if hasattr(p, "runs") and p.runs:
-                                    txt.append("".join(run.text for run in p.runs))
-                                else:
-                                    txt.append(p.text)
-                            shape_text = "".join(txt).strip()
-                        except Exception:
-                            if hasattr(shp, "text"):
-                                shape_text = (shp.text or "").strip()
-                    elif hasattr(shp, "text"):
-                        shape_text = (shp.text or "").strip()
-
-                    # If the shape's text matches, add the configured width increment.
-                    if shape_text in increments:
-                        shp.width = shp.width + Inches(increments[shape_text])
 
         # ============================================================
         # L2-3-2 mode: Adjust Outline and Folder widths, reorder layers
@@ -4689,3 +4651,30 @@ class extended():
                     sp_tree.remove(folder_element)
                     # Insert at position 3 (after outline)
                     sp_tree.insert(3, folder_element)
+
+                # Step 5: Move all port/interface shapes (L2_TAG, L3_TAG, TAG_NORMAL, GRAY_TAG) to front layer
+                # These shapes have adjustments[0] = 0.50445 which identifies them as interface tags
+                # Moving them after connectors ensures they appear in front of lines
+                sp_tree = slide.shapes._spTree
+                port_shapes_to_move = []
+
+                for shp in slide.shapes:
+                    # Check if this is an interface tag shape by its adjustments value
+                    # L2_TAG, L3_TAG, TAG_NORMAL, GRAY_TAG all use 0.50445
+                    try:
+                        if hasattr(shp, 'adjustments') and len(shp.adjustments) > 0:
+                            adj_value = float(shp.adjustments[0])
+                            # 0.50445 is the identifier for interface tags (with small tolerance for floating point)
+                            if abs(adj_value - 0.50445) < 0.001:
+                                port_shapes_to_move.append(shp._element)
+                    except (TypeError, ValueError, IndexError):
+                        continue
+
+                # Remove and re-append port shapes to move them to front (end of spTree = front layer)
+                for port_element in port_shapes_to_move:
+                    try:
+                        sp_tree.remove(port_element)
+                        sp_tree.append(port_element)
+                    except ValueError:
+                        # Element might have been already removed
+                        pass
