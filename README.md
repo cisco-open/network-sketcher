@@ -1,14 +1,25 @@
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/cc82082d-c4a5-4f13-90f5-adaf162202b2" alt="image" />
+</p>
+
+# Network Sketcher
+
+Overview
 
 https://github.com/user-attachments/assets/9ff207f8-c6b3-4584-b166-98ae4e4c8297
 
 NoLang (no-lang.com)
 Otologic (https://otologic.jp) CC BY 4.0
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/cc82082d-c4a5-4f13-90f5-adaf162202b2" alt="image" />
-</p>
+### Demo video of Network Sketcher
+https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
 
-# Network Sketcher
+### Demo video of AI (LLM) compatible function
+
+https://private-user-images.githubusercontent.com/13013736/538397681-c281c254-223f-4872-af4e-765b0bbec4c2.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjkzODcwOTUsIm5iZiI6MTc2OTM4Njc5NSwicGF0aCI6Ii8xMzAxMzczNi81MzgzOTc2ODEtYzI4MWMyNTQtMjIzZi00ODcyLWFmNGUtNzY1YjBiYmVjNGMyLm1wND9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjAxMjYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwMTI2VDAwMTk1NVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTNhYWQ2Yjg5Mzk4N2I1MTg1ZmE5ZmRlMWQ0ZTZiZmIzMWMyYTNjZGEyMWM2NjhmYzJiN2EzMzk0ZmM4MDQzNDkmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.h3X-0yZ9l7sfPPo0HQJRhSYn-uLGd8qsYHlAWzlP7_U
+
+
+# Concept
 **Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. Additionally, exporting a AI ​​context can be used to generate config files using LLM.**
 * Automatic generation of each configuration document by metadatization of network configuration information
 * Automated synchronization between documents
@@ -19,12 +30,11 @@ Otologic (https://otologic.jp) CC BY 4.0
 
 ![image](https://github.com/cisco-open/network-sketcher/assets/13013736/240ddee0-823d-472f-87d4-8ae7eb1fff7d)
 
-# DEMO
-https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d02-a7c2-579f67ad24a9
+
 
 # New Features
 - Ver 2.6.1<br>
-[Network Sketcher Ver 2.6.1 supported the creation of a network configuration with LLM from scratch](https://github.com/cisco-open/network-sketcher/releases/tag/Ver2.6.1)
+[Network Sketcher Ver 2.6.1 supported the creation of a network configuration with LLM from scratch](https://github.com/cisco-open/network-sketcher/wiki/1%E2%80%905.-Examples-of-General%E2%80%90Purpose-AI-(LLM)-usage-(config-creation,-config-reflection,-analysis,-etc.)_en)
 
 <img width="1423" height="806" alt="image" src="https://github.com/user-attachments/assets/761072de-d64b-4772-bdc7-6224f53fddd8" />
 
@@ -186,6 +196,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
