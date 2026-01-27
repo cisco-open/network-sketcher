@@ -1996,7 +1996,20 @@ class cli_on_gui():
         """
         self.cli_window = tk.Toplevel(self.root)
         self.cli_window.title('CLI Input')
-        self.cli_window.geometry("900x650+150+150")
+
+        # Position window based on Main Panel location (similar to Master Panel positioning)
+        if hasattr(self, 'main_panel_x') and hasattr(self, 'main_panel_width'):
+            # Calculate position: offset from Main Panel's left edge
+            window_width = 900
+            window_height = 650
+            # Position with slight overlap on Main Panel (offset ~150px from Main Panel left)
+            pos_x = self.main_panel_x + 150
+            pos_y = self.main_panel_y + 30
+            geo = f"{window_width}x{window_height}+{pos_x}+{pos_y}"
+        else:
+            # Fallback to default position if Main Panel info not available
+            geo = "900x650+150+150"
+        self.cli_window.geometry(geo)
 
         # Main frame
         main_frame = tk.LabelFrame(
@@ -2113,7 +2126,20 @@ class cli_on_gui():
         try:
             output_window = tk.Toplevel(self.root)
             output_window.title('Command Execution Output')
-            output_window.geometry("800x600+200+200")
+
+            # Position window based on Main Panel location (similar to Master Panel positioning)
+            if hasattr(self, 'main_panel_x') and hasattr(self, 'main_panel_width'):
+                # Calculate position: offset from Main Panel's left edge
+                window_width = 800
+                window_height = 600
+                # Position with slight overlap on Main Panel (offset ~150px from Main Panel left)
+                pos_x = self.main_panel_x + 150
+                pos_y = self.main_panel_y + 30
+                geo = f"{window_width}x{window_height}+{pos_x}+{pos_y}"
+            else:
+                # Fallback to default position if Main Panel info not available
+                geo = "800x600+200+200"
+            output_window.geometry(geo)
 
             # Main frame
             main_frame = tk.Frame(output_window)
