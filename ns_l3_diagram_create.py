@@ -238,6 +238,29 @@ class  ns_l3_diagram_create():
             if self.click_value_l3 == 'L3-4-1':
                 create_master_file_one_area.calculate_area_offset(self)
 
+                # Recalculate slide_width based on actual area positions after calculate_area_offset
+                # calculated_max_right_edge is computed in calculate_area_offset() and contains
+                # the maximum (area_start_x + area_width) across all areas
+                #
+                # Note: area_width from calculate_area_offset is based on device positions only.
+                # The actual outline extends beyond devices with additional margins:
+                # - between_shape_column (0.5") on each side of devices
+                # - Outline has between_shape_column * 2 (1.0") additional margin
+                # Total additional margin needed: approximately 1.0" - 1.5" per area edge
+                if hasattr(self, 'calculated_max_right_edge') and self.calculated_max_right_edge > 0:
+                    # Add margins:
+                    # - 1.0" left margin (standard)
+                    # - 1.0" right margin (standard)
+                    # - 1.0" additional for outline shape margins (between_shape_column * 2)
+                    outline_margin = 1.0  # Additional margin for outline shape beyond device positions
+                    required_width = self.calculated_max_right_edge + 2.0 + outline_margin
+                    # Apply maximum slide size limit (56 inches as per PowerPoint limitation)
+                    if required_width > 56.0:
+                        required_width = 56.0
+                    if required_width > self.slide_width:
+                        print(f"[L3 All Areas] Adjusting slide_width: {self.slide_width:.2f} -> {required_width:.2f} inches (max_right_edge={self.calculated_max_right_edge:.2f})")
+                        self.slide_width = required_width
+
             '''CREATE L3 DIAGRAM (reuse cached result from __init__)'''
             #self.result_get_l2_broadcast_domains = ns_def.get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
             #self.active_ppt = Presentation()  # define target ppt object
@@ -2609,6 +2632,21 @@ class  create_master_file_one_area():
         for sublist in start_area_array:
             for item in sublist:
                 self.update_start_area_array.append(item)
+
+        # Calculate and store the maximum right edge for slide width adjustment
+        # Each area's right edge = start_x + area_width
+        max_right_edge = 0.0
+        for area_info in self.update_start_area_array:
+            area_name = area_info[0]
+            area_start_x = area_info[1]
+            if area_name in result_dict:
+                area_width = result_dict[area_name]
+                area_right_edge = area_start_x + area_width
+                if area_right_edge > max_right_edge:
+                    max_right_edge = area_right_edge
+
+        self.calculated_max_right_edge = max_right_edge
+        #print(f"[calculate_area_offset] max_right_edge = {max_right_edge}")
 
         #print(start_area_array)
         #print(self.update_start_area_array)

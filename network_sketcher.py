@@ -60,7 +60,7 @@ class ns_front_run():
         self.root = TkinterDnD.Tk()
         style = ttk.Style(self.root)
         style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
-        self.root.title("Network Sketcher  ver 2.6.2d")
+        self.root.title("Network Sketcher  ver 2.6.2e")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
@@ -75,7 +75,7 @@ class ns_front_run():
 
         icon = tk.PhotoImage(file=file_path)
         self.root.iconphoto(True, icon)
-        
+
         # Notebook
         nb = ttk.Notebook()
 
@@ -230,6 +230,12 @@ class ns_front_run():
                     cli_gui = ns_extensions.cli_on_gui()
                     cli_gui.root = self.root
                     cli_gui.full_filepath = self.full_filepath
+                    # Pass Main Panel position info for CLI window positioning
+                    self.root.update_idletasks()
+                    cli_gui.main_panel_x = self.root.winfo_x()
+                    cli_gui.main_panel_y = self.root.winfo_y()
+                    cli_gui.main_panel_width = self.root.winfo_width()
+                    cli_gui.main_panel_height = self.root.winfo_height()
                     cli_gui.show_cli_input_window()
                     return ()
 
@@ -330,6 +336,12 @@ class ns_front_run():
         cli_gui = ns_extensions.cli_on_gui.cli_on_gui()
         cli_gui.root = self.root
         cli_gui.full_filepath = self.full_filepath
+        # Pass Main Panel position info for CLI window positioning
+        self.root.update_idletasks()
+        cli_gui.main_panel_x = self.root.winfo_x()
+        cli_gui.main_panel_y = self.root.winfo_y()
+        cli_gui.main_panel_width = self.root.winfo_width()
+        cli_gui.main_panel_height = self.root.winfo_height()
         cli_gui.show_cli_input_window()
 
     '''
@@ -566,7 +578,7 @@ class ns_front_run():
                     if row[1][0] not in name_changed_names:
                         #name_changed_filtered.append(row)
                         modified_row = row.copy()
-                        modified_row[1].append('<END>') 
+                        modified_row[1].append('<END>')
                         name_changed_filtered.append(modified_row)
 
                         # Step 4: Sort by device name ([0][1]) in ascending order
@@ -1111,6 +1123,12 @@ class ns_front_run():
             cli_gui.root = self.root
             cli_gui.full_filepath = self.full_filepath
             cli_gui.from_master_panel = True  # Flag to indicate opened from Master Panel
+            # Pass Main Panel position info for CLI window positioning
+            self.root.update_idletasks()
+            cli_gui.main_panel_x = self.root.winfo_x()
+            cli_gui.main_panel_y = self.root.winfo_y()
+            cli_gui.main_panel_width = self.root.winfo_width()
+            cli_gui.main_panel_height = self.root.winfo_height()
             cli_gui.show_cli_input_window()
 
         if click_value == 'self.sub3_5_button_1':  # select IP address table
