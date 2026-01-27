@@ -1026,6 +1026,20 @@ Combined format for multiple entries:
 - Device entries and header row can be mixed in the same command
 - Each device/header entry must have up to 9 attribute columns (excluding the device name column)
 
+**[IMPORTANT] Default Attribute Rules for Device Type**<br>
+When generating rename attribute_bulk commands, the Default attribute (first attribute column after device name) MUST be set based on the area type where the device is located:
+
+| Area Type | Area Name Pattern | Default Attribute | Color |
+|-----------|-------------------|-------------------|-------|
+| Waypoint Area | Contains '_wp_' (e.g., 'Internet_wp_', 'WAN_wp_', 'MPLS_wp_') | "['WayPoint', [220, 230, 242]]" | Light Blue |
+| Normal Area | Does NOT contain '_wp_' (e.g., 'DataCenter', 'Floor1', 'HQ') | "['DEVICE', [235, 241, 222]]" | Light Green |
+
+Example for Waypoint area device:
+['Internet-GW', "['WayPoint', [220, 230, 242]]", "['Carrier_provided', [220, 230, 242]]", ...]
+
+Example for Normal area device:
+['Core-SW1', "['DEVICE', [235, 241, 222]]", "['Catalyst 9300', [255, 183, 219]]", ...]
+
 **Examples**<br>
 
 Example 1: Update single device attributes
