@@ -1792,6 +1792,9 @@ class  ns_l3_diagram_create():
         #print('--- all_l3segment_l3_netowrk_list ---')
         #print(all_l3segment_l3_netowrk_list)
 
+        # Track interfaces already drawn for no-L3-segment case to avoid duplicates
+        drawn_no_l3seg_interfaces = []
+
         if self.mark_multi_ip_array != []:
             for tmp_mark_multi_ip_array in self.mark_multi_ip_array:
                 if tmp_mark_multi_ip_array[8] == 1:
@@ -1820,8 +1823,12 @@ class  ns_l3_diagram_create():
                             ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tag_ip_left_2, tmp_mark_multi_ip_array[2], tag_ip_width_2, tmp_mark_multi_ip_array[4], tag_ip_text_2)
 
                 else:
+                    # Flag to track if we found a matching L3 segment
+                    found_l3segment_match = False
+
                     for tmp_all_l3segment_l3_netowrk_list in all_l3segment_l3_netowrk_list:
                         if tmp_all_l3segment_l3_netowrk_list[1] == tmp_mark_multi_ip_array[9] and tmp_all_l3segment_l3_netowrk_list[0] == tmp_mark_multi_ip_array[6][1]:
+                            found_l3segment_match = True
                             # If the index does not exist, expand the list and provide an empty string at index 2. Bug fix at Ver 2.5.3a
                             if len(tmp_all_l3segment_l3_netowrk_list) <= 2:
                                 tmp_all_l3segment_l3_netowrk_list.extend(
@@ -1846,6 +1853,28 @@ class  ns_l3_diagram_create():
                                     self.shape = self.slide.shapes
                                     ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tag_ip_left_2, tmp_mark_multi_ip_array[2], tag_ip_width_2, tmp_mark_multi_ip_array[4], tag_ip_text_2)
                             break
+
+                    # If no L3 segment match found, still draw the IP addresses (stacked vertically)
+                    if not found_l3segment_match:
+                        current_if_key = tmp_mark_multi_ip_array[9]
+                        # Check if already drawn for this interface
+                        if current_if_key not in drawn_no_l3seg_interfaces:
+                            drawn_no_l3seg_interfaces.append(current_if_key)
+                            if action_type == 'CREATE' and not minimal_1st_pass:
+                                # Collect all IP addresses for this interface
+                                all_ips_for_if = []
+                                for check_ip_array in self.mark_multi_ip_array:
+                                    if check_ip_array[9] == current_if_key:
+                                        all_ips_for_if.append(check_ip_array[6][0])  # Full IP address
+
+                                # Draw each IP address separately, stacked vertically
+                                tag_ip_left_2 = tmp_mark_multi_ip_array[10]
+                                offset_y = 0.0
+                                for ip_addr in all_ips_for_if:
+                                    tag_ip_width = get_text_wh_cached(self, self.tag_font_large_size, ip_addr)[0]
+                                    self.shape = self.slide.shapes
+                                    ns_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tag_ip_left_2, tmp_mark_multi_ip_array[2] + offset_y, tag_ip_width, tmp_mark_multi_ip_array[4], ip_addr)
+                                    offset_y += tmp_mark_multi_ip_array[4]  # Move down by shape height
         '''
         Write line of L3 instance
         '''
