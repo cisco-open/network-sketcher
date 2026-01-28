@@ -480,28 +480,3 @@ class ns_l2_table_from_master_l2_sheet():
         # Remove _tmp_ sheet from excel master
         ns_def.remove_excel_sheet(write_excel_file, tmp_ws_name)
         ns_def.remove_excel_sheet(write_excel_file, tmp_tmp_ws_name)
-
-        '''
-        additional change_string_color
-        '''
-        self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
-        ws_name = worksheet_name
-        current_device_name = ''
-        pre_if_name = ''
-        for tmp_master_l2_array in master_l2_array:
-            if tmp_master_l2_array[0] != 1 and tmp_master_l2_array[0] != 2 and tmp_master_l2_array[1][4] != '' and tmp_master_l2_array[1][4] != '_EMPTY_':
-                if current_device_name == tmp_master_l2_array[1][2]:
-                    if pre_if_name == tmp_master_l2_array[1][4]:
-                        #print(current_device_name,pre_if_name,tmp_master_l2_array[1][3])
-                        ns_egt_maker.change_string_color(self.input_tree_excel, ws_name, tmp_master_l2_array[0], 3, 'GRAY')
-                        ns_egt_maker.change_string_color(self.input_tree_excel, ws_name, tmp_master_l2_array[0], 4, 'GRAY')
-                        ns_egt_maker.change_string_color(self.input_tree_excel, ws_name, tmp_master_l2_array[0], 5, 'GRAY')
-                        pre_if_name = tmp_master_l2_array[1][4]
-                    else:
-                        pre_if_name = tmp_master_l2_array[1][4]
-                else:
-                    current_device_name = tmp_master_l2_array[1][2]
-                    pre_if_name = ''
-
-        self.input_tree_excel.save(output_excel_name)
-
