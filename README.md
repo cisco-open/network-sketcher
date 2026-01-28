@@ -150,7 +150,7 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Add Layer 1 connections | ✅ | ✅ |
 | Delete Layer 1 connections | ⚠️ (port cannot be specified) | ✅ |
 | Change Layer 1 port names | ✅ | ✅ |
-| Change Layer 1 connection details (e.g., duplex) | ✅ | ❌ |
+| Change Layer 1 connection details (e.g., duplex) | ✅ | ✅ |
 | Change Layer 2 segments (VLAN) | ✅ | ✅ |
 | Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ |
 | Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ |
@@ -197,6 +197,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
