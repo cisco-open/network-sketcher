@@ -819,7 +819,7 @@ class ns_front_run():
         self.sub2_A = tk.LabelFrame(self.sub2_1, text='AI-Enabled Feature Lab', font=("", 14), height=1, background="#D9D9D9")
         self.sub2_A.grid(row=9, column=0, sticky='W', padx=5, pady=10, ipadx=5, ipady=2, columnspan=3)
 
-        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta6)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
+        self.sub2_9_button_1 = tk.Button(self.sub2_A, text="Export AI Context file (Beta7)", font=("", 12), command=lambda: self.click_action_sub('self.self.sub2_9_button_1', push_array))
         self.sub2_9_button_1.grid(row=1, column=21, sticky='WE', padx=2, pady=2, ipadx=3)
 
         # Add CLI window button next to Export AI Context file button
