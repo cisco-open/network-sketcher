@@ -456,6 +456,7 @@ class ns_cli_run():
             'rename device', \
             'rename l3_instance', \
             'rename port', \
+            'rename port_info_bulk', \
             ]
 
         if next_arg == None or '--' in next_arg or str('rename ' + next_arg) not in rename_command_list:
@@ -1022,6 +1023,174 @@ class ns_cli_run():
 
             return_text = '[ERROR]The port name did not exist. --- ' + updated_name_array[0] + ' ' + updated_name_array[1]
             return ([return_text])
+
+        if next_arg == 'port_info_bulk':
+            '''
+            rename port_info_bulk - Update Speed, Duplex, Port_Type for multiple ports at once
+            
+            Syntax:
+            rename port_info_bulk [["device_name1","port_name1",["Speed1","Duplex1","Port_Type1"]],["device_name2","port_name2",["Speed2","Duplex2","Port_Type2"]]]
+            
+            Example:
+            rename port_info_bulk [["device1","GigabitEthernet 0/0",["Auto","Auto","1000BASE-T"]],["device2","GigabitEthernet 0/0",["1Gbps","Full","1000BASE-T"]]]
+            '''
+            import ast
+            import ns_def
+
+            # Get the array argument from command line
+            idx = argv_array.index('port_info_bulk')
+
+            try:
+                # Reconstruct arguments that were split by whitespace
+                remaining_args = argv_array[idx + 1:]
+
+                # Find where --master or other flags start
+                array_parts = []
+                for arg in remaining_args:
+                    if arg.startswith('--'):
+                        break
+                    array_parts.append(arg)
+
+                # Join the parts back together with space
+                port_info_bulk_array_str = ' '.join(array_parts)
+                port_info_bulk_array_str = port_info_bulk_array_str.strip()
+
+                # Remove surrounding quotes if present
+                if port_info_bulk_array_str.startswith("'") and port_info_bulk_array_str.endswith("'"):
+                    port_info_bulk_array_str = port_info_bulk_array_str[1:-1]
+                if port_info_bulk_array_str.startswith('"') and port_info_bulk_array_str.endswith('"'):
+                    port_info_bulk_array_str = port_info_bulk_array_str[1:-1]
+
+                # Parse the array
+                port_info_bulk_array = ast.literal_eval(port_info_bulk_array_str)
+
+            except Exception as e:
+                return ([f'[ERROR] Invalid port_info_bulk array format: {str(e)}'])
+
+            # Validate format
+            if not isinstance(port_info_bulk_array, list):
+                return ([f'[ERROR] port_info_bulk must be a list of port info definitions'])
+
+            if len(port_info_bulk_array) == 0:
+                return ([f'[ERROR] port_info_bulk array is empty'])
+
+            # Validate each entry format: ["device_name", "port_name", ["Speed", "Duplex", "Port_Type"]]
+            for entry in port_info_bulk_array:
+                if not isinstance(entry, list) or len(entry) != 3:
+                    return ([f'[ERROR] Each entry must be [device_name, port_name, [Speed, Duplex, Port_Type]]. Invalid entry: {entry}'])
+                if not isinstance(entry[0], str) or not isinstance(entry[1], str):
+                    return ([f'[ERROR] Device name and port name must be strings. Invalid entry: {entry}'])
+                if not isinstance(entry[2], list) or len(entry[2]) != 3:
+                    return ([f'[ERROR] Port info must be [Speed, Duplex, Port_Type]. Invalid entry: {entry}'])
+
+            # Load POSITION_LINE array
+            ws_name = 'Master_Data'
+            ppt_meta_file = master_file_path
+
+            position_line_array = ns_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_LINE>>')
+
+            # Process each port info entry
+            updated_ports = []
+            not_found_ports = []
+
+            for entry in port_info_bulk_array:
+                device_name = entry[0]
+                port_name = entry[1]
+                speed = str(entry[2][0])
+                duplex = str(entry[2][1])
+                port_type = str(entry[2][2])
+
+                found = False
+
+                # Search in POSITION_LINE array
+                # Columns: 1=From_Name, 2=To_Name, 3=From_Tag_Name, 4=To_Tag_Name
+                # 13=From_Port_Name, 14=From_Speed, 15=From_Duplex, 16=From_Port_Type
+                # 17=To_Port_Name, 18=To_Speed, 19=To_Duplex, 20=To_Port_Type
+                for row in position_line_array:
+                    if isinstance(row, list) and len(row) == 2:
+                        line_no, fields = row
+                        if line_no not in (1, 2) and isinstance(fields, list) and len(fields) >= 20:
+                            # Check From side (column index: 0=From_Name, 2=From_Tag_Name contains abbreviated port)
+                            # Full port name is constructed from From_Port_Name (12) + port number from From_Tag_Name (2)
+                            from_device = fields[0]
+                            from_tag = fields[2]  # Abbreviated port name like "TE 1/0/1"
+
+                            # Check To side
+                            to_device = fields[1]
+                            to_tag = fields[3]  # Abbreviated port name
+
+                            # Match From side
+                            if from_device == device_name:
+                                # Construct full port name from From_Port_Name and tag
+                                from_port_prefix = fields[12] if fields[12] else ''
+                                if from_tag:
+                                    tag_parts = str(from_tag).split(' ')
+                                    if len(tag_parts) >= 2:
+                                        from_full_port = from_port_prefix + ' ' + tag_parts[-1]
+                                    else:
+                                        from_full_port = from_port_prefix
+                                else:
+                                    from_full_port = from_port_prefix
+
+                                if from_full_port == port_name or from_tag == port_name:
+                                    # Update From side: Speed(13), Duplex(14), Port_Type(15)
+                                    fields[13] = speed
+                                    fields[14] = duplex
+                                    fields[15] = port_type
+                                    found = True
+
+                            # Match To side
+                            if to_device == device_name:
+                                # Construct full port name from To_Port_Name and tag
+                                to_port_prefix = fields[16] if fields[16] else ''
+                                if to_tag:
+                                    tag_parts = str(to_tag).split(' ')
+                                    if len(tag_parts) >= 2:
+                                        to_full_port = to_port_prefix + ' ' + tag_parts[-1]
+                                    else:
+                                        to_full_port = to_port_prefix
+                                else:
+                                    to_full_port = to_port_prefix
+
+                                if to_full_port == port_name or to_tag == port_name:
+                                    # Update To side: Speed(17), Duplex(18), Port_Type(19)
+                                    fields[17] = speed
+                                    fields[18] = duplex
+                                    fields[19] = port_type
+                                    found = True
+
+                if found:
+                    updated_ports.append(f'{device_name} {port_name}')
+                else:
+                    not_found_ports.append(f'{device_name} {port_name}')
+
+            # Write back to Excel if any updates were made
+            if len(updated_ports) > 0:
+                excel_file_path = ppt_meta_file
+                worksheet_name = ws_name
+                offset_row = 0
+                offset_column = 0
+
+                position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+                master_excel_meta = position_line_tuple
+                section_write_to = '<<POSITION_LINE>>'
+                ns_def.overwrite_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+
+            # Build result message
+            result_messages = []
+            if len(updated_ports) > 0:
+                result_messages.append(f'--- Port info bulk rename completed ---')
+                result_messages.append(f'Successfully updated: {len(updated_ports)} port(s)')
+                result_messages.append(f'Updated: {", ".join(updated_ports)}')
+
+            if len(not_found_ports) > 0:
+                result_messages.append(f'Not found: {len(not_found_ports)} port(s)')
+                result_messages.append(f'Not found ports: {", ".join(not_found_ports)}')
+
+            if len(updated_ports) == 0 and len(not_found_ports) > 0:
+                result_messages.insert(0, '[WARNING] No ports were updated.')
+
+            return result_messages
 
         if next_arg == 'device':
             idx = argv_array.index('device')
