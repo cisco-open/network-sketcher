@@ -1190,6 +1190,80 @@ rename port [device name] [Original port name] [Updated port name]
 ['L3SW2', 'addvlan 999', '', '']<br>
 
 
+## rename port_info_bulk
+Change the port information (Speed, Duplex, Port_Type) for multiple ports in bulk.
+
+**Syntax**<br>
+```bash
+rename port_info_bulk [port_info_array]
+```
+
+**Array Format**<br>
+
+The port info array uses the following format:<br>
+```bash
+[["device_name1","port_name1",["Speed1","Duplex1","Port_Type1"]],["device_name2","port_name2",["Speed2","Duplex2","Port_Type2"]]]
+```
+**Parameters**<br>
+
+| Parameter  | Description |
+|---|---|
+| device_name | The name of the device |
+| port_name   | The port name (abbreviated form like "TE 1/0/1" or full form like "TenGigabitEthernet 1/0/1") |
+| Speed       | Port speed value (e.g., "Auto", "1Gbps", "10Gbps", "N/A") |
+| Duplex      | Duplex mode (e.g., "Auto", "Full", "Half", "N/A") |
+| Port_Type   | Port type (e.g., "1000BASE-T", "10GBASE-SR", "N/A") |
+
+**Notes**<br>
+- Port name can be specified in abbreviated form (e.g., "TE 1/0/1") or full form (e.g., "TenGigabitEthernet 1/0/1")
+- Multiple ports can be updated in a single command
+- If a port is not found, it will be reported in the result message
+
+**Examples**<br>
+Example 1: Update single port info<br>
+
+rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']]]"
+
+Example 2: Update multiple ports<br>
+rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['DIST-CORE-SW2','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['ACCESS-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']]]"
+
+
+**Full Example with Before/After**<br>
+
++BEFORE+<br>
+
+#show l1_interface
+['DIST-CORE-SW1', 'TE 1/0/1', 'TenGigabitEthernet 1/0/1', 'N/A', 'N/A', 'N/A']
+['DIST-CORE-SW1', 'TE 1/0/2', 'TenGigabitEthernet 1/0/2', 'N/A', 'N/A', 'N/A']
+['DIST-CORE-SW2', 'TE 1/0/1', 'TenGigabitEthernet 1/0/1', 'N/A', 'N/A', 'N/A']
+['ACCESS-SW1', 'GE 1/0/1', 'GigabitEthernet 1/0/1', 'N/A', 'N/A', 'N/A']
+
+
++Port info bulk renamed+<br>
+
+#rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['DIST-CORE-SW1','TE 1/0/2',['10Gbps','Full','10GBASE-LR']],['ACCESS-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']]]"
+--- Port info bulk rename completed ---
+Successfully updated: 3 port(s)
+Updated: DIST-CORE-SW1 TE 1/0/1, DIST-CORE-SW1 TE 1/0/2, ACCESS-SW1 GE 1/0/1
+
+
++AFTER+<br>
+
+#show l1_interface
+['DIST-CORE-SW1', 'TE 1/0/1', 'TenGigabitEthernet 1/0/1', '10Gbps', 'Full', '10GBASE-SR']
+['DIST-CORE-SW1', 'TE 1/0/2', 'TenGigabitEthernet 1/0/2', '10Gbps', 'Full', '10GBASE-LR']
+['DIST-CORE-SW2', 'TE 1/0/1', 'TenGigabitEthernet 1/0/1', 'N/A', 'N/A', 'N/A']
+['ACCESS-SW1', 'GE 1/0/1', 'GigabitEthernet 1/0/1', '1Gbps', 'Full', '1000BASE-T']
+
+**Common Port Info Values**<br>
+| Category  | Common Values(not limited to the listed values) |
+|---|---|
+| Speed     | Auto, N/A, 100Mbps, 1Gbps, 10Gbps, 25Gbps, 40Gbps, 100Gbps |
+| Duplex    | Auto, N/A, Full, Half |
+| Port_Type | N/A, 1000BASE-T, 10GBASE-SR, 10GBASE-LR, 25GBASE-SR, 40GBASE-SR4, 100GBASE-SR4 |
+
+
+
 '''
 Export Commands reference
 '''
@@ -1291,7 +1365,6 @@ The file contains no areas or devices.<br>
 
 
 
-
 ================================================================================
 CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
 ================================================================================
@@ -1305,6 +1378,7 @@ UNIVERSAL WARNINGS (APPLY TO ALL RULES)
 - CASCADE DELETION is IRREVERSIBLE without backup
 - ALWAYS use bulk commands when available (ip_address_bulk, l2_segment_bulk, portchannel_bulk, virtual_port_bulk, l1_link_bulk)
 - ALWAYS complete each phase before proceeding to next
+- ALWAYS configure port information (Speed/Duplex/Port_Type) after creating L1 links
 
 ================================================================================
 SECTION 1: FUNDAMENTAL ARCHITECTURE RULES (RULES 0-6)
@@ -1494,6 +1568,7 @@ SCENARIO A: SERVICE PROVIDER WITH VRF CUSTOMERS (SAME DATA CENTER)
 add area_location "[['ServiceProvider_DC']]"
 add device_location "['ServiceProvider_DC',[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]]"
 add l1_link_bulk "[['CX-A','SP','FastEthernet 0/0','FastEthernet 0/0'],['CX-B','SP','FastEthernet 0/0','FastEthernet 0/1'],['CY-A','SP','FastEthernet 0/0','FastEthernet 1/0'],['CY-B','SP','FastEthernet 0/0','FastEthernet 1/1']]"
+rename port_info_bulk "[['CX-A','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 0/0',['100Mbps','Full','100BASE-TX']],['CX-B','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 0/1',['100Mbps','Full','100BASE-TX']],['CY-A','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 1/0',['100Mbps','Full','100BASE-TX']],['CY-B','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 1/1',['100Mbps','Full','100BASE-TX']]]"
 rename l3_instance "SP" "FastEthernet 0/0" "CUST-X"
 rename l3_instance "SP" "FastEthernet 0/1" "CUST-X"
 rename l3_instance "SP" "FastEthernet 1/0" "CUST-Y"
@@ -1506,6 +1581,7 @@ add device_location "['HQ',[['HQ-Core-Router'],['HQ-Switch']]]"
 add device_location "['MPLS_wp_',[['MPLS-Cloud']]]"
 add device_location "['Branch',[['Branch-Router'],['Branch-Switch']]]"
 add l1_link_bulk "[['HQ-Core-Router','HQ-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24'],['HQ-Core-Router','MPLS-Cloud','GigabitEthernet 0/0','port 0'],['MPLS-Cloud','Branch-Router','port 1','GigabitEthernet 0/0'],['Branch-Router','Branch-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24']]"
+rename port_info_bulk "[['HQ-Core-Router','GE 0/1',['1Gbps','Full','1000BASE-T']],['HQ-Switch','GE 0/24',['1Gbps','Full','1000BASE-T']],['HQ-Core-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Cloud','port 0',['N/A','N/A','N/A']],['MPLS-Cloud','port 1',['N/A','N/A','N/A']],['Branch-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Branch-Router','GE 0/1',['1Gbps','Full','1000BASE-T']],['Branch-Switch','GE 0/24',['1Gbps','Full','1000BASE-T']]]"
 
 SCENARIO C: MULTI-SITE HUB-AND-SPOKE MPLS
 
@@ -1516,6 +1592,7 @@ add device_location "['Branch1',[['B1-Router']]]"
 add device_location "['Branch2',[['B2-Router']]]"
 add device_location "['Branch3',[['B3-Router']]]"
 add l1_link_bulk "[['HQ-Router','MPLS-Hub','GigabitEthernet 0/0','port 0'],['MPLS-Hub','B1-Router','port 1','GigabitEthernet 0/0'],['MPLS-Hub','B2-Router','port 2','GigabitEthernet 0/0'],['MPLS-Hub','B3-Router','port 3','GigabitEthernet 0/0']]"
+rename port_info_bulk "[['HQ-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','port 0',['N/A','N/A','N/A']],['MPLS-Hub','port 1',['N/A','N/A','N/A']],['B1-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','port 2',['N/A','N/A','N/A']],['B2-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','port 3',['N/A','N/A','N/A']],['B3-Router','GE 0/0',['1Gbps','Full','1000BASE-T']]]"
 
 SCENARIO D: DATA CENTER WITH VRF AND EXTERNAL WAN
 
@@ -1523,6 +1600,7 @@ add area_location "[['DataCenter','WAN_wp_']]"
 add device_location "['DataCenter',[['Core-Router'],['Tenant-A-Router','Tenant-B-Router']]]"
 add device_location "['WAN_wp_',[['Internet-Gateway']]]"
 add l1_link_bulk "[['Core-Router','Tenant-A-Router','GigabitEthernet 0/1','GigabitEthernet 0/0'],['Core-Router','Tenant-B-Router','GigabitEthernet 0/2','GigabitEthernet 0/0'],['Core-Router','Internet-Gateway','GigabitEthernet 0/0','port 0']]"
+rename port_info_bulk "[['Core-Router','GE 0/1',['1Gbps','Full','1000BASE-T']],['Tenant-A-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Core-Router','GE 0/2',['1Gbps','Full','1000BASE-T']],['Tenant-B-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Core-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Internet-Gateway','port 0',['N/A','N/A','N/A']]]"
 rename l3_instance "Core-Router" "GigabitEthernet 0/1" "Tenant-A"
 rename l3_instance "Core-Router" "GigabitEthernet 0/2" "Tenant-B"
 
@@ -1548,6 +1626,8 @@ Non-hierarchical device layout            | Restructure TOP-TO-BOTTOM (Rule 0)
 FlexConnect AP without L2 segment on physical port | Add L2 segment to AP's GigabitEthernet 0 (Rule 12)
 FlexConnect AP with IP on physical port   | Remove IP from physical port, use SVI only (Rule 12)
 SVI without L2 segment binding on itself  | Add L2 segment to SVI itself (Rule 15)
+L1 interfaces without port info           | Add rename port_info_bulk (Rule 16)
+Port info not matching interface type     | Correct Speed/Duplex/Port_Type values
 
 CORRECTION WORKFLOW:
 1. Identify issue from red flags
@@ -1567,13 +1647,14 @@ For each FlexConnect AP in the design:
 5. Verify SVI on AP has L2 segment binding on itself
 6. Verify IP address is assigned to AP's SVI (NOT physical port)
 7. Verify AP's IP address is in same subnet as switch gateway SVI
+8. Verify port info (Speed/Duplex/Port_Type) is configured for all L1 interfaces
 
-If any verification fails -> ERROR: Apply correction per Rule 12
+If any verification fails -> ERROR: Apply correction per Rule 12 or Rule 16
 
 
 
 ================================================================================
-SECTION 2: EXECUTION AND CONFIGURATION RULES (RULES 7-15)
+SECTION 2: EXECUTION AND CONFIGURATION RULES (RULES 7-16)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -1589,46 +1670,54 @@ PHASE 1: NETWORK STRUCTURE
 PHASE 2: PHYSICAL CONNECTIVITY
 3. add l1_link_bulk (MANDATORY - always use bulk for L1 links)
 
+PHASE 2.5: PORT INFORMATION CONFIGURATION
+4. rename port_info_bulk (MANDATORY - set Speed/Duplex/Port_Type for all L1 interfaces)
+
 PHASE 3: LAYER 2 CONFIGURATION
-4. add portchannel_bulk (create LAG - MANDATORY bulk command)
-5. add virtual_port_bulk (create SVIs/Loopback - MANDATORY bulk command)
-6. add vport_l1if_direct_binding (subinterfaces)
-7. add l2_segment_bulk (add VLANs - MANDATORY bulk command)
-8. add vport_l2_direct_binding (VLAN tagging on subinterfaces)
+5. add portchannel_bulk (create LAG - MANDATORY bulk command)
+6. add virtual_port_bulk (create SVIs/Loopback - MANDATORY bulk command)
+7. add vport_l1if_direct_binding (subinterfaces)
+8. add l2_segment_bulk (add VLANs - MANDATORY bulk command)
+9. add vport_l2_direct_binding (VLAN tagging on subinterfaces)
 
 PHASE 4: LAYER 3 CONFIGURATION
-9. add ip_address_bulk (assign IPs - MANDATORY bulk command)
-10. rename l3_instance (configure VRF - optional)
+10. add ip_address_bulk (assign IPs - MANDATORY bulk command)
+11. rename l3_instance (configure VRF - optional)
 
 PHASE 5: MODIFICATIONS
-11. rename area/device/port (as needed)
+12. rename area/device/port (as needed)
 
 PHASE 6: ATTRIBUTE CONFIGURATION
-12. rename attribute_bulk (set Model/OS for all devices)
+13. rename attribute_bulk (set Model/OS for all devices)
 
 PHASE 7: VERIFICATION
-13. show commands (verify at each phase)
+14. show commands (verify at each phase)
 
 KEY DEPENDENCIES:
 - Phase 2 requires Phase 1 complete
+- Phase 2.5 requires Phase 2 complete (L1 interfaces must exist)
 - Phase 3 requires Phase 2 complete
 - Phase 4 requires Phase 3 complete
 - add portchannel_bulk requires L1 interface exists
 - add l2_segment_bulk requires interface exists
 - add ip_address_bulk requires L3 interface exists
+- rename port_info_bulk requires L1 interface exists (from add l1_link_bulk)
 - CRITICAL (SVI-L2 BINDING): Any SVI created via add virtual_port_bulk (interfaces named "Vlan <ID>") MUST be bound to an L2 segment using add l2_segment_bulk ON THE SVI ITSELF (port_name = "Vlan <ID>"). Loopback interfaces are excluded.
 
 MANDATORY BULK COMMAND USAGE:
-Task                       | Command (ALWAYS USE)
----------------------------|---------------------------
-Create L1 connections      | add l1_link_bulk
-Create Port-channels       | add portchannel_bulk
-Create Virtual ports       | add virtual_port_bulk
-Add L2 segments (VLANs)    | add l2_segment_bulk
-Assign IP addresses        | add ip_address_bulk
+Task                              | Command (ALWAYS USE)
+----------------------------------|---------------------------
+Create L1 connections             | add l1_link_bulk
+Set Port Info (Speed/Duplex/Type) | rename port_info_bulk
+Create Port-channels              | add portchannel_bulk
+Create Virtual ports              | add virtual_port_bulk
+Add L2 segments (VLANs)           | add l2_segment_bulk
+Assign IP addresses               | add ip_address_bulk
 
 NOTE: Individual commands (add l1_link, add portchannel, add virtual_port,
 add l2_segment, add ip_address) are NOT available. Always use bulk commands.
+Port information (Speed, Duplex, Port_Type) MUST be configured using
+rename port_info_bulk immediately after L1 links are created.
 
 --------------------------------------------------------------------------------
 RULE 7.1: CASCADE DELETION BEHAVIOR
@@ -1694,14 +1783,16 @@ INTERFACE NAMING:
 - Member N: GigabitEthernet N/0/x
 
 PORT-CHANNEL CONFIGURATION EXAMPLE (USING BULK COMMANDS):
-add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigE 1/1/2','GigabitEthernet 2/0/11']]"
-add portchannel_bulk "[['Access-Stack1',['TenGigE 1/1/1','TenGigE 1/1/2'],'Port-channel 1'],['Dist-SW1-2(StackVirtual)',['GigabitEthernet 1/0/11','GigabitEthernet 2/0/11'],'Port-channel 11']]"
+add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigabitEthernet 1/1/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigabitEthernet 1/1/2','GigabitEthernet 2/0/11']]"
+rename port_info_bulk "[['Access-Stack1','TE 1/1/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1-2(StackVirtual)','GE 1/0/11',['1Gbps','Full','1000BASE-T']],['Access-Stack1','TE 1/1/2',['10Gbps','Full','10GBASE-SR']],['Dist-SW1-2(StackVirtual)','GE 2/0/11',['1Gbps','Full','1000BASE-T']]]"
+add portchannel_bulk "[['Access-Stack1',['TenGigabitEthernet 1/1/1','TenGigabitEthernet 1/1/2'],'Port-channel 1'],['Dist-SW1-2(StackVirtual)',['GigabitEthernet 1/0/11','GigabitEthernet 2/0/11'],'Port-channel 11']]"
 
 KEY REQUIREMENTS:
 - Device name includes member IDs and technology tag
 - Interfaces numbered by member (1/0/x, 2/0/x)
 - Port-channels include interfaces from multiple members
 - VLANs/SVIs configured once on logical device (not per member)
+- Port info configured for all L1 interfaces immediately after link creation
 
 --------------------------------------------------------------------------------
 RULE 9: PORT-CHANNEL VLAN SYMMETRY
@@ -1713,12 +1804,16 @@ configuration on BOTH ends.
 PRINCIPLE: "Two devices, one link, same VLANs"
 
 CONFIGURATION WORKFLOW (USING BULK COMMANDS):
-1. Create Port-channels on both devices using add portchannel_bulk
-2. Add VLANs to both Port-channels using add l2_segment_bulk
-3. Ensure VLAN list matches exactly on both ends
-4. Verify symmetry with show l2_interface
+1. Create L1 links using add l1_link_bulk
+2. Configure port info using rename port_info_bulk
+3. Create Port-channels on both devices using add portchannel_bulk
+4. Add VLANs to both Port-channels using add l2_segment_bulk
+5. Ensure VLAN list matches exactly on both ends
+6. Verify symmetry with show l2_interface
 
 EXAMPLE:
+add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','GigabitEthernet 1/0/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','GigabitEthernet 1/0/2','GigabitEthernet 1/0/12']]"
+rename port_info_bulk "[['Access-Stack1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Dist-SW1-2(StackVirtual)','GE 1/0/11',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['Dist-SW1-2(StackVirtual)','GE 1/0/12',['1Gbps','Full','1000BASE-T']]]"
 add portchannel_bulk "[['Access-Stack1',['GigabitEthernet 1/0/1','GigabitEthernet 1/0/2'],'Port-channel 1'],['Dist-SW1-2(StackVirtual)',['GigabitEthernet 1/0/11','GigabitEthernet 1/0/12'],'Port-channel 11']]"
 add l2_segment_bulk "[['Access-Stack1','Port-channel 1',['VLAN10','VLAN100']],['Dist-SW1-2(StackVirtual)','Port-channel 11',['VLAN10','VLAN100']]]"
 
@@ -1726,11 +1821,13 @@ COMMON MISTAKES:
 - VLANs only on one side
 - Different VLANs on each side
 - Adding VLANs to physical interfaces instead of Port-channel
+- Missing port info configuration after L1 link creation
 
 SYMMETRY CHECKLIST:
 - Port-channel created on both devices
 - SAME VLAN list on both Port-channels
 - VLANs added to Port-channel (not physical member interfaces)
+- Port info configured for all member interfaces
 - Verified with show l2_interface
 
 --------------------------------------------------------------------------------
@@ -1906,6 +2003,9 @@ CONFIGURATION WORKFLOW FOR FLEXCONNECT AP (USING BULK COMMANDS):
 Step 1: Create L1 links between APs and switch
 add l1_link_bulk "[['AP-01','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/2'],['AP-03','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/3']]"
 
+Step 1.1: Configure port information for all L1 interfaces (MANDATORY)
+rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['AP-03','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/3',['1Gbps','Full','1000BASE-T']]]"
+
 Step 2: Add Management VLAN to switch ports (connecting to APs)
 add l2_segment_bulk "[['Switch-01','GigabitEthernet 1/0/1',['Vlan10']],['Switch-01','GigabitEthernet 1/0/2',['Vlan10']],['Switch-01','GigabitEthernet 1/0/3',['Vlan10']]]"
 
@@ -1929,6 +2029,9 @@ add device_location "['Floor1',[['Switch-01'],['AP-01','AP-02','AP-03']]]"
 
 # Phase 2: Physical connectivity
 add l1_link_bulk "[['AP-01','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/2'],['AP-03','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/3']]"
+
+# Phase 2.5: Port information configuration (MANDATORY)
+rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['AP-03','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/3',['1Gbps','Full','1000BASE-T']]]"
 
 # Phase 3: L2 configuration - Add VLAN to switch ports
 add l2_segment_bulk "[['Switch-01','GigabitEthernet 1/0/1',['Vlan10']],['Switch-01','GigabitEthernet 1/0/2',['Vlan10']],['Switch-01','GigabitEthernet 1/0/3',['Vlan10']]]"
@@ -1956,10 +2059,12 @@ Component                    | Configuration Required
 -----------------------------|--------------------------------------------------
 AP Physical Port (Gi0)       | L2 segment (Management VLAN) - MANDATORY
 AP Physical Port (Gi0)       | NO IP address - MANDATORY
+AP Physical Port (Gi0)       | Port info (Speed/Duplex/Port_Type) - MANDATORY
 AP SVI (Vlan <ID>)           | Created via add virtual_port_bulk - MANDATORY
 AP SVI (Vlan <ID>)           | L2 segment binding on itself - MANDATORY (Rule 15)
 AP SVI (Vlan <ID>)           | IP address assigned - MANDATORY
 Switch Port (to AP)          | L2 segment (Management VLAN) - MANDATORY
+Switch Port (to AP)          | Port info (Speed/Duplex/Port_Type) - MANDATORY
 Switch SVI (Vlan <ID>)       | Created via add virtual_port_bulk - MANDATORY
 Switch SVI (Vlan <ID>)       | L2 segment binding on itself - MANDATORY (Rule 15)
 Switch SVI (Vlan <ID>)       | Gateway IP address assigned - MANDATORY
@@ -1968,6 +2073,7 @@ WIRELESS AP CONFIGURATION CHECKLIST:
 - [ ] AP mode determined (FlexConnect if not specified - MANDATORY DEFAULT)
 - [ ] APs placed in row BELOW access switch (hierarchical layout)
 - [ ] L1 links created between APs and switch (add l1_link_bulk)
+- [ ] Port info configured for all L1 interfaces (rename port_info_bulk) - MANDATORY
 - [ ] Management VLAN assigned to switch ports connecting to APs (add l2_segment_bulk)
 - [ ] CRITICAL (FLEXCONNECT): Management VLAN assigned to AP physical ports GigabitEthernet 0 (add l2_segment_bulk)
 - [ ] SVI created on SWITCH for Management VLAN - gateway (add virtual_port_bulk)
@@ -1989,11 +2095,13 @@ COMMON MISTAKES:
 - Placing APs in same row as switch (horizontal) -> WRONG, use hierarchical layout
 - Using Central mode when no mode specified -> WRONG, use FlexConnect as default
 - Using individual commands instead of bulk commands -> WRONG, always use bulk
+- Missing port info configuration after L1 link creation -> WRONG, always configure port info
 
 KEY PRINCIPLES:
 - "FlexConnect AP = L2 segment on AP physical port + SVI on both AP and Switch required"
 - "FlexConnect AP physical port (GigabitEthernet 0) MUST have L2 segment (Management VLAN) configured"
 - "FlexConnect AP physical port (GigabitEthernet 0) MUST NOT have IP address"
+- "All L1 interfaces MUST have port info (Speed/Duplex/Port_Type) configured"
 - "SVI (Vlan <ID>) MUST be bound to an L2 segment on the SVI itself (Loopback excluded)"
 - "AP IP address MUST be on SVI, NOT on physical interface"
 - "Switch SVI = Gateway, AP SVI = AP's IP address"
@@ -2038,6 +2146,7 @@ For each access switch or switch stack:
 - Connect APs to access switch ports
 - Configure Management VLAN for AP traffic
 - Configure APs in FlexConnect mode (default)
+- Configure port info for all L1 interfaces
 
 EXAMPLE - Small Office with Access Switch (HIERARCHICAL, USING BULK COMMANDS):
 
@@ -2047,8 +2156,14 @@ add device_location "['Office',[['Access-SW1'],['AP-01','AP-02']]]"
 # Connect APs to switch
 add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/47'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/48']]"
 
+# Configure port info (MANDATORY)
+rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/47',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/48',['1Gbps','Full','1000BASE-T']]]"
+
 # Add VLAN to switch ports
 add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/47',['VLAN10']],['Access-SW1','GigabitEthernet 1/0/48',['VLAN10']]]"
+
+# Add VLAN to AP physical ports (FlexConnect)
+add l2_segment_bulk "[['AP-01','GigabitEthernet 0',['VLAN10']],['AP-02','GigabitEthernet 0',['VLAN10']]]"
 
 # Create SVIs
 add virtual_port_bulk "[['Access-SW1',['Vlan 10']],['AP-01',['Vlan 10']],['AP-02',['Vlan 10']]]"
@@ -2067,8 +2182,14 @@ add device_location "['Floor1',[['Access-Stack1'],['AP-F1-01','AP-F1-02','AP-F1-
 # Connect APs across stack members for redundancy
 add l1_link_bulk "[['AP-F1-01','Access-Stack1','GigabitEthernet 0','GigabitEthernet 1/0/45'],['AP-F1-02','Access-Stack1','GigabitEthernet 0','GigabitEthernet 1/0/46'],['AP-F1-03','Access-Stack1','GigabitEthernet 0','GigabitEthernet 2/0/45'],['AP-F1-04','Access-Stack1','GigabitEthernet 0','GigabitEthernet 2/0/46']]"
 
+# Configure port info (MANDATORY)
+rename port_info_bulk "[['AP-F1-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/45',['1Gbps','Full','1000BASE-T']],['AP-F1-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/46',['1Gbps','Full','1000BASE-T']],['AP-F1-03','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 2/0/45',['1Gbps','Full','1000BASE-T']],['AP-F1-04','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 2/0/46',['1Gbps','Full','1000BASE-T']]]"
+
 # Add VLAN to switch ports
 add l2_segment_bulk "[['Access-Stack1','GigabitEthernet 1/0/45',['VLAN10']],['Access-Stack1','GigabitEthernet 1/0/46',['VLAN10']],['Access-Stack1','GigabitEthernet 2/0/45',['VLAN10']],['Access-Stack1','GigabitEthernet 2/0/46',['VLAN10']]]"
+
+# Add VLAN to AP physical ports (FlexConnect)
+add l2_segment_bulk "[['AP-F1-01','GigabitEthernet 0',['VLAN10']],['AP-F1-02','GigabitEthernet 0',['VLAN10']],['AP-F1-03','GigabitEthernet 0',['VLAN10']],['AP-F1-04','GigabitEthernet 0',['VLAN10']]]"
 
 # Create SVIs
 add virtual_port_bulk "[['Access-Stack1',['Vlan 10']],['AP-F1-01',['Vlan 10']],['AP-F1-02',['Vlan 10']],['AP-F1-03',['Vlan 10']],['AP-F1-04',['Vlan 10']]]"
@@ -2086,6 +2207,7 @@ add device_location "['Office_LAN',[['_AIR_','_AIR_','Core-SW1-2(StackVirtual)',
 
 # Connect access stacks to core, APs to access stacks
 # Configure per Rule 12 using bulk commands - FlexConnect mode default
+# Always include rename port_info_bulk after L1 link creation
 
 AP NAMING CONVENTION:
 - Format: AP-[Location]-[Number] or [Model]-[Location]
@@ -2095,6 +2217,7 @@ VERIFICATION CHECKLIST:
 - [ ] Office LAN design includes wireless APs
 - [ ] APs placed in row BELOW access switches (hierarchical layout)
 - [ ] APs connected to access switch ports (add l1_link_bulk)
+- [ ] Port info configured for all L1 interfaces (rename port_info_bulk) - MANDATORY
 - [ ] APs configured per Rule 12 (VLAN, SVI, IP using bulk commands)
 - [ ] APs using FlexConnect mode (default, per Rule 12)
 
@@ -2102,6 +2225,7 @@ KEY PRINCIPLES:
 - "Office LAN = Wireless APs REQUIRED unless explicitly excluded by user"
 - "APs placed BELOW switches in hierarchical TOP-TO-BOTTOM layout"
 - "APs use FlexConnect mode by default (per Rule 12)"
+- "Always configure port info immediately after L1 link creation"
 - "Always use bulk commands for all configurations"
 
 --------------------------------------------------------------------------------
@@ -2236,6 +2360,125 @@ INTERACTION WITH OTHER RULES:
   MUST also follow this rule (SVI bound on AP's SVI row), while Loopback remains
   excluded.
 
+--------------------------------------------------------------------------------
+RULE 16: MANDATORY PORT INFORMATION CONFIGURATION
+--------------------------------------------------------------------------------
+
+CRITICAL: All L1 interfaces created via add l1_link_bulk MUST have their
+port information (Speed, Duplex, Port_Type) configured using rename port_info_bulk.
+
+MANDATORY REQUIREMENTS:
+- ALL physical interfaces (L1 ports) MUST have Speed, Duplex, and Port_Type set
+- Port information MUST be configured IMMEDIATELY AFTER L1 links are created (Phase 2.5)
+- Use rename port_info_bulk to configure multiple ports efficiently
+- This step is NON-OPTIONAL and must be included in every configuration
+
+PORT INFORMATION INFERENCE GUIDELINES:
+
+The LLM should infer appropriate port information based on:
+1. Interface naming conventions (GigabitEthernet, TenGigabitEthernet, etc.)
+2. Device role and typical deployment patterns
+3. Common industry standards for port types
+
+STANDARD PORT INFO BY INTERFACE TYPE:
+
+| Interface Type           | Abbrev | Typical Speed | Typical Duplex | Typical Port_Type |
+|--------------------------|--------|---------------|----------------|-------------------|
+| FastEthernet             | FE     | 100Mbps       | Full           | 100BASE-TX        |
+| GigabitEthernet          | GE     | 1Gbps         | Full           | 1000BASE-T        |
+| TenGigabitEthernet       | TE     | 10Gbps        | Full           | 10GBASE-SR        |
+| TwentyFiveGigE           | TWE    | 25Gbps        | Full           | 25GBASE-SR        |
+| FortyGigabitEthernet     | FO     | 40Gbps        | Full           | 40GBASE-SR4       |
+| HundredGigE              | HU     | 100Gbps       | Full           | 100GBASE-SR4      |
+| Waypoint ports           | port   | N/A           | N/A            | N/A               |
+
+SPECIAL CASES:
+- Waypoint device interfaces (e.g., "port 0", "port 1"): Use N/A for all fields
+- Access ports to end devices (APs, servers): Typically 1000BASE-T
+- Uplink ports between switches: Typically 10GBASE-SR or higher
+- Port-channel member interfaces: Same port type as individual interface
+- Fiber optic connections: Use appropriate optic type (SR, LR, etc.)
+
+PORT TYPE SELECTION GUIDE:
+| Connection Type                    | Recommended Port_Type |
+|------------------------------------|-----------------------|
+| Copper (RJ-45) 100Mbps             | 100BASE-TX            |
+| Copper (RJ-45) 1Gbps               | 1000BASE-T            |
+| Short-range fiber 10Gbps           | 10GBASE-SR            |
+| Long-range fiber 10Gbps            | 10GBASE-LR            |
+| Short-range fiber 25Gbps           | 25GBASE-SR            |
+| Short-range fiber 40Gbps           | 40GBASE-SR4           |
+| Short-range fiber 100Gbps          | 100GBASE-SR4          |
+| Direct Attach Cable (DAC)          | 10GBASE-CU            |
+| Waypoint/Cloud representation      | N/A                   |
+
+COMMAND GENERATION WORKFLOW:
+
+After completing L1 link configuration (Phase 2), IMMEDIATELY generate
+rename port_info_bulk command to set Speed, Duplex, and Port_Type for all L1 interfaces.
+
+Step 1: Identify all L1 interfaces created via add l1_link_bulk
+Step 2: Determine interface type from interface name
+Step 3: Infer appropriate Speed/Duplex/Port_Type based on interface type
+Step 4: Generate rename port_info_bulk command with all ports
+Step 5: Place command immediately after add l1_link_bulk (Phase 2.5)
+
+EXAMPLES:
+
+EXAMPLE 1: Basic GigabitEthernet connections
+add l1_link_bulk "[['Switch-A','Switch-B','GigabitEthernet 0/1','GigabitEthernet 0/1']]"
+rename port_info_bulk "[['Switch-A','GE 0/1',['1Gbps','Full','1000BASE-T']],['Switch-B','GE 0/1',['1Gbps','Full','1000BASE-T']]]"
+
+EXAMPLE 2: TenGigabitEthernet uplinks
+add l1_link_bulk "[['Access-SW1','Dist-SW1','TenGigabitEthernet 1/0/1','TenGigabitEthernet 1/0/11']]"
+rename port_info_bulk "[['Access-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/11',['10Gbps','Full','10GBASE-SR']]]"
+
+EXAMPLE 3: Mixed interface types
+add l1_link_bulk "[['Core-Router','Dist-SW1','TenGigabitEthernet 0/0','TenGigabitEthernet 1/0/1'],['Dist-SW1','Access-SW1','GigabitEthernet 1/0/24','GigabitEthernet 0/1'],['Access-SW1','AP-01','GigabitEthernet 0/48','GigabitEthernet 0']]"
+rename port_info_bulk "[['Core-Router','TE 0/0',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','GE 1/0/24',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 0/1',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 0/48',['1Gbps','Full','1000BASE-T']],['AP-01','GE 0',['1Gbps','Full','1000BASE-T']]]"
+
+EXAMPLE 4: Connection to Waypoint (WAN/Internet)
+add l1_link_bulk "[['Edge-Router','Internet_wp_','GigabitEthernet 0/0','port 0']]"
+rename port_info_bulk "[['Edge-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Internet_wp_','port 0',['N/A','N/A','N/A']]]"
+
+EXAMPLE 5: Multi-tier campus network
+add l1_link_bulk "[['Core-SW1-2(StackVirtual)','Dist-SW1','TenGigabitEthernet 1/0/1','TenGigabitEthernet 1/0/49'],['Core-SW1-2(StackVirtual)','Dist-SW1','TenGigabitEthernet 2/0/1','TenGigabitEthernet 1/0/50'],['Dist-SW1','Access-Stack1','GigabitEthernet 1/0/1','GigabitEthernet 1/0/49'],['Dist-SW1','Access-Stack1','GigabitEthernet 1/0/2','GigabitEthernet 2/0/49']]"
+rename port_info_bulk "[['Core-SW1-2(StackVirtual)','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/49',['10Gbps','Full','10GBASE-SR']],['Core-SW1-2(StackVirtual)','TE 2/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/50',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/49',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 2/0/49',['1Gbps','Full','1000BASE-T']]]"
+
+PORT INFO FOR COMMON SCENARIOS:
+
+SCENARIO: Access Switch to Distribution Switch (10G Uplink)
+rename port_info_bulk "[['Access-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/11',['10Gbps','Full','10GBASE-SR']]]"
+
+SCENARIO: Access Switch to Wireless AP (1G Access Port)
+rename port_info_bulk "[['Access-SW1','GE 1/0/47',['1Gbps','Full','1000BASE-T']],['AP-01','GE 0',['1Gbps','Full','1000BASE-T']]]"
+
+SCENARIO: Core Switch to WAN Router (10G)
+rename port_info_bulk "[['Core-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-LR']],['WAN-Router','TE 0/0',['10Gbps','Full','10GBASE-LR']]]"
+
+SCENARIO: Connection to Waypoint (WAN/Internet/MPLS)
+rename port_info_bulk "[['Router-01','GE 0/0',['1Gbps','Full','1000BASE-T']],['Internet_wp_','port 0',['N/A','N/A','N/A']]]"
+
+SCENARIO: Server connection (1G copper)
+rename port_info_bulk "[['Access-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Server-01','GE 0',['1Gbps','Full','1000BASE-T']]]"
+
+VERIFICATION CHECKLIST FOR RULE 16:
+- [ ] ALL L1 interfaces have Speed configured
+- [ ] ALL L1 interfaces have Duplex configured
+- [ ] ALL L1 interfaces have Port_Type configured
+- [ ] Port info values are appropriate for interface type
+- [ ] Waypoint interfaces use N/A for all fields
+- [ ] rename port_info_bulk command placed IMMEDIATELY after add l1_link_bulk
+- [ ] Both ends of each link have port info configured
+
+KEY PRINCIPLES:
+- "Every L1 interface MUST have Speed, Duplex, and Port_Type configured"
+- "Port info command MUST follow immediately after L1 link creation"
+- "Infer port info based on interface naming and common standards"
+- "Use N/A for waypoint device interfaces"
+- "Both ends of every L1 link must have port info"
+- "Always use bulk command for efficiency"
+- "This step is MANDATORY and non-optional"
 
 
 
@@ -2246,86 +2489,106 @@ SECTION 3: VERIFICATION CHECKLIST
 COMPREHENSIVE VERIFICATION CHECKLIST:
 
 ARCHITECTURE (Rules 0-6):
-- VRF names are L3 instances, NOT area names
-- VLAN names are L2 segments, NOT area names
-- Physical locations are separate areas
-- Inter-area connections have waypoint (_wp_)
-- Grid layout follows TOP-TO-BOTTOM hierarchical structure
-- Core/Distribution devices in TOP rows
-- Access devices in MIDDLE rows
-- End devices (APs, endpoints) in BOTTOM rows
-- APs placed in row BELOW their connected access switch
-- _AIR_ used for spacing and column alignment
+- [ ] VRF names are L3 instances, NOT area names
+- [ ] VLAN names are L2 segments, NOT area names
+- [ ] Physical locations are separate areas
+- [ ] Inter-area connections have waypoint (_wp_)
+- [ ] Grid layout follows TOP-TO-BOTTOM hierarchical structure
+- [ ] Core/Distribution devices in TOP rows
+- [ ] Access devices in MIDDLE rows
+- [ ] End devices (APs, endpoints) in BOTTOM rows
+- [ ] APs placed in row BELOW their connected access switch
+- [ ] _AIR_ used for spacing and column alignment
 
 EXECUTION (Rule 7):
-- Commands executed in correct phase order
-- Bulk commands used for all supported operations (MANDATORY)
-- Each phase completed before next
-- Backup created before modifications
+- [ ] Commands executed in correct phase order
+- [ ] Bulk commands used for all supported operations (MANDATORY)
+- [ ] Each phase completed before next
+- [ ] Backup created before modifications
 
 MANDATORY BULK COMMANDS USED:
-- add l1_link_bulk (for ALL L1 connections)
-- add portchannel_bulk (for ALL port-channels)
-- add virtual_port_bulk (for ALL SVIs/Loopbacks)
-- add l2_segment_bulk (for ALL VLAN assignments)
-- add ip_address_bulk (for ALL IP assignments)
+- [ ] add l1_link_bulk (for ALL L1 connections)
+- [ ] rename port_info_bulk (for ALL port info - IMMEDIATELY after L1 links)
+- [ ] add portchannel_bulk (for ALL port-channels)
+- [ ] add virtual_port_bulk (for ALL SVIs/Loopbacks)
+- [ ] add l2_segment_bulk (for ALL VLAN assignments)
+- [ ] add ip_address_bulk (for ALL IP assignments)
 
 VIRTUALIZED DEVICES (Rule 8):
-- Device name includes member IDs and technology tag
-- Interfaces numbered by member (1/0/x, 2/0/x)
-- Port-channels include interfaces from multiple members (add portchannel_bulk)
-- VLANs/SVIs configured once (not per member)
+- [ ] Device name includes member IDs and technology tag
+- [ ] Interfaces numbered by member (1/0/x, 2/0/x)
+- [ ] Port-channels include interfaces from multiple members (add portchannel_bulk)
+- [ ] VLANs/SVIs configured once (not per member)
+- [ ] Port info configured for all member interfaces
 
 PORT-CHANNEL (Rule 9):
-- Port-channels created on both ends (add portchannel_bulk)
-- Same VLANs on both Port-channel interfaces (add l2_segment_bulk)
-- VLAN list matches exactly
+- [ ] Port-channels created on both ends (add portchannel_bulk)
+- [ ] Same VLANs on both Port-channel interfaces (add l2_segment_bulk)
+- [ ] VLAN list matches exactly
+- [ ] Port info configured for all member interfaces
 
 IP ADDRESSING (Rule 10):
-- All octets 0-255
-- Scheme consistently applied
-- Gateway IPs use .1
+- [ ] All octets 0-255
+- [ ] Scheme consistently applied
+- [ ] Gateway IPs use .1
 
 L2/L3 COMPATIBILITY (Rule 11):
-- No multiple L2 segments trunked to L3 physical port
-- Single L2 segment trunk to L3 port documented as exception
-- Corrections applied where needed (using bulk commands)
+- [ ] No multiple L2 segments trunked to L3 physical port
+- [ ] Single L2 segment trunk to L3 port documented as exception
+- [ ] Corrections applied where needed (using bulk commands)
 
 WIRELESS AP - FLEXCONNECT (Rule 12):
-- AP mode identified (FlexConnect if not specified - MANDATORY DEFAULT)
-- APs placed in row BELOW access switch (hierarchical layout)
-- SVI created on SWITCH for Management VLAN - gateway (add virtual_port_bulk)
-- Gateway IP assigned to switch SVI (add ip_address_bulk)
-- SVI created on EACH AP for Management VLAN (add virtual_port_bulk)
-- IP address assigned to AP's SVI - NOT physical interface (add ip_address_bulk)
-- AP IPs within same subnet as switch gateway SVI
-- NO IP addresses on AP physical interfaces
+- [ ] AP mode identified (FlexConnect if not specified - MANDATORY DEFAULT)
+- [ ] APs placed in row BELOW access switch (hierarchical layout)
+- [ ] L1 links created between APs and switch (add l1_link_bulk)
+- [ ] Port info configured for all AP and switch ports (rename port_info_bulk)
+- [ ] SVI created on SWITCH for Management VLAN - gateway (add virtual_port_bulk)
+- [ ] Gateway IP assigned to switch SVI (add ip_address_bulk)
+- [ ] SVI created on EACH AP for Management VLAN (add virtual_port_bulk)
+- [ ] IP address assigned to AP's SVI - NOT physical interface (add ip_address_bulk)
+- [ ] AP IPs within same subnet as switch gateway SVI
+- [ ] NO IP addresses on AP physical interfaces
 
 OFFICE LAN WIRELESS (Rule 13):
-- Office LAN designs include wireless APs
-- Minimum 1-2 APs per access switch/stack
-- APs placed BELOW access switches (hierarchical layout)
-- APs configured per Rule 12 using bulk commands (FlexConnect default)
-
-CASCADE DELETION (Rule 7.1):
-- Impact verified before execution
-- Peer device/interface identified
-- Results verified after deletion
-
-HIERARCHICAL LAYOUT VERIFICATION (Rules 0, 12, 13):
-- Row 1 (TOP): Core/Distribution devices
-- Row 2 (MIDDLE): Access switches/stacks
-- Row 3+ (BOTTOM): End devices (APs, servers, endpoints)
-- No horizontal placement of APs beside switches
-- _AIR_ used for proper column alignment
+- [ ] Office LAN designs include wireless APs
+- [ ] Minimum 1-2 APs per access switch/stack
+- [ ] APs placed BELOW access switches (hierarchical layout)
+- [ ] APs configured per Rule 12 using bulk commands (FlexConnect default)
+- [ ] Port info configured for all AP connections
 
 DEVICE ATTRIBUTES (Rule 14):
-- Header row includes 'Model' and 'OS' columns
-- ALL devices have Model attribute populated
-- ALL devices have OS attribute populated
-- Model and OS values are reasonable for device role
-- RGB colors applied consistently
-- rename attribute_bulk command included in output
+- [ ] Header row includes 'Model' and 'OS' columns
+- [ ] ALL devices have Model attribute populated
+- [ ] ALL devices have OS attribute populated
+- [ ] Model and OS values are reasonable for device role
+- [ ] RGB colors applied consistently
+- [ ] rename attribute_bulk command included in output
+
+SVI-L2 BINDING (Rule 15):
+- [ ] ALL SVIs (Vlan <ID>) have L2 segment bound on SVI itself
+- [ ] Loopback interfaces excluded from this requirement
+- [ ] add l2_segment_bulk used for SVI binding
+
+PORT INFORMATION (Rule 16):
+- [ ] ALL L1 interfaces have Speed configured
+- [ ] ALL L1 interfaces have Duplex configured
+- [ ] ALL L1 interfaces have Port_Type configured
+- [ ] Port info appropriate for interface type (GE=1Gbps, TE=10Gbps, etc.)
+- [ ] Waypoint interfaces use N/A for all fields
+- [ ] rename port_info_bulk placed IMMEDIATELY after add l1_link_bulk
+- [ ] Both ends of each link have port info configured
+
+CASCADE DELETION (Rule 7.1):
+- [ ] Impact verified before execution
+- [ ] Peer device/interface identified
+- [ ] Results verified after deletion
+
+HIERARCHICAL LAYOUT VERIFICATION (Rules 0, 12, 13):
+- [ ] Row 1 (TOP): Core/Distribution devices
+- [ ] Row 2 (MIDDLE): Access switches/stacks
+- [ ] Row 3+ (BOTTOM): End devices (APs, servers, endpoints)
+- [ ] No horizontal placement of APs beside switches
+- [ ] _AIR_ used for proper column alignment
 
 BULK COMMAND COMPLIANCE VERIFICATION:
 - [ ] NO individual add l1_link commands used
@@ -2334,6 +2597,15 @@ BULK COMMAND COMPLIANCE VERIFICATION:
 - [ ] NO individual add l2_segment commands used
 - [ ] NO individual add ip_address commands used
 - [ ] ALL above operations use corresponding bulk commands
+- [ ] rename port_info_bulk used for ALL port information
+
+COMMAND SEQUENCE VERIFICATION:
+- [ ] Phase 1: add area_location -> add device_location
+- [ ] Phase 2: add l1_link_bulk
+- [ ] Phase 2.5: rename port_info_bulk (IMMEDIATELY after Phase 2)
+- [ ] Phase 3: add portchannel_bulk -> add virtual_port_bulk -> add l2_segment_bulk
+- [ ] Phase 4: add ip_address_bulk -> rename l3_instance
+- [ ] Phase 6: rename attribute_bulk
 
 ================================================================================
 END OF CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
