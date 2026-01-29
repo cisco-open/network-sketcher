@@ -449,7 +449,8 @@ def write_excel_cell(input_excel, worksheet_name ,start_row, start_column, input
             else:
                 input_excel.active.cell(start_row, input_excel.active.cell(start_row, c).column).border = gray_blue_border_medium
 
-            if input_msg == None or input_msg == '':
+            # Skip border hiding for Attribute and Flow_List sheets (always show black borders)
+            if (input_msg == None or input_msg == '') and worksheet_name not in ['Attribute', 'Flow_List']:
                 if c == start_column:
                     input_excel.active.cell(start_row, input_excel.active.cell(start_row, c).column).border = gray_blue_border_start_updown_same
                 elif c == (write_column + input_num_column - 1):
@@ -458,7 +459,7 @@ def write_excel_cell(input_excel, worksheet_name ,start_row, start_column, input
                     input_excel.active.cell(start_row, input_excel.active.cell(start_row, c).column).border = gray_blue_border_medium_updown_same
 
                 ### First or last normal table. Border is changed
-            if (input_msg != None or input_msg != '') and write_style == 'BOTTOM_SAME':
+            if (input_msg != None or input_msg != '') and write_style == 'BOTTOM_SAME' and worksheet_name not in ['Attribute', 'Flow_List']:
                 if c == start_column:
                     input_excel.active.cell(start_row, input_excel.active.cell(start_row, c).column).border = gray_blue_border_start_bottom_same
                 elif c == (write_column + input_num_column - 1):
@@ -466,7 +467,7 @@ def write_excel_cell(input_excel, worksheet_name ,start_row, start_column, input
                 else:
                     input_excel.active.cell(start_row, input_excel.active.cell(start_row, c).column).border = gray_blue_border_medium_bottom_same
 
-            if (input_msg != None or input_msg != '') and write_style == 'TOP_SAME':
+            if (input_msg != None or input_msg != '') and write_style == 'TOP_SAME' and worksheet_name not in ['Attribute', 'Flow_List']:
                 if c == start_column:
                     input_excel.active.cell(start_row, input_excel.active.cell(start_row, c).column).border = gray_blue_border_start_top_same
                 elif c == (write_column + input_num_column - 1):
