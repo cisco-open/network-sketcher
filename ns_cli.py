@@ -1756,29 +1756,24 @@ class ns_cli_run():
                 ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l2)
                 ns_def.write_excel_meta(last_l2_table_tuple, master_file_path, excel_master_ws_name_l2, '_template_', 0, 0)
 
-                # ========== STEP 5: Sync with L3 ONCE ==========
+                # Sync L2 changes with L3 table (preserve existing IP addresses)
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
                 dummy_tk.withdraw()
 
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
 
                 self.outFileTxt_11_2 = tk.Entry(dummy_tk)
-                self.outFileTxt_11_2.delete(0, tkinter.END)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
 
                 self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
-
-                if os.path.isfile(tmp_delete_excel_name):
-                    os.remove(tmp_delete_excel_name)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
                 dummy_tk.destroy()
 
@@ -2002,29 +1997,24 @@ class ns_cli_run():
                 ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l2)
                 ns_def.write_excel_meta(last_l2_table_tuple, master_file_path, excel_master_ws_name_l2, '_template_', 0, 0)
 
-                # ========== STEP 6: Sync with L3 ONCE ==========
+                # ========== STEP 6: Sync L2 changes with L3 table (preserve existing IP addresses) ==========
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
                 dummy_tk.withdraw()
 
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
 
                 self.outFileTxt_11_2 = tk.Entry(dummy_tk)
-                self.outFileTxt_11_2.delete(0, tkinter.END)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
 
                 self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
-
-                if os.path.isfile(tmp_delete_excel_name):
-                    os.remove(tmp_delete_excel_name)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
                 dummy_tk.destroy()
 
@@ -2275,24 +2265,24 @@ class ns_cli_run():
                 ns_def.create_excel_sheet(master_file_path, excel_master_ws_name_l2)
                 ns_def.write_excel_meta(last_l2_table_tuple, master_file_path, excel_master_ws_name_l2, '_template_', 0, 0)
 
-                # Sync with L3
+                # Sync L2 changes with L3 table (preserve existing IP addresses)
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
                 dummy_tk.withdraw()
 
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
                 self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
                 self.outFileTxt_11_2 = tk.Entry(dummy_tk)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
                 self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
-
-                if os.path.isfile(tmp_delete_excel_name):
-                    os.remove(tmp_delete_excel_name)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
                 dummy_tk.destroy()
 
@@ -3172,29 +3162,27 @@ class ns_cli_run():
             # write tuple to excel master data
             ns_def.write_excel_meta(last_l2_table_tuple, excel_maseter_file, excel_master_ws_name_l2, '_template_', 0,0)
 
-            if 'virtual_port' in argv_array or 'portchannel' in argv_array or 'vport_l1if_direct_binding' in argv_array:
-                # sync l2 sheet of Master file to L3 sheet
+            if 'virtual_port' in argv_array or 'vport_l1if_direct_binding' in argv_array or 'portchannel' in argv_array:
+                # Sync L2 changes with L3 table (preserve existing IP addresses)
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
-                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk )
-                self.inFileTxt_L3_1_1 .delete(0, tkinter.END)
-                self.inFileTxt_L3_1_1 .insert(tk.END, master_file_path)
+                dummy_tk.withdraw()
 
-                self.outFileTxt_11_2 = tk.Entry(dummy_tk )
-                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
 
-                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk )
-                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
-                if os.path.isfile(tmp_delete_excel_name) == True:
-                    os.remove(tmp_delete_excel_name)
-
+                dummy_tk.destroy()
                 return ([return_text])
 
             if 'vport_l2_direct_binding' in argv_array:
@@ -3202,27 +3190,26 @@ class ns_cli_run():
                 return ([return_text])
 
             else:
-                # sync l2 sheet of Master file to L3 sheet
+                # Sync L2 changes with L3 table (preserve existing IP addresses)
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
-                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk )
-                self.inFileTxt_L3_1_1 .delete(0, tkinter.END)
-                self.inFileTxt_L3_1_1 .insert(tk.END, master_file_path)
+                dummy_tk.withdraw()
 
-                self.outFileTxt_11_2 = tk.Entry(dummy_tk )
-                self.outFileTxt_11_2.delete(0, tkinter.END)
+                self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+                self.outFileTxt_11_2 = tk.Entry(dummy_tk)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
 
-                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk )
-                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
+                self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
-                if os.path.isfile(tmp_delete_excel_name) == True:
-                    os.remove(tmp_delete_excel_name)
+                dummy_tk.destroy()
                 return_text = '--- l2 Segment added --- ' + ' ' + hostname + ',' + portname + ',' + add_l2seg_name
                 return ([return_text])
 
@@ -3903,52 +3890,51 @@ class ns_cli_run():
             ns_def.write_excel_meta(last_l2_table_tuple, excel_maseter_file, excel_master_ws_name_l2, '_template_', 0, 0)
 
             if 'virtual_port' in argv_array or 'portchannel' in argv_array or 'vport_l1if_direct_binding' in argv_array:
-                #sync l2 sheet of Master file to L3 sheet
+                # Sync L2 changes with L3 table (preserve existing IP addresses)
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
 
                 self.outFileTxt_11_2 = tk.Entry(dummy_tk)
-                self.outFileTxt_11_2.delete(0, tkinter.END)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
 
                 self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
-                if os.path.isfile(tmp_delete_excel_name) == True:
-                    os.remove(tmp_delete_excel_name)
+                dummy_tk.destroy()
+
             elif 'vport_l2_direct_binding' in argv_array:
                 return_text = '--- vport_l2_direct_binding deleted --- ' + ' ' + hostname + ',' + portname + ',' + del_l2seg_name
 
             else:
-                #sync l2 sheet of Master file to L3 sheet
+                # Sync L2 changes with L3 table (preserve existing IP addresses)
+                # Setup GUI elements for ns_sync_between_layers
                 dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
                 self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L3_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
 
                 self.outFileTxt_11_2 = tk.Entry(dummy_tk)
-                self.outFileTxt_11_2.delete(0, tkinter.END)
                 self.outFileTxt_11_2.insert(tk.END, master_file_path)
 
                 self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
-                self.inFileTxt_L2_1_1.delete(0, tkinter.END)
                 self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
 
-                tmp_delete_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+                self.full_filepath = master_file_path
 
-                import ns_l3_table_from_master
-                ns_l3_table_from_master.ns_l3_table_from_master.__init__(self)
+                import ns_sync_between_layers
+                ns_sync_between_layers.l2_device_table_sync_with_l3_master(self)
 
-                if os.path.isfile(tmp_delete_excel_name) == True:
-                    os.remove(tmp_delete_excel_name)
+                dummy_tk.destroy()
                 return_text = '--- l2 Segment deleted --- ' + ' ' + hostname + ',' + portname + ',' + del_l2seg_name
 
             return ([return_text])
