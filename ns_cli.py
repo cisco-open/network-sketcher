@@ -3605,7 +3605,7 @@ class ns_cli_run():
             deleted_from_port = deleted_connection[1][2]
             deleted_to_port = deleted_connection[1][3]
 
-            return_text = f'--- Deleted Layer 1 link --- {deleted_from_h}({deleted_from_port}) ↔ {deleted_to_h}({deleted_to_port})'
+            return_text = f'--- Deleted Layer 1 link --- {deleted_from_h}({deleted_from_port}) <-> {deleted_to_h}({deleted_to_port})'
             return ([return_text])
 
 
@@ -5541,14 +5541,14 @@ class def_common():
 
             return_msg = f'Links added: {len(added_links)}\n'
             return_msg += f'Total time: {total_time:.1f}s ({total_time / 60:.2f} min)\n'
-            return_msg += f'  • Processing: {total_time - sync_time:.1f}s\n'
-            return_msg += f'  • L2/L3 sync: {sync_time:.1f}s\n'
+            return_msg += f'  - Processing: {total_time - sync_time:.1f}s\n'
+            return_msg += f'  - L2/L3 sync: {sync_time:.1f}s\n'
             return_msg += f'Average: {total_time / len(added_links):.3f}s/link\n'
             return_msg += f'Affected devices: {len(all_affected_hostnames)}\n\n'
 
             return_msg += 'Sample links:\n'
             for lnk in added_links[:3]:
-                return_msg += f"  {lnk['from']} ↔ {lnk['to']}\n"
+                return_msg += f"  {lnk['from']} <-> {lnk['to']}\n"
             if len(added_links) > 3:
                 return_msg += f"  ... +{len(added_links) - 3} more\n"
 
@@ -9435,11 +9435,25 @@ def get_next_arg(argv_array, target):
         return None
 
 def print_type(self, argv_array,source):
+    import sys
+
+    def safe_print(text):
+        """Print text safely across all platforms (Windows/Mac/Linux)"""
+        try:
+            print(text)
+        except UnicodeEncodeError:
+            # Fallback: encode with 'replace' to substitute unencodable characters
+            if hasattr(sys.stdout, 'encoding') and sys.stdout.encoding:
+                safe_text = str(text).encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding)
+            else:
+                safe_text = str(text).encode('ascii', errors='replace').decode('ascii')
+            print(safe_text)
+
     if  '--one_msg' in argv_array:
-        print(source)
+        safe_print(source)
     else:
         for item in source:
-            print(item)
+            safe_print(item)
     return
 
 def get_device_waypoint_array(master_file_path):
