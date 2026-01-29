@@ -60,7 +60,7 @@ class ns_front_run():
         self.root = TkinterDnD.Tk()
         style = ttk.Style(self.root)
         style.configure('TNotebook.Tab', font=('TkDefaultFont', 11))
-        self.root.title("Network Sketcher  ver 2.6.2g")
+        self.root.title("Network Sketcher  ver 2.6.2h")
         self.root.geometry("510x200+100+100")
 
         def resource_path(relative_path):
