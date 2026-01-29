@@ -2025,7 +2025,7 @@ class cli_on_gui():
         # Information label
         info_label = tk.Label(
             main_frame,
-            text="You can enter and execute multiple CLI commands below.\n - There is no need to specify the path to network.sketcher.py or the master file.\n - File paths entered in the CLI will be ignored.",
+            text="You can enter and execute multiple CLI commands below.\n - There is no need to specify the path to network.sketcher.py or the master file.\n - File paths entered in the CLI will be ignored.\n - If the maximum number of characters for a command line is exceeded, specify the maximum number of characters on LLM.",
             font=("", 11),
             background="#FFF3CD",
             justify='left'
