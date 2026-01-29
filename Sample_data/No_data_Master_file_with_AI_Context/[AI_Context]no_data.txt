@@ -1973,8 +1973,8 @@ CENTRAL MODE INDICATORS (use Central mode ONLY when user explicitly mentions):
 - "Local mode disabled"
 
 FLEXCONNECT CLIENT VLAN EXTENSION (SSID-BASED VLAN):
-FlexConnect APでは、SSIDごとにクライアントを異なるVLANに割り当てます。
-APがローカルスイッチングを行うため、クライアント用VLANもAPの物理ポートに延伸する必要があります。
+In FlexConnect mode, APs typically assign clients to different VLANs based on SSID, but this depends on the VLAN configuration of the switch to which the AP is connected.
+Because the AP performs local switching, the client VLANs must also be extended to the AP's physical port.
 
 VLAN TYPES ON FLEXCONNECT AP:
 | VLAN Type        | Purpose                                      | Required on AP Physical Port | Required SVI on AP |
@@ -2665,4 +2665,5 @@ COMMAND SEQUENCE VERIFICATION:
 
 ================================================================================
 END OF CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
+
 ================================================================================
