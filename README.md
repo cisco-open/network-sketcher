@@ -161,7 +161,7 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Export empty master files (no data) | ❌ | ✅ |
 | Export AI context files | ✅ | ✅ |
 | Export device files | ✅ | ✅ |
-| Generate L1/L2/L3 topology diagrams | ✅ | ❌ |
+| Generate L1/L2/L3 topology diagrams | ✅ | ✅|
 
 # SAMPLE
 #### - Supports various connections
@@ -197,6 +197,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
 
 
