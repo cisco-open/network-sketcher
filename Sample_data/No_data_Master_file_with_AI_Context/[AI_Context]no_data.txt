@@ -1360,10 +1360,104 @@ Sheets: Master_Data, Master_Data_L2, Master_Data_L3<br>
 The file contains no areas or devices.<br>
 
 
+## export l1_diagram
+
+Exports a Layer 1 (physical topology) diagram as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+
+```bash
+export l1_diagram
+export l1_diagram --type <type>
+```
+
+Options:
+
+--type : Specifies the diagram type. Valid values are:
+- all_areas_tag (default) : All areas combined with interface tags
+- all_areas : All areas combined without interface tags
+- per_area_tag : Per area with interface tags
+- per_area : Per area without interface tags
+
+* ex.<br>
++Export l1_diagram (default: all_areas_tag)+
+
+#export l1_diagram<br>
+--- L1 Diagram (all_areas_tag) created successfully ---<br>
+File: C:\work\[L1_DIAGRAM]AllAreasTag_test.pptx<br>
+
++Export l1_diagram (per_area)+
+
+#export l1_diagram --type per_area<br>
+--- L1 Diagram (per_area) created successfully ---<br>
+File: C:\work\[L1_DIAGRAM]PerArea_test.pptx<br>
+
+[Tips]
+* The output filename is automatically generated based on the type: [L1_DIAGRAM]AllAreasTag_, [L1_DIAGRAM]AllAreas_, [L1_DIAGRAM]PerAreaTag_, or [L1_DIAGRAM]PerArea_ followed by the master file name
+* If the output file already exists, it will be overwritten
 
 
+## export l2_diagram
+
+Exports a Layer 2 (VLAN/broadcast domain) diagram for a specific area as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+
+```bash
+export l2_diagram
+export l2_diagram --area <area_name>
+```
+
+Options:
+
+--area : Specifies the target area name. If omitted, the first available area is used. Waypoint areas (ending with _wp_) are excluded from the available areas.
+
+* ex.<br>
++Export l2_diagram (default: first area)+
+
+#export l2_diagram<br>
+--- L2 Diagram (area: Office) created successfully ---<br>
+File: C:\work\[L2_DIAGRAM]Office_test.pptx<br>
+
++Export l2_diagram (specify area)+
+
+#export l2_diagram --area Office<br>
+--- L2 Diagram (area: Office) created successfully ---<br>
+File: C:\work\[L2_DIAGRAM]Office_test.pptx<br>
+
+[Tips]
+* The output filename is automatically generated as [L2_DIAGRAM]area_name_master_file_name.pptx
+* If the output file already exists, it will be overwritten
+* To export diagrams for all areas, run the command for each area individually
 
 
+## export l3_diagram
+
+Exports a Layer 3 (IP addressing) diagram as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+
+```bash
+export l3_diagram
+export l3_diagram --type <type>
+```
+
+Options:
+
+--type : Specifies the diagram type. Valid values are:
+- all_areas (default) : All areas combined into a single diagram
+- per_area : Separate diagrams per area
+
+* ex.<br>
++Export l3_diagram (default: all_areas)+
+
+#export l3_diagram<br>
+--- L3 Diagram (all_areas) created successfully ---<br>
+File: C:\work\[L3_DIAGRAM]AllAreas_test.pptx<br>
+
++Export l3_diagram (per_area)+
+
+#export l3_diagram --type per_area<br>
+--- L3 Diagram (per_area) created successfully ---<br>
+File: C:\work\[L3_DIAGRAM]PerArea_test.pptx<br>
+
+[Tips]
+* The output filename is automatically generated based on the type: [L3_DIAGRAM]AllAreas_ or [L3_DIAGRAM]PerArea_ followed by the master file name
+* If the output file already exists, it will be overwritten
 
 
 
@@ -2665,5 +2759,4 @@ COMMAND SEQUENCE VERIFICATION:
 
 ================================================================================
 END OF CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
-
 ================================================================================
