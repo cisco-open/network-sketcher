@@ -71,6 +71,9 @@ class ns_cli_run():
             'export master_file_backup',
             'export master_file_nodata',
             'export device_file',
+            'export l1_diagram',
+            'export l2_diagram',
+            'export l3_diagram',
         ]
 
         if next_arg == None or '--' in next_arg or str('export ' + next_arg) not in export_command_list:
@@ -443,7 +446,385 @@ class ns_cli_run():
                 return ([f'[ERROR] Failed to create empty master file: {str(e)}'])
         # ★★★ End of modification ★★★
 
+        # ★★★ Add L1 Diagram export at Ver 2.6.2 ★★★
+        if next_arg == 'l1_diagram':
+            try:
+                if not os.path.isfile(master_file_path):
+                    return ([f'[ERROR] Master file not found: {master_file_path}'])
 
+                filename = os.path.basename(master_file_path)
+                if not filename.startswith('[MASTER]'):
+                    return ([f'[ERROR] Master file must start with "[MASTER]". Current filename: {filename}'])
+
+                # --type argument: all_areas, all_areas_tag, per_area, per_area_tag (default: all_areas_tag)
+                l1_type = get_next_arg(argv_array, '--type')
+                valid_types = ['all_areas', 'all_areas_tag', 'per_area', 'per_area_tag']
+                if l1_type is None or l1_type.startswith('--'):
+                    l1_type = 'all_areas_tag'
+                if l1_type not in valid_types:
+                    return ([f'[ERROR] Invalid --type value: {l1_type}. Valid values: {", ".join(valid_types)}'])
+
+                type_to_click = {
+                    'per_area': '2-4-1',
+                    'per_area_tag': '2-4-2',
+                    'all_areas': '2-4-3',
+                    'all_areas_tag': '2-4-4',
+                }
+                type_to_prefix = {
+                    'per_area': '[L1_DIAGRAM]PerArea_',
+                    'per_area_tag': '[L1_DIAGRAM]PerAreaTag_',
+                    'all_areas': '[L1_DIAGRAM]AllAreas_',
+                    'all_areas_tag': '[L1_DIAGRAM]AllAreasTag_',
+                }
+
+                click_value = type_to_click[l1_type]
+                prefix = type_to_prefix[l1_type]
+
+                iDir = os.path.dirname(master_file_path)
+                if not iDir:
+                    iDir = os.getcwd()
+                basename_without_ext = os.path.splitext(os.path.basename(master_file_path))[0]
+                basename_clean = basename_without_ext.replace('[MASTER]', '')
+                output_pptx = os.path.join(iDir, prefix + basename_clean + '.pptx')
+
+                import tkinter as tk
+                dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
+                self.inFileTxt_2_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_2_1.insert(tk.END, master_file_path)
+                self.outFileTxt_2_1 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_1.insert(tk.END, os.path.join(iDir, '[L1_DIAGRAM]PerArea_' + basename_clean + '.pptx'))
+                self.outFileTxt_2_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_2.insert(tk.END, os.path.join(iDir, '[L1_DIAGRAM]PerAreaTag_' + basename_clean + '.pptx'))
+                self.outFileTxt_2_3 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_3.insert(tk.END, os.path.join(iDir, '[L1_DIAGRAM]AllAreas_' + basename_clean + '.pptx'))
+                self.outFileTxt_2_4 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_4.insert(tk.END, os.path.join(iDir, '[L1_DIAGRAM]AllAreasTag_' + basename_clean + '.pptx'))
+
+                self.inFileTxt_L2_3_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_3_1.insert(tk.END, master_file_path)
+                self.inFileTxt_L3_3_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_3_1.insert(tk.END, master_file_path)
+
+                self.click_value_dummy = ''
+                self.click_value_VPN = ''
+                self.flag_second_page = False
+                self.flag_summary_diagram = False
+                self.keep_root_width = 0.0
+                self.keep_root_hight = 0.0
+                self.full_filepath = master_file_path
+
+                # Set attribute tuple (default attribute)
+                attribute_title_list = ns_def.get_attribute_title_list(self, master_file_path)
+                if attribute_title_list and len(attribute_title_list) > 0:
+                    default_attr = attribute_title_list[0]
+                    self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(master_file_path, default_attr)
+                else:
+                    self.attribute_tuple1_1 = {}
+
+                # Mock comboATTR_1_1
+                class MockCombo:
+                    def __init__(self, value=''):
+                        self._value = value
+                    def get(self):
+                        return self._value
+                self.comboATTR_1_1 = MockCombo(attribute_title_list[0] if attribute_title_list else '')
+
+                self.click_value = click_value
+                self.output_ppt_file = output_pptx
+
+                if os.path.isfile(output_pptx):
+                    os.remove(output_pptx)
+
+                import ns_l1_diagram_create
+                ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+
+                # Summary diagram for all_areas and all_areas_tag
+                if click_value in ('2-4-3', '2-4-4'):
+                    self.flag_second_page = True
+                    import ns_extensions
+                    self.flag_summary_diagram = True
+                    ns_extensions.summary_diagram.export_summary_diagram(self, 'Dummy')
+                    ns_l1_diagram_create.ns_l1_diagram_create.__init__(self)
+                    self.flag_summary_diagram = False
+
+                    if hasattr(self, 'excel_maseter_file_backup') and os.path.isfile(self.excel_maseter_file_backup) and not ns_def.check_file_locked(self.excel_maseter_file_backup):
+                        os.remove(self.excel_maseter_file_backup)
+
+                    self.flag_second_page = False
+
+                dummy_tk.destroy()
+
+                import time
+                time.sleep(0.5)
+
+                if os.path.isfile(output_pptx):
+                    return_text = f'--- L1 Diagram ({l1_type}) created successfully ---\n'
+                    return_text += f'File: {output_pptx}'
+                    return ([return_text])
+                else:
+                    return ([f'[ERROR] Failed to create L1 Diagram file'])
+
+            except Exception as e:
+                import traceback
+                error_detail = traceback.format_exc()
+                return ([f'[ERROR] Failed to export L1 Diagram: {str(e)}\n\nDetails:\n{error_detail}'])
+
+        # ★★★ Add L2 Diagram export at Ver 2.6.2 ★★★
+        if next_arg == 'l2_diagram':
+            try:
+                if not os.path.isfile(master_file_path):
+                    return ([f'[ERROR] Master file not found: {master_file_path}'])
+
+                filename = os.path.basename(master_file_path)
+                if not filename.startswith('[MASTER]'):
+                    return ([f'[ERROR] Master file must start with "[MASTER]". Current filename: {filename}'])
+
+                iDir = os.path.dirname(master_file_path)
+                if not iDir:
+                    iDir = os.getcwd()
+                basename_without_ext = os.path.splitext(os.path.basename(master_file_path))[0]
+                basename_clean = basename_without_ext.replace('[MASTER]', '')
+
+                import tkinter as tk
+                dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
+                self.inFileTxt_L2_3_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_3_1.insert(tk.END, master_file_path)
+                self.inFileTxt_L3_3_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_3_1.insert(tk.END, master_file_path)
+                self.inFileTxt_2_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_2_1.insert(tk.END, master_file_path)
+                self.outFileTxt_L2_3_4_1 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_1 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_2 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_3 = tk.Entry(dummy_tk)
+                self.outFileTxt_2_4 = tk.Entry(dummy_tk)
+
+                # Get area list
+                import ns_extensions
+                area_list = ns_extensions.ip_report.get_folder_list(self)
+
+                if not area_list or len(area_list) == 0:
+                    dummy_tk.destroy()
+                    return ([f'[ERROR] No areas found in the master file'])
+
+                # --area argument (default: first area)
+                target_area = get_next_arg(argv_array, '--area')
+                if target_area is None or target_area.startswith('--'):
+                    target_area = area_list[0]
+                if target_area not in area_list:
+                    dummy_tk.destroy()
+                    return ([f'[ERROR] Area "{target_area}" not found. Available areas: {", ".join(area_list)}'])
+
+                # Mock comboL2_3_6 for area selection
+                class MockCombo:
+                    def __init__(self, value=''):
+                        self._value = value
+                    def get(self):
+                        return self._value
+                self.comboL2_3_6 = MockCombo(target_area)
+
+                # Set attribute tuple (default attribute)
+                attribute_title_list = ns_def.get_attribute_title_list(self, master_file_path)
+                if attribute_title_list and len(attribute_title_list) > 0:
+                    self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(master_file_path, attribute_title_list[0])
+                else:
+                    self.attribute_tuple1_1 = {}
+                self.comboATTR_1_1 = MockCombo(attribute_title_list[0] if attribute_title_list else '')
+
+                self.click_value = 'L2-3-2'
+                output_pptx = os.path.join(iDir, '[L2_DIAGRAM]' + target_area + '_' + basename_clean + '.pptx')
+                self.outFileTxt_L2_3_4_1.insert(tk.END, output_pptx)
+                self.outFileTxt_2_1.insert(tk.END, output_pptx)
+                self.output_ppt_file = output_pptx
+
+                self.click_value_dummy = ''
+                self.click_value_VPN = ''
+                self.click_value_l3 = ''
+                self.flag_second_page = False
+                self.flag_re_create = False
+                self.flag_summary_diagram = False
+                self.full_filepath = master_file_path
+
+                if os.path.isfile(output_pptx):
+                    os.remove(output_pptx)
+
+                import ns_l2_diagram_create
+                try:
+                    ns_l2_diagram_create.ns_l2_diagram_create.__init__(self)
+                except UnicodeEncodeError:
+                    pass
+
+                dummy_tk.destroy()
+
+                import time
+                time.sleep(0.5)
+
+                if os.path.isfile(output_pptx):
+                    return_text = f'--- L2 Diagram (area: {target_area}) created successfully ---\n'
+                    return_text += f'File: {output_pptx}'
+                    return ([return_text])
+                else:
+                    return ([f'[ERROR] Failed to create L2 Diagram file'])
+
+            except Exception as e:
+                if os.path.isfile(output_pptx):
+                    return_text = f'--- L2 Diagram (area: {target_area}) created successfully ---\n'
+                    return_text += f'File: {output_pptx}'
+                    return ([return_text])
+                import traceback
+                error_detail = traceback.format_exc()
+                return ([f'[ERROR] Failed to export L2 Diagram: {str(e)}\n\nDetails:\n{error_detail}'])
+
+        # ★★★ Add L3 Diagram export at Ver 2.6.2 ★★★
+        if next_arg == 'l3_diagram':
+            try:
+                if not os.path.isfile(master_file_path):
+                    return ([f'[ERROR] Master file not found: {master_file_path}'])
+
+                filename = os.path.basename(master_file_path)
+                if not filename.startswith('[MASTER]'):
+                    return ([f'[ERROR] Master file must start with "[MASTER]". Current filename: {filename}'])
+
+                # --type argument: all_areas, per_area (default: all_areas)
+                l3_type = get_next_arg(argv_array, '--type')
+                valid_types = ['all_areas', 'per_area']
+                if l3_type is None or l3_type.startswith('--'):
+                    l3_type = 'all_areas'
+                if l3_type not in valid_types:
+                    return ([f'[ERROR] Invalid --type value: {l3_type}. Valid values: {", ".join(valid_types)}'])
+
+                iDir = os.path.dirname(master_file_path)
+                if not iDir:
+                    iDir = os.getcwd()
+                basename_without_ext = os.path.splitext(os.path.basename(master_file_path))[0]
+                basename_clean = basename_without_ext.replace('[MASTER]', '')
+
+                import tkinter as tk
+                dummy_tk = tk.Toplevel()
+                dummy_tk.withdraw()
+
+                self.inFileTxt_L3_3_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L3_3_1.insert(tk.END, master_file_path)
+                self.inFileTxt_L2_3_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_L2_3_1.insert(tk.END, master_file_path)
+                self.inFileTxt_2_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_2_1.insert(tk.END, master_file_path)
+                self.inFileTxt_11_1 = tk.Entry(dummy_tk)
+                self.inFileTxt_11_1.insert(tk.END, master_file_path)
+                self.outFileTxt_L3_3_4_1 = tk.Entry(dummy_tk)
+                self.outFileTxt_L3_3_5_1 = tk.Entry(dummy_tk)
+                self.full_filepath = master_file_path
+
+                # Set attribute tuple (default attribute)
+                attribute_title_list = ns_def.get_attribute_title_list(self, master_file_path)
+                class MockCombo:
+                    def __init__(self, value=''):
+                        self._value = value
+                    def get(self):
+                        return self._value
+                if attribute_title_list and len(attribute_title_list) > 0:
+                    self.attribute_tuple1_1 = ns_def.get_global_attribute_tuple(master_file_path, attribute_title_list[0])
+                else:
+                    self.attribute_tuple1_1 = {}
+                self.comboATTR_1_1 = MockCombo(attribute_title_list[0] if attribute_title_list else '')
+
+                self.click_value_dummy = ''
+                self.click_value_VPN = ''
+
+                if l3_type == 'per_area':
+                    output_pptx = os.path.join(iDir, '[L3_DIAGRAM]PerArea_' + basename_clean + '.pptx')
+                    self.outFileTxt_L3_3_4_1.insert(tk.END, output_pptx)
+                    self.output_ppt_file = output_pptx
+                    self.click_value = 'L3-3-2'
+                    self.click_value_l3 = ''
+                    self.flag_re_create = False
+
+                    self.y_grid_segment_array = []
+                    self.flag_second_page = False
+                    self.per_index2_before_array = [0.0]
+                    self.per_index2_after_array = [0.0]
+                    self.last_case_offset = 0.0
+
+                    if os.path.isfile(output_pptx):
+                        os.remove(output_pptx)
+
+                    import ns_l3_diagram_create
+                    try:
+                        ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                    except UnicodeEncodeError:
+                        pass
+
+                else:  # all_areas
+                    output_pptx = os.path.join(iDir, '[L3_DIAGRAM]AllAreas_' + basename_clean + '.pptx')
+                    tmp_master = os.path.join(iDir, basename_without_ext.replace('[MASTER]', '__TMP__[MASTER]') + '.xlsx')
+
+                    self.outFileTxt_L3_3_4_1.insert(tk.END, output_pptx)
+                    self.outFileTxt_L3_3_5_1.insert(tk.END, tmp_master)
+                    self.output_ppt_file = output_pptx
+                    self.excel_maseter_file_backup = tmp_master
+                    self.add_shape_array = []
+                    self.add_shape_write_array = []
+
+                    if os.path.isfile(output_pptx):
+                        os.remove(output_pptx)
+                    if os.path.isfile(tmp_master):
+                        os.remove(tmp_master)
+
+                    import ns_l3_diagram_create
+                    ns_l3_diagram_create.create_master_file_one_area.__init__(self)
+
+                    self.inFileTxt_11_1.delete(0, tk.END)
+                    self.inFileTxt_11_1.insert(tk.END, tmp_master)
+
+                    self.vpn_hostname_if_list = []
+                    self.click_value = 'L3-3-2'
+                    self.click_value_l3 = 'L3-4-1'
+                    self.global_wp_array = []
+                    self.update_start_area_array = []
+                    self.y_grid_segment_array = []
+                    self.flag_second_page = False
+                    self.flag_re_create = False
+                    self.per_index2_before_array = [0.0]
+                    self.per_index2_after_array = [0.0]
+
+                    try:
+                        ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                    except UnicodeEncodeError:
+                        pass
+
+                    self.flag_re_create = True
+                    try:
+                        ns_l3_diagram_create.ns_l3_diagram_create.__init__(self)
+                    except UnicodeEncodeError:
+                        pass
+
+                    if os.path.isfile(tmp_master):
+                        os.remove(tmp_master)
+
+                dummy_tk.destroy()
+
+                import time
+                time.sleep(0.5)
+
+                if os.path.isfile(output_pptx):
+                    return_text = f'--- L3 Diagram ({l3_type}) created successfully ---\n'
+                    return_text += f'File: {output_pptx}'
+                    return ([return_text])
+                else:
+                    return ([f'[ERROR] Failed to create L3 Diagram file'])
+
+            except Exception as e:
+                if os.path.isfile(output_pptx):
+                    return_text = f'--- L3 Diagram ({l3_type}) created successfully ---\n'
+                    return_text += f'File: {output_pptx}'
+                    return ([return_text])
+                import traceback
+                error_detail = traceback.format_exc()
+                return ([f'[ERROR] Failed to export L3 Diagram: {str(e)}\n\nDetails:\n{error_detail}'])
 
 
     def cli_rename(self, master_file_path, argv_array):  # add at ver 2.5.4
@@ -5953,188 +6334,12 @@ class def_common():
                 ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
                 ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
 
-            # ========== BATCH STEP 4.5: Recalculate From_Side/To_Side for existing connections ==========
-            # Fix: When device positions change, the connection direction (LEFT/RIGHT vs UP/DOWN) may change
-            # This step recalculates From_Side and To_Side based on new device positions
+            # ========== BATCH STEP 4.5: Recalculate POSITION_LINE for moved devices ==========
             print('[Info] Recalculating connection directions...')
-
-            # Reload arrays after POSITION_SHAPE update
-            position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
-            position_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
-            position_line_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-
-            # Get all devices that were moved (existing devices that are still present)
             moved_devices = set(new_devices) & set(current_devices)
-
-            if moved_devices and len(position_line_array) > 2:
-                connections_updated = 0
-
-                for item in position_line_array[2:]:
-                    if len(item) < 2 or not isinstance(item[1], list) or len(item[1]) < 6:
-                        continue
-
-                    cd = item[1]
-                    from_hostname = cd[0]
-                    to_hostname = cd[1]
-
-                    # Check if either endpoint is a moved device
-                    if from_hostname in moved_devices or to_hostname in moved_devices:
-                        # Recalculate direction based on new positions
-                        new_direction = def_common.check_hostnames_in_same_element_static(
-                            position_shape_array, from_hostname, to_hostname, position_folder_array
-                        )
-
-                        # Determine new From_Side and To_Side
-                        if new_direction == 'RIGHT_LEFT':
-                            new_from_side = 'RIGHT'
-                            new_to_side = 'LEFT'
-                        elif new_direction == 'LEFT_RIGHT':
-                            new_from_side = 'LEFT'
-                            new_to_side = 'RIGHT'
-                        else:
-                            # UP_DOWN or DOWN_UP - no side specification needed
-                            new_from_side = ''
-                            new_to_side = ''
-
-                        old_from_side = cd[4] if cd[4] else ''
-                        old_to_side = cd[5] if cd[5] else ''
-
-                        # Update if changed
-                        if old_from_side != new_from_side or old_to_side != new_to_side:
-                            cd[4] = new_from_side
-                            cd[5] = new_to_side
-                            # Clear offsets since direction changed - they need to be recalculated
-                            cd[6] = cd[7] = cd[8] = cd[9] = ''
-                            connections_updated += 1
-
-                if connections_updated > 0:
-                    print(f'[Info] Updated {connections_updated} connection direction(s)')
-
-                    # Write updated POSITION_LINE
-                    position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
-                    ori_position_line_tuple = ns_def.convert_array_to_tuple(
-                        ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-                    )
-                    ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
-                    ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
-
-                    # Recalculate offsets for affected devices
-                    print('[Info] Recalculating offsets for affected connections...')
-
-                    # Build hostname_position from updated position_shape_array
-                    hostname_position = {}
-                    for row_idx, ps_item in enumerate(position_shape_array):
-                        if len(ps_item) >= 2 and isinstance(ps_item[1], list):
-                            for col_idx, hostname in enumerate(ps_item[1]):
-                                if hostname not in ['_AIR_', '<END>', '', '<<POSITION_SHAPE>>', None]:
-                                    hostname_position[hostname] = (row_idx, col_idx)
-
-                    # Get affected hostnames
-                    affected_hostnames = set()
-                    for item in position_line_array[2:]:
-                        if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) >= 2:
-                            cd = item[1]
-                            if cd[0] in moved_devices or cd[1] in moved_devices:
-                                affected_hostnames.add(cd[0])
-                                affected_hostnames.add(cd[1])
-
-                    line_distance = 0.2
-
-                    def calc_offsets_local(count, dist):
-                        if count == 0: return []
-                        if count == 1: return [0]
-                        if count % 2 == 0:
-                            half = dist / 2
-                            result = []
-                            for i in range(count // 2):
-                                result.insert(0, -(half + i * dist))
-                                result.append(half + i * dist)
-                            return result
-                        else:
-                            result = [0]
-                            for i in range(1, (count + 1) // 2):
-                                result.insert(0, -i * dist)
-                                result.append(i * dist)
-                            return result
-
-                    # Clear offsets for affected connections
-                    for item in position_line_array[2:]:
-                        cd = item[1]
-                        if cd[0] in affected_hostnames:
-                            cd[6] = cd[7] = ''
-                        if cd[1] in affected_hostnames:
-                            cd[8] = cd[9] = ''
-
-                    # Calculate offsets per device
-                    for hostname in sorted(affected_hostnames):
-                        dir_groups = {'UP': [], 'DOWN': [], 'LEFT': [], 'RIGHT': []}
-
-                        for item in position_line_array[2:]:
-                            cd = item[1]
-                            if hostname not in [cd[0], cd[1]]:
-                                continue
-
-                            from_side = cd[4] if len(cd) > 4 else ''
-                            to_side = cd[5] if len(cd) > 5 else ''
-
-                            if from_side in ['RIGHT', 'LEFT'] and to_side in ['RIGHT', 'LEFT']:
-                                conn_dir = 'RIGHT_LEFT' if from_side == 'RIGHT' else 'LEFT_RIGHT'
-                            else:
-                                conn_dir = def_common.check_hostnames_in_same_element_static(
-                                    position_shape_array, cd[0], cd[1], position_folder_array
-                                )
-
-                            other = cd[1] if hostname == cd[0] else cd[0]
-                            other_pos = hostname_position.get(other, (999, 999))
-
-                            if hostname == cd[0]:
-                                if conn_dir == 'RIGHT_LEFT':
-                                    dir_groups['RIGHT'].append((other_pos[1], item))
-                                elif conn_dir == 'LEFT_RIGHT':
-                                    dir_groups['LEFT'].append((other_pos[1], item))
-                                elif conn_dir == 'UP_DOWN':
-                                    dir_groups['DOWN'].append((other_pos[1], item))
-                                elif conn_dir == 'DOWN_UP':
-                                    dir_groups['UP'].append((other_pos[1], item))
-                            else:
-                                if conn_dir == 'RIGHT_LEFT':
-                                    dir_groups['LEFT'].append((other_pos[1], item))
-                                elif conn_dir == 'LEFT_RIGHT':
-                                    dir_groups['RIGHT'].append((other_pos[1], item))
-                                elif conn_dir == 'UP_DOWN':
-                                    dir_groups['UP'].append((other_pos[1], item))
-                                elif conn_dir == 'DOWN_UP':
-                                    dir_groups['DOWN'].append((other_pos[1], item))
-
-                        for direction, items_pos in dir_groups.items():
-                            if not items_pos:
-                                continue
-
-                            items_pos.sort(key=lambda x: x[0])
-                            items = [x[1] for x in items_pos]
-                            offsets = calc_offsets_local(len(items), line_distance)
-
-                            for i, line_item in enumerate(items):
-                                if i >= len(offsets):
-                                    continue
-
-                                cd = line_item[1]
-                                off = offsets[i]
-
-                                if direction in ['LEFT', 'RIGHT']:
-                                    idx_set = 7 if hostname == cd[0] else 9
-                                    cd[idx_set] = off
-                                else:
-                                    idx_set = 6 if hostname == cd[0] else 8
-                                    cd[idx_set] = off
-
-                    # Write final POSITION_LINE with recalculated offsets
-                    position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
-                    ori_position_line_tuple = ns_def.convert_array_to_tuple(
-                        ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-                    )
-                    ns_def.remove_rows_under_section('Master_Data', master_file_path, ori_position_line_tuple)
-                    ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
+            result = def_common.recalculate_position_line_for_devices(moved_devices, master_file_path)
+            if result['connections_updated'] > 0:
+                print(f'[Info] Updated {result["connections_updated"]} connection direction(s)')
 
             # ========== BATCH STEP 5: Recalculate POSITION_FOLDER ONCE ==========
             print('[Info] Recalculating POSITION_FOLDER...')
@@ -6630,6 +6835,19 @@ class def_common():
                         if val == device_name:
                             return ([f'[ERROR] Device name already exists: {device_name}'])
 
+        # Save old area positions for moved-area detection
+        old_position_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
+        old_area_positions = {}
+        for item in old_position_folder_array:
+            if len(item) >= 2 and isinstance(item[1], list):
+                row_data = item[1]
+                if len(row_data) > 0 and isinstance(row_data[0], (int, float)):
+                    row_num = row_data[0]
+                    for col_idx in range(1, len(row_data)):
+                        area_name = row_data[col_idx]
+                        if isinstance(area_name, str) and area_name != '':
+                            old_area_positions[area_name] = (row_num, col_idx)
+
         # Rebuild POSITION_FOLDER structure
         result = def_common.rebuild_position_folder(area_location_array, master_file_path)
         if result['status'] != 'success':
@@ -6651,11 +6869,51 @@ class def_common():
         if result['status'] != 'success':
             return ([f"[ERROR] {result['message']}"])
 
+        # Detect moved areas and recalculate POSITION_LINE
+        new_position_folder_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
+        new_area_positions = {}
+        for item in new_position_folder_array:
+            if len(item) >= 2 and isinstance(item[1], list):
+                row_data = item[1]
+                if len(row_data) > 0 and isinstance(row_data[0], (int, float)):
+                    row_num = row_data[0]
+                    for col_idx in range(1, len(row_data)):
+                        area_name = row_data[col_idx]
+                        if isinstance(area_name, str) and area_name != '':
+                            new_area_positions[area_name] = (row_num, col_idx)
+
+        moved_areas = set()
+        common_areas = set(old_area_positions.keys()) & set(new_area_positions.keys())
+        for area_name in common_areas:
+            if old_area_positions[area_name] != new_area_positions[area_name]:
+                moved_areas.add(area_name)
+
+        position_line_result = None
+        if moved_areas:
+            position_shape_array = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
+            moved_devices = set()
+            area_device_map = {}
+            for item in position_shape_array:
+                if len(item) >= 2 and isinstance(item[1], list):
+                    row_data = item[1]
+                    if len(row_data) > 1 and isinstance(row_data[0], str) and row_data[0] not in ['<<POSITION_SHAPE>>', '']:
+                        area_name = row_data[0]
+                        if area_name in moved_areas:
+                            devices_in_area = []
+                            for val in row_data[1:]:
+                                if val not in ['_AIR_', '<END>', '', None]:
+                                    moved_devices.add(val)
+                                    devices_in_area.append(val)
+                            if devices_in_area:
+                                area_device_map[area_name] = devices_in_area
+
+            if moved_devices:
+                position_line_result = def_common.recalculate_position_line_for_devices(moved_devices, master_file_path)
+
         # Build return message
         return_msg = '--- Area layout updated ---\n'
         if new_areas:
             return_msg += f'New areas added: {new_areas}\n'
-            # Show devices added
             for area in new_areas:
                 if area.endswith('_wp_'):
                     device_name = area[:-4]
@@ -6663,7 +6921,11 @@ class def_common():
                     device_name = area + '_device_'
                 return_msg += f'  Device added for {area}: {device_name}\n'
 
-        # Show changes in layout
+        if moved_areas:
+            return_msg += f'Moved areas detected: {sorted(moved_areas)}\n'
+            if position_line_result and position_line_result['connections_updated'] > 0:
+                return_msg += f'  Connection directions updated: {position_line_result["connections_updated"]}\n'
+
         return_msg += 'New area layout:\n'
         for row in area_location_array:
             return_msg += f'  {row}\n'
@@ -6950,6 +7212,193 @@ class def_common():
             import traceback
             traceback.print_exc()
             return {'status': 'error', 'message': f'Error rebuilding POSITION_FOLDER: {str(e)}'}
+
+    @staticmethod
+    def recalculate_position_line_for_devices(moved_devices, master_file_path):
+        """
+        Recalculate From_Side/To_Side and offset values in POSITION_LINE
+        for connections involving the specified moved devices.
+
+        Args:
+            moved_devices: set of device names that have been moved
+            master_file_path: Path to the master Excel file
+
+        Returns:
+            dict: {'status': 'success'/'skipped', 'connections_updated': int}
+        """
+        import ns_def
+
+        if not moved_devices:
+            return {'status': 'skipped', 'connections_updated': 0}
+
+        ws_name = 'Master_Data'
+
+        position_shape_array = ns_def.convert_master_to_array(ws_name, master_file_path, '<<POSITION_SHAPE>>')
+        position_folder_array = ns_def.convert_master_to_array(ws_name, master_file_path, '<<POSITION_FOLDER>>')
+        position_line_array = ns_def.convert_master_to_array(ws_name, master_file_path, '<<POSITION_LINE>>')
+
+        if len(position_line_array) <= 2:
+            return {'status': 'skipped', 'connections_updated': 0}
+
+        connections_updated = 0
+
+        for item in position_line_array[2:]:
+            if len(item) < 2 or not isinstance(item[1], list) or len(item[1]) < 6:
+                continue
+
+            cd = item[1]
+            from_hostname = cd[0]
+            to_hostname = cd[1]
+
+            if from_hostname in moved_devices or to_hostname in moved_devices:
+                new_direction = def_common.check_hostnames_in_same_element_static(
+                    position_shape_array, from_hostname, to_hostname, position_folder_array
+                )
+
+                if new_direction == 'RIGHT_LEFT':
+                    new_from_side = 'RIGHT'
+                    new_to_side = 'LEFT'
+                elif new_direction == 'LEFT_RIGHT':
+                    new_from_side = 'LEFT'
+                    new_to_side = 'RIGHT'
+                else:
+                    new_from_side = ''
+                    new_to_side = ''
+
+                old_from_side = cd[4] if cd[4] else ''
+                old_to_side = cd[5] if cd[5] else ''
+
+                if old_from_side != new_from_side or old_to_side != new_to_side:
+                    cd[4] = new_from_side
+                    cd[5] = new_to_side
+                    cd[6] = cd[7] = cd[8] = cd[9] = ''
+                    connections_updated += 1
+
+        if connections_updated > 0:
+            position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+            ori_position_line_tuple = ns_def.convert_array_to_tuple(
+                ns_def.convert_master_to_array(ws_name, master_file_path, '<<POSITION_LINE>>')
+            )
+            ns_def.remove_rows_under_section(ws_name, master_file_path, ori_position_line_tuple)
+            ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
+
+        hostname_position = {}
+        for row_idx, ps_item in enumerate(position_shape_array):
+            if len(ps_item) >= 2 and isinstance(ps_item[1], list):
+                for col_idx, hostname in enumerate(ps_item[1]):
+                    if hostname not in ['_AIR_', '<END>', '', '<<POSITION_SHAPE>>', None]:
+                        hostname_position[hostname] = (row_idx, col_idx)
+
+        affected_hostnames = set()
+        for item in position_line_array[2:]:
+            if len(item) >= 2 and isinstance(item[1], list) and len(item[1]) >= 2:
+                cd = item[1]
+                if cd[0] in moved_devices or cd[1] in moved_devices:
+                    affected_hostnames.add(cd[0])
+                    affected_hostnames.add(cd[1])
+
+        if not affected_hostnames:
+            return {'status': 'success', 'connections_updated': connections_updated}
+
+        line_distance = 0.2
+
+        def calc_offsets(count, dist):
+            if count == 0: return []
+            if count == 1: return [0]
+            if count % 2 == 0:
+                half = dist / 2
+                result = []
+                for i in range(count // 2):
+                    result.insert(0, -(half + i * dist))
+                    result.append(half + i * dist)
+                return result
+            else:
+                result = [0]
+                for i in range(1, (count + 1) // 2):
+                    result.insert(0, -i * dist)
+                    result.append(i * dist)
+                return result
+
+        if connections_updated > 0:
+            position_line_array = ns_def.convert_master_to_array(ws_name, master_file_path, '<<POSITION_LINE>>')
+
+        for item in position_line_array[2:]:
+            cd = item[1]
+            if cd[0] in affected_hostnames:
+                cd[6] = cd[7] = ''
+            if cd[1] in affected_hostnames:
+                cd[8] = cd[9] = ''
+
+        for hostname in sorted(affected_hostnames):
+            dir_groups = {'UP': [], 'DOWN': [], 'LEFT': [], 'RIGHT': []}
+
+            for item in position_line_array[2:]:
+                cd = item[1]
+                if hostname not in [cd[0], cd[1]]:
+                    continue
+
+                from_side = cd[4] if len(cd) > 4 else ''
+                to_side = cd[5] if len(cd) > 5 else ''
+
+                if from_side in ['RIGHT', 'LEFT'] and to_side in ['RIGHT', 'LEFT']:
+                    conn_dir = 'RIGHT_LEFT' if from_side == 'RIGHT' else 'LEFT_RIGHT'
+                else:
+                    conn_dir = def_common.check_hostnames_in_same_element_static(
+                        position_shape_array, cd[0], cd[1], position_folder_array
+                    )
+
+                other = cd[1] if hostname == cd[0] else cd[0]
+                other_pos = hostname_position.get(other, (999, 999))
+
+                if hostname == cd[0]:
+                    if conn_dir == 'RIGHT_LEFT':
+                        dir_groups['RIGHT'].append((other_pos[1], item))
+                    elif conn_dir == 'LEFT_RIGHT':
+                        dir_groups['LEFT'].append((other_pos[1], item))
+                    elif conn_dir == 'UP_DOWN':
+                        dir_groups['DOWN'].append((other_pos[1], item))
+                    elif conn_dir == 'DOWN_UP':
+                        dir_groups['UP'].append((other_pos[1], item))
+                else:
+                    if conn_dir == 'RIGHT_LEFT':
+                        dir_groups['LEFT'].append((other_pos[1], item))
+                    elif conn_dir == 'LEFT_RIGHT':
+                        dir_groups['RIGHT'].append((other_pos[1], item))
+                    elif conn_dir == 'UP_DOWN':
+                        dir_groups['UP'].append((other_pos[1], item))
+                    elif conn_dir == 'DOWN_UP':
+                        dir_groups['DOWN'].append((other_pos[1], item))
+
+            for direction, items_pos in dir_groups.items():
+                if not items_pos:
+                    continue
+
+                items_pos.sort(key=lambda x: x[0])
+                items = [x[1] for x in items_pos]
+                offsets = calc_offsets(len(items), line_distance)
+
+                for i, line_item in enumerate(items):
+                    if i >= len(offsets):
+                        continue
+
+                    cd = line_item[1]
+                    off = offsets[i]
+
+                    if direction in ['LEFT', 'RIGHT']:
+                        idx_set = 7 if hostname == cd[0] else 9
+                        cd[idx_set] = off
+                    else:
+                        idx_set = 6 if hostname == cd[0] else 8
+                        cd[idx_set] = off
+
+        position_line_tuple = ns_def.convert_array_to_tuple(position_line_array)
+        ori_position_line_tuple = ns_def.convert_array_to_tuple(
+            ns_def.convert_master_to_array(ws_name, master_file_path, '<<POSITION_LINE>>')
+        )
+        ns_def.remove_rows_under_section(ws_name, master_file_path, ori_position_line_tuple)
+        ns_def.write_excel_meta(position_line_tuple, master_file_path, ws_name, '<<POSITION_LINE>>', 0, 0)
+
+        return {'status': 'success', 'connections_updated': connections_updated}
 
     @staticmethod
     def recalculate_folder_sizes(master_file_path):

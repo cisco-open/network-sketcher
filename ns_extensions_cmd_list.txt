@@ -1319,8 +1319,104 @@ Sheets: Master_Data, Master_Data_L2, Master_Data_L3<br>
 The file contains no areas or devices.<br>
 
 
+## export l1_diagram
+
+Exports a Layer 1 (physical topology) diagram as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+
+```bash
+export l1_diagram
+export l1_diagram --type <type>
+```
+
+Options:
+
+--type : Specifies the diagram type. Valid values are:
+- all_areas_tag (default) : All areas combined with interface tags
+- all_areas : All areas combined without interface tags
+- per_area_tag : Per area with interface tags
+- per_area : Per area without interface tags
+
+* ex.<br>
++Export l1_diagram (default: all_areas_tag)+
+
+#export l1_diagram<br>
+--- L1 Diagram (all_areas_tag) created successfully ---<br>
+File: C:\work\[L1_DIAGRAM]AllAreasTag_test.pptx<br>
+
++Export l1_diagram (per_area)+
+
+#export l1_diagram --type per_area<br>
+--- L1 Diagram (per_area) created successfully ---<br>
+File: C:\work\[L1_DIAGRAM]PerArea_test.pptx<br>
+
+[Tips]
+* The output filename is automatically generated based on the type: [L1_DIAGRAM]AllAreasTag_, [L1_DIAGRAM]AllAreas_, [L1_DIAGRAM]PerAreaTag_, or [L1_DIAGRAM]PerArea_ followed by the master file name
+* If the output file already exists, it will be overwritten
 
 
+## export l2_diagram
+
+Exports a Layer 2 (VLAN/broadcast domain) diagram for a specific area as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+
+```bash
+export l2_diagram
+export l2_diagram --area <area_name>
+```
+
+Options:
+
+--area : Specifies the target area name. If omitted, the first available area is used. Waypoint areas (ending with _wp_) are excluded from the available areas.
+
+* ex.<br>
++Export l2_diagram (default: first area)+
+
+#export l2_diagram<br>
+--- L2 Diagram (area: Office) created successfully ---<br>
+File: C:\work\[L2_DIAGRAM]Office_test.pptx<br>
+
++Export l2_diagram (specify area)+
+
+#export l2_diagram --area Office<br>
+--- L2 Diagram (area: Office) created successfully ---<br>
+File: C:\work\[L2_DIAGRAM]Office_test.pptx<br>
+
+[Tips]
+* The output filename is automatically generated as [L2_DIAGRAM]area_name_master_file_name.pptx
+* If the output file already exists, it will be overwritten
+* To export diagrams for all areas, run the command for each area individually
+
+
+## export l3_diagram
+
+Exports a Layer 3 (IP addressing) diagram as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+
+```bash
+export l3_diagram
+export l3_diagram --type <type>
+```
+
+Options:
+
+--type : Specifies the diagram type. Valid values are:
+- all_areas (default) : All areas combined into a single diagram
+- per_area : Separate diagrams per area
+
+* ex.<br>
++Export l3_diagram (default: all_areas)+
+
+#export l3_diagram<br>
+--- L3 Diagram (all_areas) created successfully ---<br>
+File: C:\work\[L3_DIAGRAM]AllAreas_test.pptx<br>
+
++Export l3_diagram (per_area)+
+
+#export l3_diagram --type per_area<br>
+--- L3 Diagram (per_area) created successfully ---<br>
+File: C:\work\[L3_DIAGRAM]PerArea_test.pptx<br>
+
+[Tips]
+* The output filename is automatically generated based on the type: [L3_DIAGRAM]AllAreas_ or [L3_DIAGRAM]PerArea_ followed by the master file name
+* If the output file already exists, it will be overwritten
 
 
 
@@ -1929,19 +2025,49 @@ CENTRAL MODE INDICATORS (use Central mode ONLY when user explicitly mentions):
 - "WLC handles all traffic", "tunnel all traffic to WLC"
 - "Local mode disabled"
 
+FLEXCONNECT CLIENT VLAN EXTENSION (SSID-BASED VLAN):
+In FlexConnect mode, APs typically assign clients to different VLANs based on SSID, but this depends on the VLAN configuration of the switch to which the AP is connected.
+Because the AP performs local switching, the client VLANs must also be extended to the AP's physical port.
+
+VLAN TYPES ON FLEXCONNECT AP:
+| VLAN Type        | Purpose                                      | Required on AP Physical Port | Required SVI on AP |
+|------------------|----------------------------------------------|------------------------------|-------------------|
+| Management VLAN  | AP management and control traffic            | Yes (MANDATORY)              | Yes (for AP IP)   |
+| Client VLANs     | User traffic per SSID (locally switched)     | Yes (MANDATORY)              | No (pass-through) |
+
+WHY CLIENT VLANs MUST BE EXTENDED TO AP:
+- FlexConnect mode = Local switching at AP (traffic does NOT go to WLC)
+- SSID maps to VLAN -> Client traffic is tagged with VLAN ID at AP
+- AP physical port must carry all VLANs that SSIDs use
+- Switch port connecting to AP must also carry these VLANs (trunk)
+
+EXAMPLE: Office with 3 SSIDs
+- SSID "Corporate" -> Vlan100 (Employee network)
+- SSID "Guest"     -> Vlan200 (Guest network)
+- SSID "IoT"       -> Vlan20  (IoT devices)
+- Management       -> Vlan10  (AP management)
+
+Required configuration:
+1. Switch port to AP: Vlan10, Vlan20, Vlan100, Vlan200 (trunk)
+2. AP GigabitEthernet 0: Vlan10, Vlan20, Vlan100, Vlan200 (trunk)
+3. AP SVI: Only Vlan 10 (for AP management IP)
+4. Switch SVIs: Vlan 10, Vlan 20, Vlan 100, Vlan 200 (gateways for each network)
+
 MANDATORY REQUIREMENTS FOR FLEXCONNECT:
-- ALL Wireless APs MUST have an IP address assigned via SVI
+- ALL Wireless APs MUST have an IP address assigned via SVI (Management VLAN)
 - APs MUST NOT have IP addresses on physical interfaces (GigabitEthernet 0)
-- APs physical interfaces MUST have L2 segment (Management VLAN) configured
+- APs physical interfaces MUST have L2 segment for Management VLAN configured
+- APs physical interfaces MUST have L2 segments for ALL Client VLANs (SSIDs) configured
 - APs receive IP addresses through the Management VLAN SVI subnet
 - APs MUST be placed in rows BELOW their connected access switch (hierarchical layout)
 
 FLEXCONNECT AP IP ASSIGNMENT METHOD:
 - APs do NOT configure IP on physical interface
-- APs physical interface (GigabitEthernet 0) MUST have L2 segment (Management VLAN) configured
-- APs create an SVI (virtual_port) matching the Management VLAN
-- IP address is assigned to the AP's SVI
-- Switch also requires SVI for the same Management VLAN as gateway
+- APs physical interface (GigabitEthernet 0) MUST have L2 segments (Management + Client VLANs) configured
+- APs create an SVI (virtual_port) matching the Management VLAN ONLY
+- IP address is assigned to the AP's SVI (Management VLAN)
+- Switch also requires SVI for the Management VLAN as gateway
+- Switch requires SVIs for ALL Client VLANs as gateways
 
 DEVICE PLACEMENT FOR APs (HIERARCHICAL - TOP TO BOTTOM):
 - Access switches in upper row
@@ -1957,95 +2083,113 @@ CORRECT LAYOUT EXAMPLE:
 INCORRECT LAYOUT (DO NOT USE):
 ['Floor1',[['Access-Stack1','AP-01','AP-02']]]  <- WRONG: APs beside switch
 
-CONFIGURATION WORKFLOW FOR FLEXCONNECT AP (USING BULK COMMANDS):
+CONFIGURATION WORKFLOW FOR FLEXCONNECT AP WITH CLIENT VLANs (USING BULK COMMANDS):
+
+Scenario: 2 FlexConnect APs with Management VLAN (Vlan10) and 3 Client VLANs (Vlan20, Vlan100, Vlan200)
 
 Step 1: Create L1 links between APs and switch
-add l1_link_bulk "[['AP-01','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/2'],['AP-03','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/3']]"
+add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/2']]"
 
 Step 1.1: Configure port information for all L1 interfaces (MANDATORY)
-rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['AP-03','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/3',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']]]"
 
-Step 2: Add Management VLAN to switch ports (connecting to APs)
-add l2_segment_bulk "[['Switch-01','GigabitEthernet 1/0/1',['Vlan10']],['Switch-01','GigabitEthernet 1/0/2',['Vlan10']],['Switch-01','GigabitEthernet 1/0/3',['Vlan10']]]"
+Step 2: Add ALL VLANs (Management + Client) to switch ports connecting to APs
+add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/1',['Vlan10','Vlan20','Vlan100','Vlan200']],['Access-SW1','GigabitEthernet 1/0/2',['Vlan10','Vlan20','Vlan100','Vlan200']]]"
 
-Step 2.1: CRITICAL (FLEXCONNECT L2 BINDING): Add Management VLAN to AP physical ports (MANDATORY for FlexConnect)
-add l2_segment_bulk "[['AP-01','GigabitEthernet 0',['Vlan10']],['AP-02','GigabitEthernet 0',['Vlan10']],['AP-03','GigabitEthernet 0',['Vlan10']]]"
+Step 2.1: CRITICAL (FLEXCONNECT VLAN EXTENSION): Add ALL VLANs to AP physical ports (MANDATORY)
+add l2_segment_bulk "[['AP-01','GigabitEthernet 0',['Vlan10','Vlan20','Vlan100','Vlan200']],['AP-02','GigabitEthernet 0',['Vlan10','Vlan20','Vlan100','Vlan200']]]"
 
-Step 3: Create SVIs for Management VLAN on switch and APs
-add virtual_port_bulk "[['Switch-01',['Vlan 10']],['AP-01',['Vlan 10']],['AP-02',['Vlan 10']],['AP-03',['Vlan 10']]]"
+Step 3: Create Management SVI on APs (for AP IP address)
+add virtual_port_bulk "[['AP-01',['Vlan 10']],['AP-02',['Vlan 10']]]"
 
-Step 3.1: CRITICAL (SVI-L2 BINDING): Bind the Management SVI itself to the L2 segment on EACH device (MANDATORY)
-add l2_segment_bulk "[['Switch-01','Vlan 10',['Vlan10']],['AP-01','Vlan 10',['Vlan10']],['AP-02','Vlan 10',['Vlan10']],['AP-03','Vlan 10',['Vlan10']]]"
+Step 3.1: Create ALL SVIs on switch (gateways for Management + Client networks)
+add virtual_port_bulk "[['Access-SW1',['Vlan 10','Vlan 20','Vlan 100','Vlan 200']]]"
 
-Step 4: Assign IP addresses to SVIs
-add ip_address_bulk "[['Switch-01','Vlan 10',['10.1.1.1/24']],['AP-01','Vlan 10',['10.1.1.11/24']],['AP-02','Vlan 10',['10.1.1.12/24']],['AP-03','Vlan 10',['10.1.1.13/24']]]"
+Step 3.2: CRITICAL (SVI-L2 BINDING): Bind SVIs to L2 segments (MANDATORY per Rule 15)
+add l2_segment_bulk "[['AP-01','Vlan 10',['Vlan10']],['AP-02','Vlan 10',['Vlan10']],['Access-SW1','Vlan 10',['Vlan10']],['Access-SW1','Vlan 20',['Vlan20']],['Access-SW1','Vlan 100',['Vlan100']],['Access-SW1','Vlan 200',['Vlan200']]]"
 
-COMPLETE FLEXCONNECT AP EXAMPLE (HIERARCHICAL LAYOUT):
-Scenario: 3 FlexConnect APs connected to access switch
+Step 4: Assign IP addresses
+add ip_address_bulk "[['Access-SW1','Vlan 10',['10.1.10.1/24']],['Access-SW1','Vlan 20',['10.1.20.1/24']],['Access-SW1','Vlan 100',['10.1.100.1/24']],['Access-SW1','Vlan 200',['10.1.200.1/24']],['AP-01','Vlan 10',['10.1.10.11/24']],['AP-02','Vlan 10',['10.1.10.12/24']]]"
+
+COMPLETE FLEXCONNECT AP EXAMPLE WITH CLIENT VLANs (HIERARCHICAL LAYOUT):
+Scenario: 2 FlexConnect APs connected to access switch with Management VLAN and 3 Client VLANs
 
 # Phase 1: Device placement (TOP-TO-BOTTOM hierarchy)
-add device_location "['Floor1',[['Switch-01'],['AP-01','AP-02','AP-03']]]"
+add device_location "['Floor1',[['Access-SW1'],['AP-01','AP-02']]]"
 
 # Phase 2: Physical connectivity
-add l1_link_bulk "[['AP-01','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/2'],['AP-03','Switch-01','GigabitEthernet 0','GigabitEthernet 1/0/3']]"
+add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/2']]"
 
 # Phase 2.5: Port information configuration (MANDATORY)
-rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['AP-03','GE 0',['1Gbps','Full','1000BASE-T']],['Switch-01','GE 1/0/3',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']]]"
 
-# Phase 3: L2 configuration - Add VLAN to switch ports
-add l2_segment_bulk "[['Switch-01','GigabitEthernet 1/0/1',['Vlan10']],['Switch-01','GigabitEthernet 1/0/2',['Vlan10']],['Switch-01','GigabitEthernet 1/0/3',['Vlan10']]]"
+# Phase 3: L2 configuration - Add ALL VLANs to switch ports (trunk to APs)
+add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/1',['Vlan10','Vlan20','Vlan100','Vlan200']],['Access-SW1','GigabitEthernet 1/0/2',['Vlan10','Vlan20','Vlan100','Vlan200']]]"
 
-# Phase 3: CRITICAL (FLEXCONNECT L2 BINDING) - Add VLAN to AP physical ports (MANDATORY)
-add l2_segment_bulk "[['AP-01','GigabitEthernet 0',['Vlan10']],['AP-02','GigabitEthernet 0',['Vlan10']],['AP-03','GigabitEthernet 0',['Vlan10']]]"
+# Phase 3: CRITICAL (FLEXCONNECT VLAN EXTENSION) - Add ALL VLANs to AP physical ports (MANDATORY)
+add l2_segment_bulk "[['AP-01','GigabitEthernet 0',['Vlan10','Vlan20','Vlan100','Vlan200']],['AP-02','GigabitEthernet 0',['Vlan10','Vlan20','Vlan100','Vlan200']]]"
 
-# Phase 3: Create SVIs on switch and APs
-add virtual_port_bulk "[['Switch-01',['Vlan 10']],['AP-01',['Vlan 10']],['AP-02',['Vlan 10']],['AP-03',['Vlan 10']]]"
+# Phase 3: Create Management SVIs on APs
+add virtual_port_bulk "[['AP-01',['Vlan 10']],['AP-02',['Vlan 10']]]"
+
+# Phase 3: Create ALL SVIs on switch (gateways)
+add virtual_port_bulk "[['Access-SW1',['Vlan 10','Vlan 20','Vlan 100','Vlan 200']]]"
 
 # Phase 3: CRITICAL (SVI-L2 BINDING) - Bind SVIs themselves to the L2 segment (MANDATORY)
-add l2_segment_bulk "[['Switch-01','Vlan 10',['Vlan10']],['AP-01','Vlan 10',['Vlan10']],['AP-02','Vlan 10',['Vlan10']],['AP-03','Vlan 10',['Vlan10']]]"
+add l2_segment_bulk "[['AP-01','Vlan 10',['Vlan10']],['AP-02','Vlan 10',['Vlan10']],['Access-SW1','Vlan 10',['Vlan10']],['Access-SW1','Vlan 20',['Vlan20']],['Access-SW1','Vlan 100',['Vlan100']],['Access-SW1','Vlan 200',['Vlan200']]]"
 
 # Phase 4: Assign IP addresses to SVIs
-add ip_address_bulk "[['Switch-01','Vlan 10',['10.1.1.1/24']],['AP-01','Vlan 10',['10.1.1.11/24']],['AP-02','Vlan 10',['10.1.1.12/24']],['AP-03','Vlan 10',['10.1.1.13/24']]]"
+add ip_address_bulk "[['Access-SW1','Vlan 10',['10.1.10.1/24']],['Access-SW1','Vlan 20',['10.1.20.1/24']],['Access-SW1','Vlan 100',['10.1.100.1/24']],['Access-SW1','Vlan 200',['10.1.200.1/24']],['AP-01','Vlan 10',['10.1.10.11/24']],['AP-02','Vlan 10',['10.1.10.12/24']]]"
 
 AP MODE COMPARISON:
-Mode        | Traffic Switching | L2 on Physical Port | SVI Required      | IP Assignment Location | When to Use
-------------|-------------------|---------------------|-------------------|------------------------|---------------------------
-FlexConnect | Local (at AP)     | Yes (MANDATORY)     | Yes (on AP & SW)  | AP's SVI               | DEFAULT (no mode specified)
-Central     | At WLC            | Optional            | Optional          | Via WLC subnet         | Only when explicitly requested
+Mode        | Traffic Switching | L2 on Physical Port      | SVI Required          | IP Assignment Location | When to Use
+------------|-------------------|--------------------------|----------------------|------------------------|---------------------------
+FlexConnect | Local (at AP)     | Yes (Mgmt + Client VLANs)| Yes (Mgmt only on AP)| AP's SVI               | DEFAULT (no mode specified)
+Central     | At WLC            | Optional                 | Optional             | Via WLC subnet         | Only when explicitly requested
 
-FLEXCONNECT AP L2/L3 CONFIGURATION SUMMARY:
+FLEXCONNECT AP L2/L3 CONFIGURATION SUMMARY (WITH CLIENT VLANs):
 Component                    | Configuration Required
 -----------------------------|--------------------------------------------------
-AP Physical Port (Gi0)       | L2 segment (Management VLAN) - MANDATORY
+AP Physical Port (Gi0)       | Management VLAN - MANDATORY
+AP Physical Port (Gi0)       | Client VLANs (all SSIDs) - MANDATORY for FlexConnect
 AP Physical Port (Gi0)       | NO IP address - MANDATORY
 AP Physical Port (Gi0)       | Port info (Speed/Duplex/Port_Type) - MANDATORY
-AP SVI (Vlan <ID>)           | Created via add virtual_port_bulk - MANDATORY
-AP SVI (Vlan <ID>)           | L2 segment binding on itself - MANDATORY (Rule 15)
-AP SVI (Vlan <ID>)           | IP address assigned - MANDATORY
-Switch Port (to AP)          | L2 segment (Management VLAN) - MANDATORY
+AP SVI (Management Vlan)     | Created via add virtual_port_bulk - MANDATORY
+AP SVI (Management Vlan)     | L2 segment binding on itself - MANDATORY (Rule 15)
+AP SVI (Management Vlan)     | IP address assigned - MANDATORY
+AP SVI (Client Vlans)        | NOT required (AP does pass-through only)
+Switch Port (to AP)          | Management VLAN - MANDATORY
+Switch Port (to AP)          | Client VLANs (all SSIDs) - MANDATORY (trunk)
 Switch Port (to AP)          | Port info (Speed/Duplex/Port_Type) - MANDATORY
-Switch SVI (Vlan <ID>)       | Created via add virtual_port_bulk - MANDATORY
-Switch SVI (Vlan <ID>)       | L2 segment binding on itself - MANDATORY (Rule 15)
-Switch SVI (Vlan <ID>)       | Gateway IP address assigned - MANDATORY
+Switch SVI (Management Vlan) | Gateway IP for AP management - MANDATORY
+Switch SVI (Client Vlans)    | Gateway IP for each client network - MANDATORY
 
-WIRELESS AP CONFIGURATION CHECKLIST:
+WIRELESS AP CONFIGURATION CHECKLIST (WITH CLIENT VLANs):
 - [ ] AP mode determined (FlexConnect if not specified - MANDATORY DEFAULT)
 - [ ] APs placed in row BELOW access switch (hierarchical layout)
 - [ ] L1 links created between APs and switch (add l1_link_bulk)
 - [ ] Port info configured for all L1 interfaces (rename port_info_bulk) - MANDATORY
 - [ ] Management VLAN assigned to switch ports connecting to APs (add l2_segment_bulk)
+- [ ] Client VLANs (all SSIDs) assigned to switch ports connecting to APs (add l2_segment_bulk)
 - [ ] CRITICAL (FLEXCONNECT): Management VLAN assigned to AP physical ports GigabitEthernet 0 (add l2_segment_bulk)
+- [ ] CRITICAL (FLEXCONNECT): Client VLANs assigned to AP physical ports GigabitEthernet 0 (add l2_segment_bulk)
 - [ ] SVI created on SWITCH for Management VLAN - gateway (add virtual_port_bulk)
-- [ ] SVI created on EACH AP for Management VLAN (add virtual_port_bulk)
-- [ ] CRITICAL: Each created Management SVI (Vlan <ID>) is bound to the L2 segment on the SVI itself (add l2_segment_bulk)
-- [ ] Gateway IP assigned to switch SVI (add ip_address_bulk)
-- [ ] IP address assigned to each AP's SVI (add ip_address_bulk)
-- [ ] All AP IPs within same subnet as switch gateway SVI
+- [ ] SVIs created on SWITCH for ALL Client VLANs - gateways (add virtual_port_bulk)
+- [ ] SVI created on EACH AP for Management VLAN only (add virtual_port_bulk)
+- [ ] CRITICAL: Each created SVI is bound to the L2 segment on the SVI itself (add l2_segment_bulk)
+- [ ] Gateway IP assigned to switch SVIs for all VLANs (add ip_address_bulk)
+- [ ] IP address assigned to each AP's Management SVI (add ip_address_bulk)
+- [ ] All AP IPs within same subnet as switch Management gateway SVI
 - [ ] NO IP addresses on AP physical interfaces (GigabitEthernet 0)
+- [ ] NO SVIs on AP for Client VLANs (pass-through only)
 
 COMMON MISTAKES:
 - Assigning IP to AP's physical interface (GigabitEthernet 0) -> WRONG
 - Missing L2 segment on AP's physical interface (GigabitEthernet 0) -> WRONG (FlexConnect requires L2 binding on AP physical port)
+- Forgetting to extend Client VLANs to AP physical port -> Client traffic dropped
+- Creating SVIs on AP for Client VLANs -> Unnecessary, AP does pass-through only
+- Missing Client VLANs on switch port to AP -> SSID traffic cannot pass
+- Different VLANs on switch port vs AP physical port -> VLAN mismatch, traffic dropped
 - Missing SVI on AP -> AP cannot have IP address
 - Missing SVI on switch -> No gateway for APs
 - Missing SVI-to-L2 binding (no l2_segment on the SVI itself) -> WRONG under RULE 15
@@ -2059,6 +2203,12 @@ COMMON MISTAKES:
 KEY PRINCIPLES:
 - "FlexConnect AP = L2 segment on AP physical port + SVI on both AP and Switch required"
 - "FlexConnect AP physical port (GigabitEthernet 0) MUST have L2 segment (Management VLAN) configured"
+- "FlexConnect AP physical port (GigabitEthernet 0) MUST have L2 segments (ALL Client VLANs) configured"
+- "FlexConnect Client VLANs = SSIDs map to VLANs, locally switched at AP"
+- "ALL Client VLANs MUST be extended to AP physical port (GigabitEthernet 0)"
+- "AP physical port carries: Management VLAN + ALL Client VLANs (trunk mode)"
+- "AP needs SVI ONLY for Management VLAN (for AP IP), NOT for Client VLANs"
+- "Switch needs SVIs for ALL VLANs (Management + Client) as gateways"
 - "FlexConnect AP physical port (GigabitEthernet 0) MUST NOT have IP address"
 - "All L1 interfaces MUST have port info (Speed/Duplex/Port_Type) configured"
 - "SVI (Vlan <ID>) MUST be bound to an L2 segment on the SVI itself (Loopback excluded)"
