@@ -777,9 +777,6 @@ class ns_cli_run():
                     import ns_l3_diagram_create
                     ns_l3_diagram_create.create_master_file_one_area.__init__(self)
 
-                    self.inFileTxt_11_1.delete(0, tk.END)
-                    self.inFileTxt_11_1.insert(tk.END, tmp_master)
-
                     self.vpn_hostname_if_list = []
                     self.click_value = 'L3-3-2'
                     self.click_value_l3 = 'L3-4-1'
