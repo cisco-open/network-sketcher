@@ -956,7 +956,7 @@ pre {{ background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 4p
         }});
 }})();
 </script>
-<div style="text-align:center;padding:8px;font-size:11px;color:#b0b8c4;">Author : Yusuke Ogawa - Architect, Cisco | CCIE#17583</div>
+<div style="text-align:center;padding:8px;font-size:11px;color:#b0b8c4;">Network Sketcher Online</div>
 </body>
 </html>'''
 
@@ -1132,7 +1132,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
         .catch(function(e) {{ showError('Error: ' + e.message); }});
 }})();
 </script>
-<div style="text-align:center;padding:8px;font-size:11px;color:#b0b8c4;">Author : Yusuke Ogawa - Architect, Cisco | CCIE#17583</div>
+<div style="text-align:center;padding:8px;font-size:11px;color:#b0b8c4;">Network Sketcher Online</div>
 </body>
 </html>'''
 
@@ -1387,7 +1387,7 @@ canvas {{ background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }}
 }})();
 </script>
-<div style="text-align:center;padding:8px;font-size:11px;color:#b0b8c4;">Author : Yusuke Ogawa - Architect, Cisco | CCIE#17583</div>
+<div style="text-align:center;padding:8px;font-size:11px;color:#b0b8c4;">Network Sketcher Online</div>
 </body>
 </html>'''
 
