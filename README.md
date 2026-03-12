@@ -53,6 +53,9 @@ network-sketcher/
 
 <img width="1185" height="663" alt="image" src="https://github.com/user-attachments/assets/7d4b1088-1998-4db1-8177-a4004b5ff470" />
 
+[NetworkSketcher_Online_Overview.pdf](https://github.com/user-attachments/files/25930697/NetworkSketcher_Online_Overview.pdf)
+
+
 
 ## What is Network Sketcher Online?
 
