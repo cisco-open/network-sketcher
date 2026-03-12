@@ -1,0 +1,17 @@
+# Network Sketcher Online - dependencies
+# Includes both web service and CLI (network-sketcher_offline) requirements
+
+# Web service
+flask>=3.1.0
+cryptography>=43.0.0
+
+# CLI (network-sketcher_offline)
+ipaddress>=1.0.23
+numpy>=1.24.2
+openpyxl>=3.1.3,<=3.1.5
+python-pptx>=0.6.21
+tkinterdnd2>=0.4.3
+pyyaml>=5.4.0
+ciscoconfparse>=1.9.0
+networkx>=3.4.2
+svg.path
