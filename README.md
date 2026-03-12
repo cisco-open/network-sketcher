@@ -37,13 +37,25 @@ network-sketcher/
 <br>
 <br>
 
-<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
 
 <br>
 
 # Network Sketcher Online
 
 > **AI-native software:** Network Sketcher Online is designed around AI (LLM) interaction — generate AI context, send it to an LLM, and paste the resulting commands back to update your network design, all within the browser.
+
+<img width="1194" height="661" alt="image" src="https://github.com/user-attachments/assets/4db7cbdb-ef41-43c0-9d3f-54a81484368f" />
+
+<img width="1144" height="616" alt="image" src="https://github.com/user-attachments/assets/4cc2e68c-9573-4b36-9e96-699304313ca8" />
+
+<img width="1206" height="651" alt="image" src="https://github.com/user-attachments/assets/de72b980-4500-4317-95d9-7b25450aee46" />
+
+<img width="1185" height="663" alt="image" src="https://github.com/user-attachments/assets/7d4b1088-1998-4db1-8177-a4004b5ff470" />
+
+[NetworkSketcher_Online_Overview.pdf](https://github.com/user-attachments/files/25930697/NetworkSketcher_Online_Overview.pdf)
+
+
 
 ## What is Network Sketcher Online?
 
@@ -108,7 +120,7 @@ Both scripts work on Windows, Mac OS, and Linux.
 <br>
 <br>
 
-<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
 
 <br>
 
@@ -127,7 +139,9 @@ https://github.com/cisco-open/network-sketcher/assets/13013736/b76ec8fa-44ad-4d0
 ## AI(LLM) utilization demo video
 [Full_Version_link(Youtube)](https://www.youtube.com/watch?v=g5N3yg0jMSg)
 
-https://private-user-images.githubusercontent.com/13013736/538397681-c281c254-223f-4872-af4e-765b0bbec4c2.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjkzODcwOTUsIm5iZiI6MTc2OTM4Njc5NSwicGF0aCI6Ii8xMzAxMzczNi81MzgzOTc2ODEtYzI4MWMyNTQtMjIzZi00ODcyLWFmNGUtNzY1YjBiYmVjNGMyLm1wND9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjAxMjYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwMTI2VDAwMTk1NVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTNhYWQ2Yjg5Mzk4N2I1MTg1ZmE5ZmRlMWQ0ZTZiZmIzMWMyYTNjZGEyMWM2NjhmYzJiN2EzMzk0ZmM4MDQzNDkmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.h3X-0yZ9l7sfPPo0HQJRhSYn-uLGd8qsYHlAWzlP7_U
+https://github.com/user-attachments/assets/5874411a-0e6d-485d-9f85-4cdc85f3ca07
+
+
 
 
 ## Concept
