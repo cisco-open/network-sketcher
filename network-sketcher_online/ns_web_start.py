@@ -303,7 +303,7 @@ def set_active_master(work_dir, filename):
 
 def run_ns_command(args):
     cmd = [sys.executable, str(NS_DIR / 'network_sketcher.py')] + args
-    logger.info('Running: %s', ' '.join(cmd))
+    logger.debug('Running: %s', ' '.join(cmd))
 
     try:
         kwargs = {
@@ -316,9 +316,9 @@ def run_ns_command(args):
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
 
         result = subprocess.run(cmd, **kwargs)
-        logger.info('Exit code: %d', result.returncode)
+        logger.debug('Exit code: %d', result.returncode)
         if result.stdout:
-            logger.info('stdout: %s', result.stdout[:500])
+            logger.debug('stdout: %s', result.stdout[:500])
         if result.stderr:
             logger.warning('stderr: %s', result.stderr[:500])
         return result
