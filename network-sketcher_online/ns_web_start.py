@@ -1629,7 +1629,7 @@ h1 { font-size: 26px; color: var(--text); margin-bottom: 4px; font-weight: 800; 
     box-sizing: border-box; flex-basis: 100%;
 }
 .llm-prompt-area textarea {
-    width: 100%; min-height: 48px; padding: 8px 10px; border: 1px solid #d0d8e8;
+    width: 100%; min-height: 96px; padding: 8px 10px; border: 1px solid #d0d8e8;
     border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;
     box-sizing: border-box; background: white;
 }
@@ -1701,13 +1701,13 @@ h1 { font-size: 26px; color: var(--text); margin-bottom: 4px; font-weight: 800; 
     padding: 10px 14px; background: #fef9ef; border: 1px solid #f0e0b8; border-radius: 8px;
     display: flex; justify-content: space-between; align-items: center;
 }
-.selected-count { font-size: 13px; color: var(--text-secondary); margin-left: auto; }
+.selected-count { font-size: 13px; color: var(--text-secondary); margin-left: auto; margin-right: 12px; }
 
 /* Buttons */
 .btn-generate {
-    display: block; width: 100%; padding: 14px; font-size: 16px; font-weight: 600;
-    color: white; background: var(--primary); border: none; border-radius: 10px;
-    cursor: pointer; transition: background 0.2s; margin-top: 16px;
+    display: inline-block; width: auto; padding: 8px 18px; font-size: 13px; font-weight: 600;
+    color: white; background: var(--primary); border: none; border-radius: 6px;
+    cursor: pointer; transition: background 0.2s; white-space: nowrap; flex-shrink: 0;
 }
 .btn-generate:hover { background: var(--primary-dark); }
 .btn-generate:disabled { background: #bdc3c7; cursor: not-allowed; }
@@ -1852,7 +1852,7 @@ h1 { font-size: 26px; color: var(--text); margin-bottom: 4px; font-weight: 800; 
                 <span class="help-icon" onclick="event.stopPropagation();toggleHelp('llm_prompt')">?</span>
             </div>
             <div class="help-tooltip" id="help-llm_prompt"></div>
-            <textarea id="llmPromptInput" placeholder="Describe what Network Sketcher commands you need (e.g., Add a router R-5 in area DC-TOP1)"></textarea>
+            <textarea id="llmPromptInput" placeholder="Describe what Network Sketcher commands you need (e.g., Add a router R-5 in area DC-TOP1)&#10;Multilingual support: English, Deutsch, Español, Français, Italiano, Português, Tiếng Việt, 日本語, 中文, 한국어, हिन्दी, العربية, עברית"></textarea>
             <div class="llm-prompt-hint">This text will be appended to the AI Context when copied, requesting the LLM to output only executable commands.</div>
             <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;" id="llmBtnRow">
                 <span style="font-size:11px;font-weight:700;color:#2563eb;flex:1;min-width:200px;">&#9888; All network configuration data will be uploaded to the LLM. Ensure you fully understand the risk of information disclosure before proceeding.</span>
@@ -1872,6 +1872,7 @@ h1 { font-size: 26px; color: var(--text); margin-bottom: 4px; font-weight: 800; 
         <div class="select-all-row">
             <label><input type="checkbox" id="selectAll" checked> Select / Deselect All</label>
             <span class="selected-count" id="selectedCount"></span>
+            <button class="btn-generate" id="btnGenerate">Generate Selected</button>
         </div>
         <div class="output-list" id="outputList"></div>
         <div id="attributeContainer" style="display:none;"></div>
@@ -1879,7 +1880,6 @@ h1 { font-size: 26px; color: var(--text); margin-bottom: 4px; font-weight: 800; 
             <span>Estimated total time (Actual times may vary depending on your system.)</span>
             <span id="estimateTotalTime"></span>
         </div>
-        <button class="btn-generate" id="btnGenerate">Generate Selected</button>
         <div class="generation-total" id="generationTotal" style="display:none;"></div>
         <a class="btn-dl-all" id="btnDownloadAll" href="#" style="display:none;">Download Generated (ZIP)</a>
         <button class="btn-reset" id="btnReset" style="display:none;">Upload New File</button>
