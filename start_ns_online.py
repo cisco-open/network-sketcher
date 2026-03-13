@@ -145,7 +145,19 @@ def main():
     print('=' * 56)
 
     try:
-        proc.wait()
+        while proc.poll() is None:
+            if not PID_FILE.exists():
+                print('\n  PID file removed — stopping server...')
+                if platform.system() == 'Windows':
+                    subprocess.run(
+                        ['taskkill', '/F', '/T', '/PID', str(proc.pid)],
+                        capture_output=True,
+                    )
+                else:
+                    proc.terminate()
+                proc.wait(timeout=10)
+                break
+            time.sleep(0.5)
     except KeyboardInterrupt:
         print('\n  Shutting down...')
         if platform.system() == 'Windows':
@@ -155,7 +167,7 @@ def main():
             )
         else:
             proc.terminate()
-            proc.wait(timeout=10)
+        proc.wait(timeout=10)
     finally:
         PID_FILE.unlink(missing_ok=True)
 
