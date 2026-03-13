@@ -104,6 +104,20 @@ Open the URL shown at startup (default: `https://localhost:5443`) in your browse
 ## User Guide (Online)
 Click the <kbd>?</kbd> icons on the web page to view contextual help for each section and feature.
 
+
+
+https://github.com/user-attachments/assets/5dd05edd-9b37-4574-9bbc-138da1066522
+
+
+
+https://github.com/user-attachments/assets/efe4c6d5-e38a-4bc3-ab9c-3f27bace58eb
+
+[NS_Online_User_Guide_en.pdf](https://github.com/user-attachments/files/25960300/NS_Online_User_Guide_en.pdf)
+
+[NS_Online_User_Guide_jp.pdf](https://github.com/user-attachments/files/25960301/NS_Online_User_Guide_jp.pdf)
+
+
+
 ### Server Management Scripts
 
 | Script | Description |
