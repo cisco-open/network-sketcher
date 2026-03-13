@@ -96,7 +96,7 @@ python3 start_ns_online.py
 
 Open the URL shown at startup (default: `https://localhost:5443`) in your browser.
 
-- All settings (host, port, SSL, parallel processing, etc.) are configured in `ns_web_config.json`.
+- To serve on a specific network interface, edit the `host` and `port` settings in `ns_web_config.json` before starting the server.
 - If no SSL certificate exists, a self-signed certificate is auto-generated on first startup.
 - If you change the host IP address or other settings in `ns_web_config.json`, manually delete the SSL certificate files in the `Certs/` folder and restart the server. A new certificate matching the updated settings will be auto-generated.
 - If the `fqdn` setting in `ns_web_config.json` is configured, the auto-generated SSL certificate's Common Name (CN) will use the specified FQDN.
