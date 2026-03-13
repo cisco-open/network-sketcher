@@ -1,0 +1,25 @@
+# Network Sketcher Online — runtime files
+network-sketcher_online/Certs/*.crt
+network-sketcher_online/Certs/*.key
+network-sketcher_online/logs/*.log
+network-sketcher_online/uploads/
+network-sketcher_online/*.pid
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

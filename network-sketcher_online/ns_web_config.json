@@ -1,0 +1,124 @@
+{
+    "_description": "Configuration file for Network Sketcher Online Service",
+
+    "version": {
+        "value": "3.0.0",
+        "description": "Network Sketcher version. Not used in code; for version management purposes only."
+    },
+
+    "host": {
+        "value": "localhost",
+        "description": "Bind address for the server. Use 'localhost' for local only, '0.0.0.0' for all interfaces, or a specific IP address."
+    },
+
+    "fqdn": {
+        "value": null,
+        "description": "FQDN for SSL certificate CN. If null, the certificate CN is determined from the 'host' setting. Set a domain name (e.g., 'sketcher.example.com') to use it as the certificate CN."
+    },
+
+    "port": {
+        "value": 5443,
+        "description": "HTTPS port number for the server."
+    },
+
+    "max_file_size_mb": {
+        "value": 50,
+        "description": "Maximum upload file size in megabytes."
+    },
+
+    "subprocess_timeout": {
+        "value": 600,
+        "description": "Timeout in seconds for CLI subprocess execution."
+    },
+
+    "heartbeat_timeout": {
+        "value": 300,
+        "description": "Seconds of inactivity before a session is considered expired and its files are cleaned up."
+    },
+
+    "cleanup_interval": {
+        "value": 60,
+        "description": "Interval in seconds between cleanup checks for expired sessions."
+    },
+
+    "parallel_limit": {
+        "value": 5,
+        "description": "Maximum number of diagram generation tasks that can run in parallel."
+    },
+
+    "ssl_cert_path": {
+        "value": "Certs/server.crt",
+        "description": "Path to the SSL certificate file (relative to this config file or absolute)."
+    },
+
+    "ssl_key_path": {
+        "value": "Certs/server.key",
+        "description": "Path to the SSL private key file (relative to this config file or absolute)."
+    },
+
+    "ssl_cert_validity_days": {
+        "value": 3650,
+        "description": "Validity period in days for auto-generated self-signed certificates (default: 10 years)."
+    },
+
+    "ssl_key_size": {
+        "value": 4096,
+        "description": "RSA key size in bits for auto-generated self-signed certificates."
+    },
+
+    "ssl_min_version": {
+        "value": "TLSv1_2",
+        "description": "Minimum TLS version. Allowed values: 'TLSv1_2', 'TLSv1_3'."
+    },
+
+    "ssl_max_version": {
+        "value": "TLSv1_3",
+        "description": "Maximum TLS version. Allowed values: 'TLSv1_2', 'TLSv1_3'."
+    },
+
+    "ssl_ciphers": {
+        "value": "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM",
+        "description": "OpenSSL cipher string for allowed TLS cipher suites."
+    },
+
+    "log_level": {
+        "value": "INFO",
+        "description": "Logging level. Allowed values: 'DEBUG', 'INFO', 'WARNING', 'ERROR'."
+    },
+
+    "access_log_retention_days": {
+        "value": 90,
+        "description": "Number of days to retain access log files. Logs older than this are automatically deleted on date change or server restart."
+    },
+
+    "ai_context_button_label": {
+        "value": "Copy & Open LLM",
+        "description": "Label text for the AI Context copy-and-open button."
+    },
+
+    "ai_context_button_url": {
+        "value": "https://claude.ai",
+        "description": "URL to open when the AI Context copy-and-open button is clicked."
+    },
+
+    "ai_context_show_commands": {
+        "value": [
+            "show area",
+            "show area_device",
+            "show area_location",
+            "show attribute",
+            "show device",
+            "show device_interface",
+            "show device_location",
+            "show l1_interface",
+            "show l1_link",
+            "show l2_broadcast_domain",
+            "show l2_interface",
+            "show l3_broadcast_domain",
+            "show l3_interface",
+            "show waypoint",
+            "show waypoint_interface"
+        ],
+        "description": "List of show commands to execute for AI Context File generation. Commands are executed in parallel and results are assembled in order."
+    }
+}
