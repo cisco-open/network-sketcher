@@ -3085,4 +3085,7 @@ if __name__ == '__main__':
     print(f'  URL: https://{display_host}:{port}')
     print('=' * 56)
     print()
+
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+
     app.run(host=bind_host, port=port, debug=False, ssl_context=ctx, threaded=True)
