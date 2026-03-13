@@ -59,7 +59,7 @@ network-sketcher/
 
 ## What is Network Sketcher Online?
 
-Network Sketcher Online is a browser-based web service added in Ver 3.0.0. It wraps the Network Sketcher CLI and provides an intuitive web UI for diagram generation and AI-driven network design — no desktop GUI or Office software required.
+Network Sketcher Online is a browser-based web service added in Ver 3.0.0. It wraps the Network Sketcher CLI and provides an intuitive web UI for diagram generation and AI-driven network design — no pythom on PCs required.
 
 ## Online Features
 - **All uploaded and generated files are automatically deleted from Network Sketcher Online after the session ends — no data is retained on the server.**
