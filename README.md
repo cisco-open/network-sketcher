@@ -324,6 +324,7 @@ Created by using AI context and giving AI (LLM) multiple command generation inst
 Download : [Sample Office.zip](https://github.com/user-attachments/files/24340917/Sample.Office.zip)
 
 ---
+<sub>Otologic (https://otologic.jp) CC BY 4.0</sub>
 
 # Author
  
@@ -345,6 +346,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
----
-<sub>Otologic (https://otologic.jp) CC BY 4.0</sub>
