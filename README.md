@@ -16,12 +16,12 @@ You can use either or both.
 | | Online (Web Service) | Offline (GUI + CLI) |
 | --- | --- | --- |
 | Interface | Web browser | Desktop GUI / Command-line |
-| Installation (major) | Python + Flask | Python + tkinter |
+| Key dependencies | Python + Flask | Python + tkinter |
 | Multi-user | Multiple users via browser | Single user |
 | Client requires | Web browser only | Python runtime environment |
-| AI-native design | Yes | No (manual operation) |
+| AI-native design | Yes | No |
 | Internal data storage | No | No |
-| External communication | Yes | No |
+| External communication | [Yes](#external-communication) | No |
 | Tested platforms | Windows (Mac OS, Linux untested) | Windows, Mac OS, Linux |
 | Folder | `network-sketcher_online/` | `network-sketcher_offline/` |
 
@@ -127,9 +127,11 @@ https://github.com/user-attachments/assets/efe4c6d5-e38a-4bc3-ab9c-3f27bace58eb
 
 Both scripts work on Windows, Mac OS, and Linux.
 
-## New Features (Online)
-- Ver 3.0.0<br>
-**Network Sketcher Online** — a browser-based web service edition has been added.
+### External Communication
+
+| Source | Target | Protocol |
+| --- | --- | --- |
+| Client PC | NS Online | HTTPS |
 
 <br>
 <br>
@@ -260,6 +262,14 @@ pyinstaller.exe [file path]/network-sketcher_offline/network_sketcher.py --onefi
  ```
 <br>
 
+<br>
+
+<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+
+<br>
+
+# Appendix
+
 ## Performance Measurement Summary
 
 | Ver: 2.6.1b                                         | 64 NW devices<br>112 Connections<br>(~500 endpoints)| 256 NW devices<br>480 Connections<br>(~3000 endpoints) | 1024 NW devices<br>1984 Connections<br>(~10000 endpoints)|
@@ -274,31 +284,31 @@ pyinstaller.exe [file path]/network-sketcher_offline/network_sketcher.py --onefi
 *1 Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.<br>
 Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise <br>
 
-## GUI vs. CLI Feature Support Matrix
+## Feature Support Matrix
 
-| Feature Item | GUI | CLI (AI Context) |
-| --- | --- | --- |
-| Create master file from PowerPoint rough sketch | ✅ | ❌ |
-| Convert master files from Visio, Draw.io, NetBox, CML | ✅ | ❌ |
-| Area placement | ✅ (automatic) | ✅ (user-specified) |
-| Create / delete / modify areas | ✅ | ✅ |
-| Place / create / delete / modify devices | ✅ | ✅ |
-| Place / create / delete / modify waypoints | ✅ | ✅ |
-| Add Layer 1 connections | ✅ | ✅ |
-| Delete Layer 1 connections | ⚠️ (port cannot be specified) | ✅ |
-| Change Layer 1 port names | ✅ | ✅ |
-| Change Layer 1 connection details (e.g., duplex) | ✅ | ✅ |
-| Change Layer 2 segments (VLAN) | ✅ | ✅ |
-| Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ |
-| Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ |
-| Change attributes | ✅ | ✅ |
-| Add / delete VPNs | ✅ | ❌ |
-| Flow management | ✅ | ❌ |
-| Export various reports | ✅ | ❌ |
-| Export empty master files (no data) | ❌ | ✅ |
-| Export AI context files | ✅ | ✅ |
-| Export device files | ✅ | ✅ |
-| Generate L1/L2/L3 topology diagrams | ✅ | ✅|
+| Feature Item | Online Edition | Offline Edition (GUI) | Offline Edition (CLI) |
+| --- | --- | --- | --- |
+| Create master file from PowerPoint rough sketch | ❌ | ✅ | ❌ |
+| Convert master files from Visio, Draw.io, NetBox, CML | ❌ | ✅ | ❌ |
+| Area placement | ✅ (user-specified) | ✅ (automatic) | ✅ (user-specified) |
+| Create / delete / modify areas | ✅ | ✅ | ✅ |
+| Place / create / delete / modify devices | ✅ | ✅ | ✅ |
+| Place / create / delete / modify waypoints | ✅ | ✅ | ✅ |
+| Add Layer 1 connections | ✅ | ✅ | ✅ |
+| Delete Layer 1 connections | ✅ | ⚠️ (port cannot be specified) | ✅ |
+| Change Layer 1 port names | ✅ | ✅ | ✅ |
+| Change Layer 1 connection details (e.g., duplex) | ✅ | ✅ | ✅ |
+| Change Layer 2 segments (VLAN) | ✅ | ✅ | ✅ |
+| Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ | ✅ |
+| Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ | ✅ |
+| Change attributes | ✅ | ✅ | ✅ |
+| Add / delete VPNs | ❌ | ✅ | ❌ |
+| Flow management | ❌ | ✅ | ❌ |
+| Export various reports | ❌ | ✅ | ❌ |
+| Export empty master files (no data) | ✅ | ❌ | ✅ |
+| Export AI context files | ✅ | ✅ | ✅ |
+| Export device files | ✅ | ✅ | ✅ |
+| Generate L1/L2/L3 topology diagrams | ✅ | ✅ | ✅|
 
 ## SAMPLE
 ### - Supports various connections
