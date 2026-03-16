@@ -103,6 +103,7 @@ Open the URL shown at startup (default: `https://localhost:5443`) in your browse
 
 ## User Guide (Online)
 Click the <kbd>?</kbd> icons on the web page to view contextual help for each section and feature.
+For features not covered in this User Guide, please refer to the [User Guide (Offline)](#user-guide-offline).
 
 
 
@@ -249,7 +250,7 @@ brew install tkdnd
 sudo apt-get install python3-tk
 ```
 
-## User Guide
+## User Guide (Offline)
 | Language  | Link |
 | ------------- | ------------- |
 | English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D) |
