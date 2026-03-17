@@ -134,6 +134,17 @@ Both scripts work on Windows, Mac OS, and Linux.
 | --- | --- | --- |
 | Client PC | NS Online | HTTPS |
 
+### Third-Party Libraries (Online)
+
+Network Sketcher Online includes the following third-party JavaScript libraries for in-browser file preview. These are bundled in `network-sketcher_online/static/` and require no additional installation.
+
+| Library | Version | License | Purpose |
+| --- | --- | --- | --- |
+| [PptxViewJS](https://github.com/gptsci/pptxviewjs) | 1.1.8 | MIT | PowerPoint (.pptx) in-browser preview |
+| [Chart.js](https://www.chartjs.org/) | 4.4.8 | MIT | Chart rendering (PptxViewJS dependency) |
+| [JSZip](https://stuk.github.io/jszip/) | 3.10.1 | MIT or GPLv3 | ZIP / Office file parsing |
+| [SheetJS (xlsx)](https://sheetjs.com/) | 1.15.0 | Apache-2.0 | Excel (.xlsx) in-browser preview |
+
 <br>
 <br>
 
