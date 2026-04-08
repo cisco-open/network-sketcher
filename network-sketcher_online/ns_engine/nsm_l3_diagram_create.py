@@ -731,11 +731,6 @@ class  nsm_l3_diagram_create():
         ################################################
 
         current_segment_count = 0  # add at ver 2.4.1
-        if target_folder_name == 'DC-TOP2' and action_type == 'CREATE':
-            with open('c:/work_local/dbg_outline.txt', 'a', encoding='utf-8') as _f:
-                _f.write(f'target_position_shape_array={target_position_shape_array}\n')
-                _f.write(f'new_wp_exist_array={new_wp_exist_array}\n')
-                _f.write(f'left_margin={self.left_margin:.3f}\n')
         for self.index_2,tmp_target_position_shape_array in enumerate(target_position_shape_array):
             start_l3_seg_inche_x = self.left_margin + left_offset
             sum_delta_y_grid = 0.0  # at ver 2.4.1
@@ -915,9 +910,6 @@ class  nsm_l3_diagram_create():
                         # get folder width
                         if (shape_type == 'DEVICE_L3_INSTANCE' or shape_type == 'DEVICE_NORMAL' or shape_type == 'WAY_POINT_NORMAL') and (self.outline_position_array[0] + self.outline_position_array[2]) < shape_left + shape_width:
                             self.outline_position_array[2] = shape_left + shape_width + self.between_shape_column * 2 - self.outline_position_array[0]
-                        if target_folder_name == 'DC-TOP2' and action_type == 'CREATE':
-                            with open('c:/work_local/dbg_outline.txt', 'a', encoding='utf-8') as _f: _f.write(f'[DBG outline] {shape_type} {shape_text} x={shape_left:.3f} w={shape_width:.3f} right={shape_left+shape_width:.3f} -> outline={[round(v,3) for v in self.outline_position_array]}\n')
-
                         if (shape_type == 'DEVICE_L3_INSTANCE' or shape_type == 'DEVICE_NORMAL' ) and (self.area_position_array[0] + self.area_position_array[2]) < shape_left + shape_width:
                             self.area_position_array[2] = shape_left + shape_width + self.between_shape_column - self.area_position_array[0]
 
@@ -1189,8 +1181,6 @@ class  nsm_l3_diagram_create():
 
                 self.outline_position_array[0] = shape_left - self.between_shape_column * 2
                 self.outline_position_array[2] += shape_width + self.between_shape_column * 3
-                if target_folder_name == 'DC-TOP2' and action_type == 'CREATE':
-                    with open('c:/work_local/dbg_outline.txt', 'a', encoding='utf-8') as _f: _f.write(f'[DBG WP LEFT] {shape_text} x={shape_left:.3f} w={shape_width:.3f} -> outline={[round(v,3) for v in self.outline_position_array]}\n')
 
                 '''write wp_left l3 if '''
                 # print('### self.shape_width_if_array[1], self.shape_width_if_array[2]  ',self.shape_width_if_array[1], self.shape_width_if_array[2])
