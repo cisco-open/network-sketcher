@@ -45,15 +45,8 @@ network-sketcher/
 
 > **AI-native software:** Network Sketcher Online is designed around AI (LLM) interaction — generate AI context, send it to an LLM, and paste the resulting commands back to update your network design, all within the browser.
 
-<img width="1194" height="661" alt="image" src="https://github.com/user-attachments/assets/4db7cbdb-ef41-43c0-9d3f-54a81484368f" />
+<img width="1847" height="1038" alt="image" src="https://github.com/user-attachments/assets/4f2391da-fbaf-444e-807e-851ac4fc00a1" />
 
-<img width="1144" height="616" alt="image" src="https://github.com/user-attachments/assets/4cc2e68c-9573-4b36-9e96-699304313ca8" />
-
-<img width="1206" height="651" alt="image" src="https://github.com/user-attachments/assets/de72b980-4500-4317-95d9-7b25450aee46" />
-
-<img width="1185" height="663" alt="image" src="https://github.com/user-attachments/assets/7d4b1088-1998-4db1-8177-a4004b5ff470" />
-
-[NetworkSketcher_Online_Overview.pdf](https://github.com/user-attachments/files/25930697/NetworkSketcher_Online_Overview.pdf)
 
 
 
@@ -114,16 +107,17 @@ For features not covered in this User Guide, please refer to the [User Guide (Of
 
 
 
-https://github.com/user-attachments/assets/5dd05edd-9b37-4574-9bbc-138da1066522
+https://github.com/user-attachments/assets/6c4a4209-50f1-43de-a440-e1f29b74a659
 
 
 
-https://github.com/user-attachments/assets/efe4c6d5-e38a-4bc3-ab9c-3f27bace58eb
 
-[NS_Online_User_Guide_en.pdf](https://github.com/user-attachments/files/25960300/NS_Online_User_Guide_en.pdf)
+https://github.com/user-attachments/assets/1e506529-1824-43a4-880c-196986d6dae8
 
-[NS_Online_User_Guide_jp.pdf](https://github.com/user-attachments/files/25960301/NS_Online_User_Guide_jp.pdf)
 
+[NS_Online_User_Guide_301_en.pdf](https://github.com/user-attachments/files/26567919/NS_Online_User_Guide_301_en.pdf)
+
+[NS_Online_User_Guide_301_jp.pdf](https://github.com/user-attachments/files/26567922/NS_Online_User_Guide_301_jp.pdf)
 
 
 ### Server Management Scripts
