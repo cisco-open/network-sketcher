@@ -1,3 +1,6 @@
+# Debug logs (agent/development sessions)
+debug-*.log
+
 # Network Sketcher Online — runtime files
 network-sketcher_online/Certs/*.crt
 network-sketcher_online/Certs/*.key

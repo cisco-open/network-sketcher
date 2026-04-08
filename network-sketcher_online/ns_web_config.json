@@ -2,7 +2,7 @@
     "_description": "Configuration file for Network Sketcher Online Service",
 
     "version": {
-        "value": "3.0.0",
+        "value": "3.0.1",
         "description": "Network Sketcher version. Not used in code; for version management purposes only."
     },
 
@@ -27,8 +27,8 @@
     },
 
     "subprocess_timeout": {
-        "value": 600,
-        "description": "Timeout in seconds for CLI subprocess execution."
+        "value": 14400,
+        "description": "Timeout in seconds for CLI subprocess execution. Set to null for no limit."
     },
 
     "heartbeat_timeout": {
@@ -42,7 +42,7 @@
     },
 
     "parallel_limit": {
-        "value": 5,
+        "value": 6,
         "description": "Maximum number of diagram generation tasks that can run in parallel."
     },
 
