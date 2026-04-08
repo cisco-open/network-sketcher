@@ -62,6 +62,12 @@ network-sketcher/
 Network Sketcher Online is a browser-based web service added in Ver 3.0.0. It wraps the Network Sketcher CLI and provides an intuitive web UI for diagram generation and AI-driven network design — no python on PCs required.
 
 ## Online Features
+
+Network Sketcher Online supports two output modes:
+
+- **SVG Mode** (default): Diagrams are rendered as SVG in the browser. All diagrams (L1/L2/L3, all areas and per-area) are generated in parallel and displayed as thumbnails without needing to download individual files. Master files are stored in the high-performance `.nsm` format internally. SVG mode is approximately 30x faster than PPTX mode. For compatibility with the Offline edition, master files can also be downloaded in `.xlsx` format.
+- **PPTX Mode**: Diagrams are generated as PowerPoint (.pptx) files, and device files are generated as Excel (.xlsx) files. This is the original output mode and produces the same files as the Offline edition.
+
 - **All uploaded and generated files are automatically deleted from Network Sketcher Online after the session ends — no data is retained on the server.**
 - Upload master files via drag-and-drop in a web browser
 - Generate L1/L2/L3 diagrams, device files, and AI context files with selectable outputs
@@ -124,8 +130,8 @@ https://github.com/user-attachments/assets/efe4c6d5-e38a-4bc3-ab9c-3f27bace58eb
 
 | Script | Description |
 | --- | --- |
-| `python3 start_ns_online.py` | Start the server. If already running, it will be stopped and restarted automatically. |
-| `python3 stop_ns_online.py` | Stop the server. |
+| `python3 start_ns_online.py` | Start `ns_web_start.py` as a background process. Any already-running instance (including those started manually) is stopped first. Output is logged to `logs/server.log`. |
+| `python3 stop_ns_online.py` | Stop all running `ns_web_start.py` processes, including those started outside of this script. |
 
 Both scripts work on Windows, Mac OS, and Linux.
 
@@ -134,6 +140,7 @@ Both scripts work on Windows, Mac OS, and Linux.
 | Source | Target | Protocol |
 | --- | --- | --- |
 | Client PC | NS Online | HTTPS |
+| Client PC | Configured LLM | HTTPS |
 
 ### Third-Party Libraries (Online)
 
@@ -141,10 +148,21 @@ Network Sketcher Online includes the following third-party JavaScript libraries 
 
 | Library | Version | License | Purpose |
 | --- | --- | --- | --- |
-| [PptxViewJS](https://github.com/gptsci/pptxviewjs) | 1.1.8 | MIT | PowerPoint (.pptx) in-browser preview |
+| [PptxViewJS](https://github.com/gptsci/pptxviewjs) | 1.1.0 | MIT | PowerPoint (.pptx) in-browser preview |
 | [Chart.js](https://www.chartjs.org/) | 4.4.8 | MIT | Chart rendering (PptxViewJS dependency) |
 | [JSZip](https://stuk.github.io/jszip/) | 3.10.1 | MIT or GPLv3 | ZIP / Office file parsing |
 | [SheetJS (xlsx)](https://sheetjs.com/) | 1.15.0 | Apache-2.0 | Excel (.xlsx) in-browser preview |
+
+## Performance Measurement Summary (Online)
+
+| Ver: 3.0.1 (SVG Mode)                                                          | 64 NW devices<br>112 Connections | 256 NW devices<br>480 Connections | 1024 NW devices<br>1984 Connections | 4096 NW devices<br>8064 Connections |
+|--------------------------------------------------------------------------------|------------------:|-------------------:|--------------------:|--------------------:|
+| Master file creation *1                                                        | 4s                | 4s                 | 26s                 | 8m 12s              |
+| Creation of all configuration diagrams, device tables, and AI Context files    | 3s                | 7s                 | 58s                 | 15m 42s             |
+
+---
+*1 Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.<br>
+Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise <br>
 
 <br>
 <br>
@@ -275,15 +293,7 @@ pyinstaller.exe [file path]/network-sketcher_offline/network_sketcher.py --onefi
  ```
 <br>
 
-<br>
-
-<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
-
-<br>
-
-# Appendix
-
-## Performance Measurement Summary
+## Performance Measurement Summary (Offline)
 
 | Ver: 2.6.1b                                         | 64 NW devices<br>112 Connections<br>(~500 endpoints)| 256 NW devices<br>480 Connections<br>(~3000 endpoints) | 1024 NW devices<br>1984 Connections<br>(~10000 endpoints)|
 |----------------------------------------------------|-----------:|------------:|-------------:|
@@ -296,6 +306,14 @@ pyinstaller.exe [file path]/network-sketcher_offline/network_sketcher.py --onefi
 ---
 *1 Reflect only L1 information in the no_data master file. Connect adjacent devices. Measure command execution time.<br>
 Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterprise <br>
+
+<br>
+
+<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+
+<br>
+
+# Appendix
 
 ## Feature Support Matrix
 

@@ -21,7 +21,8 @@ Start (or restart) the Network Sketcher Online web server.
 Usage:
     python start_ns_online.py
 
-If the server is already running, it will be stopped first (restart).
+All running ns_web_start.py processes are stopped first (including any
+that were started outside of this script), then a fresh server is launched.
 Works on Windows, Mac OS, and Linux.
 """
 
@@ -37,6 +38,58 @@ BASE_DIR = Path(__file__).resolve().parent
 ONLINE_DIR = BASE_DIR / 'network-sketcher_online'
 SERVER_SCRIPT = ONLINE_DIR / 'ns_web_start.py'
 PID_FILE = ONLINE_DIR / 'ns_online.pid'
+
+
+def _find_all_ns_server_pids():
+    """Return a list of PIDs for all running ns_web_start.py processes.
+
+    Searches the OS process list directly so that processes started outside
+    of this script (e.g. from a terminal or IDE) are also found.
+    """
+    own_pid = os.getpid()
+    pids = []
+    try:
+        if platform.system() == 'Windows':
+            result = subprocess.run(
+                ['wmic', 'process', 'where',
+                 '(CommandLine like "%ns_web_start.py%") AND (Name like "%python%")',
+                 'get', 'ProcessId', '/VALUE'],
+                capture_output=True, text=True,
+            )
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line.startswith('ProcessId='):
+                    try:
+                        pid = int(line.split('=', 1)[1])
+                        if pid and pid != own_pid:
+                            pids.append(pid)
+                    except ValueError:
+                        pass
+        else:
+            result = subprocess.run(
+                ['pgrep', '-f', 'ns_web_start.py'],
+                capture_output=True, text=True,
+            )
+            for line in result.stdout.splitlines():
+                try:
+                    pid = int(line.strip())
+                    if pid != own_pid:
+                        pids.append(pid)
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+
+    # Also include any PID recorded in the PID file that was missed above
+    if PID_FILE.exists():
+        try:
+            pid = int(PID_FILE.read_text().strip())
+            if pid and pid != own_pid and pid not in pids:
+                pids.append(pid)
+        except (ValueError, OSError):
+            pass
+
+    return pids
 
 
 def _is_process_running(pid):
@@ -55,65 +108,35 @@ def _is_process_running(pid):
         return False
 
 
-def _is_ns_server(pid):
-    """Verify that the PID belongs to a Network Sketcher Online server process."""
-    try:
-        if platform.system() == 'Windows':
-            result = subprocess.run(
-                ['wmic', 'process', 'where', f'ProcessId={pid}',
-                 'get', 'CommandLine', '/VALUE'],
-                capture_output=True, text=True,
-            )
-            return 'ns_web_start.py' in result.stdout
-        else:
-            result = subprocess.run(
-                ['ps', '-p', str(pid), '-o', 'args='],
-                capture_output=True, text=True,
-            )
-            return 'ns_web_start.py' in result.stdout
-    except Exception:
+def _stop_all():
+    """Stop all running ns_web_start.py processes. Returns True if any were stopped."""
+    pids = _find_all_ns_server_pids()
+    if not pids:
         return False
 
+    print(f'  Found {len(pids)} running server process(es): {pids}')
+    for pid in pids:
+        print(f'  Stopping PID {pid}...')
+        try:
+            if platform.system() == 'Windows':
+                subprocess.run(
+                    ['taskkill', '/F', '/T', '/PID', str(pid)],
+                    capture_output=True,
+                )
+            else:
+                os.kill(pid, signal.SIGTERM)
+        except (OSError, ProcessLookupError):
+            pass
 
-def _stop_existing():
-    """Stop existing server if running. Returns True if a process was stopped."""
-    if not PID_FILE.exists():
-        return False
-
-    try:
-        pid = int(PID_FILE.read_text().strip())
-    except (ValueError, OSError):
-        PID_FILE.unlink(missing_ok=True)
-        return False
-
-    if not _is_process_running(pid):
-        PID_FILE.unlink(missing_ok=True)
-        return False
-
-    if not _is_ns_server(pid):
-        print(f'  PID {pid} is not a Network Sketcher process. Removing stale PID file.')
-        PID_FILE.unlink(missing_ok=True)
-        return False
-
-    print(f'  Stopping existing server (PID: {pid})...')
-    try:
-        if platform.system() == 'Windows':
-            subprocess.run(
-                ['taskkill', '/F', '/T', '/PID', str(pid)],
-                capture_output=True,
-            )
-        else:
-            os.kill(pid, signal.SIGTERM)
-
-        for _ in range(10):
-            time.sleep(0.5)
-            if not _is_process_running(pid):
-                break
-    except (OSError, ProcessLookupError):
-        pass
+    # Wait up to 5 seconds for all processes to exit
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        time.sleep(0.3)
+        if not any(_is_process_running(pid) for pid in pids):
+            break
 
     PID_FILE.unlink(missing_ok=True)
-    print('  Stopped.')
+    print('  All server processes stopped.')
     return True
 
 
@@ -126,9 +149,14 @@ def main():
     print('  Network Sketcher Online — Start')
     print('=' * 56)
 
-    _stop_existing()
+    _stop_all()
+
+    log_dir = ONLINE_DIR / 'logs'
+    log_dir.mkdir(exist_ok=True)
+    server_log = log_dir / 'server.log'
 
     kwargs = {}
+    log_file = open(str(server_log), 'a', encoding='utf-8')
     if platform.system() == 'Windows':
         kwargs['creationflags'] = (
             subprocess.DETACHED_PROCESS
@@ -136,13 +164,13 @@ def main():
             | subprocess.CREATE_NO_WINDOW
         )
         kwargs['stdin'] = subprocess.DEVNULL
-        kwargs['stdout'] = subprocess.DEVNULL
-        kwargs['stderr'] = subprocess.DEVNULL
+        kwargs['stdout'] = log_file
+        kwargs['stderr'] = log_file
     else:
         kwargs['start_new_session'] = True
         kwargs['stdin'] = subprocess.DEVNULL
-        kwargs['stdout'] = subprocess.DEVNULL
-        kwargs['stderr'] = subprocess.DEVNULL
+        kwargs['stdout'] = log_file
+        kwargs['stderr'] = log_file
 
     proc = subprocess.Popen(
         [sys.executable, str(SERVER_SCRIPT)],
