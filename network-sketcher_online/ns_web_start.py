@@ -5584,11 +5584,15 @@ def ensure_certificates():
     cfg_host = _cfg['host']
     cfg_fqdn = _cfg.get('fqdn')
 
-    if cfg_host in ('0.0.0.0', 'localhost', '127.0.0.1'):
+    if cfg_host == '0.0.0.0':
+        bind_host = '0.0.0.0'
+        display_host = 'localhost'
+    elif cfg_host in ('localhost', '127.0.0.1'):
         bind_host = cfg_host
         display_host = 'localhost'
     else:
-        bind_host = '0.0.0.0'
+        # Specific IP: bind only to that interface
+        bind_host = cfg_host
         display_host = cfg_host
 
     if CERT_FILE.is_file() and KEY_FILE.is_file():
