@@ -1,4 +1,13 @@
 '''
+IMPORTANT: Quoting Rules for All Commands
+'''
+* All string arguments (device names, area names, port names, waypoint names, etc.) MUST be enclosed in single quotes ('') or double quotes ("").
+* This is especially critical for port names that contain spaces (e.g., 'GigabitEthernet 0/0', 'Vlan 100', 'Port-channel 1').
+* Without quotes, arguments containing spaces will be parsed as multiple separate tokens, causing the command to fail.
+* Both single quotes and double quotes are accepted: 'GigabitEthernet 0/0' or "GigabitEthernet 0/0"
+* For bulk commands that take a JSON-style array as the entire argument, enclose the whole array in double quotes: "[['DEV1','GE 0/0',...]]"
+
+'''
 Show Commands reference
 '''
 ## show area
@@ -242,7 +251,7 @@ New area layout:<br>
 Adds a new device in the specified direction relative to an existing device. The device is added to a normal area (non-waypoint area).
 
 ```bash
-add device [new_device_name] [reference_device] [direction]
+add device '[new_device_name]' '[reference_device]' [direction]
 ```
 
 [direction] options:
@@ -273,6 +282,7 @@ RIGHT_WITH_GRID : Place by adding columns to the right of the reference device<b
 
 
 [Tips]
+* All string arguments (device names) must be enclosed in single or double quotes (e.g., 'sw4')
 * Device names added cannot duplicate existing device names
 * Devices placed within a waypoint area cannot be used as reference points
 
@@ -551,7 +561,7 @@ L3SW2 <- Vlan 100, Vlan 200<br>
 ## add vport_l1if_direct_binding
 This adds a virtual port that connects directly to a layer 1 interface. For example, this is used when creating subinterfaces on a router and configuring dot1q tagging for each subinterface. It is also possible to configure multiple virtual ports to be connected to a single layer 1 interface. This setting alone only creates a subinterface, so to send and receive layer 2 data, you must add add vport_l2_direct_binding to this setting and add layer 2 elements such as VLANs to the virtual port created.
  ```bash
-add vport_l1if_direct_binding [device name] [Layer1 port] [vport_name_direct_binding]
+add vport_l1if_direct_binding '[device name]' '[Layer1 port]' '[vport_name_direct_binding]'
  ```
 * ex.<br>
 **+BEFORE+ <br>**
@@ -569,7 +579,7 @@ add vport_l1if_direct_binding [device name] [Layer1 port] [vport_name_direct_bin
 ## add vport_l2_direct_binding
 This command allows a virtual port to directly send and receive Layer 2 data such as VLANs. Normally, a virtual port is connected to an l2_segment, and then that l2_segment is connected to a Layer 1 interface, thereby connecting the Layer 1 interface and the virtual port. However, this command directly connects a virtual port to a Layer 1 interface, allowing Layer 2 elements such as VLANs (l2_segment) to be sent and received. For example, this command is used when creating subinterfaces on a router and configuring dot1q tagging for each subinterface. It is also possible to configure a single virtual port to send and receive Layer 2 data such as multiple VLANs. Note that l2_segment and vport_l2_direct_binding cannot be registered simultaneously on the same virtual port.
  ```bash
-add vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_binding]
+add vport_l2_direct_binding '[device name]' '[virtual port]' '[l2_name_direct_binding]'
  ```
 * ex.<br>
 **+BEFORE+ <br>**
@@ -590,7 +600,7 @@ add vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_binding
 Adds a new waypoint in the specified direction relative to an existing waypoint. Waypoints are added to the dedicated waypoint area (area names ending with _wp_).
 
 ```bash
-add waypoint [new_waypoint_name] [reference_waypoint] [direction]
+add waypoint '[new_waypoint_name]' '[reference_waypoint]' [direction]
  ```
 
 [direction] specifications:
@@ -617,6 +627,7 @@ RIGHT : Add to the right of the reference waypoint<br>
 
 
 [Tips]
+* All string arguments (waypoint names) must be enclosed in single or double quotes (e.g., 'WAN-2')
 * Waypoints are always placed within dedicated waypoint areas (area names ending with _wp_)
 * An error occurs if the reference device is not present in a dedicated waypoint area
 * If a regular area exists adjacent to the X-axis, only UP/DOWN can be used
@@ -633,7 +644,7 @@ Delete Commands reference
 Deletes the entire area. All devices within the area, along with their interface settings and connections, will also be deleted.
 
 ```bash
-delete area [area_name]
+delete area '[area_name]'
 ```
 
 * ex.<br>
@@ -655,6 +666,7 @@ All associated links and configurations have been removed.
 [[‘DC1’, ‘DC2’], [‘DC4’]]
 <br><br>
 [Tips]
+* All string arguments (area names) must be enclosed in single or double quotes (e.g., 'DC3')
 * All devices within the area will be deleted
 * All Layer 1 links connected to the deleted devices will also be removed
 * The area layout will be automatically updated
@@ -663,7 +675,7 @@ All associated links and configurations have been removed.
 ## delete ip_address
 This function deletes the IP address of a Layer 3 interface. You can delete one IP address at a time.
  ```bash
-delete ip_address [device name] [layer3_portname] [ip_address/subnetmask]
+delete ip_address '[device name]' '[layer3_portname]' '[ip_address/subnetmask]'
  ```
 
 * ex.<br>
@@ -686,7 +698,7 @@ delete ip_address [device name] [layer3_portname] [ip_address/subnetmask]
 This command deletes the specified device, along with all Layer 1 links connected to the deleted device.
 
  ```bash
-delete device [device_name]
+delete device '[device_name]'
  ```
 
 ex.<br>
@@ -718,6 +730,7 @@ ex.<br>
 <br><br>
 
 [Tips]
+* All string arguments (device names) must be enclosed in single or double quotes (e.g., 'SW-2')
 * All Layer 1 links connected to the deleted device will also be deleted.
 * If it is the last device in an area, it cannot be deleted (use the delete area command).
 * If it is a waypoint (a device in an area ending in _wp_), use the delete waypoint command.
@@ -729,7 +742,7 @@ ex.<br>
 Deletes the Layer 1 physical connection between devices. All associated Layer 2 and Layer 3 configurations on the deleted interface are automatically removed. Only one physical link can be deleted at a time.
 
 ```bash
-delete l1_link [from_device] [from_portname]
+delete l1_link '[from_device]' '[from_portname]'
 ```
 
 * ex.<br>
@@ -768,7 +781,7 @@ delete l1_link [from_device] [from_portname]
 ## delete l2_segment
 This function deletes the Layer 2 segment (such as VLAN) configured on the interface. You can delete one Layer 2 segment at a time.
  ```bash
-delete l2_segment [device name] [layer2_portname] [l2segment_name]
+delete l2_segment '[device name]' '[layer2_portname]' '[l2segment_name]'
  ```
 
 * ex.<br>
@@ -787,7 +800,7 @@ delete l2_segment [device name] [layer2_portname] [l2segment_name]
 ## delete portchannel
 The port channel (LAG) configured on the Layer 1 interface will be deleted, along with the Layer 2 segment configured on the port channel.
  ```bash
-delete portchannel [device name] [layer1_portname]
+delete portchannel '[device name]' '[layer1_portname]'
  ```
 
 * ex.<br>
@@ -819,7 +832,7 @@ delete portchannel [device name] [layer1_portname]
 ## delete virtual_port
 This will delete Layer 3 interfaces such as VLAN interfaces (SVIs).This command cannot be used to delete a port channel.
  ```bash
-delete virtual_port [device name] [virtual_portname]
+delete virtual_port '[device name]' '[virtual_portname]'
  ```
 
 * ex.<br>
@@ -847,7 +860,7 @@ delete virtual_port [device name] [virtual_portname]
 This command deletes a virtual port connected to a layer 1 port. This command also deletes layer 2 elements such as VLANs connected to the virtual port.
 
  ```bash
-delete vport_l1if_direct_binding [device name] [vport_name_direct_binding]
+delete vport_l1if_direct_binding '[device name]' '[vport_name_direct_binding]'
  ```
 * ex.<br>
 **+BEFORE+ <br>**
@@ -867,7 +880,7 @@ delete vport_l1if_direct_binding [device name] [vport_name_direct_binding]
 Remove elements that send and receive layer 2 traffic, such as VLAN (l2_segment), directly from the virtual port.
 
  ```bash
-delete vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_binding]
+delete vport_l2_direct_binding '[device name]' '[virtual port]' '[l2_name_direct_binding]'
  ```
 * ex.<br>
 **+BEFORE+ <br>**
@@ -889,7 +902,7 @@ delete vport_l2_direct_binding [device name] [virtual port] [l2_name_direct_bind
 Deletes a waypoint from the dedicated waypoint area. All Layer 1 links connected to the deleted waypoint will also be deleted simultaneously.
 
 ```bash
-delete waypoint [waypoint_name]
+delete waypoint '[waypoint_name]'
 ```
 
 * ex.<br>
@@ -917,6 +930,7 @@ Associated links removed: 2<br>
 (Links connected to WAN-2 have been deleted)
 
 [Tips]
+* All string arguments (waypoint names) must be enclosed in single or double quotes (e.g., 'WAN-2')
 * Waypoints must be placed within dedicated waypoint areas (area names ending with _wp_)
 * All Layer 1 links connected to a deleted waypoint will also be deleted
 * Regular devices (non-waypoints) cannot be deleted (use the device delete command instead)
@@ -931,7 +945,7 @@ Rename Commands reference
 ## rename area
 Change the area name.
  ```bash
-rename area [Original area name] [Updated area name]
+rename area '[Original area name]' '[Updated area name]'
  ```
 
 * ex.<br>
@@ -951,6 +965,8 @@ Area1<br>
 Area2<br>
 Area99<br>
 
+[Tips]
+* All string arguments (area names) must be enclosed in single or double quotes (e.g., 'Area3')
 
 ## rename attribute_bulk
 Change device attributes (including header row) in bulk. This command allows you to update multiple devices and their attribute values in a single operation.
@@ -1045,7 +1061,7 @@ show attribute
 ## rename device
 Change the device name.
  ```bash
-rename device [Original device name] [Updated device name]
+rename device '[Original device name]' '[Updated device name]'
  ```
 
 * ex.<br>
@@ -1063,11 +1079,14 @@ L3SW2<br>
 L3SW100<br>
 L3SW2<br>
 
+[Tips]
+* All string arguments (device names) must be enclosed in single or double quotes (e.g., 'L3SW1')
+
 ## rename l3_instance
 Change the l3_instance, such as the VRF to which the Layer 3 interface belongs. By default, all Layer 3 interfaces are set to blank'' which means "Default" If you change the l3_instance name of one Layer 3 interface, all other l3_instances that are set to blank"" are implicitly set to the "default" l3_instance.
 
  ```bash
-rename l3_instance [device name] [layer3 port name] [Renamed l3_instance name]
+rename l3_instance '[device name]' '[layer3 port name]' '[Renamed l3_instance name]'
  ```
 
 * ex.<br>
@@ -1083,10 +1102,13 @@ rename l3_instance [device name] [layer3 port name] [Renamed l3_instance name]
 #show l3_interface<br>
 ['devcie1', 'GigabitEthernet 0/0', 'VRF-1', '']<br>
 
+[Tips]
+* All string arguments (device names, port names, instance names) must be enclosed in single or double quotes (e.g., 'GigabitEthernet 0/0')
+
 ## rename port
 Change the port name and port number.
  ```bash
-rename port [device name] [Original port name] [Updated port name]
+rename port '[device name]' '[Original port name]' '[Updated port name]'
  ```
 
 * ex.<br>
@@ -1148,6 +1170,8 @@ rename port [device name] [Original port name] [Updated port name]
 ['L3SW2', 'Vlan 202', '', '']<br>
 ['L3SW2', 'addvlan 999', '', '']<br>
 
+[Tips]
+* All string arguments (device names, port names) must be enclosed in single or double quotes (e.g., 'GigabitEthernet 0/0')
 
 ## rename port_info_bulk
 Change the port information (Speed, Duplex, Port_Type) for multiple ports in bulk.
