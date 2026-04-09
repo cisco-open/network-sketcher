@@ -972,19 +972,30 @@ Area99<br>
 Change device attributes (including header row) in bulk. This command allows you to update multiple devices and their attribute values in a single operation.
 
 **Syntax**<br>
-rename attribute_bulk [attribute_array] --master [master file path]
+```bash
+rename attribute_bulk "[['device_name', \"['attr_value',[R,G,B]]\", \"['attr_value2',[R,G,B]]\"]]"
+```
+
+**[CRITICAL] Quoting Structure**<br>
+This command uses a unique two-level quoting structure that differs from all other bulk commands:
+1. Wrap the entire array in **double quotes**: `"[['dev', ...]]"`
+2. Each attribute value cell must be wrapped in **escaped double quotes**: `\"['VALUE',[R,G,B]]\"`
+3. Do NOT add a leading single quote `'` before `[[` — this is a common mistake that causes parse errors.
+
+Correct: `rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]"`
+Wrong:   `rename attribute_bulk "'[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]"` ← extra `'` breaks parsing
 
 **Array Format**<br>
 The attribute array uses the following format:
 
 For device attribute rows (with RGB color values):
-[device_name, "['attribute_value',[R,G,B]]", "['attribute_value',[R,G,B]]", ...]
+`[device_name, "['attribute_value',[R,G,B]]", "['attribute_value',[R,G,B]]", ...]`
 
 For header row (column names without RGB values):
-['Device Name', 'Column1', 'Column2', 'Column3', ...]
+`['Device Name', 'Column1', 'Column2', 'Column3', ...]`
 
 Combined format for multiple entries:
-'[[device1_entry],[device2_entry],['Device Name', header_columns...]]
+`[['device1_entry'], ['device2_entry'], ['Device Name', header_columns...]]`
 
 **Parameters**<br>
 | Parameter       | Description                                              |
@@ -1000,6 +1011,7 @@ Combined format for multiple entries:
 - The header row entry must start with 'Device Name'
 - Device entries and header row can be mixed in the same command
 - Each device/header entry must have up to 9 attribute columns (excluding the device name column)
+- The entire argument starts with `[[` (NOT `'[[`); a leading single quote is a documentation error that causes parse failure
 
 **[IMPORTANT] Default Attribute Rules for Device Type**<br>
 When generating rename attribute_bulk commands, the Default attribute (first attribute column after device name) MUST be set based on the area type where the device is located:
@@ -1018,13 +1030,13 @@ Example for Normal area device:
 **Examples**<br>
 
 Example 1: Update single device attributes
-rename attribute_bulk "'[['L3SW1', \"['DEVICE',[235, 241, 222]]\", \"['Cisco', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
+rename attribute_bulk "[['L3SW1', \"['DEVICE',[235, 241, 222]]\", \"['Cisco', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
 
 Example 2: Update multiple devices
-rename attribute_bulk "'[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
+rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
 
 Example 3: Update devices and header row together
-rename attribute_bulk "'[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['TEST-Value', [235, 241, 22]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['LAST VALUE', [100, 100, 100]]\", \"['', [255, 255, 255]]\", \"['TEST333', [200, 200, 200]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
+rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['TEST-Value', [235, 241, 22]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['LAST VALUE', [100, 100, 100]]\", \"['', [255, 255, 255]]\", \"['TEST333', [200, 200, 200]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
 
 **Full Example with Before/After**<br>
 
@@ -1035,7 +1047,7 @@ rename attribute_bulk "'[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Cata
 ['WLC-9800', "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]"]
 
 +Attribute bulk renamed+
-#rename attribute_bulk "'[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['TEST-Value', [235, 241, 22]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['LAST VALUE', [100, 100, 100]]\", \"['', [255, 255, 255]]\", \"['TEST333', [200, 200, 200]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
+#rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['TEST-Value', [235, 241, 22]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['LAST VALUE', [100, 100, 100]]\", \"['', [255, 255, 255]]\", \"['TEST333', [200, 200, 200]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
 --- Attribute bulk rename completed ---
 Successfully updated: 3 entry(ies)
 Updated: ACCESS-SW1, WLC-9800, Device Name (Header)
@@ -1055,8 +1067,13 @@ show attribute
 | Light Gray       | [200, 200, 200]   | "['TEST', [200, 200, 200]]"            |
 | Light Yellow     | [235, 241, 22]    | "['WARNING', [235, 241, 22]]"          |
 
-
-
+**[Tips]**<br>
+- The argument MUST start with `[[` and end with `]]` — do NOT add a leading single quote `'` before `[[`
+- Each attribute value cell uses escaped double quotes: `\"['VALUE',[R,G,B]]\"`
+- This is the ONLY bulk command that requires escaped double quotes for inner values; all other bulk commands use simple unescaped strings
+- Wrong (common mistake): `"'[['DEV', ...]"` — the extra `'` after `"` causes parse failure
+- Correct: `"[['DEV', \"['DEVICE',[235,241,222]]\", \"['', [255,255,255]]\"]]"`
+- For the header row entry, all values are plain single-quoted strings without RGB: `['Device Name', 'Col1', 'Col2', ...]`
 
 ## rename device
 Change the device name.
