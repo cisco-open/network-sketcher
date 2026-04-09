@@ -3675,7 +3675,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
             Network Sketcher
         </a> &mdash; Apache-2.0 License
         <br>
-        <span style="font-size:11px;color:#b0b8c4;">Author : Yusuke Ogawa - Architect, Cisco | CCIE#17583</span>
+        <span style="font-size:11px;color:#b0b8c4;">&copy; 2023 Cisco Systems, Inc. and its affiliates | Created by Yusuke Ogawa - Architect, Cisco | CCIE#17583</span>
     </div>
 </div>
 
