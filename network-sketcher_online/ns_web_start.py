@@ -3068,6 +3068,7 @@ body {
 .header-text { display: flex; flex-direction: column; align-items: center; }
 h1 { font-size: 26px; color: var(--text); margin-bottom: 4px; font-weight: 800; font-style: italic; letter-spacing: 1px; }
 .online-badge {
+    color: #00c853;
     background: linear-gradient(135deg, #00c853, #00e676);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
