@@ -49,6 +49,13 @@ network-sketcher/
 <img width="1530" height="868" alt="image" src="https://github.com/user-attachments/assets/d21a433d-6287-4192-94ae-6c15a4d31995" />
 
 
+### Demo Video (Ver 3.0.1b)
+
+A demo video of approximately 4 minutes, starting with the installation of Network Sketcher. This demo video demonstrates creating a network configuration using LLM from URL information and performing additional editing. No sound, no captions.
+
+
+https://github.com/user-attachments/assets/2acaea3b-32f2-4ff0-90ad-a3dc810293d2
+
 
 
 ## What is Network Sketcher Online?
