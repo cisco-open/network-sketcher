@@ -32,32 +32,10 @@ mirrors the PowerPoint layer management.
 """
 
 import os
-import json
 import shutil
 import tempfile
 
 import nsm_ddx_figure
-
-_LOG_PATH = os.path.normpath(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    '..', '..', 'debug-c67278.log'))
-
-
-def _debug_log(loc, msg, data=None, hyp=''):
-    # #region agent log
-    try:
-        import time
-        entry = {'sessionId': 'c67278',
-                 'id': f'log_{int(time.time()*1000)}',
-                 'timestamp': int(time.time() * 1000),
-                 'location': loc, 'message': msg,
-                 'data': data or {}, 'runId': 'l3svg',
-                 'hypothesisId': hyp}
-        with open(_LOG_PATH, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(entry, ensure_ascii=False, default=str) + '\n')
-    except Exception:
-        pass
-    # #endregion
 
 
 # ===================================================================
@@ -194,10 +172,6 @@ class _MockPresentation:
     Accepts all attribute assignments; slides return mocks."""
 
     def __init__(self, path=None):
-        # #region agent log
-        _debug_log('l3svg:mock', 'MockPresentation created (no real PPTX)',
-                   {'path': str(path) if path else 'None'}, 'D')
-        # #endregion
         self.slide_width = 0
         self.slide_height = 0
         self.slide_layouts = [None] * 10
@@ -293,9 +267,6 @@ class nsm_l3_svg_create:
             _orig_Presentation = nsm_l3_diagram_create.Presentation
             nsm_l3_diagram_create.Presentation = _MockPresentation
 
-            _debug_log('l3svg:init', 'Starting L3 SVG (no-pptx-shape)',
-                       {'l3_type': l3_type, 'master': ppt_meta_file}, 'A')
-
             try:
                 if l3_type == 'per_area':
                     _run_per_area(self, capture_list, capture_enabled,
@@ -308,8 +279,6 @@ class nsm_l3_svg_create:
                 nsm_l3_diagram_create.Presentation = _orig_Presentation
 
         except Exception as e:
-            _debug_log('l3svg:error', str(e),
-                       {'type': type(e).__name__}, 'A')
             import traceback
             traceback.print_exc()
         finally:
@@ -341,15 +310,11 @@ class nsm_l3_svg_create:
                 area_name = _area_name_from_capture(area_items)
                 # Skip spurious groups that have no FOLDER_NORMAL (no area name)
                 if not area_name:
-                    _debug_log('l3svg:per_area', 'Skipping group with no area name',
-                               {'group_idx': i, 'shapes': len(shapes)}, 'C')
                     continue
                 safe_name = _safe_area_name_l3(area_name)
                 title_text = f'[L3] {area_name}'
 
                 slide_w, slide_h = _compute_content_extent(shapes, lines_data)
-                _debug_log('l3svg:per_area', f'Area={area_name} slide_w={slide_w:.2f} slide_h={slide_h:.2f} shapes={len(shapes)} lines={len(lines_data)}',
-                           {'max_x': slide_w, 'max_y': slide_h}, 'A')
                 svg = _shapes_to_svg(shapes, lines_data, slide_w, slide_h,
                                      title_text, attr_colors)
 
@@ -358,8 +323,6 @@ class nsm_l3_svg_create:
                     with open(area_path, 'w', encoding='utf-8') as f:
                         f.write(svg)
                     saved_paths.append(area_path)
-                    _debug_log('l3svg:done', 'Per-area SVG saved',
-                               {'path': area_path, 'area': area_name, 'size': len(svg)}, 'C')
 
             self._per_area_svg_files = saved_paths
         else:
@@ -378,23 +341,12 @@ class nsm_l3_svg_create:
             if not title_text:
                 title_text = '[L3] All Areas'
 
-            stc = {}
-            for s in shapes:
-                stc[s[0]] = stc.get(s[0], 0) + 1
-            _debug_log('l3svg:render', 'Rendering SVG',
-                       {'slide_w': slide_w, 'slide_h': slide_h,
-                        'shapes': len(shapes), 'lines': len(lines_data),
-                        'attr_colors': len(attr_colors),
-                        'shape_types': stc, 'title': title_text}, 'C')
-
             svg = _shapes_to_svg(shapes, lines_data, slide_w, slide_h,
                                   title_text, attr_colors)
 
             if out and svg:
                 with open(out, 'w', encoding='utf-8') as f:
                     f.write(svg)
-                _debug_log('l3svg:done', 'SVG saved',
-                           {'path': out, 'size': len(svg)}, 'C')
                 try:
                     print(f'L3 SVG saved: {out}')
                 except UnicodeEncodeError:
@@ -511,10 +463,6 @@ def _run_per_area(ctx, capture_list, cap_en, mod):
     except UnicodeEncodeError:
         pass
 
-    _debug_log('l3svg:per_area', 'done',
-               {'shapes': sum(1 for c in capture_list if c[0] == 'shape'),
-                'lines': sum(1 for c in capture_list if c[0] == 'line')}, 'A')
-
 
 def _compute_content_extent(shapes, lines, margin=1.0, min_w=0.0, min_h=0.0):
     """Compute SVG dimensions from actual content bounding box (inches).
@@ -596,16 +544,11 @@ def _run_all_areas(ctx, ppt_meta_file, capture_list, cap_en, mod):
     ctx.per_index2_before_array = [0.0]
     ctx.per_index2_after_array = [0.0]
 
-    _debug_log('l3svg:all_areas', '1st pass', {}, 'B')
     cap_en[0] = False
     try:
         mod.nsm_l3_diagram_create.__init__(ctx)
     except UnicodeEncodeError:
         pass
-
-    _debug_log('l3svg:all_areas', '1st pass done',
-               {'before': list(ctx.per_index2_before_array),
-                'y_segs': len(ctx.y_grid_segment_array)}, 'B')
 
     ctx._l3_data_cache = {
         'result': ctx.result_get_l2_broadcast_domains,
@@ -647,11 +590,6 @@ def _run_all_areas(ctx, ppt_meta_file, capture_list, cap_en, mod):
         pass
 
     ctx._l3_data_cache = None
-
-    _debug_log('l3svg:all_areas', '2nd pass done',
-               {'after': list(ctx.per_index2_after_array),
-                'shapes': sum(1 for c in capture_list if c[0] == 'shape'),
-                'lines': sum(1 for c in capture_list if c[0] == 'line')}, 'B')
 
     return tmp_master
 
