@@ -1639,6 +1639,214 @@ def _convert_svg_for_visio(svg_bytes: bytes) -> bytes:
     return svg.encode('utf-8')
 
 
+def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
+    """Convert a Network Sketcher SVG to draw.io (.drawio) XML format.
+
+    Parses the simple SVG structure (rect/text/line only) produced by
+    _shapes_to_svg() and maps each element to an mxCell in an mxGraphModel.
+    Text elements whose centre falls within a rect are merged as the rect's
+    value label.  Lines become floating edges (no source/target ids) which
+    preserves the visual layout while keeping the file fully editable in
+    draw.io Desktop and draw.io Web.
+    """
+    import xml.etree.ElementTree as ET
+
+    NS = 'http://www.w3.org/2000/svg'
+    svg_text = svg_bytes.decode('utf-8', errors='replace')
+
+    # --- helpers ---
+    def _rgb_to_hex(rgb_str):
+        """Convert 'rgb(r,g,b)' or named colours to #rrggbb."""
+        if not rgb_str or rgb_str == 'none':
+            return None
+        rgb_str = rgb_str.strip()
+        if rgb_str.startswith('#'):
+            return rgb_str
+        if rgb_str == 'white':
+            return '#ffffff'
+        if rgb_str == 'black':
+            return '#000000'
+        m = re.match(r'rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)', rgb_str)
+        if m:
+            return '#{:02x}{:02x}{:02x}'.format(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        return '#000000'
+
+    def _fv(el, attr, default=0.0):
+        """Parse a float attribute, return default if missing/invalid."""
+        try:
+            return float(el.get(attr, default))
+        except (ValueError, TypeError):
+            return float(default)
+
+    def _text_in_rect(tx, ty, rx, ry, rw, rh):
+        """Return True if text anchor (tx, ty) is inside the rect bounds."""
+        return rx <= tx <= rx + rw and ry <= ty <= ry + rh
+
+    # --- parse SVG ---
+    # Strip XML declaration so ET can parse cleanly
+    svg_clean = re.sub(r'<\?xml[^>]*\?>', '', svg_text).strip()
+    try:
+        root = ET.fromstring(svg_clean)
+    except ET.ParseError:
+        # Fallback: return a minimal empty drawio file on parse error
+        return b'<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>'
+
+    # Collect elements (handle both namespaced and plain tags)
+    def _tag(el):
+        t = el.tag
+        if t.startswith('{'):
+            t = t.split('}', 1)[1]
+        return t
+
+    rects = []
+    texts = []
+    lines = []
+    for el in root.iter():
+        tag = _tag(el)
+        if tag == 'rect':
+            rects.append(el)
+        elif tag == 'text':
+            texts.append(el)
+        elif tag == 'line':
+            lines.append(el)
+
+    # --- match text to rect ---
+    # Build list of (rx, ry, rw, rh, el) for rects
+    rect_data = []
+    for el in rects:
+        rx = _fv(el, 'x')
+        ry = _fv(el, 'y')
+        rw = _fv(el, 'width')
+        rh = _fv(el, 'height')
+        rect_data.append({'x': rx, 'y': ry, 'w': rw, 'h': rh, 'el': el, 'label': ''})
+
+    # For each text, find the best (smallest area) containing rect
+    for tel in texts:
+        tx = _fv(tel, 'x')
+        ty = _fv(tel, 'y')
+        text_content = (tel.text or '').strip()
+        if not text_content:
+            continue
+        best = None
+        best_area = float('inf')
+        for rd in rect_data:
+            if _text_in_rect(tx, ty, rd['x'], rd['y'], rd['w'], rd['h']):
+                area = rd['w'] * rd['h']
+                if area < best_area:
+                    best_area = area
+                    best = rd
+        if best is not None and not best['label']:
+            best['label'] = text_content
+
+    # --- build mxGraphModel XML ---
+    mxfile = ET.Element('mxfile')
+    diagram = ET.SubElement(mxfile, 'diagram')
+    model = ET.SubElement(diagram, 'mxGraphModel')
+
+    # Try to get SVG canvas size for model attributes
+    svg_el = root if _tag(root) == 'svg' else root.find('.//{%s}svg' % NS) or root
+    canvas_w = int(_fv(svg_el, 'width', 800))
+    canvas_h = int(_fv(svg_el, 'height', 600))
+    model.set('pageWidth', str(canvas_w))
+    model.set('pageHeight', str(canvas_h))
+
+    root_el = ET.SubElement(model, 'root')
+    ET.SubElement(root_el, 'mxCell', id='0')
+    ET.SubElement(root_el, 'mxCell', id='1', parent='0')
+
+    cell_id = 2
+
+    # --- rect → vertex mxCell ---
+    for rd in rect_data:
+        el = rd['el']
+        fill_str = el.get('fill', 'white')
+        stroke_str = el.get('stroke', 'none')
+        sw_str = el.get('stroke-width', '1')
+        rx_val = _fv(el, 'rx', 0.0)
+
+        fill_hex = _rgb_to_hex(fill_str) or '#ffffff'
+        stroke_hex = _rgb_to_hex(stroke_str)
+
+        style_parts = [
+            'shape=rectangle',
+            f'rounded={"1" if rx_val > 0 else "0"}',
+            f'fillColor={fill_hex}',
+        ]
+        if stroke_hex:
+            style_parts.append(f'strokeColor={stroke_hex}')
+        else:
+            style_parts.append('strokeColor=none')
+        try:
+            sw_float = float(sw_str)
+            style_parts.append(f'strokeWidth={sw_float:.1f}')
+        except (ValueError, TypeError):
+            pass
+        style_parts.append('whiteSpace=wrap')
+        style_parts.append('html=1')
+
+        style_str = ';'.join(style_parts) + ';'
+        cell = ET.SubElement(root_el, 'mxCell',
+                             id=str(cell_id),
+                             value=rd['label'],
+                             vertex='1',
+                             parent='1',
+                             style=style_str)
+        geom = ET.SubElement(cell, 'mxGeometry',
+                             x=str(round(rd['x'])),
+                             y=str(round(rd['y'])),
+                             width=str(round(rd['w'])),
+                             height=str(round(rd['h'])))
+        geom.set('as', 'geometry')
+        cell_id += 1
+
+    # --- line → edge mxCell (floating, no source/target) ---
+    for el in lines:
+        x1 = _fv(el, 'x1')
+        y1 = _fv(el, 'y1')
+        x2 = _fv(el, 'x2')
+        y2 = _fv(el, 'y2')
+        stroke_str = el.get('stroke', 'black')
+        sw_str = el.get('stroke-width', '1')
+
+        stroke_hex = _rgb_to_hex(stroke_str) or '#000000'
+        try:
+            sw_float = float(sw_str)
+        except (ValueError, TypeError):
+            sw_float = 1.0
+
+        style_str = (
+            f'endArrow=none;startArrow=none;'
+            f'strokeColor={stroke_hex};'
+            f'strokeWidth={sw_float:.1f};'
+            'html=1;'
+        )
+        cell = ET.SubElement(root_el, 'mxCell',
+                             id=str(cell_id),
+                             value='',
+                             edge='1',
+                             parent='1',
+                             style=style_str)
+        geom = ET.SubElement(cell, 'mxGeometry', relative='1')
+        geom.set('as', 'geometry')
+
+        src_arr = ET.SubElement(geom, 'Array')
+        src_arr.set('as', 'sourcePoint')
+        sp = ET.SubElement(src_arr, 'mxPoint')
+        sp.set('x', str(round(x1)))
+        sp.set('y', str(round(y1)))
+
+        tgt_arr = ET.SubElement(geom, 'Array')
+        tgt_arr.set('as', 'targetPoint')
+        tp = ET.SubElement(tgt_arr, 'mxPoint')
+        tp.set('x', str(round(x2)))
+        tp.set('y', str(round(y2)))
+
+        cell_id += 1
+
+    xml_str = ET.tostring(mxfile, encoding='unicode', xml_declaration=False)
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n' + xml_str).encode('utf-8')
+
+
 @app.route('/download/<job_id>/<path:filename>')
 def download_file(job_id, filename):
     job_id = sanitize_job_id(job_id)
@@ -1694,6 +1902,42 @@ def download_visio(job_id, filename):
         visio_bytes,
         mimetype='image/svg+xml',
         headers={'Content-Disposition': f'attachment; filename="{visio_name}"'}
+    )
+
+
+@app.route('/download_drawio/<job_id>/<path:filename>')
+def download_drawio(job_id, filename):
+    """Convert SVG to draw.io (.drawio) format and serve as attachment."""
+    job_id = sanitize_job_id(job_id)
+    if not job_id:
+        abort(400)
+
+    work_dir = UPLOAD_DIR / job_id
+    filepath = (work_dir / filename).resolve()
+    try:
+        filepath.relative_to(work_dir.resolve())
+    except ValueError:
+        abort(403)
+
+    if not filename.lower().endswith('.svg'):
+        abort(400)
+
+    with _svg_mem_cache_lock:
+        svg_bytes = _svg_mem_cache.get(job_id, {}).get(filename)
+    if svg_bytes is None:
+        if not filepath.is_file():
+            abort(404)
+        svg_bytes = filepath.read_bytes()
+
+    drawio_bytes = _convert_svg_to_drawio(svg_bytes)
+    drawio_name = re.sub(r'\.svg$', '.drawio', filename, flags=re.IGNORECASE)
+    if drawio_name == filename:
+        drawio_name = filename + '.drawio'
+
+    return Response(
+        drawio_bytes,
+        mimetype='application/xml',
+        headers={'Content-Disposition': f'attachment; filename="{drawio_name}"'}
     )
 
 
@@ -2344,6 +2588,7 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     <span class="sep"></span>
     <button class="primary" id="btnDownload" title="Download SVG">&#8681; Download</button>
     <button class="primary" id="btnDownloadVisio" title="Download SVG optimized for Visio">&#8681; Download for Visio</button>
+    <button class="primary" id="btnDownloadDrawio" title="Download as draw.io diagram">&#8681; Download for draw.io</button>
 </div>
 <div class="viewer" id="viewer">
     <img id="svgImg" src="{svg_url}" draggable="false" />
@@ -2470,6 +2715,19 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
                 var a = document.createElement('a');
                 a.href = url;
                 a.download = names[idx].replace(/\.svg$/i, '_visio.svg');
+                a.click();
+                URL.revokeObjectURL(url);
+            }});
+    }};
+
+    document.getElementById('btnDownloadDrawio').onclick = function() {{
+        fetch('/download_drawio/' + jobId + '/' + files[idx])
+            .then(function(r) {{ return r.blob(); }})
+            .then(function(blob) {{
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = names[idx].replace(/\.svg$/i, '.drawio');
                 a.click();
                 URL.revokeObjectURL(url);
             }});
