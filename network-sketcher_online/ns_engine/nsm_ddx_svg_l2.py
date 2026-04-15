@@ -86,7 +86,7 @@ L2_LINE_STYLES = {
 }
 
 
-def _svg_l2_header(slide_w, slide_h, shape_font_size):
+def _svg_l2_header(slide_w, slide_h, shape_font_size, folder_font_size=16):
     w = _in(slide_w)
     h = _in(slide_h)
     return (
@@ -99,9 +99,13 @@ def _svg_l2_header(slide_w, slide_h, shape_font_size):
         f'<path d="M5 0 L10 5 L5 10 L0 5 Z" fill="black"/></marker>\n'
         f'<style>\n'
         f'  text {{ font-family: {FONT_FAMILY}; }}\n'
+        f'  .bg {{ fill: white; }}\n'
+        f'  .root {{ fill: white; stroke: black; stroke-width: {_pt(1.5)}px; }}\n'
+        f'  .folder {{ fill: none; stroke: black; stroke-width: {_pt(1.5)}px; }}\n'
+        f'  .folder-text {{ font-size: {_pt(folder_font_size)}px; fill: black; text-anchor: middle; }}\n'
         f'</style>\n'
         f'</defs>\n'
-        f'<rect width="{w}" height="{h}" fill="white"/>\n'
+        f'<rect width="{w}" height="{h}" class="bg"/>\n'
     )
 
 
@@ -1483,7 +1487,7 @@ class ns_ddx_svg_l2_run:
 
         outline_margin_root = 0.2
         outline_margin_sub = 0.1
-        folder_font_size = 10
+        folder_font_size = 16
         shape_font_size = 6
 
         root_left = float(self.root_left)
@@ -1561,15 +1565,17 @@ class ns_ddx_svg_l2_run:
         row_sum = sum(row_weights) if row_weights else 1.0
 
         svg_parts = []
-        svg_parts.append(_svg_l2_header(slide_w, slide_h, shape_font_size))
+        svg_parts.append(_svg_l2_header(slide_w, slide_h, shape_font_size, folder_font_size))
 
         svg_parts.append(
             f'<text x="{_in(rf_left)}" y="{_in(0.5)}" '
             f'font-size="{_pt(18)}px" fill="black">{_escape(title_text)}</text>\n')
 
-        # ---------- Phase 1: Layout (compute device positions, draw folders) ----------
-        from nsm_ddx_svg import _compute_devices_in_folder, _render_sub_folder
+        # ---------- Phase 1: Outline rect (background, drawn before sub-folders) ----------
+        from nsm_ddx_svg import _compute_devices_in_folder, _render_sub_folder, _render_root_folder
+        svg_parts.append(_render_root_folder(rf_left, rf_top, rf_width, rf_height))
 
+        # ---------- Phase 2: Layout (compute device positions, draw folders) ----------
         all_devices = []
         sub_y = content_top
 
@@ -1638,12 +1644,6 @@ class ns_ddx_svg_l2_run:
 
                 sub_x += folder_w
             sub_y += folder_h
-
-        # ---------- Phase 2: Outline rect (drawn first as background) ----------
-        svg_parts.append(
-            f'<rect x="{_in(rf_left)}" y="{_in(rf_top)}" '
-            f'width="{_in(rf_width)}" height="{_in(rf_height)}" '
-            f'fill="white" stroke="black" stroke-width="{_pt(1.5)}"/>\n')
 
         # ---------- Phase 3: L2 material rendering (PPT add_l2_material equivalent) ----------
         has_l2_data = (hasattr(self, 'l2_table_array') and

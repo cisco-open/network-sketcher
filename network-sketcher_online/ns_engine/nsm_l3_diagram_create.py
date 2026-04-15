@@ -1934,20 +1934,21 @@ class  nsm_l3_diagram_create():
                         if current_if_key not in drawn_no_l3seg_interfaces:
                             drawn_no_l3seg_interfaces.append(current_if_key)
                             if action_type == 'CREATE' and not minimal_1st_pass:
-                                # Collect all IP addresses for this interface
-                                all_ips_for_if = []
+                                # Collect full entries to use their pre-calculated y positions.
+                                # Each entry already has the correct y for UP (stacked upward)
+                                # or DOWN (stacked downward) interfaces.
+                                all_ip_entries_for_if = []
                                 for check_ip_array in self.mark_multi_ip_array:
                                     if check_ip_array[9] == current_if_key:
-                                        all_ips_for_if.append(check_ip_array[6][0])  # Full IP address
+                                        all_ip_entries_for_if.append(check_ip_array)
 
-                                # Draw each IP address separately, stacked vertically
                                 tag_ip_left_2 = tmp_mark_multi_ip_array[10]
-                                offset_y = 0.0
-                                for ip_addr in all_ips_for_if:
+                                for ip_entry in all_ip_entries_for_if:
+                                    ip_addr = ip_entry[6][0]
+                                    ip_y = ip_entry[2]  # Pre-calculated y (UP=upward, DOWN=downward)
                                     tag_ip_width = get_text_wh_cached(self, self.tag_font_large_size, ip_addr)[0]
                                     self.shape = self.slide.shapes
-                                    nsm_ddx_figure.extended.add_shape(self, tmp_mark_multi_ip_array[0], tag_ip_left_2, tmp_mark_multi_ip_array[2] + offset_y, tag_ip_width, tmp_mark_multi_ip_array[4], ip_addr)
-                                    offset_y += tmp_mark_multi_ip_array[4]  # Move down by shape height
+                                    nsm_ddx_figure.extended.add_shape(self, ip_entry[0], tag_ip_left_2, ip_y, tag_ip_width, ip_entry[4], ip_addr)
         '''
         Write line of L3 instance
         '''

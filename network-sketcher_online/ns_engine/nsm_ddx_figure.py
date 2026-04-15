@@ -81,6 +81,10 @@ class  ns_ddx_figure_run():
         self.shape_font_type = 'Calibri'
         self.shae_font_size = 6  # Pt
 
+        # L2 mode: folder/area name font matches device name (DEVICE_FRAME = Pt(16.0))
+        if self.click_value == 'L2-3-2':
+            self.folder_font_size = 16  # Pt
+
         self._section_row_cache = {}
 
         '''main'''
@@ -2961,12 +2965,11 @@ class extended():
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(163, 101, 209)
 
         elif shape_type == 'WAY_POINT':
-            '''Note, not used'''
             shape_fill.fore_color.rgb = RGBColor(237, 242, 249)
             self.shape.adjustments[0] = 0.2
             self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
             self.shape.text_frame.vertical_anchor = MSO_ANCHOR.TOP
-            self.shape.text_frame.paragraphs[0].font.size = Pt(self.shae_font_size)
+            self.shape.text_frame.paragraphs[0].font.size = Pt(16.0)
             self.shape.text_frame.margin_left = Inches(0.1)
 
         elif shape_type == 'WAY_POINT_NORMAL':
@@ -4601,11 +4604,16 @@ class extended():
                                     break
 
                         if is_device:
-                            # This is a DEVICE_FRAME
-                            device_frames.append(shp)
-                            right_edge = shp.left.inches + shp.width.inches
-                            if right_edge > max_device_right_edge:
-                                max_device_right_edge = right_edge
+                            # WayPoints are placed OUTSIDE the Area boundary by design.
+                            # Exclude them from max_device_right_edge so the folder/outline
+                            # is not incorrectly extended to enclose them.
+                            wp_list = getattr(self, "shared_wp_list_array", [])
+                            if shape_text not in wp_list:
+                                # This is a DEVICE_FRAME (not a WayPoint)
+                                device_frames.append(shp)
+                                right_edge = shp.left.inches + shp.width.inches
+                                if right_edge > max_device_right_edge:
+                                    max_device_right_edge = right_edge
                         else:
                             # This is likely a folder (like Site1)
                             # Check if it's larger than typical device (folder is usually large)

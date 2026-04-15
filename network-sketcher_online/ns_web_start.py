@@ -1642,12 +1642,17 @@ def _convert_svg_for_visio(svg_bytes: bytes) -> bytes:
 def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
     """Convert a Network Sketcher SVG to draw.io (.drawio) XML format.
 
-    Parses the simple SVG structure (rect/text/line only) produced by
-    _shapes_to_svg() and maps each element to an mxCell in an mxGraphModel.
-    Text elements whose centre falls within a rect are merged as the rect's
-    value label.  Lines become floating edges (no source/target ids) which
-    preserves the visual layout while keeping the file fully editable in
-    draw.io Desktop and draw.io Web.
+    Parses the SVG structure produced by Network Sketcher (both L3 inline-style
+    and L1/L2 CSS-class-based SVGs) and maps each element to an mxCell in an
+    mxGraphModel.  Text elements whose anchor falls within a rect are merged as
+    the rect's value label.  Lines become floating edges (no source/target ids).
+
+    Bug fixes vs. initial version:
+    - CSS class rules from <style> block are now parsed and applied when inline
+      attributes are absent (fixes missing stroke/fill on L1/L2 SVGs).
+    - Edge mxGeometry now uses <mxPoint as="sourcePoint/targetPoint"> directly
+      as mxGeometry children instead of the incorrect <Array> wrapper (fixes
+      lines not rendering in draw.io).
     """
     import xml.etree.ElementTree as ET
 
@@ -1656,7 +1661,7 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
 
     # --- helpers ---
     def _rgb_to_hex(rgb_str):
-        """Convert 'rgb(r,g,b)' or named colours to #rrggbb."""
+        """Convert 'rgb(r,g,b)' or named colours to #rrggbb. Returns None for 'none'."""
         if not rgb_str or rgb_str == 'none':
             return None
         rgb_str = rgb_str.strip()
@@ -1672,26 +1677,71 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
         return '#000000'
 
     def _fv(el, attr, default=0.0):
-        """Parse a float attribute, return default if missing/invalid."""
+        """Parse a float attribute from an element, return default if missing/invalid."""
         try:
             return float(el.get(attr, default))
         except (ValueError, TypeError):
             return float(default)
 
+    def _parse_float_css(val_str, default=1.0):
+        """Parse a CSS value like '2.0px' or '2.0' to float."""
+        if not val_str:
+            return default
+        try:
+            return float(str(val_str).replace('px', '').strip())
+        except (ValueError, TypeError):
+            return default
+
     def _text_in_rect(tx, ty, rx, ry, rw, rh):
         """Return True if text anchor (tx, ty) is inside the rect bounds."""
         return rx <= tx <= rx + rw and ry <= ty <= ry + rh
 
-    # --- parse SVG ---
-    # Strip XML declaration so ET can parse cleanly
+    # --- Step 1: extract CSS class rules from <style> block ---
+    # This handles L1/L2 SVGs that use class="device", class="folder", etc.
+    # Result: css_rules = {class_name: {'fill': ..., 'stroke': ..., 'stroke-width': ...}}
+    css_rules = {}
+    style_m = re.search(r'<style[^>]*>(.*?)</style>', svg_text, re.DOTALL | re.IGNORECASE)
+    if style_m:
+        css_text = style_m.group(1)
+        for m in re.finditer(r'\.([\w-]+)\s*\{([^}]*)\}', css_text):
+            props = {}
+            for decl in m.group(2).split(';'):
+                if ':' in decl:
+                    k, v = decl.split(':', 1)
+                    props[k.strip()] = v.strip()
+            if props:
+                css_rules[m.group(1)] = props
+
+    def _css_prop(el, prop, fallback=None):
+        """Get a CSS property for an element: inline attr first, then class rule."""
+        # Inline attribute (L3 SVG style)
+        inline = el.get(prop)
+        if inline is not None:
+            return inline
+        # CSS class (L1/L2 SVG style)
+        cls = el.get('class', '')
+        for cls_name in cls.split():
+            rule = css_rules.get(cls_name, {})
+            if prop in rule:
+                return rule[prop]
+        return fallback
+
+    def _parse_transform_rotation(el):
+        """Extract rotation angle (degrees) from SVG transform='rotate(angle ...)'.
+        Returns 0.0 if no rotation transform is present."""
+        transform = el.get('transform', '')
+        m = re.match(r'rotate\s*\(\s*([-\d.]+)', transform)
+        if m:
+            return float(m.group(1))
+        return 0.0
+
+    # --- Step 2: parse SVG ---
     svg_clean = re.sub(r'<\?xml[^>]*\?>', '', svg_text).strip()
     try:
         root = ET.fromstring(svg_clean)
     except ET.ParseError:
-        # Fallback: return a minimal empty drawio file on parse error
         return b'<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>'
 
-    # Collect elements (handle both namespaced and plain tags)
     def _tag(el):
         t = el.tag
         if t.startswith('{'):
@@ -1704,23 +1754,72 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
     for el in root.iter():
         tag = _tag(el)
         if tag == 'rect':
+            # Skip the full-canvas background rect (class="bg") - draw.io has
+            # its own white background; including it forces the bounding box to
+            # be the full SVG canvas, preventing tight page-size calculation.
+            cls = el.get('class', '')
+            if 'bg' in cls.split():
+                continue
             rects.append(el)
         elif tag == 'text':
             texts.append(el)
         elif tag == 'line':
             lines.append(el)
 
-    # --- match text to rect ---
-    # Build list of (rx, ry, rw, rh, el) for rects
+    # --- Step 3: match text labels to rects ---
+    texts_standalone = []   # texts not matched to any rect (e.g. diagram title)
     rect_data = []
     for el in rects:
         rx = _fv(el, 'x')
         ry = _fv(el, 'y')
         rw = _fv(el, 'width')
         rh = _fv(el, 'height')
-        rect_data.append({'x': rx, 'y': ry, 'w': rw, 'h': rh, 'el': el, 'label': ''})
+        rotation = _parse_transform_rotation(el)
+        # SVG class="tag" rects are interface-name labels; they must be rendered
+        # AFTER lines so they appear in front (higher z-order in draw.io).
+        # SVG class="folder"/"root" rects use dominant-baseline="hanging" text
+        # (top-aligned), so their draw.io label must use verticalAlign=top.
+        cls_parts = el.get('class', '').split()
+        _fill_inline = (el.get('fill') or '').strip()
 
-    # For each text, find the best (smallest area) containing rect
+        # CSS-class-based (L1) tag detection
+        is_tag = 'tag' in cls_parts
+        # L2 SVGs use inline styles with no CSS classes.
+        # Interface-name tags in L2: small height (≤20), rounded corners (rx>1),
+        # white fill.  Purple-bg L2 segment rects have rgb(247,245,249) fill, so
+        # they are excluded by the white-fill check.
+        if not is_tag and not cls_parts and rh <= 20.0:
+            _rx_val = _fv(el, 'rx', 0.0)
+            if _rx_val > 1.0 and _fill_inline in ('white', 'rgb(255,255,255)'):
+                is_tag = True
+
+        # folder/root class → area box with top-centre label
+        is_top_label = any(c in cls_parts for c in ('folder', 'root'))
+        # top_label_align: 'center' for area boxes, 'left' for device containers
+        top_label_align = 'center' if is_top_label else None
+
+        # L2 device container: fill="rgb(250,251,247)" (beige), large rect
+        # Device names use text-anchor="start" dominant-baseline="hanging" → top-left
+        if not is_top_label and _fill_inline == 'rgb(250,251,247)':
+            is_top_label = True
+            top_label_align = 'left'
+
+        # L3 FOLDER_NORMAL: no CSS class, transparent fill + light-gray stroke.
+        # L3 SVGs do not emit class attributes; identify area boxes by their
+        # specific fill/stroke combination (FOLDER_NORMAL style).
+        if not is_top_label and not is_tag and _fill_inline == 'none':
+            _stroke_inline = (el.get('stroke') or '').strip()
+            if _stroke_inline == 'rgb(205,205,205)':
+                is_top_label = True
+                top_label_align = 'center'
+
+        rect_data.append({'x': rx, 'y': ry, 'w': rw, 'h': rh, 'el': el,
+                          'label': '', 'rotation': rotation, 'font_size': None,
+                          'font_color': None,
+                          'is_tag': is_tag,
+                          'is_top_label': is_top_label,
+                          'top_label_align': top_label_align})
+
     for tel in texts:
         tx = _fv(tel, 'x')
         ty = _fv(tel, 'y')
@@ -1735,20 +1834,117 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
                 if area < best_area:
                     best_area = area
                     best = rd
+        def _text_fs_and_color(tel):
+            """Return (font_size, fill_color) for a text element.
+            Checks inline font-size attribute first (L2 style), then CSS class."""
+            fs = None
+            cls = tel.get('class', '')
+            for cls_name in cls.split():
+                rule = css_rules.get(cls_name, {})
+                if 'font-size' in rule:
+                    fs = _parse_float_css(rule['font-size'], None)
+                    break
+            if fs is None:
+                inline_fs = tel.get('font-size')
+                if inline_fs:
+                    fs = _parse_float_css(inline_fs, None)
+            color = tel.get('fill', '')
+            return fs, color
+
         if best is not None and not best['label']:
             best['label'] = text_content
+            # Capture font-size and color from the matched text element.
+            if best.get('font_size') is None or best.get('font_color') is None:
+                fs, color = _text_fs_and_color(tel)
+                if best.get('font_size') is None:
+                    best['font_size'] = fs
+                if best.get('font_color') is None:
+                    best['font_color'] = color
+        else:
+            # Text not assigned to a rect (no containing rect, OR the containing
+            # rect already has a label → e.g. L2 segment names like TESTVLAN-NAME
+            # that sit just outside the interface tag but inside a larger device box).
+            # Always preserve as standalone so no text is silently dropped.
+            fs, color = _text_fs_and_color(tel)
+            anchor = tel.get('text-anchor', 'middle')
+            # SVG text y: adjust to the TOP of the text for draw.io coordinates.
+            #   "hanging"  → y is already the top of the text
+            #   "central"  → y is the vertical center; top = y - fs/2
+            #   "auto"/default → y is the baseline; top ≈ y - fs
+            # draw.io text cells add ~5 px internal top-padding even with
+            # spacing=0, so subtract that to keep relative spacing identical to SVG.
+            # 7.0 = zero gap; 5.0 = ~2 px visual gap (matches SVG appearance).
+            _DRAWIO_TEXT_PAD = 5.0
+            _dom_base = tel.get('dominant-baseline', 'auto')
+            if _dom_base == 'hanging':
+                sy = ty - _DRAWIO_TEXT_PAD
+            elif _dom_base == 'central':
+                sy = ty - (fs or 12) / 2.0 - _DRAWIO_TEXT_PAD
+            else:
+                sy = ty - (fs or 12) - _DRAWIO_TEXT_PAD
+            texts_standalone.append({'x': tx, 'y': sy,
+                                     'label': text_content, 'font_size': fs,
+                                     'fill': color, 'anchor': anchor})
 
-    # --- build mxGraphModel XML ---
+    # --- Step 3b: compute content bounding box and translation offset ---
+    # Translate all coordinates so content starts at (MARGIN, MARGIN) and the
+    # draw.io page is sized tightly around the content.  Without this, draw.io
+    # opens with the full SVG canvas (e.g. 1992×1740 pt) at a small zoom level,
+    # making the diagram appear tiny in the upper corner.
+    MARGIN = 30  # padding (px) around content on all sides
+    _bx = ([rd['x'] for rd in rect_data] + [rd['x'] + rd['w'] for rd in rect_data] +
+           [_fv(el, 'x1') for el in lines] + [_fv(el, 'x2') for el in lines] +
+           [st['x'] for st in texts_standalone])
+    _by = ([rd['y'] for rd in rect_data] + [rd['y'] + rd['h'] for rd in rect_data] +
+           [_fv(el, 'y1') for el in lines] + [_fv(el, 'y2') for el in lines] +
+           [st['y'] for st in texts_standalone])
+    if _bx and _by:
+        _min_x, _min_y = min(_bx), min(_by)
+        _max_x, _max_y = max(_bx), max(_by)
+        ox = MARGIN - _min_x        # x translation offset
+        oy = MARGIN - _min_y        # y translation offset
+        page_w = int(_max_x - _min_x + 2 * MARGIN)
+        page_h = int(_max_y - _min_y + 2 * MARGIN)
+    else:
+        svg_el0 = root if _tag(root) == 'svg' else root.find('.//{%s}svg' % NS) or root
+        ox, oy = 0, 0
+        page_w = int(_fv(svg_el0, 'width', 800))
+        page_h = int(_fv(svg_el0, 'height', 600))
+
+    # --- Step 4: build mxGraphModel XML ---
     mxfile = ET.Element('mxfile')
     diagram = ET.SubElement(mxfile, 'diagram')
     model = ET.SubElement(diagram, 'mxGraphModel')
 
-    # Try to get SVG canvas size for model attributes
-    svg_el = root if _tag(root) == 'svg' else root.find('.//{%s}svg' % NS) or root
-    canvas_w = int(_fv(svg_el, 'width', 800))
-    canvas_h = int(_fv(svg_el, 'height', 600))
-    model.set('pageWidth', str(canvas_w))
-    model.set('pageHeight', str(canvas_h))
+    # Compute dx/dy to centre the page in a typical draw.io viewport.
+    # draw.io rendering: screen_pos = (graph_pos + d) * scale
+    # When draw.io opens a file it auto-fits the page to the available canvas.
+    # The fit-scale = min(VP_W/page_w, VP_H/page_h).  Whichever dimension is
+    # the "bottleneck" fills the viewport; the other dimension has slack that
+    # can be centred by setting dx or dy appropriately.
+    # Target viewport estimate: 800×550 px (1920×1080 screen minus sidebar/toolbar).
+    _VP_W, _VP_H = 800, 550
+    _aspect_w = page_w / _VP_W
+    _aspect_h = page_h / _VP_H
+    if _aspect_w >= _aspect_h:
+        # Width is the bottleneck → horizontal fit; centre vertically with dy
+        _fit_scale = _VP_W / page_w
+        _dx = 0
+        _dy = max(0, int((_VP_H - page_h * _fit_scale) / (2 * _fit_scale)))
+    else:
+        # Height is the bottleneck → vertical fit; centre horizontally with dx
+        _fit_scale = _VP_H / page_h
+        _dx = max(0, int((_VP_W - page_w * _fit_scale) / (2 * _fit_scale)))
+        _dy = 0
+
+    model.set('dx', str(_dx))
+    model.set('dy', str(_dy))
+    model.set('grid', '1')
+    model.set('gridSize', '10')
+    model.set('page', '1')
+    model.set('pageScale', '1')
+    model.set('pageWidth', str(page_w))
+    model.set('pageHeight', str(page_h))
 
     root_el = ET.SubElement(model, 'root')
     ET.SubElement(root_el, 'mxCell', id='0')
@@ -1756,34 +1952,59 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
 
     cell_id = 2
 
-    # --- rect → vertex mxCell ---
-    for rd in rect_data:
+    def _add_rect_cell(rd):
+        """Append an mxCell vertex for one rect entry and return the next cell id."""
+        nonlocal cell_id
         el = rd['el']
-        fill_str = el.get('fill', 'white')
-        stroke_str = el.get('stroke', 'none')
-        sw_str = el.get('stroke-width', '1')
+        fill_str = _css_prop(el, 'fill', 'white')
+        stroke_str = _css_prop(el, 'stroke', 'none')
+        sw_raw = _css_prop(el, 'stroke-width', '1')
         rx_val = _fv(el, 'rx', 0.0)
 
         fill_hex = _rgb_to_hex(fill_str) or '#ffffff'
         stroke_hex = _rgb_to_hex(stroke_str)
+        sw_float = _parse_float_css(sw_raw, 1.0)
+
+        is_tag = rd.get('is_tag', False)
+        is_top_label = rd.get('is_top_label', False)
+        top_label_align = rd.get('top_label_align', 'center')  # 'center' or 'left'
+        font_color = rd.get('font_color') or ''
 
         style_parts = [
             'shape=rectangle',
             f'rounded={"1" if rx_val > 0 else "0"}',
             f'fillColor={fill_hex}',
+            f'strokeColor={stroke_hex}' if stroke_hex else 'strokeColor=none',
+            f'strokeWidth={sw_float:.1f}',
+            'html=1',
         ]
-        if stroke_hex:
-            style_parts.append(f'strokeColor={stroke_hex}')
+        if is_tag:
+            # Interface-name tags: prevent text wrapping and allow the label to
+            # overflow the narrow cell width so it always renders on one line.
+            style_parts += ['whiteSpace=nowrap', 'overflow=visible', 'align=center']
+        elif is_top_label:
+            # Area/folder boxes: dominant-baseline="hanging" in SVG → top-aligned.
+            # L2 device containers: text-anchor="start" → left-aligned.
+            h_align = top_label_align or 'center'
+            style_parts += ['whiteSpace=wrap', 'verticalAlign=top', f'align={h_align}']
         else:
-            style_parts.append('strokeColor=none')
-        try:
-            sw_float = float(sw_str)
-            style_parts.append(f'strokeWidth={sw_float:.1f}')
-        except (ValueError, TypeError):
-            pass
-        style_parts.append('whiteSpace=wrap')
-        style_parts.append('html=1')
+            style_parts.append('whiteSpace=wrap')
 
+        # Apply font color if captured from the SVG text element (e.g. red labels)
+        if font_color:
+            _fc_hex = _rgb_to_hex(font_color)
+            if _fc_hex:
+                style_parts.append(f'fontColor={_fc_hex}')
+
+        # Apply SVG transform rotation to draw.io style (draw.io rotates around
+        # cell centre, matching SVG rotate(angle cx cy) where cx/cy = rect centre).
+        rotation = rd.get('rotation', 0.0)
+        if rotation:
+            style_parts.append(f'rotation={rotation:.2f}')
+        # Apply font size from the matched text element's CSS class (tag-text: 8px)
+        font_size = rd.get('font_size')
+        if font_size is not None:
+            style_parts.append(f'fontSize={int(round(font_size))}')
         style_str = ';'.join(style_parts) + ';'
         cell = ET.SubElement(root_el, 'mxCell',
                              id=str(cell_id),
@@ -1792,27 +2013,34 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
                              parent='1',
                              style=style_str)
         geom = ET.SubElement(cell, 'mxGeometry',
-                             x=str(round(rd['x'])),
-                             y=str(round(rd['y'])),
+                             x=str(round(rd['x'] + ox)),
+                             y=str(round(rd['y'] + oy)),
                              width=str(round(rd['w'])),
                              height=str(round(rd['h'])))
         geom.set('as', 'geometry')
         cell_id += 1
 
+    # --- rect → vertex mxCell ---
+    # Render order: non-tag rects first (background areas, devices), then lines,
+    # then tag rects last.  In draw.io, later mxCell elements are drawn on top,
+    # so this ensures interface-name tags always appear in front of connection lines.
+    for rd in rect_data:
+        if not rd.get('is_tag'):
+            _add_rect_cell(rd)
+
     # --- line → edge mxCell (floating, no source/target) ---
+    # Fix: use <mxPoint as="sourcePoint/targetPoint"> directly as mxGeometry
+    # children, NOT wrapped in <Array>.  The Array form is only for waypoints.
     for el in lines:
         x1 = _fv(el, 'x1')
         y1 = _fv(el, 'y1')
         x2 = _fv(el, 'x2')
         y2 = _fv(el, 'y2')
-        stroke_str = el.get('stroke', 'black')
-        sw_str = el.get('stroke-width', '1')
+        stroke_str = _css_prop(el, 'stroke', 'black')
+        sw_raw = _css_prop(el, 'stroke-width', '1')
 
         stroke_hex = _rgb_to_hex(stroke_str) or '#000000'
-        try:
-            sw_float = float(sw_str)
-        except (ValueError, TypeError):
-            sw_float = 1.0
+        sw_float = _parse_float_css(sw_raw, 1.0)
 
         style_str = (
             f'endArrow=none;startArrow=none;'
@@ -1829,18 +2057,58 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
         geom = ET.SubElement(cell, 'mxGeometry', relative='1')
         geom.set('as', 'geometry')
 
-        src_arr = ET.SubElement(geom, 'Array')
-        src_arr.set('as', 'sourcePoint')
-        sp = ET.SubElement(src_arr, 'mxPoint')
-        sp.set('x', str(round(x1)))
-        sp.set('y', str(round(y1)))
+        sp = ET.SubElement(geom, 'mxPoint')
+        sp.set('x', str(round(x1 + ox)))
+        sp.set('y', str(round(y1 + oy)))
+        sp.set('as', 'sourcePoint')
 
-        tgt_arr = ET.SubElement(geom, 'Array')
-        tgt_arr.set('as', 'targetPoint')
-        tp = ET.SubElement(tgt_arr, 'mxPoint')
-        tp.set('x', str(round(x2)))
-        tp.set('y', str(round(y2)))
+        tp = ET.SubElement(geom, 'mxPoint')
+        tp.set('x', str(round(x2 + ox)))
+        tp.set('y', str(round(y2 + oy)))
+        tp.set('as', 'targetPoint')
 
+        cell_id += 1
+
+    # --- tag rects → vertex mxCell (rendered AFTER lines so they appear in front) ---
+    for rd in rect_data:
+        if rd.get('is_tag'):
+            _add_rect_cell(rd)
+
+    # --- standalone text → text mxCell ---
+    # Includes diagram titles, L2 segment names (TESTVLAN-NAME, vlanXXX), and
+    # any other text not matched to a rect (or whose rect already had a label).
+    for st in texts_standalone:
+        fs = st.get('font_size') or 12
+        # Preserve SVG text colour (e.g. purple for L2 segment names)
+        fill_color = st.get('fill', '')
+        fc_hex = _rgb_to_hex(fill_color) if fill_color else None
+        # Preserve text alignment (text-anchor: start → left, middle → center)
+        anchor = st.get('anchor', 'middle')
+        h_align = 'left' if anchor == 'start' else 'center'
+        style_str = (
+            f'text;html=1;align={h_align};verticalAlign=top;'
+            'resizable=0;points=[];strokeColor=none;fillColor=none;'
+            # Remove draw.io's default internal padding so the text appears
+            # flush against the top of the cell – matching SVG positioning.
+            'spacing=0;spacingTop=0;spacingBottom=0;'
+            f'fontSize={int(round(fs))};'
+        )
+        if fc_hex:
+            style_str += f'fontColor={fc_hex};'
+        cell = ET.SubElement(root_el, 'mxCell',
+                             id=str(cell_id),
+                             value=st['label'],
+                             vertex='1',
+                             parent='1',
+                             style=style_str)
+        # Estimate cell width from text length and font size
+        est_w = max(len(st['label']) * fs * 0.65, 80)
+        geom = ET.SubElement(cell, 'mxGeometry',
+                             x=str(round(st['x'] + ox)),
+                             y=str(round(st['y'] + oy)),
+                             width=str(round(est_w)),
+                             height=str(round(fs * 1.8)))
+        geom.set('as', 'geometry')
         cell_id += 1
 
     xml_str = ET.tostring(mxfile, encoding='unicode', xml_declaration=False)
@@ -2588,7 +2856,7 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     <span class="sep"></span>
     <button class="primary" id="btnDownload" title="Download SVG">&#8681; Download</button>
     <button class="primary" id="btnDownloadVisio" title="Download SVG optimized for Visio">&#8681; Download for Visio</button>
-    <button class="primary" id="btnDownloadDrawio" title="Download as draw.io diagram">&#8681; Download for draw.io</button>
+    <button class="primary" id="btnDownloadDrawio" title="Download as draw.io diagram" hidden>&#8681; Download for draw.io</button>
 </div>
 <div class="viewer" id="viewer">
     <img id="svgImg" src="{svg_url}" draggable="false" />
