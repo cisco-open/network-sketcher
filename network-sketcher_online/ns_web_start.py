@@ -2231,8 +2231,14 @@ def svg_raw(job_id, filename):
     if svg_bytes is not None:
         return Response(svg_bytes, mimetype='image/svg+xml')
     # Fallback: serve from disk with retry (for files not yet cached, or cache miss).
+    # Use continue (not break) when file is not yet visible, to handle transient
+    # Windows AV / filesystem delays where the file appears shortly after move.
     for _attempt in range(3):
         if not filepath.is_file():
+            if _attempt < 2:
+                import time as _t_svg
+                _t_svg.sleep(0.1)
+                continue
             break
         try:
             return send_file(str(filepath), mimetype='image/svg+xml')
@@ -2901,6 +2907,21 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     }}
 
     img.onload = function() {{ fitToWindow(); }};
+    // Guard: if the browser served the image from cache, onload may not fire.
+    // Check img.complete synchronously after assigning the handler.
+    if (img.complete && img.naturalWidth > 0) {{ fitToWindow(); }}
+
+    var _svgRetries = 0;
+    img.onerror = function() {{
+        if (_svgRetries < 3) {{
+            _svgRetries++;
+            var retryDelay = 1500 * _svgRetries;
+            setTimeout(function() {{
+                img.src = '/svg_raw/' + jobId + '/' + files[idx] + '?retry=' + _svgRetries;
+            }}, retryDelay);
+        }}
+    }};
+
     window.addEventListener('resize', function() {{ updateTransform(); }});
 
     function zoomAtPoint(px, py, factor) {{
@@ -2949,6 +2970,7 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     function loadPage(i) {{
         if (i < 0 || i >= files.length) return;
         idx = i;
+        _svgRetries = 0;
         img.src = '/svg_raw/' + jobId + '/' + files[idx];
         titleEl.textContent = names[idx];
         pageEl.textContent = 'Page ' + (idx + 1) + ' / ' + files.length;
