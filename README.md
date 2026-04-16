@@ -123,7 +123,8 @@ https://github.com/user-attachments/assets/d376af22-e100-4647-83aa-e28cd7efefd8
 https://github.com/user-attachments/assets/1e506529-1824-43a4-880c-196986d6dae8
 
 
-[NS_Online_User_Guide_301_en.pdf](https://github.com/user-attachments/files/26568267/NS_Online_User_Guide_301_en.pdf)
+[NS_Online_User_Guide_301_en.pdf](https://github.com/user-attachments/files/26778493/NS_Online_User_Guide_301_en.pdf)
+
 
 
 [NS_Online_User_Guide_301_jp.pdf](https://github.com/user-attachments/files/26567922/NS_Online_User_Guide_301_jp.pdf)
