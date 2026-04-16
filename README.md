@@ -46,7 +46,7 @@ network-sketcher/
 > **AI-native software:** Network Sketcher Online is designed around AI (LLM) interaction — generate AI context, send it to an LLM, and paste the resulting commands back to update your network design, all within the browser.
 
 
-<img width="1530" height="868" alt="image" src="https://github.com/user-attachments/assets/d21a433d-6287-4192-94ae-6c15a4d31995" />
+<img width="1559" height="879" alt="image" src="https://github.com/user-attachments/assets/0b87904c-f5b3-4585-a7bc-5b3b1e62c610" />
 
 
 ### Demo Video (Ver 3.0.1b)
