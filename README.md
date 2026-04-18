@@ -299,7 +299,7 @@ pyinstaller.exe [file path]/network-sketcher_offline/network_sketcher.py --onefi
 
 ## Performance Measurement Summary (Offline)
 
-| Ver: 2.6.1b                                         | 64 NW devices<br>112 Connections<br>(~500 endpoints)| 256 NW devices<br>480 Connections<br>(~3000 endpoints) | 1024 NW devices<br>1984 Connections<br>(~10000 endpoints)|
+| Ver: 2.6.1b                                         | 64 NW devices<br>112 Connections| 256 NW devices<br>480 Connections | 1024 NW devices<br>1984 Connections|
 |----------------------------------------------------|-----------:|------------:|-------------:|
 | Master file creation *1                            | 51s      | 2m45s      | 25m45s          |
 | Layer 1 diagram generation (All Areas with tags)   | 6s         | 29s         | 6m30s         |
