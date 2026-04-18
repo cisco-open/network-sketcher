@@ -287,8 +287,8 @@ sudo apt-get install python3-tk
 ## User Guide (Offline)
 | Language  | Link |
 | ------------- | ------------- |
-| English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BEN%5D) |
-| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide%5BJP%5D) |
+| English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide(Offline_Edition)%5BEN%5D) |
+| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide(Offline_Edition)%5BJP%5D) |
 <br>
  
 ## How to create the exe file for Windows using pyinstaller
