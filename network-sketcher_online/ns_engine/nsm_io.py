@@ -204,10 +204,22 @@ def _read_flow_data_from_xlsx(xlsx_path: str) -> pd.DataFrame:
 
 def _write_section_to_xlsx_all(xlsx_path: str,
                                sections_dict: dict[str, pd.DataFrame]):
-    """Write all sections to an xlsx file (creates new file)."""
+    """Write all sections to an xlsx file (creates new file).
+
+    Section ordering within each sheet is enforced by MASTER_DATA_SECTIONS
+    to ensure that downloaded .xlsx files remain consistent regardless of
+    the order in which sections were stored in the source .nsm.
+    """
     wb = openpyxl.Workbook()
 
-    sheets_data: dict[str, list[tuple[str, pd.DataFrame]]] = {}
+    # Predefined ordering per sheet (unknown keys fall back to insertion order)
+    sheet_section_order = {
+        'Master_Data':    MASTER_DATA_SECTIONS,
+        'Master_Data_L2': ['L2_TABLE'],
+        'Master_Data_L3': ['L3_TABLE'],
+    }
+
+    sheets_data: dict[str, list[tuple[str, str, pd.DataFrame]]] = {}
     for section_key, df in sections_dict.items():
         if section_key in SECTION_SHEET_MAP:
             ws_name, tag = SECTION_SHEET_MAP[section_key]
@@ -216,7 +228,15 @@ def _write_section_to_xlsx_all(xlsx_path: str,
             tag = f'<<{section_key}>>'
         if ws_name not in sheets_data:
             sheets_data[ws_name] = []
-        sheets_data[ws_name].append((tag, df))
+        sheets_data[ws_name].append((section_key, tag, df))
+
+    # Sort each sheet's sections by the predefined order; unknown keys go last
+    for ws_name, ordered_keys in sheet_section_order.items():
+        if ws_name in sheets_data:
+            key_index = {k: i for i, k in enumerate(ordered_keys)}
+            sheets_data[ws_name].sort(
+                key=lambda item: key_index.get(item[0], len(ordered_keys))
+            )
 
     first_sheet = True
     for ws_name in ['Master_Data', 'Master_Data_L2', 'Master_Data_L3']:
@@ -230,7 +250,7 @@ def _write_section_to_xlsx_all(xlsx_path: str,
             continue
 
         current_row = 1
-        for tag, df in sheets_data[ws_name]:
+        for _section_key, tag, df in sheets_data[ws_name]:
             for _, row_data in df.iterrows():
                 for col_idx, value in enumerate(row_data, start=1):
                     decoded = _decode_cell(value)
