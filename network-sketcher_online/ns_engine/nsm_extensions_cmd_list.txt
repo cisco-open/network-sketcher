@@ -33,14 +33,14 @@ show area_device
 
 
 ## show area_location
-Displays area placement information. Relative location information. '\_AIR\_' indicates a blank area.
+Displays area placement information. Relative location information. Empty spacing between areas is managed automatically by the system and is not shown in output.
  ```bash
 show area_location
  ```
 * ex.<br>
 ＃show area_location<br>
 ['DC-TOP1', 'DC-TOP2', 'DC-TOP3']<br>
-['Site1', 'Site2', '\_AIR\_']<br>
+['Site1', 'Site2']<br>
 
 
 ## show attribute
@@ -318,7 +318,9 @@ New device layout (normalized):<br>
 
 [Tips]
 * Device grid is automatically centered and normalized
-* Use \_AIR\_ to explicitly specify empty cells
+* Use `_AIR_` to explicitly specify empty cells (spacer placeholder)
+* **Shorthand**: `''` (empty string) can be used instead of `'_AIR_'` — e.g., `['SW-1', '', 'SW-2']` is equivalent to `['SW-1', '_AIR_', 'SW-2']` (saves 5 characters per spacer)
+* Note: `show device_location` output always displays `_AIR_`; the `''` shorthand is only for input
 * An error occurs if a new device already exists in another area
 * Only device placement changes (no additions or deletions) are also possible
 
@@ -1008,6 +1010,8 @@ Combined format for multiple entries:
 **Notes**<br>
 - RGB values must be integers between 0 and 255
 - Empty attributes should use "['', [255, 255, 255]]" (white background)
+- **Shorthand**: `[]` can be used instead of `[255, 255, 255]` to specify white background — e.g., `"['', []]"` is equivalent to `"['', [255, 255, 255]]"` (saves 12 characters per attribute)
+- **Trailing omission**: Trailing empty attributes can be omitted entirely — unspecified attributes are automatically filled with `"['', [255, 255, 255]]"`. E.g., `['Access-SW1', "['DEVICE', [235,241,222]]", "['Model', [255,183,219]]", "['IOS-XE', [200,230,255]]"]` is valid with 6 trailing attributes auto-completed (saves ~115 characters vs full 9-attribute form)
 - The header row entry must start with 'Device Name'
 - Device entries and header row can be mixed in the same command
 - Each device/header entry must have up to 9 attribute columns (excluding the device name column)
@@ -1073,6 +1077,8 @@ show attribute
 - This is the ONLY bulk command that requires escaped double quotes for inner values; all other bulk commands use simple unescaped strings
 - Wrong (common mistake): `"'[['DEV', ...]"` — the extra `'` after `"` causes parse failure
 - Correct: `"[['DEV', \"['DEVICE',[235,241,222]]\", \"['', [255,255,255]]\"]]"`
+- **White shorthand**: `[]` can replace `[255, 255, 255]` to reduce command length. Example: `\"['', []]\"` instead of `\"['', [255, 255, 255]]\"`
+- **Trailing omission**: Trailing empty attributes can be omitted; they are auto-completed as `"['', [255, 255, 255]]"`. Example: `"[['Access-SW1', \"['DEVICE',[235,241,222]]\", \"['Model',[255,183,219]]\", \"['IOS-XE',[200,230,255]]\"]]"` is valid (6 trailing attrs omitted)
 - For the header row entry, all values are plain single-quoted strings without RGB: `['Device Name', 'Col1', 'Col2', ...]`
 
 ## rename device

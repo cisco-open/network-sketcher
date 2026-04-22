@@ -1134,7 +1134,10 @@ class ns_cli_run():
             ori_attribute_tuple = nsm_def.convert_array_to_tuple(attribute_array)
 
             def validate_rgb(rgb_list):
-                if not isinstance(rgb_list, list) or len(rgb_list) != 3:
+                # [] is accepted as shorthand for white [255, 255, 255]
+                if not isinstance(rgb_list, list) or len(rgb_list) == 0:
+                    return [255, 255, 255]
+                if len(rgb_list) != 3:
                     return [255, 255, 255]
                 fixed_rgb = []
                 for val in rgb_list:
@@ -1229,10 +1232,11 @@ class ns_cli_run():
                                 if idx_attr + 1 < len(item[1]):
                                     new_row.append(item[1][idx_attr + 1])
                                 else:
-                                    new_row.append("['<EMPTY>', [255, 255, 255]]")
+                                    new_row.append("['', [255, 255, 255]]")
 
+                        # Pad trailing unspecified attributes as empty (white background)
                         while len(new_row) < 10:
-                            new_row.append("['<EMPTY>', [255, 255, 255]]")
+                            new_row.append("['', [255, 255, 255]]")
 
                         item[1] = new_row
                         success_count += 1
@@ -6054,12 +6058,13 @@ class def_common():
                     if not isinstance(row, list):
                         continue
 
-                    # Filter out None and empty strings, keep actual devices and _AIR_ markers
+                    # Filter out None, treat empty strings as _AIR_ shorthand, keep actual devices and _AIR_ markers
                     cleaned_row = []
                     for device in row:
-                        if device is None or device == '':
-                            # Skip empty cells
+                        if device is None:
                             continue
+                        elif device == '':
+                            cleaned_row.append('_AIR_')  # '' is shorthand for _AIR_
                         else:
                             cleaned_row.append(device)
 
