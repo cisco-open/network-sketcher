@@ -2839,11 +2839,30 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     flex: 1; overflow: hidden; cursor: grab; position: relative; background: #f0f2f5;
 }}
 .viewer.dragging {{ cursor: grabbing; }}
-.viewer img {{
+#svgContainer {{
     position: absolute; left: 0; top: 0;
-    max-width: none; max-height: none;
-    user-select: none; -webkit-user-drag: none;
-    image-rendering: optimizeQuality;
+    user-select: none; -webkit-user-select: none;
+}}
+#svgContainer svg {{
+    display: block;
+    overflow: visible;
+}}
+.ctx-menu {{
+    position: fixed; background: #fff; border: 1px solid #ccc;
+    border-radius: 6px; padding: 4px 0; z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none;
+    min-width: 160px;
+}}
+.ctx-menu li {{
+    list-style: none; padding: 8px 18px; cursor: pointer;
+    font-size: 13px; color: #333; white-space: nowrap;
+}}
+.ctx-menu li:hover {{ background: #4A8FE7; color: #fff; }}
+.ctx-feedback {{
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: #fff; padding: 6px 18px;
+    border-radius: 20px; font-size: 13px; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
 }}
 </style>
 </head>
@@ -2865,8 +2884,12 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     <button class="primary" id="btnDownloadDrawio" title="Download as draw.io diagram" hidden>&#8681; Download for draw.io</button>
 </div>
 <div class="viewer" id="viewer">
-    <img id="svgImg" src="{svg_url}" draggable="false" />
+    <div id="svgContainer"></div>
 </div>
+<ul class="ctx-menu" id="ctxMenu">
+    <li id="ctxCopy">テキストをコピー</li>
+</ul>
+<div class="ctx-feedback" id="ctxFeedback">コピーしました</div>
 <script>
 (function() {{
     var files = [{svg_files_js}];
@@ -2875,52 +2898,86 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     var jobId = "{job_id}";
 
     var viewer = document.getElementById('viewer');
-    var img = document.getElementById('svgImg');
     var zoomEl = document.getElementById('zoomLevel');
     var pageEl = document.getElementById('pageInfo');
     var titleEl = document.getElementById('titleText');
 
     var scale = 1, cx = 0, cy = 0;
     var dragging = false, dragStartX = 0, dragStartY = 0, cxStart = 0, cyStart = 0;
+    var naturalW = 800, naturalH = 600;
 
     function updateTransform() {{
         var vw = viewer.clientWidth, vh = viewer.clientHeight;
-        var iw = (img.naturalWidth || 1) * scale;
-        var ih = (img.naturalHeight || 1) * scale;
+        var iw = naturalW * scale;
+        var ih = naturalH * scale;
         var left = vw / 2 - cx * scale;
         var top = vh / 2 - cy * scale;
-        img.style.left = left + 'px';
-        img.style.top = top + 'px';
-        img.style.width = iw + 'px';
-        img.style.height = ih + 'px';
-        img.style.transform = '';
+        var container = document.getElementById('svgContainer');
+        container.style.left = left + 'px';
+        container.style.top = top + 'px';
+        container.style.width = iw + 'px';
+        container.style.height = ih + 'px';
+        var svgEl = container.querySelector('svg');
+        if (svgEl) {{
+            svgEl.style.width = iw + 'px';
+            svgEl.style.height = ih + 'px';
+        }}
         zoomEl.textContent = Math.round(scale * 100) + '%';
     }}
 
     function fitToWindow() {{
         var vw = viewer.clientWidth, vh = viewer.clientHeight;
-        var iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
-        scale = Math.min(vw / iw, vh / ih, 1) * 0.95;
-        cx = iw / 2;
-        cy = ih / 2;
+        scale = Math.min(vw / naturalW, vh / naturalH, 1) * 0.95;
+        cx = naturalW / 2;
+        cy = naturalH / 2;
         updateTransform();
     }}
 
-    img.onload = function() {{ fitToWindow(); }};
-    // Guard: if the browser served the image from cache, onload may not fire.
-    // Check img.complete synchronously after assigning the handler.
-    if (img.complete && img.naturalWidth > 0) {{ fitToWindow(); }}
-
     var _svgRetries = 0;
-    img.onerror = function() {{
-        if (_svgRetries < 3) {{
-            _svgRetries++;
-            var retryDelay = 1500 * _svgRetries;
-            setTimeout(function() {{
-                img.src = '/svg_raw/' + jobId + '/' + files[idx] + '?retry=' + _svgRetries;
-            }}, retryDelay);
-        }}
-    }};
+    function loadSvgInline(url) {{
+        _svgRetries = 0;
+        _fetchSvg(url);
+    }}
+
+    function _fetchSvg(url) {{
+        fetch(url)
+            .then(function(r) {{
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            }})
+            .then(function(svgText) {{
+                // スコープ付き: SVG内の<style>がページ全体に漏れないようセレクタを限定する
+                svgText = svgText.replace(/<style>([\s\S]*?)<\/style>/gi, function(_, css) {{
+                    css = css.replace(/((?:^|[}}])\s*)((?:[^{{@/]|\/(?!\*))+)(\s*\{{)/g, function(m, pre, sel, post) {{
+                        var scoped = sel.split(',').map(function(s) {{
+                            return '#svgContainer ' + s.trim();
+                        }}).join(', ');
+                        return pre + scoped + post;
+                    }});
+                    return '<style>' + css + '</style>';
+                }});
+                var container = document.getElementById('svgContainer');
+                container.innerHTML = svgText;
+                var svgEl = container.querySelector('svg');
+                if (!svgEl) return;
+                // viewBox または width/height からサイズ取得
+                var vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+                if (vb && vb.width && vb.height) {{
+                    naturalW = vb.width;
+                    naturalH = vb.height;
+                }} else {{
+                    naturalW = parseFloat(svgEl.getAttribute('width')) || 800;
+                    naturalH = parseFloat(svgEl.getAttribute('height')) || 600;
+                }}
+                fitToWindow();
+            }})
+            .catch(function() {{
+                if (_svgRetries < 3) {{
+                    _svgRetries++;
+                    setTimeout(function() {{ _fetchSvg(url + '?retry=' + _svgRetries); }}, 1500 * _svgRetries);
+                }}
+            }});
+    }}
 
     window.addEventListener('resize', function() {{ updateTransform(); }});
 
@@ -2970,8 +3027,7 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     function loadPage(i) {{
         if (i < 0 || i >= files.length) return;
         idx = i;
-        _svgRetries = 0;
-        img.src = '/svg_raw/' + jobId + '/' + files[idx];
+        loadSvgInline('/svg_raw/' + jobId + '/' + files[idx]);
         titleEl.textContent = names[idx];
         pageEl.textContent = 'Page ' + (idx + 1) + ' / ' + files.length;
         document.title = names[idx];
@@ -3025,6 +3081,84 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
 
     document.getElementById('btnPrev').disabled = (idx === 0);
     document.getElementById('btnNext').disabled = (idx === files.length - 1);
+
+    // 初回ロード
+    loadSvgInline('/svg_raw/' + jobId + '/' + files[idx]);
+
+    // --- 右クリック コンテキストメニュー ---
+    var ctxMenu = document.getElementById('ctxMenu');
+    var ctxFeedback = document.getElementById('ctxFeedback');
+    var _feedbackTimer = null;
+
+    function showCtxMenu(x, y, label) {{
+        ctxMenu.style.left = x + 'px';
+        ctxMenu.style.top = y + 'px';
+        ctxMenu.style.display = 'block';
+        document.getElementById('ctxCopy').onclick = function() {{
+            navigator.clipboard.writeText(label).then(function() {{
+                hideCtxMenu();
+                showFeedback();
+            }}).catch(function() {{
+                // HTTPS以外の環境向けフォールバック
+                try {{
+                    var ta = document.createElement('textarea');
+                    ta.value = label;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    hideCtxMenu();
+                    showFeedback();
+                }} catch(e) {{}}
+            }});
+        }};
+    }}
+
+    function hideCtxMenu() {{
+        ctxMenu.style.display = 'none';
+    }}
+
+    function showFeedback() {{
+        ctxFeedback.style.opacity = '1';
+        clearTimeout(_feedbackTimer);
+        _feedbackTimer = setTimeout(function() {{
+            ctxFeedback.style.opacity = '0';
+        }}, 1500);
+    }}
+
+    viewer.addEventListener('contextmenu', function(e) {{
+        // クリック対象が <text> または <tspan> 要素か（祖先もたどる）
+        var el = e.target;
+        while (el && el !== viewer) {{
+            var tag = el.tagName ? el.tagName.toLowerCase() : '';
+            if (tag === 'text' || tag === 'tspan') break;
+            el = el.parentElement;
+        }}
+        if (!el || el === viewer) return;
+        var tag = el.tagName ? el.tagName.toLowerCase() : '';
+        if (tag !== 'text' && tag !== 'tspan') return;
+
+        // <tspan> の場合は親 <text> 全体のテキストを取得
+        var textEl = (tag === 'tspan') ? el.closest('text') : el;
+        var label = (textEl || el).textContent.trim();
+        if (!label) return;
+
+        e.preventDefault();
+        // メニューが画面外に出ないよう位置を調整
+        var menuW = 180, menuH = 42;
+        var x = Math.min(e.clientX, window.innerWidth - menuW - 8);
+        var y = Math.min(e.clientY, window.innerHeight - menuH - 8);
+        showCtxMenu(x, y, label);
+    }});
+
+    document.addEventListener('click', function(e) {{
+        if (!ctxMenu.contains(e.target)) hideCtxMenu();
+    }});
+    document.addEventListener('keydown', function(e) {{
+        if (e.key === 'Escape') hideCtxMenu();
+    }});
 
     window.addEventListener('keydown', function(e) {{
         if (e.key === 'ArrowLeft') loadPage(idx - 1);
@@ -5516,45 +5650,10 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
         aiRow.innerHTML = aiInner;
         section.appendChild(aiRow);
 
-        // --- Event delegation for this section ---
-        section.addEventListener('click', async function(ev) {
-            // NSM download link
-            var nsmBtn = ev.target.closest('.master-dl-nsm');
-            if (nsmBtn) {
-                ev.stopPropagation();
-                window.location.href = nsmBtn.href;
-                ev.preventDefault();
-                return;
-            }
-            // Master XLSX download / convert
-            var xlsxBtn = ev.target.closest('.master-dl-xlsx');
-            if (xlsxBtn && currentJobId) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                if (xlsxBtn.tagName === 'A') {
-                    window.location.href = xlsxBtn.href;
-                    return;
-                }
-                xlsxBtn.disabled = true;
-                xlsxBtn.textContent = 'Converting...';
-                try {
-                    var resp = await fetch('/export_nsm_to_xlsx/' + currentJobId, { method: 'POST' });
-                    if (resp.ok) {
-                        var blob = await resp.blob();
-                        var url = window.URL.createObjectURL(blob);
-                        var a = document.createElement('a');
-                        a.href = url;
-                        a.download = currentMasterFilename.replace('.nsm', '.xlsx');
-                        document.body.appendChild(a);
-                        a.click();
-                        setTimeout(function() { window.URL.revokeObjectURL(url); a.remove(); }, 1000);
-                    }
-                } catch (e) {}
-                xlsxBtn.disabled = false;
-                xlsxBtn.textContent = 'Download (.xlsx)';
-                return;
-            }
-        });
+        // NOTE: click event delegation is registered ONCE at module init
+        // (see fileActionsSection.addEventListener near outputList init).
+        // Registering here would cause listener accumulation on each call,
+        // leading to duplicate xlsx downloads after CLI command runs.
 
         section.style.display = 'block';
         // Reflect AI Context checkbox in the selected count immediately
@@ -5679,6 +5778,56 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
 
     btnReset.addEventListener('click', function() { resetAll(); });
 
+    // --- fileActionsSection click handler (register ONCE at module init) ---
+    // buildFileActionsSection() is called multiple times (on upload, CLI run,
+    // session restore, etc.). If the listener were registered inside that
+    // function, it would accumulate and cause duplicate xlsx downloads.
+    var fileActionsSectionEl = document.getElementById('fileActionsSection');
+    if (fileActionsSectionEl) {
+        fileActionsSectionEl.addEventListener('click', async function(ev) {
+            // NSM download link
+            var nsmBtn = ev.target.closest('.master-dl-nsm');
+            if (nsmBtn) {
+                ev.stopPropagation();
+                window.location.href = nsmBtn.href;
+                ev.preventDefault();
+                return;
+            }
+            // Master XLSX download / convert
+            var xlsxBtn = ev.target.closest('.master-dl-xlsx');
+            if (xlsxBtn && currentJobId) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (xlsxBtn.tagName === 'A') {
+                    window.location.href = xlsxBtn.href;
+                    return;
+                }
+                xlsxBtn.disabled = true;
+                xlsxBtn.textContent = 'Converting...';
+                try {
+                    var resp = await fetch('/export_nsm_to_xlsx/' + currentJobId, { method: 'POST' });
+                    if (resp.ok) {
+                        var blob = await resp.blob();
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        // 最新のバージョン番号付きマスタ名を採用（例: [MASTER]foo_1.nsm -> _1.xlsx）
+                        var baseName = (updatedMasters.length > 0)
+                            ? updatedMasters[updatedMasters.length - 1]
+                            : currentMasterFilename;
+                        a.download = baseName.replace(/\.nsm$/i, '.xlsx');
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(function() { window.URL.revokeObjectURL(url); a.remove(); }, 1000);
+                    }
+                } catch (e) {}
+                xlsxBtn.disabled = false;
+                xlsxBtn.textContent = 'Download (.xlsx)';
+                return;
+            }
+        });
+    }
+
     outputList.addEventListener('click', async function(ev) {
         var nsmBtn = ev.target.closest('.master-dl-nsm');
         if (nsmBtn) {
@@ -5704,7 +5853,11 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                 var url = window.URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;
-                a.download = currentMasterFilename.replace('.nsm', '.xlsx');
+                // 最新のバージョン番号付きマスタ名を採用（例: [MASTER]foo_1.nsm -> _1.xlsx）
+                var baseName = (updatedMasters.length > 0)
+                    ? updatedMasters[updatedMasters.length - 1]
+                    : currentMasterFilename;
+                a.download = baseName.replace(/\.nsm$/i, '.xlsx');
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
