@@ -1,0 +1,9 @@
+Bump version to 3.0.1h; add port list support for add l2_segment_bulk and rename port_info_bulk
+
+- add l2_segment_bulk: entry[1] now accepts a list of port names (Option B)
+  in addition to a single port string or multi-device list (Option A).
+- rename port_info_bulk: entry[1] now accepts a list of port names,
+  consistent with add l2_segment_bulk Option B behavior.
+- Updated CLI documentation (nsm_extensions_cmd_list.txt,
+  ns_extensions_cmd_list.txt, [AI_Context]no_data.txt) with new syntax,
+  examples, tips, and constraint warnings for both commands.
