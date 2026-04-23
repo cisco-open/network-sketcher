@@ -518,20 +518,13 @@ def _run_all_areas(ctx, ppt_meta_file, capture_list, cap_en, mod):
     if os.path.isfile(tmp_master):
         os.remove(tmp_master)
 
-    # For NSM files, read the area count directly from the master (Parquet only,
-    # no Excel I/O) so we can skip create_master_file_one_area when there is only
-    # one area.  For xlsx (or other formats), always call create_master_file_one_area
-    # to preserve the original behaviour without adding any Excel operations.
-    if str(ppt_meta_file).lower().endswith('.nsm'):
-        import nsm_def as _nsm_def
-        _fw = _nsm_def.get_folder_wp_array_from_master('Master_Data', ppt_meta_file)
-        folder_count = len(_fw[0]) if _fw else 0
-        if folder_count <= 1:
-            shutil.copy2(ppt_meta_file, tmp_master)
-        else:
-            mod.create_master_file_one_area.__init__(ctx)
-    else:
-        mod.create_master_file_one_area.__init__(ctx)
+    # Always call create_master_file_one_area so that POSITION_FOLDER is
+    # rewritten to the synthetic 'All Areas' entry and position_*_tuple
+    # attributes are populated on ctx. Skipping this for single-area NSM
+    # masters (previous optimization) left the original folder name in place,
+    # which caused L3-4-1 (All Areas) rendering to produce an empty SVG.
+    # This aligns the SVG path with the PPTX generation path in nsm_cli.py.
+    mod.create_master_file_one_area.__init__(ctx)
 
     ctx.vpn_hostname_if_list = []
     ctx.click_value = 'L3-3-2'

@@ -1224,14 +1224,26 @@ The port info array uses the following format:<br>
 - Port name can be specified in abbreviated form (e.g., "TE 1/0/1") or full form (e.g., "TenGigabitEthernet 1/0/1")
 - Multiple ports can be updated in a single command
 - If a port is not found, it will be reported in the result message
+- **`_ALL_` wildcard (PREFERRED FORMAT)**: Use `"_ALL_"` as port_name to update all ports of the specified device in a single entry. ALWAYS use `_ALL_` instead of enumerating individual ports. Only enumerate specific ports when port settings differ within a device.
+- **Multi-device list (PREFERRED FORMAT)**: Specify multiple device names as a list `["dev1","dev2"]` in the device_name position to apply the same settings to multiple devices at once. ALWAYS group devices with identical port settings using device list notation.
+- **Combined pattern**: Use `_ALL_` first, then add specific port overrides in the same command to handle devices with mixed port types (e.g., access ports + uplinks). Only list individual ports when overriding specific ports within a device that already had `_ALL_` applied.
 
 **Examples**<br>
-Example 1: Update single port info<br>
+Example 1: Update all ports of a single device using _ALL_ (PREFERRED)<br>
 
-rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']]]"
+rename port_info_bulk "[['DIST-CORE-SW1','_ALL_',['10Gbps','Full','10GBASE-SR']]]"
 
-Example 2: Update multiple ports<br>
-rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['DIST-CORE-SW2','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['ACCESS-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']]]"
+Example 2: Update multiple devices with identical settings using device list + _ALL_ (PREFERRED)<br>
+rename port_info_bulk "[[['DIST-CORE-SW1','DIST-CORE-SW2'],'_ALL_',['10Gbps','Full','10GBASE-SR']],['ACCESS-SW1','_ALL_',['1Gbps','Full','1000BASE-T']]]"
+
+Example 3: Update all ports of a device using _ALL_ wildcard<br>
+rename port_info_bulk "[['ACCESS-SW1','_ALL_',['1Gbps','Full','1000BASE-T']]]"
+
+Example 4: Update all ports of multiple devices at once (multi-device list + _ALL_)<br>
+rename port_info_bulk "[[['ACCESS-SW1','ACCESS-SW2','ACCESS-SW3'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
+
+Example 5: Mixed pattern - set all ports to default, then override specific uplink ports<br>
+rename port_info_bulk "[['ACCESS-SW1','_ALL_',['1Gbps','Full','1000BASE-T']],['ACCESS-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']]]"
 
 
 **Full Example with Before/After**<br>
@@ -1247,10 +1259,10 @@ rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-S
 
 +Port info bulk renamed+<br>
 
-#rename port_info_bulk "'[['DIST-CORE-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['DIST-CORE-SW1','TE 1/0/2',['10Gbps','Full','10GBASE-LR']],['ACCESS-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']]]"
+#rename port_info_bulk "[['DIST-CORE-SW1','_ALL_',['10Gbps','Full','10GBASE-SR']],['DIST-CORE-SW1','TE 1/0/2',['10Gbps','Full','10GBASE-LR']],['ACCESS-SW1','_ALL_',['1Gbps','Full','1000BASE-T']]]"
 --- Port info bulk rename completed ---
-Successfully updated: 3 port(s)
-Updated: DIST-CORE-SW1 TE 1/0/1, DIST-CORE-SW1 TE 1/0/2, ACCESS-SW1 GE 1/0/1
+Successfully updated: 4 port(s)
+Updated: DIST-CORE-SW1 TE 1/0/1, DIST-CORE-SW1 TE 1/0/2, DIST-CORE-SW2 TE 1/0/1, ACCESS-SW1 GE 1/0/1
 
 
 +AFTER+<br>
@@ -1670,7 +1682,7 @@ SCENARIO A: SERVICE PROVIDER WITH VRF CUSTOMERS (SAME DATA CENTER)
 add area_location "[['ServiceProvider_DC']]"
 add device_location "['ServiceProvider_DC',[['_AIR_','_AIR_','SP','_AIR_','_AIR_'],['CX-A','CX-B','_AIR_','CY-A','CY-B']]]"
 add l1_link_bulk "[['CX-A','SP','FastEthernet 0/0','FastEthernet 0/0'],['CX-B','SP','FastEthernet 0/0','FastEthernet 0/1'],['CY-A','SP','FastEthernet 0/0','FastEthernet 1/0'],['CY-B','SP','FastEthernet 0/0','FastEthernet 1/1']]"
-rename port_info_bulk "[['CX-A','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 0/0',['100Mbps','Full','100BASE-TX']],['CX-B','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 0/1',['100Mbps','Full','100BASE-TX']],['CY-A','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 1/0',['100Mbps','Full','100BASE-TX']],['CY-B','FE 0/0',['100Mbps','Full','100BASE-TX']],['SP','FE 1/1',['100Mbps','Full','100BASE-TX']]]"
+rename port_info_bulk "[[['CX-A','CX-B','CY-A','CY-B','SP'],'_ALL_',['100Mbps','Full','100BASE-TX']]]"
 rename l3_instance "SP" "FastEthernet 0/0" "CUST-X"
 rename l3_instance "SP" "FastEthernet 0/1" "CUST-X"
 rename l3_instance "SP" "FastEthernet 1/0" "CUST-Y"
@@ -1683,7 +1695,7 @@ add device_location "['HQ',[['HQ-Core-Router'],['HQ-Switch']]]"
 add device_location "['MPLS_wp_',[['MPLS-Cloud']]]"
 add device_location "['Branch',[['Branch-Router'],['Branch-Switch']]]"
 add l1_link_bulk "[['HQ-Core-Router','HQ-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24'],['HQ-Core-Router','MPLS-Cloud','GigabitEthernet 0/0','port 0'],['MPLS-Cloud','Branch-Router','port 1','GigabitEthernet 0/0'],['Branch-Router','Branch-Switch','GigabitEthernet 0/1','GigabitEthernet 0/24']]"
-rename port_info_bulk "[['HQ-Core-Router','GE 0/1',['1Gbps','Full','1000BASE-T']],['HQ-Switch','GE 0/24',['1Gbps','Full','1000BASE-T']],['HQ-Core-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Cloud','port 0',['N/A','N/A','N/A']],['MPLS-Cloud','port 1',['N/A','N/A','N/A']],['Branch-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Branch-Router','GE 0/1',['1Gbps','Full','1000BASE-T']],['Branch-Switch','GE 0/24',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['HQ-Core-Router','HQ-Switch','Branch-Router','Branch-Switch'],'_ALL_',['1Gbps','Full','1000BASE-T']],['MPLS-Cloud','_ALL_',['N/A','N/A','N/A']]]"
 
 SCENARIO C: MULTI-SITE HUB-AND-SPOKE MPLS
 
@@ -1694,7 +1706,7 @@ add device_location "['Branch1',[['B1-Router']]]"
 add device_location "['Branch2',[['B2-Router']]]"
 add device_location "['Branch3',[['B3-Router']]]"
 add l1_link_bulk "[['HQ-Router','MPLS-Hub','GigabitEthernet 0/0','port 0'],['MPLS-Hub','B1-Router','port 1','GigabitEthernet 0/0'],['MPLS-Hub','B2-Router','port 2','GigabitEthernet 0/0'],['MPLS-Hub','B3-Router','port 3','GigabitEthernet 0/0']]"
-rename port_info_bulk "[['HQ-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','port 0',['N/A','N/A','N/A']],['MPLS-Hub','port 1',['N/A','N/A','N/A']],['B1-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','port 2',['N/A','N/A','N/A']],['B2-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','port 3',['N/A','N/A','N/A']],['B3-Router','GE 0/0',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['HQ-Router','B1-Router','B2-Router','B3-Router'],'_ALL_',['1Gbps','Full','1000BASE-T']],['MPLS-Hub','_ALL_',['N/A','N/A','N/A']]]"
 
 SCENARIO D: DATA CENTER WITH VRF AND EXTERNAL WAN
 
@@ -1702,7 +1714,7 @@ add area_location "[['DataCenter','WAN_wp_']]"
 add device_location "['DataCenter',[['Core-Router'],['Tenant-A-Router','Tenant-B-Router']]]"
 add device_location "['WAN_wp_',[['Internet-Gateway']]]"
 add l1_link_bulk "[['Core-Router','Tenant-A-Router','GigabitEthernet 0/1','GigabitEthernet 0/0'],['Core-Router','Tenant-B-Router','GigabitEthernet 0/2','GigabitEthernet 0/0'],['Core-Router','Internet-Gateway','GigabitEthernet 0/0','port 0']]"
-rename port_info_bulk "[['Core-Router','GE 0/1',['1Gbps','Full','1000BASE-T']],['Tenant-A-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Core-Router','GE 0/2',['1Gbps','Full','1000BASE-T']],['Tenant-B-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Core-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Internet-Gateway','port 0',['N/A','N/A','N/A']]]"
+rename port_info_bulk "[[['Core-Router','Tenant-A-Router','Tenant-B-Router'],'_ALL_',['1Gbps','Full','1000BASE-T']],['Internet-Gateway','_ALL_',['N/A','N/A','N/A']]]"
 rename l3_instance "Core-Router" "GigabitEthernet 0/1" "Tenant-A"
 rename l3_instance "Core-Router" "GigabitEthernet 0/2" "Tenant-B"
 
@@ -1886,7 +1898,7 @@ INTERFACE NAMING:
 
 PORT-CHANNEL CONFIGURATION EXAMPLE (USING BULK COMMANDS):
 add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigabitEthernet 1/1/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','TenGigabitEthernet 1/1/2','GigabitEthernet 2/0/11']]"
-rename port_info_bulk "[['Access-Stack1','TE 1/1/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1-2(StackVirtual)','GE 1/0/11',['1Gbps','Full','1000BASE-T']],['Access-Stack1','TE 1/1/2',['10Gbps','Full','10GBASE-SR']],['Dist-SW1-2(StackVirtual)','GE 2/0/11',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[['Access-Stack1','_ALL_',['10Gbps','Full','10GBASE-SR']],['Dist-SW1-2(StackVirtual)','_ALL_',['1Gbps','Full','1000BASE-T']]]"
 add portchannel_bulk "[['Access-Stack1',['TenGigabitEthernet 1/1/1','TenGigabitEthernet 1/1/2'],'Port-channel 1'],['Dist-SW1-2(StackVirtual)',['GigabitEthernet 1/0/11','GigabitEthernet 2/0/11'],'Port-channel 11']]"
 
 KEY REQUIREMENTS:
@@ -1915,7 +1927,7 @@ CONFIGURATION WORKFLOW (USING BULK COMMANDS):
 
 EXAMPLE:
 add l1_link_bulk "[['Access-Stack1','Dist-SW1-2(StackVirtual)','GigabitEthernet 1/0/1','GigabitEthernet 1/0/11'],['Access-Stack1','Dist-SW1-2(StackVirtual)','GigabitEthernet 1/0/2','GigabitEthernet 1/0/12']]"
-rename port_info_bulk "[['Access-Stack1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Dist-SW1-2(StackVirtual)','GE 1/0/11',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['Dist-SW1-2(StackVirtual)','GE 1/0/12',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['Access-Stack1','Dist-SW1-2(StackVirtual)'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 add portchannel_bulk "[['Access-Stack1',['GigabitEthernet 1/0/1','GigabitEthernet 1/0/2'],'Port-channel 1'],['Dist-SW1-2(StackVirtual)',['GigabitEthernet 1/0/11','GigabitEthernet 1/0/12'],'Port-channel 11']]"
 add l2_segment_bulk "[['Access-Stack1','Port-channel 1',['VLAN10','VLAN100']],['Dist-SW1-2(StackVirtual)','Port-channel 11',['VLAN10','VLAN100']]]"
 
@@ -2138,7 +2150,7 @@ Step 1: Create L1 links between APs and switch
 add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/2']]"
 
 Step 1.1: Configure port information for all L1 interfaces (MANDATORY)
-rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['AP-01','AP-02','Access-SW1'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 Step 2: Add ALL VLANs (Management + Client) to switch ports connecting to APs
 add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/1',['Vlan10','Vlan20','Vlan100','Vlan200']],['Access-SW1','GigabitEthernet 1/0/2',['Vlan10','Vlan20','Vlan100','Vlan200']]]"
@@ -2168,7 +2180,7 @@ add device_location "['Floor1',[['Access-SW1'],['AP-01','AP-02']]]"
 add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/1'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/2']]"
 
 # Phase 2.5: Port information configuration (MANDATORY)
-rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['AP-01','AP-02','Access-SW1'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 # Phase 3: L2 configuration - Add ALL VLANs to switch ports (trunk to APs)
 add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/1',['Vlan10','Vlan20','Vlan100','Vlan200']],['Access-SW1','GigabitEthernet 1/0/2',['Vlan10','Vlan20','Vlan100','Vlan200']]]"
@@ -2313,7 +2325,7 @@ add device_location "['Office',[['Access-SW1'],['AP-01','AP-02']]]"
 add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/47'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/48']]"
 
 # Configure port info (MANDATORY)
-rename port_info_bulk "[['AP-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/47',['1Gbps','Full','1000BASE-T']],['AP-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 1/0/48',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['AP-01','AP-02','Access-SW1'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 # Add VLAN to switch ports
 add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/47',['VLAN10']],['Access-SW1','GigabitEthernet 1/0/48',['VLAN10']]]"
@@ -2339,7 +2351,7 @@ add device_location "['Floor1',[['Access-Stack1'],['AP-F1-01','AP-F1-02','AP-F1-
 add l1_link_bulk "[['AP-F1-01','Access-Stack1','GigabitEthernet 0','GigabitEthernet 1/0/45'],['AP-F1-02','Access-Stack1','GigabitEthernet 0','GigabitEthernet 1/0/46'],['AP-F1-03','Access-Stack1','GigabitEthernet 0','GigabitEthernet 2/0/45'],['AP-F1-04','Access-Stack1','GigabitEthernet 0','GigabitEthernet 2/0/46']]"
 
 # Configure port info (MANDATORY)
-rename port_info_bulk "[['AP-F1-01','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/45',['1Gbps','Full','1000BASE-T']],['AP-F1-02','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/46',['1Gbps','Full','1000BASE-T']],['AP-F1-03','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 2/0/45',['1Gbps','Full','1000BASE-T']],['AP-F1-04','GE 0',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 2/0/46',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['AP-F1-01','AP-F1-02','AP-F1-03','AP-F1-04','Access-Stack1'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 # Add VLAN to switch ports
 add l2_segment_bulk "[['Access-Stack1','GigabitEthernet 1/0/45',['VLAN10']],['Access-Stack1','GigabitEthernet 1/0/46',['VLAN10']],['Access-Stack1','GigabitEthernet 2/0/45',['VLAN10']],['Access-Stack1','GigabitEthernet 2/0/46',['VLAN10']]]"
@@ -2576,47 +2588,52 @@ rename port_info_bulk command to set Speed, Duplex, and Port_Type for all L1 int
 Step 1: Identify all L1 interfaces created via add l1_link_bulk
 Step 2: Determine interface type from interface name
 Step 3: Infer appropriate Speed/Duplex/Port_Type based on interface type
-Step 4: Generate rename port_info_bulk command with all ports
+Step 4: Generate rename port_info_bulk command using _ALL_ notation (PREFERRED FORMAT)
+  a. Group devices by their Speed/Duplex/Port_Type settings
+  b. For each group where ALL ports have the same settings: use "_ALL_" as port_name
+  c. For multiple devices in the same group: use device list notation [["dev1","dev2","dev3"],"_ALL_",[...]]
+  d. For devices with mixed port types: use "_ALL_" first, then override specific ports in same command
+  e. ALWAYS prefer _ALL_ notation over enumerating individual ports
 Step 5: Place command immediately after add l1_link_bulk (Phase 2.5)
 
 EXAMPLES:
 
 EXAMPLE 1: Basic GigabitEthernet connections
 add l1_link_bulk "[['Switch-A','Switch-B','GigabitEthernet 0/1','GigabitEthernet 0/1']]"
-rename port_info_bulk "[['Switch-A','GE 0/1',['1Gbps','Full','1000BASE-T']],['Switch-B','GE 0/1',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['Switch-A','Switch-B'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 EXAMPLE 2: TenGigabitEthernet uplinks
 add l1_link_bulk "[['Access-SW1','Dist-SW1','TenGigabitEthernet 1/0/1','TenGigabitEthernet 1/0/11']]"
-rename port_info_bulk "[['Access-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/11',['10Gbps','Full','10GBASE-SR']]]"
+rename port_info_bulk "[[['Access-SW1','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']]]"
 
-EXAMPLE 3: Mixed interface types
+EXAMPLE 3: Mixed interface types (use _ALL_ per group, then override specific ports)
 add l1_link_bulk "[['Core-Router','Dist-SW1','TenGigabitEthernet 0/0','TenGigabitEthernet 1/0/1'],['Dist-SW1','Access-SW1','GigabitEthernet 1/0/24','GigabitEthernet 0/1'],['Access-SW1','AP-01','GigabitEthernet 0/48','GigabitEthernet 0']]"
-rename port_info_bulk "[['Core-Router','TE 0/0',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','GE 1/0/24',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 0/1',['1Gbps','Full','1000BASE-T']],['Access-SW1','GE 0/48',['1Gbps','Full','1000BASE-T']],['AP-01','GE 0',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['Core-Router','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']],[['Access-SW1','AP-01'],'_ALL_',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/24',['1Gbps','Full','1000BASE-T']]]"
 
 EXAMPLE 4: Connection to Waypoint (WAN/Internet)
 add l1_link_bulk "[['Edge-Router','Internet_wp_','GigabitEthernet 0/0','port 0']]"
-rename port_info_bulk "[['Edge-Router','GE 0/0',['1Gbps','Full','1000BASE-T']],['Internet_wp_','port 0',['N/A','N/A','N/A']]]"
+rename port_info_bulk "[['Edge-Router','_ALL_',['1Gbps','Full','1000BASE-T']],['Internet_wp_','_ALL_',['N/A','N/A','N/A']]]"
 
 EXAMPLE 5: Multi-tier campus network
 add l1_link_bulk "[['Core-SW1-2(StackVirtual)','Dist-SW1','TenGigabitEthernet 1/0/1','TenGigabitEthernet 1/0/49'],['Core-SW1-2(StackVirtual)','Dist-SW1','TenGigabitEthernet 2/0/1','TenGigabitEthernet 1/0/50'],['Dist-SW1','Access-Stack1','GigabitEthernet 1/0/1','GigabitEthernet 1/0/49'],['Dist-SW1','Access-Stack1','GigabitEthernet 1/0/2','GigabitEthernet 2/0/49']]"
-rename port_info_bulk "[['Core-SW1-2(StackVirtual)','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/49',['10Gbps','Full','10GBASE-SR']],['Core-SW1-2(StackVirtual)','TE 2/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/50',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 1/0/49',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']],['Access-Stack1','GE 2/0/49',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['Core-SW1-2(StackVirtual)','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']],['Access-Stack1','_ALL_',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']]]"
 
 PORT INFO FOR COMMON SCENARIOS:
 
 SCENARIO: Access Switch to Distribution Switch (10G Uplink)
-rename port_info_bulk "[['Access-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']],['Dist-SW1','TE 1/0/11',['10Gbps','Full','10GBASE-SR']]]"
+rename port_info_bulk "[[['Access-SW1','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']]]"
 
 SCENARIO: Access Switch to Wireless AP (1G Access Port)
-rename port_info_bulk "[['Access-SW1','GE 1/0/47',['1Gbps','Full','1000BASE-T']],['AP-01','GE 0',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['Access-SW1','AP-01'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 SCENARIO: Core Switch to WAN Router (10G)
-rename port_info_bulk "[['Core-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-LR']],['WAN-Router','TE 0/0',['10Gbps','Full','10GBASE-LR']]]"
+rename port_info_bulk "[[['Core-SW1','WAN-Router'],'_ALL_',['10Gbps','Full','10GBASE-LR']]]"
 
 SCENARIO: Connection to Waypoint (WAN/Internet/MPLS)
-rename port_info_bulk "[['Router-01','GE 0/0',['1Gbps','Full','1000BASE-T']],['Internet_wp_','port 0',['N/A','N/A','N/A']]]"
+rename port_info_bulk "[['Router-01','_ALL_',['1Gbps','Full','1000BASE-T']],['Internet_wp_','_ALL_',['N/A','N/A','N/A']]]"
 
 SCENARIO: Server connection (1G copper)
-rename port_info_bulk "[['Access-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Server-01','GE 0',['1Gbps','Full','1000BASE-T']]]"
+rename port_info_bulk "[[['Access-SW1','Server-01'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
 VERIFICATION CHECKLIST FOR RULE 16:
 - [ ] ALL L1 interfaces have Speed configured
@@ -2635,6 +2652,9 @@ KEY PRINCIPLES:
 - "Both ends of every L1 link must have port info"
 - "Always use bulk command for efficiency"
 - "This step is MANDATORY and non-optional"
+- "ALWAYS use _ALL_ notation instead of enumerating individual ports"
+- "ALWAYS group devices with identical port settings using device list notation"
+- "Only list individual ports when overriding specific ports within a device that already had _ALL_ applied"
 
 
 

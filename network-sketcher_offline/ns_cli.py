@@ -1467,11 +1467,18 @@ class ns_cli_run():
                 return ([f'[ERROR] port_info_bulk array is empty'])
 
             # Validate each entry format: ["device_name", "port_name", ["Speed", "Duplex", "Port_Type"]]
+            # device_name may be a list of strings for multi-device targeting.
+            # port_name may be "_ALL_" to target all ports of the device(s).
             for entry in port_info_bulk_array:
                 if not isinstance(entry, list) or len(entry) != 3:
                     return ([f'[ERROR] Each entry must be [device_name, port_name, [Speed, Duplex, Port_Type]]. Invalid entry: {entry}'])
-                if not isinstance(entry[0], str) or not isinstance(entry[1], str):
-                    return ([f'[ERROR] Device name and port name must be strings. Invalid entry: {entry}'])
+                if isinstance(entry[0], list):
+                    if not entry[0] or not all(isinstance(d, str) for d in entry[0]):
+                        return ([f'[ERROR] Device name list must be a non-empty list of strings. Invalid entry: {entry}'])
+                elif not isinstance(entry[0], str):
+                    return ([f'[ERROR] Device name must be a string or list of strings. Invalid entry: {entry}'])
+                if not isinstance(entry[1], str):
+                    return ([f'[ERROR] Port name must be a string. Invalid entry: {entry}'])
                 if not isinstance(entry[2], list) or len(entry[2]) != 3:
                     return ([f'[ERROR] Port info must be [Speed, Duplex, Port_Type]. Invalid entry: {entry}'])
 
@@ -1486,75 +1493,87 @@ class ns_cli_run():
             not_found_ports = []
 
             for entry in port_info_bulk_array:
-                device_name = entry[0]
+                raw_device = entry[0]
+                device_names = raw_device if isinstance(raw_device, list) else [raw_device]
                 port_name = entry[1]
+                use_all_ports = (port_name == '_ALL_')
                 speed = str(entry[2][0])
                 duplex = str(entry[2][1])
                 port_type = str(entry[2][2])
 
-                found = False
+                for device_name in device_names:
+                    found = False
+                    all_count = 0
 
-                # Search in POSITION_LINE array
-                # Columns: 1=From_Name, 2=To_Name, 3=From_Tag_Name, 4=To_Tag_Name
-                # 13=From_Port_Name, 14=From_Speed, 15=From_Duplex, 16=From_Port_Type
-                # 17=To_Port_Name, 18=To_Speed, 19=To_Duplex, 20=To_Port_Type
-                for row in position_line_array:
-                    if isinstance(row, list) and len(row) == 2:
-                        line_no, fields = row
-                        if line_no not in (1, 2) and isinstance(fields, list) and len(fields) >= 20:
-                            # Check From side (column index: 0=From_Name, 2=From_Tag_Name contains abbreviated port)
-                            # Full port name is constructed from From_Port_Name (12) + port number from From_Tag_Name (2)
-                            from_device = fields[0]
-                            from_tag = fields[2]  # Abbreviated port name like "TE 1/0/1"
+                    # Search in POSITION_LINE array
+                    # Columns: 1=From_Name, 2=To_Name, 3=From_Tag_Name, 4=To_Tag_Name
+                    # 13=From_Port_Name, 14=From_Speed, 15=From_Duplex, 16=From_Port_Type
+                    # 17=To_Port_Name, 18=To_Speed, 19=To_Duplex, 20=To_Port_Type
+                    for row in position_line_array:
+                        if isinstance(row, list) and len(row) == 2:
+                            line_no, fields = row
+                            if line_no not in (1, 2) and isinstance(fields, list) and len(fields) >= 20:
+                                # Check From side (column index: 0=From_Name, 2=From_Tag_Name contains abbreviated port)
+                                # Full port name is constructed from From_Port_Name (12) + port number from From_Tag_Name (2)
+                                from_device = fields[0]
+                                from_tag = fields[2]  # Abbreviated port name like "TE 1/0/1"
 
-                            # Check To side
-                            to_device = fields[1]
-                            to_tag = fields[3]  # Abbreviated port name
+                                # Check To side
+                                to_device = fields[1]
+                                to_tag = fields[3]  # Abbreviated port name
 
-                            # Match From side
-                            if from_device == device_name:
-                                # Construct full port name from From_Port_Name and tag
-                                from_port_prefix = fields[12] if fields[12] else ''
-                                if from_tag:
-                                    tag_parts = str(from_tag).split(' ')
-                                    if len(tag_parts) >= 2:
-                                        from_full_port = from_port_prefix + ' ' + tag_parts[-1]
+                                # Match From side
+                                if from_device == device_name:
+                                    # Construct full port name from From_Port_Name and tag
+                                    from_port_prefix = fields[12] if fields[12] else ''
+                                    if from_tag:
+                                        tag_parts = str(from_tag).split(' ')
+                                        if len(tag_parts) >= 2:
+                                            from_full_port = from_port_prefix + ' ' + tag_parts[-1]
+                                        else:
+                                            from_full_port = from_port_prefix
                                     else:
                                         from_full_port = from_port_prefix
-                                else:
-                                    from_full_port = from_port_prefix
 
-                                if from_full_port == port_name or from_tag == port_name:
-                                    # Update From side: Speed(13), Duplex(14), Port_Type(15)
-                                    fields[13] = speed
-                                    fields[14] = duplex
-                                    fields[15] = port_type
-                                    found = True
+                                    if use_all_ports or from_full_port == port_name or from_tag == port_name:
+                                        # Update From side: Speed(13), Duplex(14), Port_Type(15)
+                                        fields[13] = speed
+                                        fields[14] = duplex
+                                        fields[15] = port_type
+                                        found = True
+                                        all_count += 1
 
-                            # Match To side
-                            if to_device == device_name:
-                                # Construct full port name from To_Port_Name and tag
-                                to_port_prefix = fields[16] if fields[16] else ''
-                                if to_tag:
-                                    tag_parts = str(to_tag).split(' ')
-                                    if len(tag_parts) >= 2:
-                                        to_full_port = to_port_prefix + ' ' + tag_parts[-1]
+                                # Match To side
+                                if to_device == device_name:
+                                    # Construct full port name from To_Port_Name and tag
+                                    to_port_prefix = fields[16] if fields[16] else ''
+                                    if to_tag:
+                                        tag_parts = str(to_tag).split(' ')
+                                        if len(tag_parts) >= 2:
+                                            to_full_port = to_port_prefix + ' ' + tag_parts[-1]
+                                        else:
+                                            to_full_port = to_port_prefix
                                     else:
                                         to_full_port = to_port_prefix
-                                else:
-                                    to_full_port = to_port_prefix
 
-                                if to_full_port == port_name or to_tag == port_name:
-                                    # Update To side: Speed(17), Duplex(18), Port_Type(19)
-                                    fields[17] = speed
-                                    fields[18] = duplex
-                                    fields[19] = port_type
-                                    found = True
+                                    if use_all_ports or to_full_port == port_name or to_tag == port_name:
+                                        # Update To side: Speed(17), Duplex(18), Port_Type(19)
+                                        fields[17] = speed
+                                        fields[18] = duplex
+                                        fields[19] = port_type
+                                        found = True
+                                        all_count += 1
 
-                if found:
-                    updated_ports.append(f'{device_name} {port_name}')
-                else:
-                    not_found_ports.append(f'{device_name} {port_name}')
+                    if found:
+                        if use_all_ports:
+                            updated_ports.append(f'{device_name} (_ALL_, {all_count} port(s))')
+                        else:
+                            updated_ports.append(f'{device_name} {port_name}')
+                    else:
+                        if use_all_ports:
+                            not_found_ports.append(f'{device_name} (_ALL_)')
+                        else:
+                            not_found_ports.append(f'{device_name} {port_name}')
 
             # Write back to Excel if any updates were made
             if len(updated_ports) > 0:
