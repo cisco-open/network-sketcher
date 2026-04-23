@@ -876,6 +876,16 @@ class ns_cli_run():
                 attribute_bulk_array_str = ' '.join(array_parts)
                 attribute_bulk_array_str = attribute_bulk_array_str.strip()
 
+                # Defensive: strip stray quote chars that can appear when LLM/shell
+                # leaves unbalanced \" around the array boundary.
+                # (Observed: trailing extra \" before outer closing " yields ...]]")
+                while attribute_bulk_array_str and attribute_bulk_array_str[0] in ('"', "'") \
+                        and not attribute_bulk_array_str.startswith('[['):
+                    attribute_bulk_array_str = attribute_bulk_array_str[1:].lstrip()
+                while attribute_bulk_array_str and attribute_bulk_array_str[-1] in ('"', "'") \
+                        and not attribute_bulk_array_str.endswith(']]'):
+                    attribute_bulk_array_str = attribute_bulk_array_str[:-1].rstrip()
+
                 def reconstruct_array_string(raw_str):
                     """
                     Reconstruct a properly formatted array string.
@@ -1477,8 +1487,11 @@ class ns_cli_run():
                         return ([f'[ERROR] Device name list must be a non-empty list of strings. Invalid entry: {entry}'])
                 elif not isinstance(entry[0], str):
                     return ([f'[ERROR] Device name must be a string or list of strings. Invalid entry: {entry}'])
-                if not isinstance(entry[1], str):
-                    return ([f'[ERROR] Port name must be a string. Invalid entry: {entry}'])
+                if isinstance(entry[1], list):
+                    if not entry[1] or not all(isinstance(p, str) and p.strip() for p in entry[1]):
+                        return ([f'[ERROR] Port name list must be a non-empty list of strings. Invalid entry: {entry}'])
+                elif not isinstance(entry[1], str):
+                    return ([f'[ERROR] Port name must be a string or list of strings. Invalid entry: {entry}'])
                 if not isinstance(entry[2], list) or len(entry[2]) != 3:
                     return ([f'[ERROR] Port info must be [Speed, Duplex, Port_Type]. Invalid entry: {entry}'])
 
@@ -1495,85 +1508,87 @@ class ns_cli_run():
             for entry in port_info_bulk_array:
                 raw_device = entry[0]
                 device_names = raw_device if isinstance(raw_device, list) else [raw_device]
-                port_name = entry[1]
-                use_all_ports = (port_name == '_ALL_')
+                raw_port = entry[1]
+                port_names = raw_port if isinstance(raw_port, list) else [raw_port]
                 speed = str(entry[2][0])
                 duplex = str(entry[2][1])
                 port_type = str(entry[2][2])
 
                 for device_name in device_names:
-                    found = False
-                    all_count = 0
+                    for port_name in port_names:
+                        use_all_ports = (port_name == '_ALL_')
+                        found = False
+                        all_count = 0
 
-                    # Search in POSITION_LINE array
-                    # Columns: 1=From_Name, 2=To_Name, 3=From_Tag_Name, 4=To_Tag_Name
-                    # 13=From_Port_Name, 14=From_Speed, 15=From_Duplex, 16=From_Port_Type
-                    # 17=To_Port_Name, 18=To_Speed, 19=To_Duplex, 20=To_Port_Type
-                    for row in position_line_array:
-                        if isinstance(row, list) and len(row) == 2:
-                            line_no, fields = row
-                            if line_no not in (1, 2) and isinstance(fields, list) and len(fields) >= 20:
-                                # Check From side (column index: 0=From_Name, 2=From_Tag_Name contains abbreviated port)
-                                # Full port name is constructed from From_Port_Name (12) + port number from From_Tag_Name (2)
-                                from_device = fields[0]
-                                from_tag = fields[2]  # Abbreviated port name like "TE 1/0/1"
+                        # Search in POSITION_LINE array
+                        # Columns: 1=From_Name, 2=To_Name, 3=From_Tag_Name, 4=To_Tag_Name
+                        # 13=From_Port_Name, 14=From_Speed, 15=From_Duplex, 16=From_Port_Type
+                        # 17=To_Port_Name, 18=To_Speed, 19=To_Duplex, 20=To_Port_Type
+                        for row in position_line_array:
+                            if isinstance(row, list) and len(row) == 2:
+                                line_no, fields = row
+                                if line_no not in (1, 2) and isinstance(fields, list) and len(fields) >= 20:
+                                    # Check From side (column index: 0=From_Name, 2=From_Tag_Name contains abbreviated port)
+                                    # Full port name is constructed from From_Port_Name (12) + port number from From_Tag_Name (2)
+                                    from_device = fields[0]
+                                    from_tag = fields[2]  # Abbreviated port name like "TE 1/0/1"
 
-                                # Check To side
-                                to_device = fields[1]
-                                to_tag = fields[3]  # Abbreviated port name
+                                    # Check To side
+                                    to_device = fields[1]
+                                    to_tag = fields[3]  # Abbreviated port name
 
-                                # Match From side
-                                if from_device == device_name:
-                                    # Construct full port name from From_Port_Name and tag
-                                    from_port_prefix = fields[12] if fields[12] else ''
-                                    if from_tag:
-                                        tag_parts = str(from_tag).split(' ')
-                                        if len(tag_parts) >= 2:
-                                            from_full_port = from_port_prefix + ' ' + tag_parts[-1]
+                                    # Match From side
+                                    if from_device == device_name:
+                                        # Construct full port name from From_Port_Name and tag
+                                        from_port_prefix = fields[12] if fields[12] else ''
+                                        if from_tag:
+                                            tag_parts = str(from_tag).split(' ')
+                                            if len(tag_parts) >= 2:
+                                                from_full_port = from_port_prefix + ' ' + tag_parts[-1]
+                                            else:
+                                                from_full_port = from_port_prefix
                                         else:
                                             from_full_port = from_port_prefix
-                                    else:
-                                        from_full_port = from_port_prefix
 
-                                    if use_all_ports or from_full_port == port_name or from_tag == port_name:
-                                        # Update From side: Speed(13), Duplex(14), Port_Type(15)
-                                        fields[13] = speed
-                                        fields[14] = duplex
-                                        fields[15] = port_type
-                                        found = True
-                                        all_count += 1
+                                        if use_all_ports or from_full_port == port_name or from_tag == port_name:
+                                            # Update From side: Speed(13), Duplex(14), Port_Type(15)
+                                            fields[13] = speed
+                                            fields[14] = duplex
+                                            fields[15] = port_type
+                                            found = True
+                                            all_count += 1
 
-                                # Match To side
-                                if to_device == device_name:
-                                    # Construct full port name from To_Port_Name and tag
-                                    to_port_prefix = fields[16] if fields[16] else ''
-                                    if to_tag:
-                                        tag_parts = str(to_tag).split(' ')
-                                        if len(tag_parts) >= 2:
-                                            to_full_port = to_port_prefix + ' ' + tag_parts[-1]
+                                    # Match To side
+                                    if to_device == device_name:
+                                        # Construct full port name from To_Port_Name and tag
+                                        to_port_prefix = fields[16] if fields[16] else ''
+                                        if to_tag:
+                                            tag_parts = str(to_tag).split(' ')
+                                            if len(tag_parts) >= 2:
+                                                to_full_port = to_port_prefix + ' ' + tag_parts[-1]
+                                            else:
+                                                to_full_port = to_port_prefix
                                         else:
                                             to_full_port = to_port_prefix
-                                    else:
-                                        to_full_port = to_port_prefix
 
-                                    if use_all_ports or to_full_port == port_name or to_tag == port_name:
-                                        # Update To side: Speed(17), Duplex(18), Port_Type(19)
-                                        fields[17] = speed
-                                        fields[18] = duplex
-                                        fields[19] = port_type
-                                        found = True
-                                        all_count += 1
+                                        if use_all_ports or to_full_port == port_name or to_tag == port_name:
+                                            # Update To side: Speed(17), Duplex(18), Port_Type(19)
+                                            fields[17] = speed
+                                            fields[18] = duplex
+                                            fields[19] = port_type
+                                            found = True
+                                            all_count += 1
 
-                    if found:
-                        if use_all_ports:
-                            updated_ports.append(f'{device_name} (_ALL_, {all_count} port(s))')
+                        if found:
+                            if use_all_ports:
+                                updated_ports.append(f'{device_name} (_ALL_, {all_count} port(s))')
+                            else:
+                                updated_ports.append(f'{device_name} {port_name}')
                         else:
-                            updated_ports.append(f'{device_name} {port_name}')
-                    else:
-                        if use_all_ports:
-                            not_found_ports.append(f'{device_name} (_ALL_)')
-                        else:
-                            not_found_ports.append(f'{device_name} {port_name}')
+                            if use_all_ports:
+                                not_found_ports.append(f'{device_name} (_ALL_)')
+                            else:
+                                not_found_ports.append(f'{device_name} {port_name}')
 
             # Write back to Excel if any updates were made
             if len(updated_ports) > 0:
@@ -2285,7 +2300,19 @@ class ns_cli_run():
                     error_entries.append({'idx': entry_idx, 'err': 'Invalid format (expected [device, [vports]])'})
                     continue
 
-                hostname = str(entry[0]).strip()
+                # Multi-device list: entry[0] accepts a single device name (str) or a list of device names
+                raw_device = entry[0]
+                if isinstance(raw_device, list):
+                    if not raw_device or not all(isinstance(d, str) for d in raw_device):
+                        error_entries.append({'idx': entry_idx, 'err': 'Device name list must be a non-empty list of strings'})
+                        continue
+                    device_names = [d.strip() for d in raw_device]
+                elif isinstance(raw_device, str):
+                    device_names = [raw_device.strip()]
+                else:
+                    error_entries.append({'idx': entry_idx, 'err': 'Device name must be a string or list of strings'})
+                    continue
+
                 vport_list = entry[1]
 
                 # Handle single vport as string
@@ -2303,52 +2330,53 @@ class ns_cli_run():
                     error_entries.append({'idx': entry_idx, 'err': 'No valid virtual ports'})
                     continue
 
-                # Check if hostname exists
-                if hostname not in device_area_map:
-                    error_entries.append({'idx': entry_idx, 'err': f'Device not found: {hostname}'})
-                    continue
-
-                area = device_area_map[hostname]
-                vports_added = []
-
-                for vport in vport_list:
-                    # Validate virtual port name
-                    if ns_def.get_if_value(vport) == -1:
-                        error_entries.append({'idx': entry_idx, 'err': f'Invalid vport name: {vport}'})
+                for hostname in device_names:
+                    # Check if hostname exists
+                    if hostname not in device_area_map:
+                        error_entries.append({'idx': entry_idx, 'err': f'Device not found: {hostname}'})
                         continue
 
-                    # Check if already exists as virtual port
-                    if vport in existing_vports_per_device.get(hostname, []):
-                        error_entries.append({'idx': entry_idx, 'err': f'{vport} already exists on {hostname}'})
-                        continue
+                    area = device_area_map[hostname]
+                    vports_added = []
 
-                    # Check if conflicts with L1 interface name
-                    if vport in existing_l1_ports_per_device.get(hostname, []):
-                        error_entries.append({'idx': entry_idx, 'err': f'{vport} conflicts with L1 interface on {hostname}'})
-                        continue
+                    for vport in vport_list:
+                        # Validate virtual port name
+                        if ns_def.get_if_value(vport) == -1:
+                            error_entries.append({'idx': entry_idx, 'err': f'Invalid vport name: {vport}'})
+                            continue
 
-                    # Calculate insert position based on interface value
-                    existing_vport_values = [ns_def.get_if_value(vp) for vp in existing_vports_per_device.get(hostname, [])]
-                    target_value = ns_def.get_if_value(vport)
-                    insert_idx = bisect_left(existing_vport_values, target_value)
+                        # Check if already exists as virtual port
+                        if vport in existing_vports_per_device.get(hostname, []):
+                            error_entries.append({'idx': entry_idx, 'err': f'{vport} already exists on {hostname}'})
+                            continue
 
-                    # Add to tracking
-                    existing_vports_per_device[hostname].append(vport)
-                    existing_vports_per_device[hostname] = sort_virtual_ports(existing_vports_per_device[hostname])
+                        # Check if conflicts with L1 interface name
+                        if vport in existing_l1_ports_per_device.get(hostname, []):
+                            error_entries.append({'idx': entry_idx, 'err': f'{vport} conflicts with L1 interface on {hostname}'})
+                            continue
 
-                    new_rows_to_add.append({
-                        'hostname': hostname,
-                        'area': area,
-                        'vport': vport,
-                        'insert_idx': insert_idx
-                    })
-                    vports_added.append(vport)
+                        # Calculate insert position based on interface value
+                        existing_vport_values = [ns_def.get_if_value(vp) for vp in existing_vports_per_device.get(hostname, [])]
+                        target_value = ns_def.get_if_value(vport)
+                        insert_idx = bisect_left(existing_vport_values, target_value)
 
-                if vports_added:
-                    added_vports.append({
-                        'device': hostname,
-                        'vports': vports_added
-                    })
+                        # Add to tracking
+                        existing_vports_per_device[hostname].append(vport)
+                        existing_vports_per_device[hostname] = sort_virtual_ports(existing_vports_per_device[hostname])
+
+                        new_rows_to_add.append({
+                            'hostname': hostname,
+                            'area': area,
+                            'vport': vport,
+                            'insert_idx': insert_idx
+                        })
+                        vports_added.append(vport)
+
+                    if vports_added:
+                        added_vports.append({
+                            'device': hostname,
+                            'vports': vports_added
+                        })
 
             # Error check
             if error_entries and not added_vports:
@@ -2524,10 +2552,31 @@ class ns_cli_run():
                     error_entries.append({'idx': entry_idx, 'err': 'Invalid format'})
                     continue
 
-                hostname = str(entry[0]).strip()
+                # Option A: entry[0] accepts a single device name (str) or a list of device names
+                raw_device = entry[0]
+                if isinstance(raw_device, list):
+                    if not raw_device or not all(isinstance(d, str) for d in raw_device):
+                        error_entries.append({'idx': entry_idx, 'err': 'Device name list must be a non-empty list of strings'})
+                        continue
+                    device_names = [d.strip() for d in raw_device]
+                elif isinstance(raw_device, str):
+                    device_names = [raw_device.strip()]
+                else:
+                    error_entries.append({'idx': entry_idx, 'err': 'Device name must be a string or list of strings'})
+                    continue
 
-                # ★★★ Normalize interface name ★★★
-                portname = normalize_interface_name(entry[1])
+                # Option B: entry[1] accepts a single port name (str) or a list of port names
+                raw_port = entry[1]
+                if isinstance(raw_port, list):
+                    if not raw_port or not all(isinstance(p, str) and p.strip() for p in raw_port):
+                        error_entries.append({'idx': entry_idx, 'err': 'Port name list must be a non-empty list of strings'})
+                        continue
+                    port_names = [normalize_interface_name(p) for p in raw_port]
+                elif isinstance(raw_port, str):
+                    port_names = [normalize_interface_name(raw_port)]
+                else:
+                    error_entries.append({'idx': entry_idx, 'err': 'Port name must be a string or list of strings'})
+                    continue
 
                 segment_list = entry[2]
 
@@ -2545,120 +2594,122 @@ class ns_cli_run():
                     error_entries.append({'idx': entry_idx, 'err': 'No valid segments'})
                     continue
 
-                # Find matching row(s) - including Port-channel members
-                match_found = False
-                target_rows = []  # Changed from single target_row to list for multiple matches
-                is_portchannel = False
+                for hostname in device_names:
+                    for portname in port_names:
+                        # ★★★ Check if portname is a Port-channel (per-port) ★★★
+                        is_portchannel = False
+                        portname_lower = portname.lower().replace(' ', '').replace('-', '')
+                        if portname_lower.startswith('portchannel') or portname_lower.startswith('po'):
+                            is_portchannel = True
 
-                # ★★★ Check if portname is a Port-channel ★★★
-                portname_lower = portname.lower().replace(' ', '').replace('-', '')
-                if portname_lower.startswith('portchannel') or portname_lower.startswith('po'):
-                    is_portchannel = True
+                        # Find matching row(s) - including Port-channel members
+                        match_found = False
+                        target_rows = []
 
-                for row in l2_attribute_array[2:]:
-                    values = row[1]
-                    if len(values) > 1 and values[1] == hostname:
-                        # ★★★ Normalize DB interface name for comparison ★★★
-                        db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
-                        db_virtual_port = normalize_interface_name(values[5]) if len(values) > 5 else ''
+                        for row in l2_attribute_array[2:]:
+                            values = row[1]
+                            if len(values) > 1 and values[1] == hostname:
+                                # ★★★ Normalize DB interface name for comparison ★★★
+                                db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
+                                db_virtual_port = normalize_interface_name(values[5]) if len(values) > 5 else ''
 
-                        # Check physical port (exact match after normalization)
-                        if db_physical_port == portname:
-                            if len(values) > 7 and values[7] != '':
-                                error_entries.append({
-                                    'idx': entry_idx,
-                                    'err': f'vport_l2_direct_binding conflict: {hostname}:{portname}'
-                                })
-                                break
-                            match_found = True
-                            target_rows.append(row)
-                            # Don't break - continue to find Port-channel members if applicable
-                            if not is_portchannel:
-                                break
-                        # Check virtual port (exact match after normalization)
-                        elif db_virtual_port == portname:
-                            if len(values) > 7 and values[7] != '':
-                                error_entries.append({
-                                    'idx': entry_idx,
-                                    'err': f'vport_l2_direct_binding conflict: {hostname}:{portname}'
-                                })
-                                break
-                            match_found = True
-                            target_rows.append(row)
-                            # Don't break - continue to find all members
-
-                # ★★★ NEW: If Port-channel specified, find all member interfaces ★★★
-                if is_portchannel and match_found:
-                    # Search for all rows with same hostname and same Virtual Port Name (Port-channel)
-                    for row in l2_attribute_array[2:]:
-                        values = row[1]
-                        if len(values) > 1 and values[1] == hostname:
-                            db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
-                            db_virtual_port = normalize_interface_name(values[5]) if len(values) > 5 else ''
-
-                            # Find rows where Virtual Port Name matches the specified Port-channel
-                            # and Physical Port exists (these are the member interfaces)
-                            if db_virtual_port == portname and db_physical_port:
-                                # Check if this row is already in target_rows
-                                if row not in target_rows:
-                                    # Check for vport_l2_direct_binding conflict
+                                # Check physical port (exact match after normalization)
+                                if db_physical_port == portname:
                                     if len(values) > 7 and values[7] != '':
-                                        # Skip this member but don't error - just log
-                                        skipped_segments.append({
-                                            'device': hostname,
-                                            'port': db_physical_port,
-                                            'segments': segment_list,
-                                            'reason': 'vport_l2_direct_binding conflict'
+                                        error_entries.append({
+                                            'idx': entry_idx,
+                                            'err': f'vport_l2_direct_binding conflict: {hostname}:{portname}'
                                         })
-                                    else:
-                                        target_rows.append(row)
+                                        break
+                                    match_found = True
+                                    target_rows.append(row)
+                                    # Don't break - continue to find Port-channel members if applicable
+                                    if not is_portchannel:
+                                        break
+                                # Check virtual port (exact match after normalization)
+                                elif db_virtual_port == portname:
+                                    if len(values) > 7 and values[7] != '':
+                                        error_entries.append({
+                                            'idx': entry_idx,
+                                            'err': f'vport_l2_direct_binding conflict: {hostname}:{portname}'
+                                        })
+                                        break
+                                    match_found = True
+                                    target_rows.append(row)
+                                    # Don't break - continue to find all members
 
-                if not match_found:
-                    if not any(e['idx'] == entry_idx for e in error_entries):
-                        error_entries.append({'idx': entry_idx, 'err': f'Not found: {hostname}:{portname}'})
-                    continue
+                        # ★★★ NEW: If Port-channel specified, find all member interfaces ★★★
+                        if is_portchannel and match_found:
+                            # Search for all rows with same hostname and same Virtual Port Name (Port-channel)
+                            for row in l2_attribute_array[2:]:
+                                values = row[1]
+                                if len(values) > 1 and values[1] == hostname:
+                                    db_physical_port = normalize_interface_name(values[3]) if len(values) > 3 else ''
+                                    db_virtual_port = normalize_interface_name(values[5]) if len(values) > 5 else ''
 
-                # ★★★ Apply segments to ALL target rows (Port-channel + members) ★★★
-                for target_row in target_rows:
-                    # Get current port name for logging
-                    current_port = normalize_interface_name(target_row[1][3]) if len(target_row[1]) > 3 and target_row[1][3] else portname
+                                    # Find rows where Virtual Port Name matches the specified Port-channel
+                                    # and Physical Port exists (these are the member interfaces)
+                                    if db_virtual_port == portname and db_physical_port:
+                                        # Check if this row is already in target_rows
+                                        if row not in target_rows:
+                                            # Check for vport_l2_direct_binding conflict
+                                            if len(values) > 7 and values[7] != '':
+                                                # Skip this member but don't error - just log
+                                                skipped_segments.append({
+                                                    'device': hostname,
+                                                    'port': db_physical_port,
+                                                    'segments': segment_list,
+                                                    'reason': 'vport_l2_direct_binding conflict'
+                                                })
+                                            else:
+                                                target_rows.append(row)
 
-                    # Add segments with deduplication and sorting
-                    current_value = target_row[1][6] if len(target_row[1]) > 6 else ''
+                        if not match_found:
+                            if not any(e['idx'] == entry_idx and hostname in e['err'] and portname in e['err'] for e in error_entries):
+                                error_entries.append({'idx': entry_idx, 'err': f'Not found: {hostname}:{portname}'})
+                            continue
 
-                    if current_value and current_value.strip():
-                        existing_segs = [normalize_segment_name(seg) for seg in current_value.split(',')]
-                        existing_segs = [seg for seg in existing_segs if seg]
-                    else:
-                        existing_segs = []
+                        # ★★★ Apply segments to ALL target rows (Port-channel + members) ★★★
+                        for target_row in target_rows:
+                            # Get current port name for logging
+                            current_port = normalize_interface_name(target_row[1][3]) if len(target_row[1]) > 3 and target_row[1][3] else portname
 
-                    segments_added = []
-                    segments_skipped_local = []
+                            # Add segments with deduplication and sorting
+                            current_value = target_row[1][6] if len(target_row[1]) > 6 else ''
 
-                    for seg in segment_list:
-                        if seg not in existing_segs:
-                            existing_segs.append(seg)
-                            segments_added.append(seg)
-                        else:
-                            segments_skipped_local.append(seg)
+                            if current_value and current_value.strip():
+                                existing_segs = [normalize_segment_name(seg) for seg in current_value.split(',')]
+                                existing_segs = [seg for seg in existing_segs if seg]
+                            else:
+                                existing_segs = []
 
-                    if segments_added:
-                        sorted_segs = sort_segments(existing_segs)
-                        target_row[1][6] = ','.join(sorted_segs)
-                        added_segments.append({
-                            'device': hostname,
-                            'port': current_port,
-                            'segments': segments_added,
-                            'final_list': sorted_segs
-                        })
-                        affected_interfaces += 1
+                            segments_added = []
+                            segments_skipped_local = []
 
-                    if segments_skipped_local:
-                        skipped_segments.append({
-                            'device': hostname,
-                            'port': current_port,
-                            'segments': segments_skipped_local
-                        })
+                            for seg in segment_list:
+                                if seg not in existing_segs:
+                                    existing_segs.append(seg)
+                                    segments_added.append(seg)
+                                else:
+                                    segments_skipped_local.append(seg)
+
+                            if segments_added:
+                                sorted_segs = sort_segments(existing_segs)
+                                target_row[1][6] = ','.join(sorted_segs)
+                                added_segments.append({
+                                    'device': hostname,
+                                    'port': current_port,
+                                    'segments': segments_added,
+                                    'final_list': sorted_segs
+                                })
+                                affected_interfaces += 1
+
+                            if segments_skipped_local:
+                                skipped_segments.append({
+                                    'device': hostname,
+                                    'port': current_port,
+                                    'segments': segments_skipped_local
+                                })
 
             # Error check
             if error_entries and not added_segments:

@@ -406,6 +406,19 @@ This feature allows you to create Layer 2 segments (such as VLANs) on multiple i
 add l2_segment_bulk "[['device_name1','port_name1',['vlan1','vlan2']],['device_name2','port_name2',['vlan3']]]"
 ```
 
+The first element of each entry (device name) also accepts a list of device names. This allows the same port name and VLAN list to be applied to multiple devices in a single entry, significantly reducing the number of entries needed.
+
+ ```bash
+add l2_segment_bulk "[[['device1','device2'],'port_name1',['vlan1','vlan2']],['device3','port_name2',['vlan3']]]"
+```
+
+The second element of each entry (port name) also accepts a list of port names. This allows the same VLAN list to be applied to multiple ports on the same device (or device list) in a single entry. The device-list form and port-list form can be freely combined.
+
+ ```bash
+add l2_segment_bulk "[['device1',['port_name1','port_name2'],['vlan1','vlan2']]]"
+add l2_segment_bulk "[[['device1','device2'],['port_name1','port_name2'],['vlan1','vlan2']]]"
+```
+
 * ex.<br>
 
 +BEFORE+ <br>
@@ -433,6 +446,21 @@ Final: Vlan100, Vlan200, Vlan300<br>
 ['L3SW1', 'GigabitEthernet 0/1', '', 'Vlan100,Vlan200', '']<br>
 ['L3SW2', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300', '']<br>
 
++Multi-device list example (device list shorthand)+ <br>
+The following two commands are equivalent:<br>
+<code>#add l2_segment_bulk "[['Access-Stack1','Port-channel 1',['Vlan10','Vlan20']],['Access-Stack2','Port-channel 1',['Vlan10','Vlan20']]]"</code><br><br>
+<code>#add l2_segment_bulk "[[['Access-Stack1','Access-Stack2'],'Port-channel 1',['Vlan10','Vlan20']]]"</code><br><br>
+
++Multi-port list example (port list shorthand)+ <br>
+The following two commands are equivalent:<br>
+<code>#add l2_segment_bulk "[['Core-SW1-2(StackVirtual)','Port-channel 1',['Vlan10','Vlan20','Vlan100','Vlan200']],['Core-SW1-2(StackVirtual)','Port-channel 2',['Vlan10','Vlan20','Vlan100','Vlan200']]]"</code><br><br>
+<code>#add l2_segment_bulk "[['Core-SW1-2(StackVirtual)',['Port-channel 1','Port-channel 2'],['Vlan10','Vlan20','Vlan100','Vlan200']]]"</code><br><br>
+
++Combined device-list and port-list example+ <br>
+The following two commands are equivalent:<br>
+<code>#add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/1',['Vlan10','Vlan20']],['Access-SW1','GigabitEthernet 1/0/2',['Vlan10','Vlan20']],['Access-SW2','GigabitEthernet 1/0/1',['Vlan10','Vlan20']],['Access-SW2','GigabitEthernet 1/0/2',['Vlan10','Vlan20']]]"</code><br><br>
+<code>#add l2_segment_bulk "[[['Access-SW1','Access-SW2'],['GigabitEthernet 1/0/1','GigabitEthernet 1/0/2'],['Vlan10','Vlan20']]]"</code><br><br>
+
 
 **[Tips]**
 - All elements (device names, port names, segment names) must be enclosed in single or double quotes
@@ -442,6 +470,11 @@ Final: Vlan100, Vlan200, Vlan300<br>
 - Existing L2 segments are preserved and merged with new segments
 - Cannot be used on interfaces with vport_l2_direct_binding configured
 - Physical ports (GigabitEthernet, etc.) and virtual ports (Vlan, Port-channel, etc.) are both supported
+- When applying the same port name and VLANs to multiple devices, use a device name list as the first element to reduce the number of entries
+- When applying the same VLANs to multiple ports on the same device (or device list), use a port name list as the second element to reduce the number of entries
+- Device list and port list forms can be combined freely for maximum compactness (Cartesian product: every device x every port in the entry)
+- IMPORTANT: Device list format can only be used when ALL listed devices have the EXACT same port name(s). If devices have different port names (e.g., Core-SW uses 'Port-channel 11' but Access-SW uses 'Port-channel 1'), they MUST be written as separate entries — do NOT group them in a device list
+- IMPORTANT: Port list format can only be used when ALL listed ports exist on EVERY listed device. If some ports exist on only a subset of devices, split them into separate entries — do NOT group them in a port list. Missing device:port combinations are reported as `Not found: <device>:<port>` and may cause the entry to fail
 
 
 
@@ -508,6 +541,12 @@ This feature allows you to create Layer 3 virtual interfaces (such as VLAN inter
 add virtual_port_bulk "[['device_name1',['vport1','vport2']],['device_name2',['vport3','vport4']]]"
  ```
 
+The first element of each entry (device name) also accepts a list of device names. This allows the same virtual ports to be created on multiple devices in a single entry, significantly reducing the number of entries needed.
+
+ ```bash
+add virtual_port_bulk "[[['device1','device2'],['vport1','vport2']],['device3',['vport3']]]"
+ ```
+
 * ex.<br>
 
 +BEFORE+ <br>
@@ -548,6 +587,11 @@ L3SW2 <- Vlan 100, Vlan 200<br>
 ['L3SW2', 'Vlan 100', '', '']<br>
 ['L3SW2', 'Vlan 200', '', '']<br>
 
++Multi-device list example (device list shorthand)+ <br>
+The following two commands are equivalent:<br>
+<code>#add virtual_port_bulk "[['Access-Stack1',['Vlan 10','Vlan 20']],['Access-Stack2',['Vlan 10','Vlan 20']],['Access-Stack3',['Vlan 10','Vlan 20']]]"</code><br><br>
+<code>#add virtual_port_bulk "[[['Access-Stack1','Access-Stack2','Access-Stack3'],['Vlan 10','Vlan 20']]]"</code><br><br>
+
 
 **[Tips]**
 - All elements (device names, virtual port names) must be enclosed in single or double quotes
@@ -557,6 +601,7 @@ L3SW2 <- Vlan 100, Vlan 200<br>
 - An error occurs if the virtual port name conflicts with an existing L1 interface name
 - Virtual ports are automatically sorted by interface value (e.g., Vlan 100 before Vlan 200)
 - Spaces in interface names are normalized (multiple spaces converted to single space)
+- When creating the same virtual ports on multiple devices, use a device name list as the first element to reduce the number of entries
 
 
 
@@ -987,6 +1032,12 @@ This command uses a unique two-level quoting structure that differs from all oth
 Correct: `rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]" --master ...`
 Wrong:   `rename attribute_bulk "'[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]" --master ...` ← extra `'` breaks parsing
 
+**[IMPORTANT] Outer-quote closing pattern (common LLM mistake):**
+- Correct ending: `...\"['',[]]\"]]"`   — last `\"` (closes final attribute) + `]]` (closes entry+outer) + `"` (closes shell quote)
+- Wrong   ending: `...\"['',[]]\"]]\""`  — extra `\"` before the outer closing `"` leaves a stray `"` after `]]`
+  → produces error: `[ERROR] Array must start with [[ and end with ]]`
+  The command MUST end with exactly `]]"` (two `]` followed by one `"`), not `]]\""`.
+
 **Array Format**<br>
 The attribute array uses the following format:
 
@@ -1226,7 +1277,9 @@ The port info array uses the following format:<br>
 - If a port is not found, it will be reported in the result message
 - **`_ALL_` wildcard (PREFERRED FORMAT)**: Use `"_ALL_"` as port_name to update all ports of the specified device in a single entry. ALWAYS use `_ALL_` instead of enumerating individual ports. Only enumerate specific ports when port settings differ within a device.
 - **Multi-device list (PREFERRED FORMAT)**: Specify multiple device names as a list `["dev1","dev2"]` in the device_name position to apply the same settings to multiple devices at once. ALWAYS group devices with identical port settings using device list notation.
+- **Port name list**: Specify multiple port names as a list `["port1","port2"]` in the port_name position to apply the same settings to multiple specific ports in a single entry. Use this when `_ALL_` is too broad and you want to target exactly the listed ports. Device list and port list can be freely combined.
 - **Combined pattern**: Use `_ALL_` first, then add specific port overrides in the same command to handle devices with mixed port types (e.g., access ports + uplinks). Only list individual ports when overriding specific ports within a device that already had `_ALL_` applied.
+- IMPORTANT: Port list format can only be used when ALL listed ports exist on EVERY listed device. If some ports exist on only a subset of devices, split them into separate entries.
 
 **Examples**<br>
 Example 1: Update all ports of a single device using _ALL_ (PREFERRED)<br>
@@ -1244,6 +1297,12 @@ rename port_info_bulk "[[['ACCESS-SW1','ACCESS-SW2','ACCESS-SW3'],'_ALL_',['1Gbp
 
 Example 5: Mixed pattern - set all ports to default, then override specific uplink ports<br>
 rename port_info_bulk "[['ACCESS-SW1','_ALL_',['1Gbps','Full','1000BASE-T']],['ACCESS-SW1','TE 1/0/1',['10Gbps','Full','10GBASE-SR']]]"
+
+Example 6: Port list shorthand - apply same settings to specific multiple ports on one device<br>
+rename port_info_bulk "[['ACCESS-SW1',['GigabitEthernet 1/0/47','GigabitEthernet 2/0/47'],['1Gbps','Full','1000BASE-T']]]"
+
+Example 7: Combined device list + port list (Cartesian product: every device x every port)<br>
+rename port_info_bulk "[[['Access-Stack1','Access-Stack2','Access-Stack3'],['GigabitEthernet 1/0/47','GigabitEthernet 2/0/47'],['1Gbps','Full','1000BASE-T']]]"
 
 
 **Full Example with Before/After**<br>
