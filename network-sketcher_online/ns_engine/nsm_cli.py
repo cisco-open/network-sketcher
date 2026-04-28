@@ -1162,8 +1162,11 @@ class ns_cli_run():
 
             def parse_attribute_value(attr_str):
                 try:
+                    # Plain string (no list-literal) => auto-wrap with default white color
+                    # so diagram engine always receives the canonical ['value', [R, G, B]] form.
                     if isinstance(attr_str, str) and not attr_str.startswith('['):
-                        return (True, attr_str, None)
+                        safe_val = attr_str.replace("'", "\\'")
+                        return (True, f"['{safe_val}', [255, 255, 255]]", None)
 
                     parsed = ast.literal_eval(attr_str) if isinstance(attr_str, str) else attr_str
 
@@ -1173,7 +1176,8 @@ class ns_cli_run():
                         fixed_rgb = validate_rgb(rgb_values)
                         return (True, f"['{attr_name}', {fixed_rgb}]", None)
                     elif isinstance(parsed, str):
-                        return (True, parsed, None)
+                        safe_val = parsed.replace("'", "\\'")
+                        return (True, f"['{safe_val}', [255, 255, 255]]", None)
                     else:
                         return (False, None, f"Invalid attribute format: {attr_str}")
                 except Exception as e:
@@ -1738,7 +1742,7 @@ class ns_cli_run():
             position_shape_array = nsm_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_SHAPE>>')
             position_line_array = nsm_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_LINE>>')
             position_style_shape_array = nsm_def.convert_master_to_array(ws_name, ppt_meta_file, '<<STYLE_SHAPE>>')
-            position_tag_array = nsm_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_TAG>>')
+            position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array(ws_name, ppt_meta_file, '<<POSITION_TAG>>'))
             attribute_array = nsm_def.convert_master_to_array(ws_name, ppt_meta_file, '<<ATTRIBUTE>>')
 
             mapping = {}
@@ -3180,7 +3184,7 @@ class ns_cli_run():
             position_shape_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
             style_shape_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
             position_line_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-            position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
             ori_position_line_tuple = nsm_def.convert_array_to_tuple(position_line_array)
 
             # Check if the input data exists in argv_array
@@ -3929,7 +3933,7 @@ class ns_cli_run():
                                     'Master_Data', '<<STYLE_SHAPE>>', 0, 0)
 
             # POSITION_TAG
-            position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
             ori_position_tag_tuple = nsm_def.convert_array_to_tuple(position_tag_array)
 
             position_tag_array = [item for item in position_tag_array
@@ -4107,7 +4111,7 @@ class ns_cli_run():
             position_shape_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
             style_shape_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
             position_line_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-            position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
             ori_position_line_tuple = nsm_def.convert_array_to_tuple(position_line_array)
 
             # Check if the input data exists in argv_array
@@ -4854,6 +4858,8 @@ class ns_cli_run():
                         # Collect devices in non-_wp_ folders
                         if current_folder and '_wp_' not in current_folder:
                             for val in row:
+                                if not isinstance(val, str):
+                                    continue
                                 if val not in ['', '<END>', '_AIR_', current_folder, '<<POSITION_SHAPE>>'] \
                                         and not val.startswith('_AIR_'):
                                     device_list_array.append(val)
@@ -4904,6 +4910,8 @@ class ns_cli_run():
                         # Collect devices in _wp_ folders
                         if current_folder and '_wp_' in current_folder:
                             for val in row:
+                                if not isinstance(val, str):
+                                    continue
                                 if val not in ['', '<END>', '_AIR_', current_folder, '<<POSITION_SHAPE>>'] \
                                         and not val.startswith('_AIR_'):
                                     wp_list_array.append(val)
@@ -5658,6 +5666,8 @@ class def_common():
                 '<<STYLE_SHAPE>>', '<<POSITION_LINE>>', '<<POSITION_TAG>>',
             ]
             bulk = nsm_def.convert_master_to_arrays_bulk('Master_Data', master_file_path, bulk_sections)
+            for _sec in bulk_sections:
+                bulk[_sec] = nsm_def.normalize_section_array(bulk[_sec])
 
             position_folder_array = bulk['<<POSITION_FOLDER>>']
             position_shape_array = bulk['<<POSITION_SHAPE>>']
@@ -6176,6 +6186,9 @@ class def_common():
                 '<<POSITION_TAG>>', '<<ATTRIBUTE>>', '<<POSITION_LINE>>',
             ]
             _bulk = nsm_def.convert_master_to_arrays_bulk('Master_Data', master_file_path, _bulk_sections)
+            # Normalize _NOT_FOUND_ sentinels to empty lists
+            for _sec in _bulk_sections:
+                _bulk[_sec] = nsm_def.normalize_section_array(_bulk[_sec])
 
             style_folder_array = _bulk['<<STYLE_FOLDER>>']
             position_shape_array = _bulk['<<POSITION_SHAPE>>']
@@ -6803,7 +6816,7 @@ class def_common():
                                         'Master_Data', '<<STYLE_SHAPE>>', 0, 0)
 
                 # ========== Add to POSITION_TAG ==========
-                position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+                position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
                 ori_position_tag_tuple = nsm_def.convert_array_to_tuple(position_tag_array)
 
                 # Find max number
@@ -6900,6 +6913,20 @@ class def_common():
         # Validate input format
         if not isinstance(area_location_array, list):
             return ([f'[ERROR] area_location array must be a list'])
+
+        # Reject _AIR_ in area_location (spacer concept does not apply to area grids)
+        for row in area_location_array:
+            if isinstance(row, list):
+                for area in row:
+                    if area == '_AIR_':
+                        return ([
+                            '[ERROR] "_AIR_" cannot be used in add area_location. '
+                            '"_AIR_" is a spacer placeholder for add device_location only. '
+                            'area_location rows do not need to be equal length — '
+                            'simply omit the empty slot. '
+                            'Example: [["DC1","DC2"],["HQ","Branch01","Branch02"],["Branch03","Branch04"]] '
+                            'is valid even though the last row has fewer areas.'
+                        ])
 
         # ★★★ Add: Waypoint layout validation ★★★
         validation_result = def_common.validate_waypoint_layout(area_location_array)
@@ -7791,7 +7818,7 @@ class def_common():
         position_shape_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_SHAPE>>')
         style_shape_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<STYLE_SHAPE>>')
         position_line_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-        position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+        position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
         attribute_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<ATTRIBUTE>>')
         position_folder_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
 
@@ -8316,7 +8343,8 @@ class def_common():
                                         'Master_Data', '<<STYLE_SHAPE>>', 0, 0)
 
             # ========== Add to <<POSITION_TAG>> ==========
-            position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            position_tag_array = nsm_def.normalize_section_array(
+                nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
 
             # Store original for cleanup
             ori_position_tag_tuple = nsm_def.convert_array_to_tuple(position_tag_array)
@@ -8560,7 +8588,7 @@ class def_common():
                                         'Master_Data', '<<STYLE_SHAPE>>', 0, 0)
 
             # ========== Add to <<POSITION_TAG>> ==========
-            position_tag_array = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>')
+            position_tag_array = nsm_def.normalize_section_array(nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_TAG>>'))
 
             # Store original for cleanup
             ori_position_tag_tuple = nsm_def.convert_array_to_tuple(position_tag_array)

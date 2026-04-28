@@ -457,22 +457,35 @@ class ns_ddx_svg_run:
         content_width = rf_width - outline_margin_root * 2
         content_height = rf_height - outline_margin_root * 2
 
-        def _arr_to_sd(arr):
+        def _arr_to_sd(arr, keep_header=False):
+            """Convert raw bulk-array rows into a SectionData.
+
+            By default strips section-marker rows (rows starting with '<<...>>').
+            When keep_header is True, the FIRST row is kept verbatim, which is
+            required for POSITION_FOLDER because the engine writes the
+            auto-recalculated per-column widths into that header row and
+            compute_folder_grid() uses them as the initial column widths
+            (matches the PPTX path in nsm_ddx_figure.py).
+            """
             if arr and isinstance(arr[0], str) and arr[0] == '_NOT_FOUND_':
                 return sc.SectionData([])
             filtered = []
+            header_kept = False
             for item in arr:
                 if isinstance(item, list) and len(item) == 2 and isinstance(item[1], list):
                     row_vals = item[1]
                     if row_vals and str(row_vals[0]).startswith('<<'):
+                        if keep_header and not header_kept:
+                            filtered.append(row_vals)
+                            header_kept = True
                         continue
                     filtered.append(row_vals)
             return sc.SectionData(filtered)
 
         bulk = getattr(self, '_preloaded_bulk', None)
         if bulk:
-            def _get(tag):
-                return _arr_to_sd(bulk.get(tag, ['_NOT_FOUND_', 1]))
+            def _get(tag, keep_header=False):
+                return _arr_to_sd(bulk.get(tag, ['_NOT_FOUND_', 1]), keep_header=keep_header)
         else:
             sections = [
                 '<<POSITION_FOLDER>>', '<<POSITION_SHAPE>>', '<<STYLE_SHAPE>>',
@@ -480,10 +493,10 @@ class ns_ddx_svg_run:
             ]
             bulk = nsm_def.convert_master_to_arrays_bulk('Master_Data', master_file, sections)
 
-            def _get(tag):
-                return _arr_to_sd(bulk.get(tag, ['_NOT_FOUND_', 1]))
+            def _get(tag, keep_header=False):
+                return _arr_to_sd(bulk.get(tag, ['_NOT_FOUND_', 1]), keep_header=keep_header)
 
-        sd_folder = _get('<<POSITION_FOLDER>>')
+        sd_folder = _get('<<POSITION_FOLDER>>', keep_header=True)
         sd_shape = _get('<<POSITION_SHAPE>>')
         sd_style_shape = _get('<<STYLE_SHAPE>>')
         sd_style_folder = _get('<<STYLE_FOLDER>>')

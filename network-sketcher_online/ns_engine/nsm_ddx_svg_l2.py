@@ -1511,20 +1511,27 @@ class ns_ddx_svg_l2_run:
 
         bulk = getattr(self, '_preloaded_bulk', None)
         if bulk:
-            def _arr_to_sd(arr):
+            def _arr_to_sd(arr, keep_header=False):
+                """See nsm_ddx_svg._arr_to_sd. keep_header preserves the first
+                <<...>> marker row (required for POSITION_FOLDER per-column
+                widths to reach compute_folder_grid)."""
                 if arr and isinstance(arr[0], str) and arr[0] == '_NOT_FOUND_':
                     return sc.SectionData([])
                 filtered = []
+                header_kept = False
                 for item in arr:
                     if isinstance(item, list) and len(item) == 2 and isinstance(item[1], list):
                         row_vals = item[1]
                         if row_vals and str(row_vals[0]).startswith('<<'):
+                            if keep_header and not header_kept:
+                                filtered.append(row_vals)
+                                header_kept = True
                             continue
                         filtered.append(row_vals)
                 return sc.SectionData(filtered)
 
-            def _get(tag):
-                return _arr_to_sd(bulk.get(tag, ['_NOT_FOUND_', 1]))
+            def _get(tag, keep_header=False):
+                return _arr_to_sd(bulk.get(tag, ['_NOT_FOUND_', 1]), keep_header=keep_header)
         else:
             sections = [
                 '<<POSITION_FOLDER>>', '<<POSITION_SHAPE>>', '<<STYLE_SHAPE>>',
@@ -1532,22 +1539,26 @@ class ns_ddx_svg_l2_run:
             ]
             bulk_loaded = nsm_def.convert_master_to_arrays_bulk('Master_Data', master_file, sections)
 
-            def _arr_to_sd(arr):
+            def _arr_to_sd(arr, keep_header=False):
                 if arr and isinstance(arr[0], str) and arr[0] == '_NOT_FOUND_':
                     return sc.SectionData([])
                 filtered = []
+                header_kept = False
                 for item in arr:
                     if isinstance(item, list) and len(item) == 2 and isinstance(item[1], list):
                         row_vals = item[1]
                         if row_vals and str(row_vals[0]).startswith('<<'):
+                            if keep_header and not header_kept:
+                                filtered.append(row_vals)
+                                header_kept = True
                             continue
                         filtered.append(row_vals)
                 return sc.SectionData(filtered)
 
-            def _get(tag):
-                return _arr_to_sd(bulk_loaded.get(tag, ['_NOT_FOUND_', 1]))
+            def _get(tag, keep_header=False):
+                return _arr_to_sd(bulk_loaded.get(tag, ['_NOT_FOUND_', 1]), keep_header=keep_header)
 
-        sd_folder = _get('<<POSITION_FOLDER>>')
+        sd_folder = _get('<<POSITION_FOLDER>>', keep_header=True)
         sd_shape = _get('<<POSITION_SHAPE>>')
         sd_style_shape = _get('<<STYLE_SHAPE>>')
         sd_style_folder = _get('<<STYLE_FOLDER>>')

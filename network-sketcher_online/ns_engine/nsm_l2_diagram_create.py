@@ -725,6 +725,7 @@ class nsm_l2_diagram_create():
 
         #print("Creating WayPoint-Folder mapping...")
         wp_with_folder_tuple = {}
+        _l2_ps_max_row = max((r for r, _c in self.position_shape_tuple.keys()), default=0)
 
         for tmp_wp_folder_name in self.folder_wp_name_array[1]:
             current_row = 1
@@ -732,10 +733,14 @@ class nsm_l2_diagram_create():
             flag_end_row = False
 
             while flag_end_row == False:
-                if str(self.position_shape_tuple[current_row, 1]) == tmp_wp_folder_name:
+                if current_row > _l2_ps_max_row:
+                    flag_end_row = True
+                    break
+                _cv = str(self.position_shape_tuple.get((current_row, 1), ''))
+                if _cv == tmp_wp_folder_name:
                     start_row = current_row
                     flag_start_row = True
-                if flag_start_row == True and str(self.position_shape_tuple[current_row, 1]) == '<END>':
+                if flag_start_row == True and _cv == '<END>':
                     flag_end_row = True
                     end_row = current_row - 1
                 current_row += 1
@@ -758,10 +763,14 @@ class nsm_l2_diagram_create():
         flag_end_row = False
 
         while flag_end_row == False:
-            if str(self.position_shape_tuple[current_row, 1]) == tmp_folder_name:
+            if current_row > _l2_ps_max_row:
+                flag_end_row = True
+                break
+            _cv2 = str(self.position_shape_tuple.get((current_row, 1), ''))
+            if _cv2 == tmp_folder_name:
                 start_row = current_row
                 flag_start_row = True
-            if flag_start_row == True and str(self.position_shape_tuple[current_row, 1]) == '<END>':
+            if flag_start_row == True and _cv2 == '<END>':
                 flag_end_row = True
                 end_row = current_row - 1
             current_row += 1
@@ -797,6 +806,15 @@ class nsm_l2_diagram_create():
         #print(f"Connected WP folders: {len(connected_wp_folder_array)}")
 
         extract_folder_tuple = {}
+        # NOTE: Do NOT inject (1,1)='<<POSITION_FOLDER>>' here.
+        # The section marker row in the _tmp_ sheet is preserved automatically
+        # because _write_excel_meta_xlsx calls insert_rows(row_count + 1, ...)
+        # which inserts blank rows BELOW the marker (row_count is left intact).
+        # Adding (1,1) to extract_folder_tuple shifts offset_row computation so
+        # that subsequent rows are no longer compressed into rows 2,3,4,...
+        # This produces a blank row 2 in the _tmp_ sheet, which terminates
+        # add_sub_folder()'s `while cell(r,1).value != None` loop early and
+        # results in an empty PPTX (only outer frame is drawn).
         for tmp_position_folder_tuple in self.position_folder_tuple:
             if self.position_folder_tuple[tmp_position_folder_tuple] == tmp_folder_name or \
                self.position_folder_tuple[tmp_position_folder_tuple] in connected_wp_folder_array:

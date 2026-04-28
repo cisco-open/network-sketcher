@@ -1059,8 +1059,11 @@ class ns_cli_run():
 
             def parse_attribute_value(attr_str):
                 try:
+                    # Plain string (no list-literal) => auto-wrap with default white color
+                    # so diagram engine always receives the canonical ['value', [R, G, B]] form.
                     if isinstance(attr_str, str) and not attr_str.startswith('['):
-                        return (True, attr_str, None)
+                        safe_val = attr_str.replace("'", "\\'")
+                        return (True, f"['{safe_val}', [255, 255, 255]]", None)
 
                     parsed = ast.literal_eval(attr_str) if isinstance(attr_str, str) else attr_str
 
@@ -1070,7 +1073,8 @@ class ns_cli_run():
                         fixed_rgb = validate_rgb(rgb_values)
                         return (True, f"['{attr_name}', {fixed_rgb}]", None)
                     elif isinstance(parsed, str):
-                        return (True, parsed, None)
+                        safe_val = parsed.replace("'", "\\'")
+                        return (True, f"['{safe_val}', [255, 255, 255]]", None)
                     else:
                         return (False, None, f"Invalid attribute format: {attr_str}")
                 except Exception as e:

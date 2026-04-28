@@ -222,7 +222,11 @@ def compute_folder_grid(section_data):
 
     Each data row has format: [row_weight, folder_name_or_empty, folder_name_or_empty, ...]
     Empty cells ('') represent empty slots in the grid.
-    Each row may have a preceding <SET_WIDTH> row with per-row column weights.
+
+    Both the <<POSITION_FOLDER>> header row and <SET_WIDTH> rows can carry
+    per-column width values (F-prefixed numbers, written by the engine).
+    These widths persist until overridden by the next <SET_WIDTH> or header.
+    This matches the PPTX path in nsm_ddx_figure.py (lines 209-225).
 
     Returns:
         row_weights: list of float (row height proportions)
@@ -232,41 +236,46 @@ def compute_folder_grid(section_data):
     row_weights = []
     col_weights_rows = []
     cell_name_rows = []
-    pending_set_width = None
+    current_widths = None  # persists across data rows until overridden
 
     for _, row in enumerate(section_data._rows):
         if not row:
             continue
         first = str(row[0]) if row[0] is not None else ''
-        if first.startswith('<<POSITION_FOLDER>>'):
-            continue
-        if first == '' or first == 'None':
-            break
-        if first == '<SET_WIDTH>':
+
+        # Both header row and <SET_WIDTH> rows update the current per-column
+        # widths (the engine writes the auto-recalculated widths into the
+        # header row, and explicit overrides into <SET_WIDTH> rows).
+        if first.startswith('<<POSITION_FOLDER>>') or first == '<SET_WIDTH>':
             weights = []
             for j in range(1, len(row)):
                 v = row[j]
                 if v is None or str(v) == '' or str(v) == 'None':
                     break
                 weights.append(_safe_float(v, 1.0))
-            pending_set_width = weights
-        else:
-            rw = _safe_float(first, 1.0)
-            row_weights.append(rw)
-            names = []
-            for j in range(1, len(row)):
-                v = row[j]
-                if v is None or str(v) == 'None':
-                    continue
-                if str(v) == '':
-                    names.append(None)
-                else:
-                    names.append(str(v))
-            while names and names[-1] is None:
-                names.pop()
-            cell_name_rows.append(names)
-            col_weights_rows.append(pending_set_width)
-            pending_set_width = None
+            if weights:
+                current_widths = weights
+            continue
+
+        if first == '' or first == 'None':
+            break
+
+        rw = _safe_float(first, 1.0)
+        row_weights.append(rw)
+        names = []
+        for j in range(1, len(row)):
+            v = row[j]
+            if v is None or str(v) == 'None':
+                continue
+            if str(v) == '':
+                names.append(None)
+            else:
+                names.append(str(v))
+        while names and names[-1] is None:
+            names.pop()
+        cell_name_rows.append(names)
+        # Snapshot the current widths so each row keeps its own copy.
+        col_weights_rows.append(list(current_widths) if current_widths else None)
 
     default_col_count = max((len(r) for r in cell_name_rows), default=1)
     resolved_weights = []

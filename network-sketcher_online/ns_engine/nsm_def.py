@@ -944,14 +944,34 @@ def get_root_folder_tuple(self,master_folder_size_array,tmp_folder_name):
 
 
 
+def normalize_section_array(arr):
+    """Normalize the _NOT_FOUND_ sentinel from convert_master_to_array to [].
+
+    convert_master_to_array returns ['_NOT_FOUND_', max_row] when a section is
+    absent.  Positional-array consumers that iterate over rows must call this
+    first to avoid TypeError on the integer element.
+    """
+    if arr and not isinstance(arr[0], list):
+        return []
+    return arr
+
+
 ### return tuple for def - return_shape_tuple - ###
 def convert_array_to_tuple(tmp_master_data_array):
-    """ULTRA FAST: 3-5x faster, most concise"""
-    return {
-        (row_data[0], col_idx): value
-        for row_data in tmp_master_data_array
-        for col_idx, value in enumerate(row_data[1], start=1)
-    }
+    """ULTRA FAST: 3-5x faster, most concise.
+    Skips sentinel rows (e.g. _NOT_FOUND_ / max_row pairs) where row_data[1]
+    is not iterable."""
+    result = {}
+    for row_data in tmp_master_data_array:
+        try:
+            row_values = row_data[1]
+            if not hasattr(row_values, '__iter__') or isinstance(row_values, str):
+                continue
+            for col_idx, value in enumerate(row_values, start=1):
+                result[(row_data[0], col_idx)] = value
+        except (TypeError, IndexError):
+            continue
+    return result
 
 
 ### return array for def - return_array - ###
@@ -1021,14 +1041,22 @@ def _get_folder_wp_array_from_master_xlsx(ws_name, ppt_meta_file):
     current_row = 1
     folder_name_array = []
     wp_name_array = []
+    start_row = None
+    end_row = None
+    max_row = input_ppt_mata_excel.active.max_row or 0
 
-    while flag_finish == False:
+    while flag_finish == False and current_row <= max_row:
         if input_ppt_mata_excel.active.cell(current_row, 1).value == '<<POSITION_SHAPE>>':
             start_row = current_row
         if input_ppt_mata_excel.active.cell(current_row, 1).value == '<<STYLE_SHAPE>>':
             end_row = current_row - 1
             flag_finish = True
         current_row += 1
+
+    # If markers were not found, return empty arrays gracefully
+    if start_row is None or end_row is None:
+        input_ppt_mata_excel.close()
+        return [folder_name_array, wp_name_array]
 
     for i in range(start_row + 1, end_row+1):
         if str(input_ppt_mata_excel.active.cell(i, 1).value) != 'None' and str(input_ppt_mata_excel.active.cell(i, 1).value) != '<END>' \
@@ -1308,6 +1336,11 @@ def _write_sections_bulk_xlsx(file_path, section_dict):
     """Write multiple sections to .xlsx in a single workbook open/save cycle.
 
     section_dict values are already tuples (dict with (row,col) keys).
+
+    If new data requires more rows than the current section occupies, rows are
+    inserted before the next section so later sections are never overwritten.
+    If new data is smaller, surplus rows inside the section are cleared (not
+    deleted) to avoid shifting rows unintentionally.
     """
     wb = openpyxl.load_workbook(file_path)
 
@@ -1333,7 +1366,32 @@ def _write_sections_bulk_xlsx(file_path, section_dict):
         else:
             end_row = ws.max_row + 1
 
-        for r in range(start_row, end_row):
+        # Tuple convention (shared with _convert_master_to_array_xlsx and
+        # _write_excel_meta_xlsx): r == 1 corresponds to the section marker
+        # row itself, r == 2 is the first data row, etc. So the absolute
+        # row for a key (r, c) is start_row + r - 1.
+
+        # Rows available inside this section, excluding the marker row
+        current_capacity = end_row - start_row - 1
+
+        # Max relative row index in tup (r == 1 is the marker row).
+        max_r = max((r for r, _c in tup.keys()), default=1)
+        # Rows of actual data that need to fit after the marker row.
+        new_data_rows = max(max_r - 1, 0)
+
+        # If new data exceeds current capacity, insert the extra rows so that
+        # subsequent section markers are not overwritten.
+        if new_data_rows > current_capacity:
+            rows_to_insert = new_data_rows - current_capacity
+            ws.insert_rows(end_row, amount=rows_to_insert)
+            # end_row shifts down by the inserted amount, but we don't need
+            # end_row after this point so no adjustment is required.
+
+        # Clear all rows within the section (marker row through the larger of
+        # old capacity or new data extent). Using `+ 1` so the range includes
+        # the last data row.
+        clear_end = start_row + max(current_capacity, new_data_rows) + 1
+        for r in range(start_row, clear_end):
             for c in range(1, ws.max_column + 1):
                 ws.cell(r, c).value = None
 
@@ -1343,7 +1401,7 @@ def _write_sections_bulk_xlsx(file_path, section_dict):
             s = str(val).strip() if val is not None else ''
             if s.startswith('<<') and s.endswith('>>'):
                 continue
-            ws.cell(start_row + r, c).value = val
+            ws.cell(start_row + r - 1, c).value = val
 
     wb.save(file_path)
     wb.close()
@@ -2713,7 +2771,10 @@ class  get_l2_broadcast_domains():
                     #print(tmp_l2name_count_array)
                     if device_name == tmp_l2name_count_array[0] and if_name == tmp_l2name_count_array[1]:
                         tmp_source_count = tmp_l2name_count_array[2]
-                    if tmp_opposite_if_array[0] == tmp_l2name_count_array[0] and if_name == tmp_opposite_if_array[1]:
+                    # Bug fix: must compare iteration variable (tmp_l2name_count_array[1]) to opposite if name,
+                    # not the source if_name (which is constant in this loop). The previous form only matched
+                    # by accident when source/opposite ports happened to share the same name.
+                    if tmp_opposite_if_array[0] == tmp_l2name_count_array[0] and tmp_opposite_if_array[1] == tmp_l2name_count_array[1]:
                         tmp_target_count = tmp_l2name_count_array[2]
                 #get opposite l2segment number and name
                 opposite_l2seg_name = ''
@@ -2729,7 +2790,12 @@ class  get_l2_broadcast_domains():
                     l2_broadcast_group_array_2nd.append(sorted(list(set([tmp_device_l2_directly_l3vport_array[2][0],opposite_l2seg_num]))))
 
                     # kyuusai L3 virtual port has multiple l2 ports made as one l2 segment
-                    l2seg_name_virtual_port_array.append([tmp_device_l2_directly_l3vport_array[2][3],tmp_device_l2_directly_l3vport_array[2][0]])
+                    # Bug fix: also remember source/opposite device names so that the merge
+                    # below only unifies physical-port broadcasts that share the SAME virtual
+                    # port name AND the SAME device pair. Without device-pair scoping, separate
+                    # links that coincidentally reuse a popular name (e.g. "Port-channel 1") in
+                    # different areas would be incorrectly merged into one giant broadcast group.
+                    l2seg_name_virtual_port_array.append([tmp_device_l2_directly_l3vport_array[2][3],tmp_device_l2_directly_l3vport_array[2][0],device_name,tmp_opposite_if_array[0]])
 
                 if opposite_l2seg_num == 0:
                     ### device_l2_directly_l3vport_array -> device_l2_other_array ###
@@ -2755,7 +2821,14 @@ class  get_l2_broadcast_domains():
         for tmp_l2seg_name_virtual_port_array in l2seg_name_virtual_port_array:
             tmp_kyuusai_l3vport_multiple_l2port = [tmp_l2seg_name_virtual_port_array[1]]
             for tmp_tmp_l2seg_name_virtual_port_array in l2seg_name_virtual_port_array:
-                if tmp_l2seg_name_virtual_port_array[0] == tmp_tmp_l2seg_name_virtual_port_array[0] and tmp_l2seg_name_virtual_port_array[1] != tmp_tmp_l2seg_name_virtual_port_array[1]:
+                # Bug fix: require same {source_device, opposite_device} pair in addition to
+                # matching virtual port name. Each entry now carries [vp_name, broadcast_num,
+                # source_device, opposite_device]; the set comparison is symmetric so it
+                # matches regardless of which side was the "source" in the outer iteration.
+                if (tmp_l2seg_name_virtual_port_array[0] == tmp_tmp_l2seg_name_virtual_port_array[0]
+                        and tmp_l2seg_name_virtual_port_array[1] != tmp_tmp_l2seg_name_virtual_port_array[1]
+                        and {tmp_l2seg_name_virtual_port_array[2], tmp_l2seg_name_virtual_port_array[3]}
+                            == {tmp_tmp_l2seg_name_virtual_port_array[2], tmp_tmp_l2seg_name_virtual_port_array[3]}):
                     tmp_kyuusai_l3vport_multiple_l2port.extend([tmp_tmp_l2seg_name_virtual_port_array[1]])
 
             if len(tmp_kyuusai_l3vport_multiple_l2port) != 1:

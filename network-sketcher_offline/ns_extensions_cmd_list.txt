@@ -244,7 +244,15 @@ New area layout:<br>
 
 [Tips]* All existing areas must be included in the new layout
 * New areas automatically have default devices added (Standard areas: [area_name]\_device_, Waypoint areas: [area_name] minus _wp_)
+  Example: 'WAN_wp_' -> auto-creates waypoint device named 'WAN'; 'MPLS_wp_' -> auto-creates 'MPLS'
+  To rename the auto-created waypoint use: rename device '[auto_name]' '[desired_name]'
+  (Waypoints are devices internally -- rename device applies to them as well)
 * Waypoint-only areas (area names ending with _wp_) cannot be placed side-by-side
+* _AIR_ is NOT supported in add area_location -- it will cause an error.
+  _AIR_ is a spacer placeholder for add device_location only.
+  Area rows do NOT need to be equal length; simply omit the trailing slot.
+  CORRECT: [['DC1','DC2'],['HQ','Branch01','Branch02'],['Branch03','Branch04']]
+  WRONG:   [['DC1','DC2'],['HQ','Branch01','Branch02'],['Branch03','Branch04','_AIR_']]
 
 ## add device
 
@@ -1155,6 +1163,9 @@ L3SW2<br>
 
 [Tips]
 * All string arguments (device names) must be enclosed in single or double quotes (e.g., 'L3SW1')
+* Waypoints are also treated as devices internally -- use rename device to rename them.
+  Example: rename device 'WAN' 'MPLS'   (rename auto-created waypoint 'WAN' to 'MPLS')
+  Use show waypoint_location first to confirm the current waypoint name.
 
 ## rename l3_instance
 Change the l3_instance, such as the VRF to which the Layer 3 interface belongs. By default, all Layer 3 interfaces are set to blank'' which means "Default" If you change the l3_instance name of one Layer 3 interface, all other l3_instances that are set to blank"" are implicitly set to the "default" l3_instance.
@@ -1694,6 +1705,39 @@ WAYPOINT REQUIRED WHEN:
 - Representing WAN connections (Internet, MPLS, leased lines)
 - Representing external networks or cloud services
 - Connecting geographically separated sites
+
+--------------------------------------------------------------------------------
+RULE 3.5: MULTI-TRANSPORT WAN WAYPOINT DESIGN (PREFERRED PATTERN)
+--------------------------------------------------------------------------------
+
+When the design includes 2+ WAN transports (MPLS + Internet, dual-ISP, etc.),
+place ALL transports as multiple waypoints INSIDE a SINGLE waypoint area.
+
+CORRECT (PREFERRED) - Single area, multiple waypoints horizontally:
+  # Step 1: Create waypoint area (auto-creates first waypoint 'WAN' = 'WAN_wp_' minus '_wp_')
+  add area_location "[['DC1','DC2'],['WAN_wp_'],['Br01','Br02','Br03']]"
+
+  # Step 2 (recommended): Confirm the auto-created waypoint name
+  show waypoint_location
+  # -> ['WAN_wp_', [['WAN']]]
+
+  # Step 3 (optional): Rename to the desired transport name
+  rename device 'WAN' 'MPLS'
+
+  # Step 4: Add second waypoint using the (renamed) first as reference
+  add waypoint 'Internet' 'MPLS' RIGHT
+  # WAN_wp_ now contains [MPLS, Internet] side-by-side
+
+  # Alternative (skip step 3, keep auto-generated name):
+  add waypoint 'Internet' 'WAN' RIGHT
+
+INCORRECT - Two waypoint-only areas side-by-side:
+  add area_location "[['DC1','DC2'],['MPLS_wp_','Internet_wp_'],...]"
+  # FAILS: waypoint areas cannot be horizontally adjacent.
+
+VERIFICATION:
+- After running add waypoint, run show area_device to confirm both
+  transports appear in the same WAN_wp_ area.
 
 --------------------------------------------------------------------------------
 RULE 4: AREA VS WAYPOINT DECISION MATRIX AND COMMAND GENERATION

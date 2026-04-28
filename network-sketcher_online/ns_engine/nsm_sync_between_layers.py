@@ -394,10 +394,18 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     excel_maseter_file = self.full_filepath
 
     # ========== STEP 1: Load original L2/L3 data + preload master sections ==========
-    _sync_bulk = nsm_def.convert_master_to_arrays_bulk(ws_l2_name, excel_maseter_file, ['<<L2_TABLE>>'])
-    _sync_bulk_l3 = nsm_def.convert_master_to_arrays_bulk(ws_l3_name, excel_maseter_file, ['<<L3_TABLE>>'])
-    original_master_l2_table_array = _sync_bulk['<<L2_TABLE>>']
-    original_master_l3_table_array = _sync_bulk_l3['<<L3_TABLE>>']
+    # Master_Data_L2/L3 may not exist yet (e.g. freshly-created master or previous sync failure).
+    # Treat missing sheets as empty so the sync can proceed and recreate them.
+    try:
+        _sync_bulk = nsm_def.convert_master_to_arrays_bulk(ws_l2_name, excel_maseter_file, ['<<L2_TABLE>>'])
+        original_master_l2_table_array = _sync_bulk['<<L2_TABLE>>']
+    except Exception:
+        original_master_l2_table_array = []
+    try:
+        _sync_bulk_l3 = nsm_def.convert_master_to_arrays_bulk(ws_l3_name, excel_maseter_file, ['<<L3_TABLE>>'])
+        original_master_l3_table_array = _sync_bulk_l3['<<L3_TABLE>>']
+    except Exception:
+        original_master_l3_table_array = []
 
     _master_sections = [
         '<<POSITION_FOLDER>>', '<<POSITION_SHAPE>>', '<<POSITION_LINE>>',
@@ -405,6 +413,12 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
     ]
     self._preloaded_master_sections = nsm_def.convert_master_to_arrays_bulk(
         'Master_Data', excel_maseter_file, _master_sections)
+    # Normalize _NOT_FOUND_ sentinel values to empty lists for positional arrays
+    # so that convert_array_to_tuple does not receive an int as row_data[1].
+    for _sec_key in _master_sections:
+        _val = self._preloaded_master_sections.get(_sec_key)
+        if isinstance(_val, list) and len(_val) >= 1 and _val[0] == '_NOT_FOUND_':
+            self._preloaded_master_sections[_sec_key] = []
 
     del original_master_l2_table_array[:2]
     del original_master_l3_table_array[:2]
