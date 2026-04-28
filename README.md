@@ -48,6 +48,10 @@ network-sketcher/
 
 > **AI-native edition:** Network Sketcher Local MCP exposes the engine as a **Model Context Protocol (MCP) server**, enabling LLM clients such as Cursor and Claude Code to drive network design directly. This is the most direct AI integration of the three editions — no browser, no copy-paste.
 
+<img width="1456" height="782" alt="image" src="https://github.com/user-attachments/assets/6f3db3ba-4f92-401d-8f75-4c09cc0f185d" />
+
+<img width="1427" height="773" alt="image" src="https://github.com/user-attachments/assets/0c5291dd-48f0-40f6-a0b2-101362739404" />
+
 ## What is Network Sketcher Local MCP?
 
 Network Sketcher Local MCP is the third edition of Network Sketcher. It wraps `network-sketcher_online/ns_engine/` as a library and exposes the Network Sketcher CLI through the Model Context Protocol so that LLM clients can drive network design via Tool calls.
