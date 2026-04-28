@@ -188,39 +188,48 @@ class  nsm_l3_table_from_master():
             # NSM: skip _tmp_ sheet and xlsx creation; L3 master data uses raw L3_table_array
             pass
         else:
-            #create L3 Table file
-            tmp_tmp_ws_name = '_tmp_tmp_'
-            nsm_def.create_excel_sheet(excel_maseter_file, tmp_tmp_ws_name)
-            input_tree_tuple = {}
-            input_tree_tuple[1,1] = 'Dummy'
-            input_tree_tuple[2, 1] = 'L3 Table'
-            master_excel_meta = input_tree_tuple
-            excel_file_path = excel_maseter_file
-            worksheet_name = tmp_tmp_ws_name
-            section_write_to = '<<N/A>>'
-            offset_row = 0
-            offset_column = 0
-            nsm_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
-            #Add L3 Table sheet
-            input_excel_name = excel_maseter_file
-            output_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
+            # Check if _tmp_ sheet exists in master (created by nsm_l2_table_from_master).
+            # When called from the sync pipeline, _tmp_ may have already been removed by the
+            # L2 step.  In that case, skip [L3_TABLE] file generation (the Master_Data_L3
+            # sheet update below still runs correctly).
+            _master_wb_check = openpyxl.load_workbook(excel_maseter_file)
+            _has_tmp_sheet = tmp_ws_name in _master_wb_check.sheetnames
+            _master_wb_check.close()
 
-            NEW_OR_ADD = 'NEW'
-            nsm_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
-            nsm_def.remove_excel_sheet(output_excel_name, 'Dummy')
+            if _has_tmp_sheet:
+                #create L3 Table file
+                tmp_tmp_ws_name = '_tmp_tmp_'
+                nsm_def.create_excel_sheet(excel_maseter_file, tmp_tmp_ws_name)
+                input_tree_tuple = {}
+                input_tree_tuple[1,1] = 'Dummy'
+                input_tree_tuple[2, 1] = 'L3 Table'
+                master_excel_meta = input_tree_tuple
+                excel_file_path = excel_maseter_file
+                worksheet_name = tmp_tmp_ws_name
+                section_write_to = '<<N/A>>'
+                offset_row = 0
+                offset_column = 0
+                nsm_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
+                #Add L3 Table sheet
+                input_excel_name = excel_maseter_file
+                output_excel_name = self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')
 
-            #Add L3 Table from meta
-            self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
-            worksheet_name = 'L3 Table'
-            start_row = 1
-            start_column = 0
-            custom_table_name = excel_maseter_file
-            self.input_tree_excel = nsm_egt_maker.insert_custom_excel_table(self.input_tree_excel, worksheet_name, start_row, start_column, custom_table_name)
-            self.input_tree_excel.save(output_excel_name)
+                NEW_OR_ADD = 'NEW'
+                nsm_egt_maker.create_excel_gui_tree(input_excel_name,output_excel_name,NEW_OR_ADD, egt_maker_width_array)
+                nsm_def.remove_excel_sheet(output_excel_name, 'Dummy')
 
-            # Remove _tmp_ sheet from excel master
-            nsm_def.remove_excel_sheet(excel_maseter_file, tmp_ws_name)
-            nsm_def.remove_excel_sheet(excel_maseter_file, tmp_tmp_ws_name)
+                #Add L3 Table from meta
+                self.input_tree_excel = openpyxl.load_workbook(output_excel_name)
+                worksheet_name = 'L3 Table'
+                start_row = 1
+                start_column = 0
+                custom_table_name = excel_maseter_file
+                self.input_tree_excel = nsm_egt_maker.insert_custom_excel_table(self.input_tree_excel, worksheet_name, start_row, start_column, custom_table_name)
+                self.input_tree_excel.save(output_excel_name)
+
+                # Remove _tmp_ sheet from excel master
+                nsm_def.remove_excel_sheet(excel_maseter_file, tmp_ws_name)
+                nsm_def.remove_excel_sheet(excel_maseter_file, tmp_tmp_ws_name)
 
         '''
         ADD L3 MASTER DATA Sheet to Excel Master file

@@ -1944,7 +1944,10 @@ class  get_l2_broadcast_domains():
                     #print(tmp_l2name_count_array)
                     if device_name == tmp_l2name_count_array[0] and if_name == tmp_l2name_count_array[1]:
                         tmp_source_count = tmp_l2name_count_array[2]
-                    if tmp_opposite_if_array[0] == tmp_l2name_count_array[0] and if_name == tmp_opposite_if_array[1]:
+                    # Bug fix: must compare iteration variable (tmp_l2name_count_array[1]) to opposite if name,
+                    # not the source if_name (which is constant in this loop). The previous form only matched
+                    # by accident when source/opposite ports happened to share the same name.
+                    if tmp_opposite_if_array[0] == tmp_l2name_count_array[0] and tmp_opposite_if_array[1] == tmp_l2name_count_array[1]:
                         tmp_target_count = tmp_l2name_count_array[2]
                 #get opposite l2segment number and name
                 opposite_l2seg_name = ''
@@ -1960,7 +1963,12 @@ class  get_l2_broadcast_domains():
                     l2_broadcast_group_array_2nd.append(sorted(list(set([tmp_device_l2_directly_l3vport_array[2][0],opposite_l2seg_num]))))
 
                     # kyuusai L3 virtual port has multiple l2 ports made as one l2 segment
-                    l2seg_name_virtual_port_array.append([tmp_device_l2_directly_l3vport_array[2][3],tmp_device_l2_directly_l3vport_array[2][0]])
+                    # Bug fix: also remember source/opposite device names so that the merge
+                    # below only unifies physical-port broadcasts that share the SAME virtual
+                    # port name AND the SAME device pair. Without device-pair scoping, separate
+                    # links that coincidentally reuse a popular name (e.g. "Port-channel 1") in
+                    # different areas would be incorrectly merged into one giant broadcast group.
+                    l2seg_name_virtual_port_array.append([tmp_device_l2_directly_l3vport_array[2][3],tmp_device_l2_directly_l3vport_array[2][0],device_name,tmp_opposite_if_array[0]])
 
                 if opposite_l2seg_num == 0:
                     ### device_l2_directly_l3vport_array -> device_l2_other_array ###
@@ -1986,7 +1994,14 @@ class  get_l2_broadcast_domains():
         for tmp_l2seg_name_virtual_port_array in l2seg_name_virtual_port_array:
             tmp_kyuusai_l3vport_multiple_l2port = [tmp_l2seg_name_virtual_port_array[1]]
             for tmp_tmp_l2seg_name_virtual_port_array in l2seg_name_virtual_port_array:
-                if tmp_l2seg_name_virtual_port_array[0] == tmp_tmp_l2seg_name_virtual_port_array[0] and tmp_l2seg_name_virtual_port_array[1] != tmp_tmp_l2seg_name_virtual_port_array[1]:
+                # Bug fix: require same {source_device, opposite_device} pair in addition to
+                # matching virtual port name. Each entry now carries [vp_name, broadcast_num,
+                # source_device, opposite_device]; the set comparison is symmetric so it
+                # matches regardless of which side was the "source" in the outer iteration.
+                if (tmp_l2seg_name_virtual_port_array[0] == tmp_tmp_l2seg_name_virtual_port_array[0]
+                        and tmp_l2seg_name_virtual_port_array[1] != tmp_tmp_l2seg_name_virtual_port_array[1]
+                        and {tmp_l2seg_name_virtual_port_array[2], tmp_l2seg_name_virtual_port_array[3]}
+                            == {tmp_tmp_l2seg_name_virtual_port_array[2], tmp_tmp_l2seg_name_virtual_port_array[3]}):
                     tmp_kyuusai_l3vport_multiple_l2port.extend([tmp_tmp_l2seg_name_virtual_port_array[1]])
 
             if len(tmp_kyuusai_l3vport_multiple_l2port) != 1:

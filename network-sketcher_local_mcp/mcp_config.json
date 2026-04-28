@@ -1,0 +1,44 @@
+{
+    "_description": "Network Sketcher Local MCP Edition configuration. The MCP server reads this file at startup. Each top-level entry has 'value' (the actual setting) and 'description' (human-readable note).",
+
+    "version": {
+        "value": "3.1.0",
+        "description": "Network Sketcher Local MCP Edition version. Informational only."
+    },
+
+    "working_directory": {
+        "value": "",
+        "description": "OPTIONAL initial workspace. If a non-empty absolute path is provided, the server uses it as the active workspace at startup (auto-created if missing). If empty (recommended for cross-platform portability), no workspace is active at startup; the AI agent must call suggest_workspace() to see OS-appropriate candidates and then set_workspace(path) to pick one. Use '~' for home expansion."
+    },
+
+    "log_level": {
+        "value": "INFO",
+        "description": "Log level for the MCP server's own log (DEBUG, INFO, WARNING, ERROR). Logs are written to stderr (visible in the MCP host's log panel)."
+    },
+
+    "ai_context_show_commands": {
+        "value": [
+            "show area",
+            "show area_device",
+            "show area_location",
+            "show attribute",
+            "show device",
+            "show device_interface",
+            "show device_location",
+            "show l1_interface",
+            "show l1_link",
+            "show l2_broadcast_domain",
+            "show l2_interface",
+            "show l3_broadcast_domain",
+            "show l3_interface",
+            "show waypoint",
+            "show waypoint_interface"
+        ],
+        "description": "List of show commands executed in order by the get_network_state tool. Same set as the Online edition's AI context."
+    },
+
+    "command_timeout_seconds": {
+        "value": 300,
+        "description": "Per-CLI-call timeout in seconds. 0 or null disables the timeout. Diagram exports for very large networks may need higher values."
+    }
+}

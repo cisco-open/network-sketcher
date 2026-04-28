@@ -4,35 +4,294 @@
 
 # Network Sketcher
 
-**Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. With AI (LLM) integration, it supports network design creation and updates via desktop GUI/CLI (Offline) or web browser (Online).**
+**Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. With AI (LLM) integration, it supports network design creation and updates via an MCP server for LLM clients (Local MCP), a web browser (Online), or a desktop GUI/CLI (Offline).**
 
-Since Ver 3.0.0, Network Sketcher provides two editions:
+Network Sketcher provides three editions:
 
-- [**Network Sketcher Online**](#network-sketcher-online) — Browser-based web service (new in Ver 3.0.0)
-- [**Network Sketcher Offline**](#network-sketcher-offline) — Desktop GUI + CLI (same as Network Sketcher Ver 2.6.3a). Runs independently with the `network-sketcher_offline/` folder alone.
+- [**Network Sketcher Local MCP**](#network-sketcher-local-mcp) — **AI-native MCP server for LLM clients (Cursor, Claude Desktop, etc.)**. The most direct AI integration: the LLM calls Network Sketcher tools without a browser or copy-paste.
+- [**Network Sketcher Online**](#network-sketcher-online) — Browser-based web service.
+- [**Network Sketcher Offline**](#network-sketcher-offline) — Desktop GUI + CLI. Runs independently with the `network-sketcher_offline/` folder alone.
 
-You can use either or both.
+You can use any combination.
 
-| | Online (Web Service) | Offline (GUI + CLI) |
-| --- | --- | --- |
-| Interface | Web browser | Desktop GUI / Command-line |
-| Key dependencies | Python + Flask | Python + tkinter |
-| Multi-user | Multiple users via browser | Single user |
-| Client requires | Web browser only | Python runtime environment |
-| AI-native design | Yes | No |
-| Internal data storage | No | No |
-| External communication | [Yes](#external-communication) | No |
-| Tested platforms | Windows (Mac OS, Linux untested) | Windows, Mac OS, Linux |
-| Folder | `network-sketcher_online/` | `network-sketcher_offline/` |
+| | **Local MCP (AI-native)** | Online (Web Service) | Offline (GUI + CLI) |
+| --- | --- | --- | --- |
+| Interface | **LLM client (Cursor, Claude Desktop, etc.)** | Web browser | Desktop GUI / Command-line |
+| Key dependencies | **Python + MCP SDK** | Python + Flask | Python + tkinter |
+| Multi-user | Single user | Multiple users via browser | Single user |
+| Client requires | **Python + MCP client** | Web browser only | Python runtime environment |
+| AI-native design | **Yes (most direct)** | Yes | No |
+| Master format | **`.nsm` only (`.xlsx` via import/export)** | `.nsm` internally; `.xlsx` at boundary | `.xlsx` / `.nsm` both |
+| Internal data storage | No | No | No |
+| External communication | stdio to LLM client (local) | [HTTPS](#external-communication) | No |
+| Tested platforms | Windows (Mac OS, Linux compatible by design) | Windows (Mac OS, Linux untested) | Windows, Mac OS, Linux |
+| Folder | **`network-sketcher_local_mcp/`** | `network-sketcher_online/` | `network-sketcher_offline/` |
 
 ```
 network-sketcher/
-├── network-sketcher_online/    # Online edition — Web service (browser-based)
-├── network-sketcher_offline/   # Offline edition — GUI + CLI (standalone desktop app)
+├── network-sketcher_local_mcp/  # Local MCP edition — MCP server for LLM clients (AI-native)
+├── network-sketcher_online/     # Online edition — Web service (browser-based)
+├── network-sketcher_offline/    # Offline edition — GUI + CLI (standalone desktop app)
 ├── README.md
 ├── LICENSE
 └── ...
 ```
+
+<br>
+<br>
+
+<p align="center">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+
+<br>
+
+# Network Sketcher Local MCP
+
+> **AI-native edition:** Network Sketcher Local MCP exposes the engine as a **Model Context Protocol (MCP) server**, enabling LLM clients such as Cursor and Claude Desktop to drive network design directly. This is the most direct AI integration of the three editions — no browser, no copy-paste.
+
+## What is Network Sketcher Local MCP?
+
+Network Sketcher Local MCP is the third edition of Network Sketcher. It wraps `network-sketcher_online/ns_engine/` as a library and exposes the Network Sketcher CLI through the Model Context Protocol so that LLM clients can drive network design via Tool calls.
+
+> **Positioning:** The Online edition is "browser + human + LLM (copy-paste)"; the Offline edition is "desktop GUI / CLI"; this edition is **"AI-native — the LLM executes the CLI directly"**.
+
+## Local MCP Features
+
+- **No browser, no copy-paste.** The LLM calls `add device ...` and similar commands as Tool invocations
+- Reuses `network-sketcher_online/ns_engine/` **as a library** (no code duplication)
+- **No changes** are made to the existing `_online` / `_offline` folders
+- stdio transport (designed for local operation)
+
+## Limitations (Local MCP)
+
+- Single-user edition designed to run on a local PC
+- Only stdio transport is supported (HTTP/SSE not supported)
+- Diagram generation for large networks may take some time
+- LLM clients cannot directly view binary output (PPTX / SVG); if visual feedback is needed, the user should open the generated SVG directly
+
+## Requirement (Local MCP)
+
+- Python 3.10 or later (required by the MCP SDK; the engine itself supports 3.9+)
+- The full Network Sketcher repository (the `network-sketcher_online/` folder must be present)
+- **Recommended LLM: Claude Opus 4.7 or later.** The Local MCP edition relies heavily on multi-step tool calling, schema interpretation, and adherence to the layout / workflow rules embedded in the server instructions and AI Context (e.g., RULE 0 / 0.5 layout, RULE 3.5 multi-transport WAN waypoint design, mandatory `get_workspace_info` to `get_ai_context` bootstrap). Weaker or older models may struggle with these workflows.
+
+## Installation (Local MCP)
+
+```bash
+git clone https://github.com/cisco-open/network-sketcher/
+cd network-sketcher/network-sketcher_local_mcp
+python -m pip install -r requirements_mcp.txt
+```
+
+## Startup Check (Local MCP)
+
+```bash
+python ns_mcp_server.py
+```
+
+The server waits indefinitely on stdio — this is normal behaviour (Ctrl+C to exit). Logs are written to stderr.
+
+## Configuration (`mcp_config.json`)
+
+| Key | Description |
+| --- | --- |
+| `working_directory` | **Optional.** If set to a non-empty path, that path is used as the initial workspace on startup. When left empty (recommended), the server starts with no active workspace; the AI agent must call `suggest_workspace()` → `set_workspace(path)` before other Tools can be used. Leave empty for OS-agnostic portability. |
+| `log_level` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `ai_context_show_commands` | List of show commands executed by the `get_network_state` Tool |
+| `command_timeout_seconds` | (Reserved; not used in the current version) |
+
+## Cursor / Claude Desktop Connection Example
+
+Add the following to the Cursor MCP configuration file (`File > Preferences > Cursor Settings > MCP` → `mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "network-sketcher": {
+      "command": "python",
+      "args": [
+        "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+Replace `/path/to/network-sketcher/` with the actual path where you cloned the repository.
+On Windows, you can use either forward slashes (`/`) or escaped backslashes (`\\`).
+
+For Claude Desktop, add the same block to `claude_desktop_config.json`. Adjust the path to match your environment.
+
+## Master File Format: `.nsm` Only
+
+This edition handles only `.nsm` (ZIP + Apache Parquet) master files. `.xlsx` access via openpyxl is slow for large networks, so it is used only at the import/export boundary.
+
+- To use an existing `.xlsx` master → convert with `import_master`
+- To open in Excel or the Offline edition → write back with `export_master_xlsx`
+- To create a new master → `create_empty_master` generates `.nsm` directly
+
+## Exposed Tools
+
+| Tool | Role |
+| --- | --- |
+| `suggest_workspace` | Returns candidate workspace directories suited to the current OS (Windows / macOS / Linux) |
+| `set_workspace` | Sets the given path as the working directory for this session (restricted to paths under home; auto-creates if absent) |
+| `get_workspace_info` | Returns the working directory and the list of master / output files it contains (returns `workspace_active=false` if no workspace is set) |
+| `create_empty_master` | Creates an empty `[MASTER]<name>.nsm` (converts xlsx → nsm internally and discards the xlsx) |
+| `import_master` | Converts an existing `.xlsx` to `.nsm` inside the working directory |
+| `export_master_xlsx` | Writes a `.xlsx` from a `.nsm` (for editing in Excel or the Offline edition) |
+| `get_network_state` | Runs the main `show` commands and returns aggregated results (lightweight) |
+| `get_ai_context` | Generates `[AI_Context]<name>.txt` and returns its full content (full context) |
+| `run_commands` | Executes multiple `add` / `rename` / `delete` / `show` commands in a single call |
+| `export_diagram` | Generates an L1 / L2 / L3 diagram in SVG or PPTX format |
+
+## Exposed Prompts
+
+| Prompt | Role |
+| --- | --- |
+| `start_ns_session(master)` | Session start template. Forces the AI through the `get_workspace_info` → `get_ai_context` → summary report workflow. |
+
+In Cursor, launch with the `/start_ns_session` slash command.
+
+## Exposed Resources
+
+| URI | Content |
+| --- | --- |
+| `nsm://workspace` | Current working directory state (JSON) |
+| `nsm://commands` | Full CLI command reference (`nsm_extensions_cmd_list.txt`) |
+
+## AI Context Guidance Mechanism
+
+Three layers of guidance prevent the LLM from issuing commands without first understanding the current state:
+
+1. **Server instructions (automatic):** `instructions` are sent to the MCP host at FastMCP initialisation. Cursor and Claude Desktop include them in the system prompt, so the AI is automatically prompted to call `get_workspace_info` → `get_ai_context` in every new session. The instructions also **mandate** that the AI call any other registered MCP server whose capability is relevant to the current sub-task before issuing Network Sketcher mutations (see Additional Policy below).
+2. **`/start_ns_session` prompt (explicit launch):** When triggered by the slash command, a step-by-step message is inserted that walks the AI through the workflow. The first step requires the AI to enumerate other registered MCP servers and present a relevance mapping to the user.
+3. **Tool docstring PREREQUISITE (fail-safe):** The `run_commands` and `export_diagram` docstrings explicitly state that `get_ai_context` must be called first — a final safety net for when the AI reads the docstring.
+
+### Additional Policy: Coordinated Use of Other MCP Servers (Mandatory)
+
+The server instructions and the `/start_ns_session` prompt include the following policy covering **all MCP servers** registered with the host — not just documentation/RAG servers, but any server regardless of vendor or category (configuration, monitoring, issue tracking, chat, repository, etc.).
+
+- **Enforcement level:** "MANDATORY when relevant." Before starting a sub-task, the LLM must ask itself "Is any registered MCP server's capability relevant here?" If yes, it **must** call that server **before** issuing Network Sketcher mutations, and **must** cite the returned sources in its final answer.
+- **Relevance judgment:** Based on each server's description (`serverUseInstructions` / tool descriptors), not its name alone.
+- **Typical relevance mappings (non-exhaustive):**
+  - Documentation / RAG servers → model selection, best practices, EoS/EoL, config examples, troubleshooting
+  - Topology / config / monitoring servers → grounding decisions in live device state
+  - Issue tracking / chat / repository servers → when user requests reference existing tickets, code, or history
+- **Guardrails (prevent abuse):**
+  - Do not call a server whose capability is clearly unrelated to the task
+  - Authenticate MCP servers one at a time (no parallel authentication)
+  - Keep to roughly **10 external MCP calls or fewer** per user turn
+  - On failure, report to the user and continue with remaining sources rather than retrying
+- **Scope:** This policy applies only to the Local MCP edition (Online / Offline editions are not accessed via an MCP host and are therefore out of scope). It is not included in the shared AI Context artifact (`[AI_Context]<name>.txt`).
+
+## Workspace Selection (Cross-Platform)
+
+This edition **does not hardcode OS-specific paths**. The AI agent detects the OS and proposes a suitable directory for the host.
+
+### Default Behaviour (Recommended)
+
+1. Set `working_directory` to empty (`""`) in `mcp_config.json`
+2. At session start, the AI calls `suggest_workspace()` to retrieve OS-specific candidates:
+   - Windows: `~/Documents/ns_workspace`, `~/Desktop/ns_workspace`, `~/ns_workspace`
+   - macOS: same as Windows
+   - Linux: `$XDG_DATA_HOME/ns_workspace` (or `~/.local/share/ns_workspace`), `~/Documents/ns_workspace`, `~/ns_workspace`
+3. The AI proposes one candidate to the user and requests confirmation
+4. After user approval, the AI calls `set_workspace(path)`
+5. All Tools for the remainder of the session operate in that workspace
+
+### Advanced Usage (Fixed Workspace)
+
+If you want to share the same path across multiple hosts or always use a fixed directory, set an absolute path (or `~/...`) in `mcp_config.json` under `working_directory`. The workspace is then active immediately on startup, and there is no need to call `suggest_workspace` / `set_workspace`.
+
+### Security Boundary
+
+`set_workspace(path)` accepts only paths that satisfy all of the following:
+- Resolves to a location under `Path.home()` (`~/` / `$HOME`)
+- Is writable
+- Is created automatically if it does not yet exist
+
+Paths outside the home directory are rejected to prevent unintended access to the host system.
+
+## Typical Usage Flow (Local MCP)
+
+1. (First time only) Set `working_directory` to empty in `mcp_config.json`, or set a fixed path
+2. In Cursor, run `/start_ns_session master='[MASTER]office.nsm'` (or instruct the LLM directly)
+3. The LLM calls `suggest_workspace` → `set_workspace` to establish the workspace (if not already set)
+4. The LLM calls `get_workspace_info` → `get_ai_context` to understand the current state and reports a summary
+   - If no master exists, create one with `create_empty_master(filename='[MASTER]office.nsm')`, or convert an existing `.xlsx` with `import_master`
+5. Give the LLM instructions such as "Add Core-SW and bind VLAN10 to the Vlan 10 SVI"
+6. The LLM issues multiple commands via `run_commands`
+7. Generate L1 / L2 / L3 diagrams with `export_diagram`
+8. To open in Excel, call `export_master_xlsx('[MASTER]office.nsm')`
+
+## Migrating Existing `.xlsx` Masters (Local MCP)
+
+`.xlsx` masters created before setting up Local MCP can be imported with the following steps:
+
+```text
+# 1. Establish the workspace (if not already set)
+suggest_workspace()
+set_workspace('~/Documents/ns_workspace')
+
+# 2. Import the existing master using its absolute path
+import_master(
+    xlsx_path = '/path/to/[MASTER]office100_v2.xlsx',   # absolute path for your OS
+    target_name = '[MASTER]office100_v2.nsm'             # optional
+)
+
+# 3. The original .xlsx can be deleted manually (it cannot be used by run_commands)
+```
+
+## Safety Mechanisms (Local MCP)
+
+- **Workspace boundary:** `set_workspace(path)` accepts only paths under `Path.home()` to prevent unintended access to the host system
+- **Master path validation:** Access to files outside the working directory is rejected; `.nsm` extension is mandatory
+- **`run_commands` allowlist:** Only `add` / `rename` / `delete` / `show` are permitted; `export` must go through dedicated Tools
+- **Automatic `--accept-security-risk`:** Prevents `get_ai_context` from blocking on `input()`
+- **Automatic `--master`:** Appended internally so the LLM cannot accidentally target an external master
+- **`import_master` / `export_master_xlsx` output location:** Always fixed to the working directory
+- **No overwrite of existing files:** `create_empty_master`, `import_master`, and `export_master_xlsx` each stop with an error if the output path already exists
+
+## Architecture (Local MCP)
+
+```text
++-----------------------+   stdio (JSON-RPC)   +----------------------+
+| Cursor / Claude       | <------------------> | ns_mcp_server.py     |
+| Desktop (MCP host)    |                      | (FastMCP)            |
++-----------------------+                      +----------+-----------+
+                                                          | sys.path insert
+                                                          v
+                                          +----------------------------+
+                                          | network-sketcher_online/   |
+                                          |   ns_engine/               |
+                                          |     nsm_adapter.run_cli()  |
+                                          |     nsm_cli.ns_cli_run()   |
+                                          |     ...                    |
+                                          +-------------+--------------+
+                                                        | file I/O
+                                                        v
+                                          +----------------------------+
+                                          | <workspace>/               |
+                                          | (set by set_workspace,     |
+                                          |  always under user home)   |
+                                          |   [MASTER]*.nsm            |
+                                          |   [AI_Context]*.txt        |
+                                          |   [Lx_DIAGRAM]*.svg/pptx   |
+                                          +----------------------------+
+```
+
+## Troubleshooting (Local MCP)
+
+| Symptom | Cause / Resolution |
+| --- | --- |
+| `[FATAL] ns_engine directory not found` at startup | The `network-sketcher_online/` folder is missing. Place it in the same parent directory as this folder. |
+| `[FATAL] The "mcp" package is not installed` | Run `python -m pip install -r requirements_mcp.txt` |
+| Server does not appear in Cursor's MCP panel | Verify the path in `mcp.json` is correct and that the Python executable (or virtual environment Python) is specified in `command` |
+| `get_ai_context` returns `[ERROR] AI Context file was not generated` | Confirm the master filename starts with `[MASTER]` and ends with `.nsm` |
+| `Invalid master filename ... Must start with '[MASTER]' and end with .nsm` | This edition is `.nsm` only. If you have an `.xlsx`, convert it with `import_master`. |
+| `[ERROR] No workspace is active for this session` | Call `suggest_workspace()` to see candidates, then `set_workspace(path)` to activate one. |
+| `[ERROR] For safety, the workspace must be under your home directory` | Only paths under your home directory are accepted. Use a symbolic link if you need to reference a path outside your home. |
+| `run_commands` returns `[ERROR] Verb 'export' is not allowed` | `run_commands` does not accept `export`. Use `export_diagram` or `get_ai_context` instead. |
 
 <br>
 <br>
@@ -60,7 +319,7 @@ https://github.com/user-attachments/assets/2acaea3b-32f2-4ff0-90ad-a3dc810293d2
 
 ## What is Network Sketcher Online?
 
-Network Sketcher Online is a browser-based web service added in Ver 3.0.0. It wraps the Network Sketcher CLI and provides an intuitive web UI for diagram generation and AI-driven network design — no python on PCs required.
+Network Sketcher Online is a browser-based web service. It wraps the Network Sketcher CLI and provides an intuitive web UI for diagram generation and AI-driven network design — no python on PCs required.
 
 ## Online Features
 
@@ -321,29 +580,29 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 
 ## Feature Support Matrix
 
-| Feature Item | Online Edition | Offline Edition (GUI) | Offline Edition (CLI) |
-| --- | --- | --- | --- |
-| Create master file from PowerPoint rough sketch | ❌ | ✅ | ❌ |
-| Convert master files from Visio, Draw.io, NetBox, CML | ❌ | ✅ | ❌ |
-| Area placement | ✅ (user-specified) | ✅ (automatic) | ✅ (user-specified) |
-| Create / delete / modify areas | ✅ | ✅ | ✅ |
-| Place / create / delete / modify devices | ✅ | ✅ | ✅ |
-| Place / create / delete / modify waypoints | ✅ | ✅ | ✅ |
-| Add Layer 1 connections | ✅ | ✅ | ✅ |
-| Delete Layer 1 connections | ✅ | ⚠️ (port cannot be specified) | ✅ |
-| Change Layer 1 port names | ✅ | ✅ | ✅ |
-| Change Layer 1 connection details (e.g., duplex) | ✅ | ✅ | ✅ |
-| Change Layer 2 segments (VLAN) | ✅ | ✅ | ✅ |
-| Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ | ✅ |
-| Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ | ✅ |
-| Change attributes | ✅ | ✅ | ✅ |
-| Add / delete VPNs | ❌ | ✅ | ❌ |
-| Flow management | ❌ | ✅ | ❌ |
-| Export various reports | ❌ | ✅ | ❌ |
-| Export empty master files (no data) | ✅ | ❌ | ✅ |
-| Export AI context files | ✅ | ✅ | ✅ |
-| Export device files | ✅ | ✅ | ✅ |
-| Generate L1/L2/L3 topology diagrams | ✅ | ✅ | ✅|
+| Feature Item | **Local MCP (LLM-driven CLI)** | Online Edition | Offline Edition (GUI) | Offline Edition (CLI) |
+| --- | --- | --- | --- | --- |
+| Create master file from PowerPoint rough sketch | ❌ | ❌ | ✅ | ❌ |
+| Convert master files from Visio, Draw.io, NetBox, CML | ❌ | ❌ | ✅ | ❌ |
+| Area placement | ✅ (user-specified) | ✅ (user-specified) | ✅ (automatic) | ✅ (user-specified) |
+| Create / delete / modify areas | ✅ | ✅ | ✅ | ✅ |
+| Place / create / delete / modify devices | ✅ | ✅ | ✅ | ✅ |
+| Place / create / delete / modify waypoints | ✅ | ✅ | ✅ | ✅ |
+| Add Layer 1 connections | ✅ | ✅ | ✅ | ✅ |
+| Delete Layer 1 connections | ✅ | ✅ | ⚠️ (port cannot be specified) | ✅ |
+| Change Layer 1 port names | ✅ | ✅ | ✅ | ✅ |
+| Change Layer 1 connection details (e.g., duplex) | ✅ | ✅ | ✅ | ✅ |
+| Change Layer 2 segments (VLAN) | ✅ | ✅ | ✅ | ✅ |
+| Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ | ✅ | ✅ |
+| Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ | ✅ | ✅ |
+| Change attributes | ✅ | ✅ | ✅ | ✅ |
+| Add / delete VPNs | ❌ | ❌ | ✅ | ❌ |
+| Flow management | ❌ | ❌ | ✅ | ❌ |
+| Export various reports | ❌ | ❌ | ✅ | ❌ |
+| Export empty master files (no data) | ✅ | ✅ | ❌ | ✅ |
+| Export AI context files | ✅ | ✅ | ✅ | ✅ |
+| Export device files | ❌ | ✅ | ✅ | ✅ |
+| Generate L1/L2/L3 topology diagrams | ✅ | ✅ | ✅ | ✅ |
 
 ## SAMPLE
 ### - Supports various connections
