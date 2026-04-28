@@ -50,7 +50,8 @@ network-sketcher/
 
 <img width="1456" height="782" alt="image" src="https://github.com/user-attachments/assets/6f3db3ba-4f92-401d-8f75-4c09cc0f185d" />
 
-<img width="1427" height="773" alt="image" src="https://github.com/user-attachments/assets/0c5291dd-48f0-40f6-a0b2-101362739404" />
+<img width="1211" height="653" alt="image" src="https://github.com/user-attachments/assets/5900104a-3a14-4de9-ba30-38af86f1da20" />
+
 
 ## What is Network Sketcher Local MCP?
 
