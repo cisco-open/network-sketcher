@@ -39,6 +39,6 @@
 
     "command_timeout_seconds": {
         "value": 300,
-        "description": "Per-CLI-call timeout in seconds. 0 or null disables the timeout. Diagram exports for very large networks may need higher values."
+        "description": "(Reserved; not used in the current version) Intended as a per-CLI-call timeout in seconds. The value is currently ignored by the server. Tracked for a future release."
     }
 }

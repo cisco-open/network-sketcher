@@ -62,9 +62,22 @@ if not _ENGINE_DIR.is_dir():
 sys.path.insert(0, str(_ENGINE_DIR))
 sys.path.insert(0, str(_ONLINE_DIR))
 
-from ns_engine.nsm_adapter import bootstrap, run_cli, RunResult  # noqa: E402
-
-bootstrap()
+try:
+    from ns_engine.nsm_adapter import bootstrap, run_cli, RunResult  # noqa: E402
+    bootstrap()
+except ImportError as e:
+    sys.stderr.write(
+        '[FATAL] Failed to import ns_engine dependencies.\n'
+        f'Underlying error: {e}\n'
+        'Run: python -m pip install -r requirements_mcp.txt\n'
+    )
+    sys.exit(1)
+except Exception as e:
+    sys.stderr.write(
+        f'[FATAL] ns_engine bootstrap failed: {e}\n'
+        f'Engine directory: {_ENGINE_DIR}\n'
+    )
+    sys.exit(1)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -401,7 +414,7 @@ _SERVER_INSTRUCTIONS = (
     "external sources were applicable."
 )
 
-mcp = FastMCP('network_sketcher_mcp', instructions=_SERVER_INSTRUCTIONS)
+mcp = FastMCP('network-sketcher', instructions=_SERVER_INSTRUCTIONS)
 
 # ---------------------------------------------------------------------------
 # Tools
