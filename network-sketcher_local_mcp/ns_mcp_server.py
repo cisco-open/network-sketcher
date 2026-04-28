@@ -21,7 +21,7 @@ Network Sketcher Local MCP Edition.
 
 This MCP server wraps `network-sketcher_online/ns_engine/` and exposes
 the Network Sketcher CLI through the Model Context Protocol so that
-LLM clients (Cursor, Claude Desktop, etc.) can drive network design
+LLM clients (Cursor, Claude Code, etc.) can drive network design
 operations directly without browser-based copy/paste.
 
 Usage:

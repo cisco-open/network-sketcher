@@ -8,7 +8,7 @@
 
 Network Sketcher provides three editions:
 
-- [**Network Sketcher Local MCP**](#network-sketcher-local-mcp) — **AI-native MCP server for LLM clients (Cursor, Claude Desktop, etc.)**. The most direct AI integration: the LLM calls Network Sketcher tools without a browser or copy-paste.
+- [**Network Sketcher Local MCP**](#network-sketcher-local-mcp) — **AI-native MCP server for LLM clients (Cursor, Claude Code, etc.)**. The most direct AI integration: the LLM calls Network Sketcher tools without a browser or copy-paste.
 - [**Network Sketcher Online**](#network-sketcher-online) — Browser-based web service.
 - [**Network Sketcher Offline**](#network-sketcher-offline) — Desktop GUI + CLI. Runs independently with the `network-sketcher_offline/` folder alone.
 
@@ -16,7 +16,7 @@ You can use any combination.
 
 | | **Local MCP (AI-native)** | Online (Web Service) | Offline (GUI + CLI) |
 | --- | --- | --- | --- |
-| Interface | **LLM client (Cursor, Claude Desktop, etc.)** | Web browser | Desktop GUI / Command-line |
+| Interface | **LLM client (Cursor, Claude Code, etc.)** | Web browser | Desktop GUI / Command-line |
 | Key dependencies | **Python + MCP SDK** | Python + Flask | Python + tkinter |
 | Multi-user | Single user | Multiple users via browser | Single user |
 | Client requires | **Python + MCP client** | Web browser only | Python runtime environment |
@@ -46,7 +46,7 @@ network-sketcher/
 
 # Network Sketcher Local MCP
 
-> **AI-native edition:** Network Sketcher Local MCP exposes the engine as a **Model Context Protocol (MCP) server**, enabling LLM clients such as Cursor and Claude Desktop to drive network design directly. This is the most direct AI integration of the three editions — no browser, no copy-paste.
+> **AI-native edition:** Network Sketcher Local MCP exposes the engine as a **Model Context Protocol (MCP) server**, enabling LLM clients such as Cursor and Claude Code to drive network design directly. This is the most direct AI integration of the three editions — no browser, no copy-paste.
 
 ## What is Network Sketcher Local MCP?
 
@@ -99,7 +99,7 @@ The server waits indefinitely on stdio — this is normal behaviour (Ctrl+C to e
 | `ai_context_show_commands` | List of show commands executed by the `get_network_state` Tool |
 | `command_timeout_seconds` | (Reserved; not used in the current version) |
 
-## Cursor / Claude Desktop Connection Example
+## Cursor / Claude Code Connection Example
 
 Add the following to the Cursor MCP configuration file (`File > Preferences > Cursor Settings > MCP` → `mcp.json`):
 
@@ -119,7 +119,13 @@ Add the following to the Cursor MCP configuration file (`File > Preferences > Cu
 Replace `/path/to/network-sketcher/` with the actual path where you cloned the repository.
 On Windows, you can use either forward slashes (`/`) or escaped backslashes (`\\`).
 
-For Claude Desktop, add the same block to `claude_desktop_config.json`. Adjust the path to match your environment.
+For Claude Code, register the same MCP server with the `claude` CLI:
+
+```bash
+claude mcp add network-sketcher python "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+```
+
+Or add the `mcpServers` block above to `~/.claude.json` (user-wide) or to `.mcp.json` in your project root. Adjust the path to match your environment.
 
 ## Master File Format: `.nsm` Only
 
@@ -163,7 +169,7 @@ In Cursor, launch with the `/start_ns_session` slash command.
 
 Three layers of guidance prevent the LLM from issuing commands without first understanding the current state:
 
-1. **Server instructions (automatic):** `instructions` are sent to the MCP host at FastMCP initialisation. Cursor and Claude Desktop include them in the system prompt, so the AI is automatically prompted to call `get_workspace_info` → `get_ai_context` in every new session. The instructions also **mandate** that the AI call any other registered MCP server whose capability is relevant to the current sub-task before issuing Network Sketcher mutations (see Additional Policy below).
+1. **Server instructions (automatic):** `instructions` are sent to the MCP host at FastMCP initialisation. Cursor and Claude Code include them in the system prompt, so the AI is automatically prompted to call `get_workspace_info` → `get_ai_context` in every new session. The instructions also **mandate** that the AI call any other registered MCP server whose capability is relevant to the current sub-task before issuing Network Sketcher mutations (see Additional Policy below).
 2. **`/start_ns_session` prompt (explicit launch):** When triggered by the slash command, a step-by-step message is inserted that walks the AI through the workflow. The first step requires the AI to enumerate other registered MCP servers and present a relevance mapping to the user.
 3. **Tool docstring PREREQUISITE (fail-safe):** The `run_commands` and `export_diagram` docstrings explicitly state that `get_ai_context` must be called first — a final safety net for when the AI reads the docstring.
 
