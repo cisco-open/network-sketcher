@@ -319,6 +319,23 @@ import_master(
 | `[ERROR] For safety, the workspace must be under your home directory` | Only paths under your home directory are accepted. Use a symbolic link if you need to reference a path outside your home. |
 | `run_commands` returns `[ERROR] Verb 'export' is not allowed` | `run_commands` does not accept `export`. Use `export_diagram` or `get_ai_context` instead. |
 
+### Claude Code-specific environment variables
+
+The following environment variables are recognised by Claude Code (not used by Cursor) and may help when running Local MCP under Claude Code on slower machines or with very large networks:
+
+| Variable | Purpose |
+| --- | --- |
+| `MCP_TIMEOUT=30000` | Extends Claude Code's MCP server startup timeout to 30 seconds. The default is around 10 seconds and may be exceeded by the first import of `pandas` / `pyarrow` / `networkx` on slow disks. |
+| `MAX_MCP_OUTPUT_TOKENS=50000` | Raises Claude Code's per-tool output warning threshold. The default is 10,000 tokens; `get_ai_context` on large masters can legitimately exceed it. |
+
+Set them when launching Claude Code, e.g.:
+
+```bash
+MCP_TIMEOUT=30000 MAX_MCP_OUTPUT_TOKENS=50000 claude
+```
+
+These knobs are documented in the [Claude Code MCP docs](https://docs.claude.com/en/docs/claude-code/mcp).
+
 <br>
 <br>
 
