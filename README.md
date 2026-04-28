@@ -72,6 +72,7 @@ Network Sketcher Local MCP is the third edition of Network Sketcher. It wraps `n
 - Only stdio transport is supported (HTTP/SSE not supported)
 - Diagram generation for large networks may take some time
 - LLM clients cannot directly view binary output (PPTX / SVG); if visual feedback is needed, the user should open the generated SVG directly
+- **Verification status:** End-to-end verified in Cursor (the primary tested host). Claude Code support follows the published MCP specification but is design-validated only at this release; please report any issues you encounter.
 
 ## Requirement (Local MCP)
 
@@ -104,7 +105,11 @@ The server waits indefinitely on stdio — this is normal behaviour (Ctrl+C to e
 | `ai_context_show_commands` | List of show commands executed by the `get_network_state` Tool |
 | `command_timeout_seconds` | (Reserved; not used in the current version) |
 
-## Cursor / Claude Code Connection Example
+## Connection Examples
+
+Cursor and Claude Code use different configuration mechanisms, so the setup steps are split below. Pick the one that matches your client.
+
+### For Cursor
 
 Add the following to the Cursor MCP configuration file (`File > Preferences > Cursor Settings > MCP` → `mcp.json`):
 
@@ -124,13 +129,22 @@ Add the following to the Cursor MCP configuration file (`File > Preferences > Cu
 Replace `/path/to/network-sketcher/` with the actual path where you cloned the repository.
 On Windows, you can use either forward slashes (`/`) or escaped backslashes (`\\`).
 
-For Claude Code, register the same MCP server with the `claude` CLI:
+### For Claude Code
+
+Register the MCP server with the `claude` CLI. The `--` (double dash) separator is required so that the script path is passed to `python` rather than parsed as a flag of `claude mcp add`:
 
 ```bash
-claude mcp add network-sketcher python "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+# Local scope (default; current project only, stored in ~/.claude.json)
+claude mcp add network-sketcher -- python "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+
+# User scope (available across all your projects)
+claude mcp add --scope user network-sketcher -- python "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+
+# Project scope (shared with team via .mcp.json in project root)
+claude mcp add --scope project network-sketcher -- python "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
 ```
 
-Or add the `mcpServers` block above to `~/.claude.json` (user-wide) or to `.mcp.json` in your project root. Adjust the path to match your environment.
+Replace `/path/to/network-sketcher/` with the actual path where you cloned the repository. See the [Claude Code MCP installation scopes documentation](https://docs.claude.com/en/docs/claude-code/mcp#mcp-installation-scopes) for details on each scope and when to use which.
 
 ## Master File Format: `.nsm` Only
 
@@ -161,7 +175,8 @@ This edition handles only `.nsm` (ZIP + Apache Parquet) master files. `.xlsx` ac
 | --- | --- |
 | `start_ns_session(master)` | Session start template. Forces the AI through the `get_workspace_info` → `get_ai_context` → summary report workflow. |
 
-In Cursor, launch with the `/start_ns_session` slash command.
+- In **Cursor**, launch with the `/start_ns_session` slash command.
+- In **Claude Code**, launch with `/mcp__network-sketcher__start_ns_session` (per Claude Code's MCP prompt naming convention `/mcp__<server>__<prompt>`).
 
 ## Exposed Resources
 
@@ -267,8 +282,8 @@ import_master(
 
 ```text
 +-----------------------+   stdio (JSON-RPC)   +----------------------+
-| Cursor / Claude       | <------------------> | ns_mcp_server.py     |
-| Desktop (MCP host)    |                      | (FastMCP)            |
+| Cursor / Claude Code  | <------------------> | ns_mcp_server.py     |
+| (MCP host)            |                      | (FastMCP)            |
 +-----------------------+                      +----------+-----------+
                                                           | sys.path insert
                                                           v
