@@ -59,6 +59,15 @@ Network Sketcher Local MCP is the third edition of Network Sketcher. It wraps `n
 
 > **Positioning:** The Online edition is "browser + human + LLM (copy-paste)"; the Offline edition is "desktop GUI / CLI"; this edition is **"AI-native — the LLM executes the CLI directly"**.
 
+## 5min Demo video of the Local MCP edition. 
+
+The AI ​​agent Cursor autonomously creates a network using Network Sketcher's Local MCP functionality. It also simultaneously references best practices from other MCPs.
+
+https://github.com/user-attachments/assets/274d5b66-5f4a-407a-bfb5-f71026971fc4
+
+
+
+
 ## Local MCP Features
 
 - **No browser, no copy-paste.** The LLM calls `add device ...` and similar commands as Tool invocations
