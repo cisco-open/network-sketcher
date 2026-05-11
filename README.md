@@ -23,7 +23,7 @@ You can use any combination.
 | AI-native design | **Yes (most direct)** | Yes | No |
 | Master format | **`.nsm` only (`.xlsx` via import/export)** | `.nsm` internally; `.xlsx` at boundary | `.xlsx` / `.nsm` both |
 | Internal data storage | No | No | No |
-| External communication | stdio to LLM client (local) | [HTTPS](#external-communication) | No |
+| External communication | stdio to LLM client (local) | [HTTPS](https://github.com/cisco-open/network-sketcher/wiki/User_Guide(Online_Edition)%5BEN%5D#external-communication) | No |
 | Tested platforms | Windows (Mac OS, Linux compatible by design) | Windows (Mac OS, Linux untested) | Windows, Mac OS, Linux |
 | Folder | **`network-sketcher_local_mcp/`** | `network-sketcher_online/` | `network-sketcher_offline/` |
 
@@ -220,52 +220,10 @@ Open the URL shown at startup (default: `https://localhost:5443`) in your browse
 - If the `fqdn` setting in `ns_web_config.json` is configured, the auto-generated SSL certificate's Common Name (CN) will use the specified FQDN.
 
 ## User Guide (Online)
-Click the <kbd>?</kbd> icons on the web page to view contextual help for each section and feature.
-For features not covered in this User Guide, please refer to the [User Guide (Offline)](#user-guide-offline).
-
-
-
-https://github.com/user-attachments/assets/d376af22-e100-4647-83aa-e28cd7efefd8
-
-
-
-
-https://github.com/user-attachments/assets/1e506529-1824-43a4-880c-196986d6dae8
-
-
-[NS_Online_User_Guide_301_en.pdf](https://github.com/user-attachments/files/26778493/NS_Online_User_Guide_301_en.pdf)
-
-
-
-[NS_Online_User_Guide_301_jp.pdf](https://github.com/user-attachments/files/26567922/NS_Online_User_Guide_301_jp.pdf)
-
-
-### Server Management Scripts
-
-| Script | Description |
-| --- | --- |
-| `python3 start_ns_online.py` | Start `ns_web_start.py` as a background process. Any already-running instance (including those started manually) is stopped first. Output is logged to `logs/server.log`. |
-| `python3 stop_ns_online.py` | Stop all running `ns_web_start.py` processes, including those started outside of this script. |
-
-Both scripts work on Windows, Mac OS, and Linux.
-
-### External Communication
-
-| Source | Target | Protocol |
-| --- | --- | --- |
-| Client PC | NS Online | HTTPS |
-| Client PC | Configured LLM | HTTPS |
-
-### Third-Party Libraries (Online)
-
-Network Sketcher Online includes the following third-party JavaScript libraries for in-browser file preview. These are bundled in `network-sketcher_online/static/` and require no additional installation.
-
-| Library | Version | License | Purpose |
-| --- | --- | --- | --- |
-| [PptxViewJS](https://github.com/gptsci/pptxviewjs) | 1.1.0 | MIT | PowerPoint (.pptx) in-browser preview |
-| [Chart.js](https://www.chartjs.org/) | 4.4.8 | MIT | Chart rendering (PptxViewJS dependency) |
-| [JSZip](https://stuk.github.io/jszip/) | 3.10.1 | MIT or GPLv3 | ZIP / Office file parsing |
-| [SheetJS (xlsx)](https://sheetjs.com/) | 1.15.0 | Apache-2.0 | Excel (.xlsx) in-browser preview |
+| Language  | Link |
+| ------------- | ------------- |
+| English  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide(Online_Edition)%5BEN%5D) |
+| Japanese  | [Link](https://github.com/cisco-open/network-sketcher/wiki/User_Guide(Online_Edition)%5BJP%5D) |
 
 ## Performance Measurement Summary (Online)
 
