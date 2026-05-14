@@ -24,5 +24,9 @@ desktop.ini
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
+
+# GitHub Wiki (cloned as a separate repository at this path)
+wiki/

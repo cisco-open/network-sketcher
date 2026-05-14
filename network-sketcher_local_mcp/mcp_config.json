@@ -2,7 +2,7 @@
     "_description": "Network Sketcher Local MCP Edition configuration. The MCP server reads this file at startup. Each top-level entry has 'value' (the actual setting) and 'description' (human-readable note).",
 
     "version": {
-        "value": "3.1.0",
+        "value": "3.1.2",
         "description": "Network Sketcher Local MCP Edition version. Informational only."
     },
 

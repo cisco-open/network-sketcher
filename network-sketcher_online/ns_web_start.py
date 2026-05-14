@@ -1639,6 +1639,490 @@ def _convert_svg_for_visio(svg_bytes: bytes) -> bytes:
     return svg.encode('utf-8')
 
 
+# ---------------------------------------------------------------------------
+# Cisco-stencil substitution for the "Download for draw.io (stencil)" button.
+# ---------------------------------------------------------------------------
+# All shape classification and the device/WayPoint discrimination are driven
+# entirely from master attribute columns and stencil_aliases.json. Color-based
+# heuristics have been removed because users may freely edit the engine's
+# fill-colour palette, which would otherwise silently break classification.
+#
+# Master attribute columns used:
+#   - "Default"      : 'DEVICE' or 'WayPoint'. Decides whether a cell gets
+#                      stencilized at all and short-circuits WayPoint -> cloud.
+#   - "Stencil Type" : Optional explicit override. Either an mxgraph.* shape id
+#                      (passthrough) or a friendly alias resolved via
+#                      stencil_aliases.json 'exact' lookup.
+#   - All others     : Free-text columns (Role/Model/OS/Type/...) scanned by
+#                      stencil_aliases.json 'prefix' / 'contains' keyword
+#                      lists when no explicit Stencil Type is provided.
+
+# Master 'Default' column values that mark a stencilizable cell.
+_STENCIL_DEFAULT_DEVICE = 'DEVICE'
+_STENCIL_DEFAULT_WAYPOINT = 'WAYPOINT'
+_STENCIL_DEFAULT_KINDS = (_STENCIL_DEFAULT_DEVICE, _STENCIL_DEFAULT_WAYPOINT)
+
+# Master attribute columns excluded from the prefix/contains heuristic search
+# because they are processed by dedicated steps in _resolve_stencil.
+_STENCIL_RESERVED_COLS = {'Default'}
+
+# Header names recognised as the master's "Stencil Type" column. Matched after
+# normalisation (lowercase, no whitespace/hyphen/underscore/slash).
+_STENCIL_HEADER_NAMES = {
+    'stenciltype', 'stencil', 'drawiostencil', 'drawioshape',
+    'shape', 'ステンシルタイプ', 'ステンシル',
+}
+
+# Cached alias index loaded from stencil_aliases.json (lazy + hot-reloaded
+# based on file mtime). The cached 'index' is a dict with three sub-indices:
+#   exact    : {normalised_alias: shape_id}            -- Stencil Type lookup
+#   prefix   : {shape_id: [normalised_keyword, ...]}   -- name/attrs prefix
+#   contains : {shape_id: [normalised_keyword, ...]}   -- name/attrs substring
+# Access guarded by _stencil_alias_lock.
+_stencil_alias_cache = {'mtime': 0.0, 'index': None, 'default': ''}
+_stencil_alias_lock = threading.Lock()
+
+
+def _normalise_alias(s):
+    """Normalise a string for case/whitespace/hyphen/underscore-insensitive lookup."""
+    if not s:
+        return ''
+    return re.sub(r'[\s\-_/]+', '', str(s)).lower()
+
+
+def _empty_stencil_index():
+    """Return a fresh empty structured stencil index."""
+    return {'exact': {}, 'prefix': {}, 'contains': {}}
+
+
+def _load_stencil_alias_index():
+    """Load (and hot-reload) stencil_aliases.json.
+
+    Returns:
+        (index, default_shape) where index is a dict with three sub-indices:
+            'exact'    -> {normalised_alias: shape_id}
+            'prefix'   -> {shape_id: [normalised_keyword, ...]}
+            'contains' -> {shape_id: [normalised_keyword, ...]}
+
+    Supports both:
+      - v2 schema (preferred): top-level 'shapes' object whose values are
+        {'exact': [...], 'prefix': [...], 'contains': [...]}.
+      - v1 schema (backward compatibility): top-level 'aliases' object whose
+        values are flat keyword lists; each entry is treated as 'exact'-only.
+
+    On any error returns (_empty_stencil_index(), '') so callers fall back
+    to default_shape gracefully.
+    """
+    cfg_path = BASE_DIR / 'stencil_aliases.json'
+    try:
+        mtime = cfg_path.stat().st_mtime
+    except OSError:
+        return _empty_stencil_index(), ''
+    with _stencil_alias_lock:
+        cached = _stencil_alias_cache['index']
+        if (mtime == _stencil_alias_cache['mtime']
+                and isinstance(cached, dict)
+                and cached.get('exact')):
+            return cached, _stencil_alias_cache['default']
+        try:
+            with open(str(cfg_path), 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+        except (OSError, ValueError) as exc:
+            logger.warning('Failed to load stencil_aliases.json: %s', exc)
+            return _empty_stencil_index(), ''
+        index = _empty_stencil_index()
+
+        def _add_keywords(target_dict, shape_id, raw_list):
+            if not raw_list:
+                return
+            bucket = target_dict.setdefault(shape_id, [])
+            seen = set(bucket)
+            for raw in raw_list:
+                k = _normalise_alias(raw)
+                if k and k not in seen:
+                    bucket.append(k)
+                    seen.add(k)
+
+        shapes_def = cfg.get('shapes')
+        if isinstance(shapes_def, dict):
+            # v2 schema
+            for shape_id, rules in shapes_def.items():
+                if (not isinstance(shape_id, str)
+                        or not shape_id.startswith('mxgraph.')
+                        or not isinstance(rules, dict)):
+                    continue
+                for alias in rules.get('exact') or []:
+                    key = _normalise_alias(alias)
+                    if key and key not in index['exact']:
+                        index['exact'][key] = shape_id
+                _add_keywords(index['prefix'], shape_id, rules.get('prefix'))
+                _add_keywords(index['contains'], shape_id, rules.get('contains'))
+        else:
+            # v1 backward compatibility: 'aliases' lists are exact-only.
+            for shape_id, aliases in (cfg.get('aliases') or {}).items():
+                if not isinstance(shape_id, str) or not shape_id.startswith('mxgraph.'):
+                    continue
+                for alias in aliases or []:
+                    key = _normalise_alias(alias)
+                    if key and key not in index['exact']:
+                        index['exact'][key] = shape_id
+
+        default_shape = cfg.get('default_shape') or 'mxgraph.cisco.servers.standard_host'
+        _stencil_alias_cache['mtime'] = mtime
+        _stencil_alias_cache['index'] = index
+        _stencil_alias_cache['default'] = default_shape
+        return index, default_shape
+
+
+def _is_empty_attr(value):
+    """True for empty/placeholder attribute values like '', '<EMPTY>', 'N/A'."""
+    if value is None:
+        return True
+    s = str(value).strip()
+    if not s:
+        return True
+    return s.lower() in {'<empty>', 'empty', 'n/a', 'na', 'none', '-'}
+
+
+def _read_master_attributes(master_path):
+    """Run 'show attribute' on the master and parse rows.
+
+    Returns:
+        (rows, headers) where rows = {device_name: {header: value}} and
+        headers is the ordered list of column names (excluding 'Device Name').
+        Falls back to ({}, []) if anything goes wrong; callers must tolerate.
+    """
+    if not master_path or not os.path.exists(master_path):
+        return {}, []
+    try:
+        result = run_ns_command(['show', 'attribute', '--master', master_path])
+    except Exception as exc:
+        logger.warning('show attribute failed: %s', exc)
+        return {}, []
+    if not result or not getattr(result, 'stdout', None):
+        return {}, []
+    import ast as _ast
+    headers = []
+    rows = {}
+    lines = [ln for ln in result.stdout.strip().split('\n') if ln.strip()]
+    if not lines:
+        return {}, []
+    try:
+        first = _ast.literal_eval(lines[0])
+        if isinstance(first, list):
+            headers = [str(c) for c in first]
+    except (ValueError, SyntaxError):
+        return {}, []
+    if not headers or headers[0] != 'Device Name':
+        return {}, []
+    for ln in lines[1:]:
+        try:
+            parsed = _ast.literal_eval(ln)
+        except (ValueError, SyntaxError):
+            continue
+        if not isinstance(parsed, list) or not parsed:
+            continue
+        device_name = str(parsed[0]).strip()
+        if not device_name:
+            continue
+        attrs = {}
+        for col_idx in range(1, min(len(parsed), len(headers))):
+            cell = parsed[col_idx]
+            # 'show attribute' emits each non-name cell as a Python-repr
+            # STRING of the form "['<value>', [r, g, b]]", so we need a
+            # second literal_eval to extract just the value. Tolerate the
+            # rare case where the cell is already an unwrapped list.
+            value = cell
+            if isinstance(cell, str):
+                stripped = cell.strip()
+                if stripped.startswith('[') and stripped.endswith(']'):
+                    try:
+                        inner = _ast.literal_eval(stripped)
+                        if isinstance(inner, list) and inner:
+                            value = inner[0]
+                        else:
+                            value = inner
+                    except (ValueError, SyntaxError):
+                        value = cell
+            elif isinstance(cell, list) and cell:
+                value = cell[0]
+            attrs[headers[col_idx]] = '' if value is None else str(value)
+        rows[device_name] = attrs
+    return rows, headers[1:]
+
+
+def _resolve_stencil(name, attrs, alias_index, stencil_header):
+    """Resolve final mxgraph shape id from master-driven sources only.
+
+    Resolution priority (color-independent):
+
+      Step 0 -- master 'Default' column == 'WayPoint' (case-insensitive)
+                -> mxgraph.cisco.storage.cloud (replaces the legacy fill-colour
+                heuristic; users can change palettes freely without affecting
+                classification). Conversely, when Default == 'DEVICE' the
+                cloud shape is removed from the candidate set in Step 3+4
+                below, because a DEVICE row is by definition a real device
+                (any cloud rendering must be requested explicitly via the
+                Stencil Type column, which is processed in Step 1+2 first).
+
+      Step 1 -- master 'Stencil Type' column begins with 'mxgraph.'
+                -> passthrough verbatim (operator-supplied explicit shape id).
+
+      Step 2 -- master 'Stencil Type' column matches an entry in the alias
+                index 'exact' bucket (case-/whitespace-insensitive)
+                -> mapped shape id.
+
+      Step 3 -- longest 'prefix' match (any shape) against the normalised
+                device name and the master's free-text attribute columns
+                (Role/Model/OS/Type/...; Default and Stencil Type excluded).
+                Used for short tokens such as 'fw', 'rt', 'ap', 'pc', 'sw'
+                that should only match at the start of a name.
+
+      Step 4 -- longest 'contains' match (any shape) against the same
+                normalised sources. Used for full words such as 'firewall',
+                'router', 'switch'.
+
+      None   -- no signal found; caller applies default_shape.
+
+    Tie-breaking: when two keywords have the same length, the one declared
+    first in stencil_aliases.json wins (Python dict iteration order).
+    """
+    # Step 0a: WayPoint shortcut from the master Default column.
+    default_val = ''
+    if attrs:
+        default_val = (attrs.get('Default') or '').strip().upper()
+        if default_val == _STENCIL_DEFAULT_WAYPOINT:
+            return 'mxgraph.cisco.storage.cloud'
+
+    # Steps 1 + 2: explicit Stencil Type column override (always wins,
+    # even for DEVICE rows that want a cloud rendering).
+    if attrs and stencil_header:
+        raw = (attrs.get(stencil_header) or '').strip()
+        if raw and not _is_empty_attr(raw):
+            if raw.startswith('mxgraph.'):
+                return raw
+            shape = alias_index['exact'].get(_normalise_alias(raw))
+            if shape:
+                return shape
+
+    # Build the heuristic search corpus: device name + every free-text
+    # attribute column except the reserved/Stencil-Type ones.
+    sources = []
+    if name:
+        sources.append(name)
+    if attrs:
+        for col, val in attrs.items():
+            if col in _STENCIL_RESERVED_COLS:
+                continue
+            if stencil_header and col == stencil_header:
+                continue
+            if val and not _is_empty_attr(val):
+                sources.append(val)
+    norm_sources = [s for s in (_normalise_alias(s) for s in sources) if s]
+    if not norm_sources:
+        return None
+
+    # Step 0b: when the master explicitly marks this row as a DEVICE, drop
+    # the cloud shape from the heuristic candidate set so that names or
+    # role/model strings containing 'internet'/'sdwan'/'carrier'/'cloud'
+    # cannot accidentally turn a real device into a cloud silhouette. If
+    # the user really wants a cloud rendering for this row they can set
+    # the Stencil Type column (handled by Step 1/2 above).
+    cloud_shape = 'mxgraph.cisco.storage.cloud'
+    exclude_cloud = (default_val == _STENCIL_DEFAULT_DEVICE)
+
+    # Step 3: longest prefix match across all shapes.
+    best = None
+    for shape_id, prefixes in alias_index['prefix'].items():
+        if exclude_cloud and shape_id == cloud_shape:
+            continue
+        for kw in prefixes:
+            kw_len = len(kw)
+            if best is not None and kw_len <= best[0]:
+                continue
+            for src in norm_sources:
+                if src.startswith(kw):
+                    best = (kw_len, shape_id)
+                    break
+    if best is not None:
+        return best[1]
+
+    # Step 4: longest substring (contains) match across all shapes.
+    best = None
+    for shape_id, contains in alias_index['contains'].items():
+        if exclude_cloud and shape_id == cloud_shape:
+            continue
+        for kw in contains:
+            kw_len = len(kw)
+            if best is not None and kw_len <= best[0]:
+                continue
+            for src in norm_sources:
+                if kw in src:
+                    best = (kw_len, shape_id)
+                    break
+    if best is not None:
+        return best[1]
+
+    return None
+
+
+def _build_cisco_style(shape, light=False):
+    """Build an mxCell style string for a Cisco stencil that fits its bbox.
+
+    Cloud-shaped stencils (typically used for WayPoint / WAN / Internet) are
+    rendered with a white fill and a dark stroke so the cloud silhouette and
+    the device label both stay legible against light page backgrounds.
+    Other stencils use the Cisco-blue fill that matches the official palette.
+
+    When light=True the whole stencil is rendered semi-transparent so that
+    pre-existing diagram lines (e.g. dense L2 trunks/port-channels) remain
+    visible behind the icon.
+    """
+    if shape == 'mxgraph.cisco.storage.cloud' or shape.endswith('.cloud'):
+        fill_color = '#ffffff'
+        stroke_color = '#036897'
+    else:
+        fill_color = '#036897'
+        stroke_color = '#ffffff'
+    style = (
+        f'shape={shape};html=1;pointerEvents=1;dashed=0;'
+        f'fillColor={fill_color};strokeColor={stroke_color};strokeWidth=2;'
+        'verticalLabelPosition=bottom;verticalAlign=top;align=center;'
+        'outlineConnect=0;'
+    )
+    if light:
+        style += 'opacity=45;'
+    return style
+
+
+# Distinctive fillColors used by the Network Sketcher engine for L3 instance
+# labels (e.g. "Default" / "VRF-1" / "MGMT") drawn inside device rectangles in
+# L3 diagrams. These small rounded labels are the visible marker that a device
+# hosts L3 instances; their presence is the signal we use to decide whether to
+# render the Cisco stencil semi-transparent so the labels remain readable.
+# Interface-name tags use #ffffff and are therefore not matched.
+_L3_INSTANCE_FILLS = {'#e6e0ec'}
+
+
+def _has_l3_instance_inside(cell, all_vertices):
+    """True iff cell's bbox contains an L3 instance label cell.
+
+    L3 instance labels are small rounded rectangles whose distinctive
+    light-lavender fillColor (#e6e0ec) is reserved by the engine for this
+    purpose. Containment alone is sufficient -- size/shape checks are
+    intentionally omitted because the labels themselves are tiny (typically
+    around 38x10 px) and would be excluded by any size threshold.
+
+    Interface-name tags (white #ffffff fill) are filtered out by the
+    fillColor requirement.
+    """
+    g = cell.find('mxGeometry')
+    if g is None:
+        return False
+    try:
+        x = float(g.get('x', 0)); y = float(g.get('y', 0))
+        w = float(g.get('width', 0)); h = float(g.get('height', 0))
+    except (ValueError, TypeError):
+        return False
+    if w <= 0 or h <= 0:
+        return False
+    tol = 0.5  # 1px tolerance for sub-pixel rounding
+
+    for other in all_vertices:
+        if other is cell:
+            continue
+        other_style = other.get('style') or ''
+        m = re.search(r'fillColor=(#[0-9a-fA-F]{3,8})', other_style)
+        if not m or m.group(1).lower() not in _L3_INSTANCE_FILLS:
+            continue
+        og = other.find('mxGeometry')
+        if og is None:
+            continue
+        try:
+            ox = float(og.get('x', 0)); oy = float(og.get('y', 0))
+            ow = float(og.get('width', 0)); oh = float(og.get('height', 0))
+        except (ValueError, TypeError):
+            continue
+        if ow <= 0 or oh <= 0:
+            continue
+        if (ox >= x - tol and oy >= y - tol
+                and ox + ow <= x + w + tol
+                and oy + oh <= y + h + tol):
+            return True
+    return False
+
+
+def _apply_cisco_stencils(drawio_bytes, master_path, transparency='none'):
+    """Replace device rectangles with Cisco stencil styles in-place.
+
+    The original mxGeometry (x/y/width/height) is preserved so that connecting
+    lines remain anchored to the device's previous bounding box.
+
+    transparency:
+      'none' -- all stencils opaque (default; used for L1 diagrams)
+      'all'  -- all stencils 45% opaque (used for L2 dense diagrams so the
+                underlying L2 segment / port-channel lines remain visible)
+      'auto' -- per-device: light only when the device contains an L3 instance
+                container (VRF / Default rectangle), so the inner labels remain
+                visible behind the Cisco icon. Used for L3 diagrams.
+    """
+    import xml.etree.ElementTree as ET
+
+    alias_index, default_shape = _load_stencil_alias_index()
+    rows, headers = _read_master_attributes(master_path)
+    stencil_header = next(
+        (h for h in headers if _normalise_alias(h) in _STENCIL_HEADER_NAMES),
+        None,
+    )
+
+    try:
+        text = drawio_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        return drawio_bytes
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as exc:
+        logger.warning('draw.io XML parse failed during stencilization: %s', exc)
+        return drawio_bytes
+
+    all_vertices = [c for c in root.iter('mxCell') if c.get('vertex') == '1']
+    # Master-driven cell selection (color-independent). When the master
+    # actually advertises a 'Default' column we use it as a strict gate so
+    # that only rows explicitly marked DEVICE or WayPoint get stencilized.
+    # If the column is absent (e.g. legacy masters), we fall back to "any
+    # cell whose name matches a master row" so older files still work.
+    has_default_col = 'Default' in headers
+
+    for cell in all_vertices:
+        name = (cell.get('value') or '').strip()
+        if not name:
+            continue
+        attrs = rows.get(name)
+        if not attrs:
+            # Not a device in the master (page frame, area folder, annotation,
+            # legend, etc.). Skip regardless of fill colour.
+            continue
+        if has_default_col:
+            default_val = (attrs.get('Default') or '').strip().upper()
+            if default_val not in _STENCIL_DEFAULT_KINDS:
+                # 'Default' is set but to something other than DEVICE/WayPoint;
+                # treat conservatively and skip rather than guess.
+                continue
+        shape = _resolve_stencil(
+            name, attrs, alias_index, stencil_header
+        ) or default_shape
+        if transparency == 'all':
+            is_light = True
+        elif transparency == 'auto':
+            is_light = _has_l3_instance_inside(cell, all_vertices)
+        else:
+            is_light = False
+        cell.set('style', _build_cisco_style(shape, light=is_light))
+
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            + ET.tostring(root, encoding='unicode')).encode('utf-8')
+
+
 def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
     """Convert a Network Sketcher SVG to draw.io (.drawio) XML format.
 
@@ -1766,6 +2250,17 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
         elif tag == 'line':
             lines.append(el)
 
+    # SVG canvas area used to detect decorative "page-frame" rects below.
+    # Falls back to 0 (= disable frame detection) when the root <svg> lacks
+    # explicit width/height (very rare for engine-emitted SVGs).
+    _canvas_w = _fv(root, 'width', 0.0)
+    _canvas_h = _fv(root, 'height', 0.0)
+    _canvas_area = _canvas_w * _canvas_h
+    # Threshold: any rect covering >= this fraction of the canvas is treated
+    # as a decorative page frame (e.g. L3 inner page rect at ~77 % coverage).
+    _FRAME_AREA_RATIO = 0.5
+    _FRAME_FILL_TOKENS = {'white', 'rgb(255,255,255)', '#ffffff', 'none', ''}
+
     # --- Step 3: match text labels to rects ---
     texts_standalone = []   # texts not matched to any rect (e.g. diagram title)
     rect_data = []
@@ -1813,12 +2308,37 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
                 is_top_label = True
                 top_label_align = 'center'
 
+        # Decorative "page-frame" detection. The L3 SVG includes an inner page
+        # rectangle (e.g. 2467x1206 white-fill with thin black stroke) that is
+        # large enough to contain ANY text point in the diagram. The original
+        # "smallest containing rect" pairing would then incorrectly attach
+        # free-floating IP labels (e.g. ".58") to this frame's value, badly
+        # mispositioning them. Page-frame rects are still emitted as cells
+        # (so the visible border survives) but are excluded from text matching
+        # so labels fall through to the standalone-text path at their original
+        # SVG coordinates.
+        # Conservative criteria - all must hold:
+        #   - not already classified as folder/area or tag
+        #   - top-left is NOT (0, 0): preserves canvas-bg label behaviour for
+        #     the diagram title (which is currently rendered as the bg cell's
+        #     centre label and works as-is)
+        #   - area >= 50 % of the SVG canvas area
+        #   - fill is white or none (color-tinted device rects never qualify)
+        is_frame = False
+        if (not is_top_label and not is_tag
+                and _canvas_area > 0
+                and (rx != 0.0 or ry != 0.0)
+                and rw * rh >= _FRAME_AREA_RATIO * _canvas_area
+                and _fill_inline.lower() in _FRAME_FILL_TOKENS):
+            is_frame = True
+
         rect_data.append({'x': rx, 'y': ry, 'w': rw, 'h': rh, 'el': el,
                           'label': '', 'rotation': rotation, 'font_size': None,
                           'font_color': None,
                           'is_tag': is_tag,
                           'is_top_label': is_top_label,
-                          'top_label_align': top_label_align})
+                          'top_label_align': top_label_align,
+                          'is_frame': is_frame})
 
     for tel in texts:
         tx = _fv(tel, 'x')
@@ -1829,6 +2349,11 @@ def _convert_svg_to_drawio(svg_bytes: bytes) -> bytes:
         best = None
         best_area = float('inf')
         for rd in rect_data:
+            # Decorative page-frame rects are not eligible label hosts;
+            # otherwise they would swallow free-floating IP labels that
+            # don't fall inside any real device/area rect.
+            if rd.get('is_frame'):
+                continue
             if _text_in_rect(tx, ty, rd['x'], rd['y'], rd['w'], rd['h']):
                 area = rd['w'] * rd['h']
                 if area < best_area:
@@ -2206,6 +2731,71 @@ def download_drawio(job_id, filename):
         drawio_bytes,
         mimetype='application/xml',
         headers={'Content-Disposition': f'attachment; filename="{drawio_name}"'}
+    )
+
+
+@app.route('/download_drawio_stencil/<job_id>/<path:filename>')
+def download_drawio_stencil(job_id, filename):
+    """Convert SVG to draw.io and replace devices with Cisco stencils."""
+    job_id = sanitize_job_id(job_id)
+    if not job_id:
+        abort(400)
+
+    work_dir = UPLOAD_DIR / job_id
+    filepath = (work_dir / filename).resolve()
+    try:
+        filepath.relative_to(work_dir.resolve())
+    except ValueError:
+        abort(403)
+
+    if not filename.lower().endswith('.svg'):
+        abort(400)
+
+    master_filename = get_active_master(str(work_dir))
+    if not master_filename:
+        return Response(
+            'Master file not found in this job. '
+            'Stencil conversion requires the master file (.nsm or .xlsx).',
+            status=400,
+            mimetype='text/plain',
+        )
+
+    with _svg_mem_cache_lock:
+        svg_bytes = _svg_mem_cache.get(job_id, {}).get(filename)
+    if svg_bytes is None:
+        if not filepath.is_file():
+            abort(404)
+        svg_bytes = filepath.read_bytes()
+
+    drawio_bytes = _convert_svg_to_drawio(svg_bytes)
+    if filename.startswith('[L2_DIAGRAM]'):
+        transparency = 'all'
+    elif filename.startswith('[L3_DIAGRAM]'):
+        transparency = 'auto'
+    else:
+        transparency = 'none'
+    try:
+        stencil_bytes = _apply_cisco_stencils(
+            drawio_bytes,
+            str(work_dir / master_filename),
+            transparency=transparency,
+        )
+    except Exception as exc:
+        logger.error('Stencil conversion failed: %s', exc)
+        return Response(
+            f'Stencil conversion failed: {exc}',
+            status=500,
+            mimetype='text/plain',
+        )
+
+    out_name = re.sub(r'\.svg$', '_stencil.drawio', filename, flags=re.IGNORECASE)
+    if out_name == filename:
+        out_name = filename + '_stencil.drawio'
+
+    return Response(
+        stencil_bytes,
+        mimetype='application/xml',
+        headers={'Content-Disposition': f'attachment; filename="{out_name}"'},
     )
 
 
@@ -2823,7 +3413,7 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     padding: 6px 14px; font-size: 13px; font-weight: 600;
     border: 1px solid #4A8FE7;
     border-radius: 6px; background: transparent; color: #4A8FE7; cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s; white-space: nowrap;
 }}
 .toolbar button:hover {{ background: #4A8FE7; color: #fff; }}
 .toolbar button:disabled {{ opacity: 0.4; cursor: default; }}
@@ -2879,9 +3469,10 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
     <button id="btnZoomIn" title="Zoom In">+</button>
     <button id="btnFit" title="Fit to Window">Fit</button>
     <span class="sep"></span>
-    <button class="primary" id="btnDownload" title="Download SVG">&#8681; Download</button>
-    <button class="primary" id="btnDownloadVisio" title="Download SVG optimized for Visio">&#8681; Download for Visio</button>
-    <button class="primary" id="btnDownloadDrawio" title="Download as draw.io diagram" hidden>&#8681; Download for draw.io</button>
+    <button class="primary" id="btnDownload" title="Download SVG">&#8681; svg</button>
+    <button class="primary" id="btnDownloadVisio" title="Download SVG optimized for Visio">&#8681; svg(for visio)</button>
+    <button class="primary" id="btnDownloadDrawio" title="Download as draw.io diagram">&#8681; draw.io</button>
+    <button class="primary" id="btnDownloadDrawioStencil" title="Download as draw.io diagram with Cisco stencils">&#8681; draw.io(stencil)</button>
 </div>
 <div class="viewer" id="viewer">
     <div id="svgContainer"></div>
@@ -3076,6 +3667,27 @@ body {{ background: #f0f2f5; color: #333; font-family: -apple-system, BlinkMacSy
                 a.download = names[idx].replace(/\.svg$/i, '.drawio');
                 a.click();
                 URL.revokeObjectURL(url);
+            }});
+    }};
+
+    document.getElementById('btnDownloadDrawioStencil').onclick = function() {{
+        fetch('/download_drawio_stencil/' + jobId + '/' + files[idx])
+            .then(function(r) {{
+                if (!r.ok) {{
+                    return r.text().then(function(t) {{ throw new Error(t); }});
+                }}
+                return r.blob();
+            }})
+            .then(function(blob) {{
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = names[idx].replace(/\.svg$/i, '_stencil.drawio');
+                a.click();
+                URL.revokeObjectURL(url);
+            }})
+            .catch(function(err) {{
+                alert('Stencil download failed: ' + err.message);
             }});
     }};
 

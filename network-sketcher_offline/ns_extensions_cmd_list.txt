@@ -1035,6 +1035,7 @@ rename attribute_bulk "[['device_name', \"['attr_value',[R,G,B]]\", \"['attr_val
 This command uses a unique two-level quoting structure that differs from all other bulk commands:
 1. Wrap the entire array in **double quotes**: `"[['dev', ...]]"`
 2. Each attribute value cell must be wrapped in **escaped double quotes**: `\"['VALUE',[R,G,B]]\"`
+   - **Exception (text-only update mode)**: A bare quoted value such as `'DEVICE'` (no `\"['...,[R,G,B]]\"` wrapping) is also valid; it updates only the text and **preserves the existing cell color**. See Notes below for full semantics.
 3. Do NOT add a leading single quote `'` before `[[` — this is a common mistake that causes parse errors.
 
 Correct: `rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]" --master ...`
@@ -1071,6 +1072,7 @@ Combined format for multiple entries:
 - Empty attributes should use "['', [255, 255, 255]]" (white background)
 - **Shorthand**: `[]` can be used instead of `[255, 255, 255]` to specify white background — e.g., `"['', []]"` is equivalent to `"['', [255, 255, 255]]"` (saves 12 characters per attribute)
 - **Trailing omission**: Trailing empty attributes can be omitted entirely — unspecified attributes are automatically filled with `"['', [255, 255, 255]]"`. E.g., `['Access-SW1', "['DEVICE', [235,241,222]]", "['Model', [255,183,219]]", "['IOS-XE', [200,230,255]]"]` is valid with 6 trailing attributes auto-completed (saves ~115 characters vs full 9-attribute form)
+- **Plain-string mode (text-only update)**: A bare quoted string such as `'DEVICE'` (instead of `\"['DEVICE',[R,G,B]]\"`) updates only the text value while **preserving the existing cell's background color**. For brand-new cells with no prior color, the default `[255, 255, 255]` (white) is used. Use this mode to change text without rewriting colors. To explicitly reset color to white, use `\"['VALUE', []]\"` (the `[]` shorthand). To set a non-white color, the full form `\"['VALUE',[R,G,B]]\"` is REQUIRED — plain-string mode cannot introduce a new color into a previously white cell.
 - The header row entry must start with 'Device Name'
 - Device entries and header row can be mixed in the same command
 - Each device/header entry must have up to 9 attribute columns (excluding the device name column)
@@ -1138,6 +1140,7 @@ show attribute
 - Correct: `"[['DEV', \"['DEVICE',[235,241,222]]\", \"['', [255,255,255]]\"]]"`
 - **White shorthand**: `[]` can replace `[255, 255, 255]` to reduce command length. Example: `\"['', []]\"` instead of `\"['', [255, 255, 255]]\"`
 - **Trailing omission**: Trailing empty attributes can be omitted; they are auto-completed as `"['', [255, 255, 255]]"`. Example: `"[['Access-SW1', \"['DEVICE',[235,241,222]]\", \"['Model',[255,183,219]]\", \"['IOS-XE',[200,230,255]]\"]]"` is valid (6 trailing attrs omitted)
+- **Initial master creation / color changes MUST use the full form** `\"['VAL',[R,G,B]]\"`. The plain-string mode preserves existing colors only — using a bare `'DEVICE'` against a previously white cell will leave the cell white. After the colors are set once, plain-string mode is the recommended shorthand for subsequent text-only edits.
 - For the header row entry, all values are plain single-quoted strings without RGB: `['Device Name', 'Col1', 'Col2', ...]`
 
 ## rename device
