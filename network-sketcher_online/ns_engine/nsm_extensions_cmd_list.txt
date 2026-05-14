@@ -33,7 +33,8 @@ Architecture rules (sorted by rule number, all MANDATORY):
 - RULE 13  Office LAN mandatory wireless AP requirement
 - RULE 14  Mandatory device attribute configuration (Model and OS)
 - RULE 15  Mandatory SVI-to-L2 segment binding (Loopback excluded)
-- RULE 16  Mandatory port information configuration
+- RULE 16  Mandatory Stencil Type column configuration (draw.io Cisco stencils)
+- RULE 17  Mandatory port information configuration
 
 Convention notes for AI agents:
 - Examples in this document use `$ ` to denote a CLI prompt.
@@ -1059,6 +1060,7 @@ rename attribute_bulk "[['device_name', \"['attr_value',[R,G,B]]\", \"['attr_val
 This command uses a unique two-level quoting structure that differs from all other bulk commands:
 1. Wrap the entire array in **double quotes**: `"[['dev', ...]]"`
 2. Each attribute value cell must be wrapped in **escaped double quotes**: `\"['VALUE',[R,G,B]]\"`
+   - **Exception (text-only update mode)**: A bare quoted value such as `'DEVICE'` (no `\"['...,[R,G,B]]\"` wrapping) is also valid; it updates only the text and **preserves the existing cell color**. See Notes below for full semantics.
 3. Do NOT add a leading single quote `'` before `[[` — this is a common mistake that causes parse errors.
 
 Correct: `rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]"`
@@ -1095,6 +1097,7 @@ Combined format for multiple entries:
 - Empty attributes should use "['', [255, 255, 255]]" (white background)
 - **Shorthand**: `[]` can be used instead of `[255, 255, 255]` to specify white background — e.g., `"['', []]"` is equivalent to `"['', [255, 255, 255]]"` (saves 12 characters per attribute)
 - **Trailing omission**: Trailing empty attributes can be omitted entirely — unspecified attributes are automatically filled with `"['', [255, 255, 255]]"`. E.g., `['Access-SW1', "['DEVICE', [235,241,222]]", "['Model', [255,183,219]]", "['IOS-XE', [200,230,255]]"]` is valid with 6 trailing attributes auto-completed (saves ~115 characters vs full 9-attribute form)
+- **Plain-string mode (text-only update)**: A bare quoted string such as `'DEVICE'` (instead of `\"['DEVICE',[R,G,B]]\"`) updates only the text value while **preserving the existing cell's background color**. For brand-new cells with no prior color, the default `[255, 255, 255]` (white) is used. Use this mode to change text without rewriting colors. To explicitly reset color to white, use `\"['VALUE', []]\"` (the `[]` shorthand). To set a non-white color, the full form `\"['VALUE',[R,G,B]]\"` is REQUIRED — plain-string mode cannot introduce a new color into a previously white cell.
 - The header row entry must start with 'Device Name'
 - Device entries and header row can be mixed in the same command
 - Each device/header entry must have up to 9 attribute columns (excluding the device name column)
@@ -1162,6 +1165,7 @@ show attribute
 - Correct: `"[['DEV', \"['DEVICE',[235,241,222]]\", \"['', [255,255,255]]\"]]"`
 - **White shorthand**: `[]` can replace `[255, 255, 255]` to reduce command length. Example: `\"['', []]\"` instead of `\"['', [255, 255, 255]]\"`
 - **Trailing omission**: Trailing empty attributes can be omitted; they are auto-completed as `"['', [255, 255, 255]]"`. Example: `"[['Access-SW1', \"['DEVICE',[235,241,222]]\", \"['Model',[255,183,219]]\", \"['IOS-XE',[200,230,255]]\"]]"` is valid (6 trailing attrs omitted)
+- **Initial master creation / color changes MUST use the full form** `\"['VAL',[R,G,B]]\"`. The plain-string mode preserves existing colors only — using a bare `'DEVICE'` against a previously white cell will leave the cell white. After the colors are set once, plain-string mode is the recommended shorthand for subsequent text-only edits.
 - For the header row entry, all values are plain single-quoted strings without RGB: `['Device Name', 'Col1', 'Col2', ...]`
 
 ## rename device
@@ -2068,7 +2072,7 @@ Non-hierarchical device layout            | Restructure TOP-TO-BOTTOM (Rule 0)
 FlexConnect AP without L2 segment on physical port | Add L2 segment to AP's GigabitEthernet 0 (Rule 12)
 FlexConnect AP with IP on physical port   | Remove IP from physical port, use SVI only (Rule 12)
 SVI without L2 segment binding on itself  | Add L2 segment to SVI itself (Rule 15)
-L1 interfaces without port info           | Add rename port_info_bulk (Rule 16)
+L1 interfaces without port info           | Add rename port_info_bulk (Rule 17)
 Port info not matching interface type     | Correct Speed/Duplex/Port_Type values
 
 CORRECTION WORKFLOW:
@@ -2091,7 +2095,7 @@ For each FlexConnect AP in the design:
 7. Verify AP's IP address is in same subnet as switch gateway SVI
 8. Verify port info (Speed/Duplex/Port_Type) is configured for all L1 interfaces
 
-If any verification fails -> ERROR: Apply correction per Rule 12 or Rule 16
+If any verification fails -> ERROR: Apply correction per Rule 12 or Rule 17
 
 
 # SECTION 2: EXECUTION AND CONFIGURATION RULES (RULES 7-16)
@@ -2671,12 +2675,13 @@ MANDATORY REQUIREMENTS:
   - Common industry knowledge of Cisco product families
 
 STANDARD HEADER CONFIGURATION:
-['Device Name', 'Default', 'Model', 'OS', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G', 'Attribute-H']
+['Device Name', 'Default', 'Model', 'OS', 'Stencil Type', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G', 'Attribute-H']
 
 Column Assignments:
 - Column 2 (Default): Device type identifier (e.g., 'DEVICE')
 - Column 3 (Model): Hardware model name
 - Column 4 (OS): Operating system type
+- Column 5 (Stencil Type): draw.io Cisco stencil category (see RULE 16)
 
 MODEL AND OS INFERENCE GUIDELINES:
 
@@ -2715,7 +2720,7 @@ EXAMPLE:
 
 For a network with access switches, distribution switch, wireless APs, and WLC:
 
-rename attribute_bulk "[['Device Name', 'Default', 'Model', 'OS', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G', 'Attribute-H'],['ACCESS-SW1', \"['DEVICE', [235, 241, 222]]\", \"['Catalyst 9200-48P', [255, 183, 219]]\", \"['IOS-XE', [200, 230, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['DIST-CORE-SW1', \"['DEVICE', [235, 241, 222]]\", \"['Catalyst 9300-48UXM', [180, 255, 200]]\", \"['IOS-XE', [200, 230, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['AP-FC-01', \"['DEVICE', [235, 241, 222]]\", \"['Cisco C9120AXI', [255, 220, 180]]\", \"['IOS-XE', [200, 230, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['WLC-9800', \"['DEVICE', [235, 241, 222]]\", \"['Catalyst 9800-40', [255, 183, 219]]\", \"['IOS-XE', [200, 230, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
+rename attribute_bulk "[['Device Name', 'Default', 'Model', 'OS', 'Stencil Type', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G', 'Attribute-H'],['ACCESS-SW1', \"['DEVICE', [235, 241, 222]]\", \"['Catalyst 9200-48P', [255, 183, 219]]\", \"['IOS-XE', [200, 230, 255]]\", \"['Switch', [220, 230, 242]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['DIST-CORE-SW1', \"['DEVICE', [235, 241, 222]]\", \"['Catalyst 9300-48UXM', [180, 255, 200]]\", \"['IOS-XE', [200, 230, 255]]\", \"['L3Switch', [220, 230, 242]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['AP-FC-01', \"['DEVICE', [235, 241, 222]]\", \"['Cisco C9120AXI', [255, 220, 180]]\", \"['IOS-XE', [200, 230, 255]]\", \"['AP', [220, 230, 242]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['WLC-9800', \"['DEVICE', [235, 241, 222]]\", \"['Catalyst 9800-40', [255, 183, 219]]\", \"['IOS-XE', [200, 230, 255]]\", \"['WLC', [220, 230, 242]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
 
 In this example:
 - Access switch: Catalyst 9200 series, IOS-XE
@@ -2730,12 +2735,14 @@ VERIFICATION CHECKLIST FOR RULE 14:
 - [ ] Model and OS values are reasonable for device role
 - [ ] RGB colors applied for visual distinction
 - [ ] rename attribute_bulk command generated after topology setup
+- [ ] After execution, run `show attribute` and visually confirm RGB values match the intended palette (e.g., Default = `[235, 241, 222]`, NOT `[255, 255, 255]`). If colors landed on white, the previous bulk likely used plain-string mode against a still-white cell — re-run the bulk with the full `\"['VAL',[R,G,B]]\"` form to introduce the color.
 
 KEY PRINCIPLES:
 - "Every device MUST have Model and OS attributes"
 - "Infer Model and OS using best judgment based on device name and role"
 - "Use consistent RGB colors for visual categorization"
 - "Generate attribute command as final step of configuration"
+- "For initial master creation, ALWAYS use the full form `\"['VAL',[R,G,B]]\"` for every attribute. Plain-string text-only mode preserves existing colors only -- it cannot introduce a new color into a previously white cell."
 
 ## RULE 15: MANDATORY SVI-TO-L2 SEGMENT BINDING (STRICT) - LOOPBACK EXCLUDED
 
@@ -2785,7 +2792,98 @@ INTERACTION WITH OTHER RULES:
   MUST also follow this rule (SVI bound on AP's SVI row), while Loopback remains
   excluded.
 
-## RULE 16: MANDATORY PORT INFORMATION CONFIGURATION
+## RULE 16: MANDATORY STENCIL TYPE COLUMN CONFIGURATION
+
+CRITICAL: When generating rename attribute_bulk commands, the 'Stencil Type'
+column (column position 5, replacing the legacy 'Attribute-C' slot defined in
+RULE 14) MUST be populated for every device so that the Online edition's
+"Download for draw.io (stencil)" button can render the correct Cisco icon
+in draw.io. The stencil mapping is read by ns_web_start.py at download time
+from the master's ATTRIBUTE sheet -- without this column, every device falls
+back to a generic server icon.
+
+MANDATORY REQUIREMENTS:
+- Header row column 5 MUST be 'Stencil Type' (NOT 'Attribute-C')
+- ALL devices (including WayPoint devices) MUST have a Stencil Type value
+- The value MUST come from the allowed list below (case/space-insensitive),
+  OR be a raw 'mxgraph.*' shape ID (advanced override, passthrough)
+- For the FIRST bulk that introduces the Stencil Type column, use the full form
+  `\"['Switch', [220, 230, 242]]\"` for every device. Plain-string text-only
+  mode (`'Switch'`) preserves the existing cell color only -- against a still
+  white cell it leaves the cell white, which makes Stencil Type rows visually
+  indistinguishable from empty cells. Once the color is set, plain-string mode
+  is fine for subsequent text-only revisions.
+
+ALLOWED VALUES (case/space-insensitive matching):
+
+| Stencil Type | Resulting Cisco draw.io stencil                  |
+|--------------|--------------------------------------------------|
+| Router       | mxgraph.cisco.routers.router                     |
+| L3Switch     | mxgraph.cisco.switches.layer_3_switch            |
+| Switch       | mxgraph.cisco.switches.workgroup_switch          |
+| Firewall     | mxgraph.cisco.security.firewall                  |
+| WLC          | mxgraph.cisco.wireless.wireless_lan_controller   |
+| AP           | mxgraph.cisco.wireless.access_point              |
+| Server       | mxgraph.cisco.servers.standard_host              |
+| Cloud        | mxgraph.cisco.storage.cloud                      |
+| Phone        | mxgraph.cisco.misc.ip_phone                      |
+| PC           | mxgraph.cisco.computers_and_peripherals.pc       |
+| (advanced)   | Any 'mxgraph.*' shape ID (passthrough verbatim)  |
+
+INFERENCE RULES (use device name + role to pick the value):
+- Router: edge / WAN / branch / SD-WAN / ISR / ASR / 8000 / 8200 / 8500 series
+- L3Switch: core / leaf / spine / Nexus / 9332 / 93180 / 9500 series
+- Switch: access / 9200 / 9300 / generic L2 switches
+- Firewall: ASA / FTD / Secure Firewall / 1010 / 3110 series
+- WLC: 9800 series, wireless lan controller
+- AP: 9166 / FlexConnect / wireless access point
+- Server: workload / DC server / host / VM / standard server
+- Cloud: WayPoint devices, SD-WAN cloud, Internet, carrier WAN
+- Phone: IP phones, hand-set endpoints
+- PC: end-user PCs, clients, generic endpoints
+
+EXAMPLE rename attribute_bulk header (Stencil Type at column 5):
+
+['Device Name', 'Default', 'Model', 'OS', 'Stencil Type',
+ 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G',
+ 'Attribute-H']
+
+EXAMPLE row entries (Stencil Type cell uses normal RGB tuple format):
+
+['ACCESS-SW1',     "['DEVICE', [235,241,222]]", "['Catalyst 9200-48P', [255,183,219]]", "['IOS-XE', [200,230,255]]", "['Switch',   [220,230,242]]", ...]
+['DIST-CORE-SW1',  "['DEVICE', [235,241,222]]", "['Catalyst 9300-48UXM', [180,255,200]]", "['IOS-XE', [200,230,255]]", "['L3Switch', [220,230,242]]", ...]
+['EDGE-RTR-01',    "['DEVICE', [235,241,222]]", "['ISR 4451', [180,255,200]]", "['IOS-XE', [200,230,255]]", "['Router',   [220,230,242]]", ...]
+['AP-FC-01',       "['DEVICE', [235,241,222]]", "['Cisco C9120AXI', [255,220,180]]", "['IOS-XE', [200,230,255]]", "['AP',       [220,230,242]]", ...]
+['WLC-9800',       "['DEVICE', [235,241,222]]", "['Catalyst 9800-40', [255,183,219]]", "['IOS-XE', [200,230,255]]", "['WLC',      [220,230,242]]", ...]
+['Internet_wp_',   "['WayPoint', [220,230,242]]", "['', [255,255,255]]", "['', [255,255,255]]", "['Cloud',  [220,230,242]]", ...]
+
+NOTES FOR WAYPOINT DEVICES:
+- WayPoint devices (Default = 'WayPoint') MUST use Stencil Type = 'Cloud'
+- This makes WAN clouds, Internet clouds, and SD-WAN fabrics render as the
+  draw.io Cisco cloud icon instead of a server icon
+
+ADVANCED OVERRIDE (raw mxgraph ID):
+- Any value that starts with the literal prefix 'mxgraph.' is passed through
+  to draw.io verbatim (no alias lookup), allowing power users to specify
+  shapes outside the allowed list above. Example:
+  "['mxgraph.cisco.security.ironport_email_security_appliance', [220,230,242]]"
+
+VERIFICATION CHECKLIST FOR RULE 16:
+- [ ] Header row column 5 is renamed to 'Stencil Type'
+- [ ] ALL devices (including WayPoint) have Stencil Type populated
+- [ ] Stencil Type values come from the allowed list (or 'mxgraph.*' override)
+- [ ] WayPoint devices use 'Cloud'
+- [ ] APs use 'AP', not 'Switch'
+- [ ] WLCs use 'WLC', not 'Switch'
+
+KEY PRINCIPLES:
+- "Every device MUST have a Stencil Type so draw.io export looks correct"
+- "Use the friendly value (Router, Switch, Firewall ...) -- the Online edition
+   maps it to the official Cisco mxgraph stencil at download time"
+- "WayPoint = Cloud" is a hard rule
+- "mxgraph.* prefix is the escape hatch for shapes outside the curated list"
+
+## RULE 17: MANDATORY PORT INFORMATION CONFIGURATION
 
 CRITICAL: All L1 interfaces created via add l1_link_bulk MUST have their
 port information (Speed, Duplex, Port_Type) configured using rename port_info_bulk.
@@ -2890,7 +2988,7 @@ rename port_info_bulk "[['Router-01','_ALL_',['1Gbps','Full','1000BASE-T']],['In
 SCENARIO: Server connection (1G copper)
 rename port_info_bulk "[[['Access-SW1','Server-01'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
 
-VERIFICATION CHECKLIST FOR RULE 16:
+VERIFICATION CHECKLIST FOR RULE 17:
 - [ ] ALL L1 interfaces have Speed configured
 - [ ] ALL L1 interfaces have Duplex configured
 - [ ] ALL L1 interfaces have Port_Type configured
@@ -2936,7 +3034,7 @@ CONFIGURATION (Rules 8-11, 14-16):
 - [ ] No multiple-VLAN trunk to L3 physical port (Rule 11)
 - [ ] Every device has Model and OS attributes (Rule 14)
 - [ ] Every SVI bound to its L2 segment on the SVI itself (Rule 15; Loopback excluded)
-- [ ] Every L1 interface has Speed/Duplex/Port_Type (Rule 16)
+- [ ] Every L1 interface has Speed/Duplex/Port_Type (Rule 17)
 
 WIRELESS (Rules 12, 13):
 - [ ] FlexConnect mode unless user specifies Central explicitly (Rule 12)

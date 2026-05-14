@@ -1160,13 +1160,25 @@ class ns_cli_run():
                         fixed_rgb.append(255)
                 return fixed_rgb
 
-            def parse_attribute_value(attr_str):
+            def parse_attribute_value(attr_str, existing_cell=None):
+                # Plain-string mode (text-only update): when attr_str is a bare value
+                # (not a list literal), preserve the existing cell's RGB color so callers
+                # can update text without rewriting colors. Falls back to white only when
+                # the cell has no prior color (e.g., new attribute column).
+                def _existing_rgb():
+                    if isinstance(existing_cell, str):
+                        try:
+                            parsed_existing = ast.literal_eval(existing_cell)
+                            if isinstance(parsed_existing, list) and len(parsed_existing) == 2:
+                                return validate_rgb(parsed_existing[1])
+                        except Exception:
+                            pass
+                    return [255, 255, 255]
+
                 try:
-                    # Plain string (no list-literal) => auto-wrap with default white color
-                    # so diagram engine always receives the canonical ['value', [R, G, B]] form.
                     if isinstance(attr_str, str) and not attr_str.startswith('['):
                         safe_val = attr_str.replace("'", "\\'")
-                        return (True, f"['{safe_val}', [255, 255, 255]]", None)
+                        return (True, f"['{safe_val}', {_existing_rgb()}]", None)
 
                     parsed = ast.literal_eval(attr_str) if isinstance(attr_str, str) else attr_str
 
@@ -1177,7 +1189,7 @@ class ns_cli_run():
                         return (True, f"['{attr_name}', {fixed_rgb}]", None)
                     elif isinstance(parsed, str):
                         safe_val = parsed.replace("'", "\\'")
-                        return (True, f"['{safe_val}', [255, 255, 255]]", None)
+                        return (True, f"['{safe_val}', {_existing_rgb()}]", None)
                     else:
                         return (False, None, f"Invalid attribute format: {attr_str}")
                 except Exception as e:
@@ -1237,7 +1249,8 @@ class ns_cli_run():
                         new_row = [device_name]
 
                         for idx_attr, attr_val in enumerate(attribute_values):
-                            is_valid, parsed_value, warning = parse_attribute_value(attr_val)
+                            existing_cell = item[1][idx_attr + 1] if idx_attr + 1 < len(item[1]) else None
+                            is_valid, parsed_value, warning = parse_attribute_value(attr_val, existing_cell)
 
                             if is_valid:
                                 new_row.append(parsed_value)

@@ -184,6 +184,7 @@ Network Sketcher Online supports two output modes:
 - **All uploaded and generated files are automatically deleted from Network Sketcher Online after the session ends — no data is retained on the server.**
 - Upload master files via drag-and-drop in a web browser
 - Generate L1/L2/L3 diagrams, device files, and AI context files with selectable outputs
+- **Multi-format diagram download**: SVG / SVG (for Visio) / draw.io / **draw.io (stencil)** — the last variant auto-applies Cisco `mxgraph.cisco.*` stencils
 - In-browser preview for PowerPoint (.pptx) and Excel (.xlsx) files without requiring Office software
 - Copy AI context to clipboard and open LLM with one click
 - Describe desired changes in a prompt field; the AI context + prompt is copied together for LLM interaction
@@ -194,6 +195,16 @@ Network Sketcher Online supports two output modes:
 - Session persistence across browser refreshes with automatic cleanup
 - HTTPS enforced with auto-generated self-signed certificates
 - All settings managed via `ns_web_config.json`
+
+### What's New in 3.1.2 (Online)
+
+- **Download for draw.io (stencil)** — new export option that produces a `.drawio` file with Cisco `mxgraph.cisco.*` stencils auto-applied to all devices and waypoints. Geometry, links, and labels are preserved.
+- **Customizable stencil mapping** (`network-sketcher_online/stencil_aliases.json`) — stencil resolution is driven by an editable JSON file (longest-match across `exact` / `prefix` / `contains` keys). 4-digit model numbers (e.g. `9166`) automatically expand to common variants (`9100` / `C91` / `CAT91` / `Catalyst91`). Catalyst, Nexus, Firepower, Router, AP, Server, and Industrial Switch presets are included.
+- **`Stencil Type` column override** (Attribute sheet of the master file) — operators can pin any device or waypoint to an explicit `mxgraph.*` shape ID for cases the auto-resolver does not cover.
+- **Conditional opacity** — L2 diagrams render all stencils at 45% opacity to keep links visible; L3 diagrams apply the same effect only to devices that contain L3 instances.
+- **Fix:** `rename attribute_bulk` plain-string updates now preserve the existing color instead of silently resetting to white. Initial color setting still requires the full `[name, [r, g, b]]` form. (Same parser fix is also applied to the Offline / Local MCP editions.)
+- **Fix:** L3 draw.io export — IP labels are no longer attached to a large page-frame rectangle.
+- **AI Context updated** (`ns_engine/nsm_extensions_cmd_list.txt`) — documents the new `Stencil Type` column, the `attribute_bulk` color-preservation behavior, and reinforces RULE 14 / RULE 16 guidance.
 
 ## Limitations (Online)
 - Designed for use on internal networks only. Not intended for deployment on the public internet.
@@ -414,6 +425,7 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Export AI context files | ✅ | ✅ | ✅ | ✅ |
 | Export device files | ❌ | ✅ | ✅ | ✅ |
 | Generate L1/L2/L3 topology diagrams | ✅ | ✅ | ✅ | ✅ |
+| Export diagrams as SVG (Visio-compatible) / draw.io (with Cisco stencils) | ❌ | ✅ | ❌ | ❌ |
 
 ## SAMPLE
 ### - Supports various connections
