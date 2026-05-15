@@ -14,6 +14,8 @@
 
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/4bc3f87c-efc4-4b7c-bd48-c805193e699a" />
 
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/073831d2-ef0d-4514-b369-099825ce9305" />
+
 
 Network Sketcher provides three editions:
 
