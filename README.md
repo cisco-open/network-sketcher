@@ -2,6 +2,12 @@
   <img src="https://github.com/user-attachments/assets/cc82082d-c4a5-4f13-90f5-adaf162202b2" alt="image" />
 </p>
 
+<p align="center">
+  <a href="https://lobehub.com/mcp/cisco-open-network-sketcher">
+    <img src="https://lobehub.com/badge/mcp/cisco-open-network-sketcher" alt="LobeHub MCP Badge" />
+  </a>
+</p>
+
 # Network Sketcher
 
 **Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. With AI (LLM) integration, it supports network design creation and updates via an MCP server for LLM clients (Local MCP), a web browser (Online), or a desktop GUI/CLI (Offline).**
@@ -139,6 +145,17 @@ claude mcp add --scope project network-sketcher -- python "/path/to/network-sket
 ```
 
 Replace `/path/to/network-sketcher/` with the actual path where you cloned the repository. See the [Claude Code MCP installation scopes documentation](https://docs.claude.com/en/docs/claude-code/mcp#mcp-installation-scopes) for details on each scope and when to use which.
+
+## Find on LobeHub MCP Marketplace
+
+Network Sketcher Local MCP is listed on the [LobeHub MCP Plugins Marketplace](https://lobehub.com/mcp/cisco-open-network-sketcher).
+
+If you find the server useful and you trust the official `@lobehub/` npm scope, please leave a rating from your MCP host CLI (the version range below is intentionally pinned to mitigate supply-chain risk):
+
+```bash
+npx @lobehub/market-cli@^0.0 mcp comment cisco-open-network-sketcher \
+  -c "Used to drive Cisco network design from Cursor / Claude Code." --rating 5
+```
 
 ## User Guide (Local MCP)
 | Language  | Link |

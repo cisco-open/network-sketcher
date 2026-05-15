@@ -30,3 +30,7 @@ desktop.ini
 
 # GitHub Wiki (cloned as a separate repository at this path)
 wiki/
+
+# Local scratch / temporary issue drafts (must never be committed)
+_tmp_*.md
+_tmp_*.txt
