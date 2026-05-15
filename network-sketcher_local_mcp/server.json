@@ -1,0 +1,153 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.cisco-open/network-sketcher",
+  "title": "Network Sketcher (Local MCP)",
+  "description": "AI-native MCP server that wraps the Network Sketcher engine to design and manage Cisco network configurations from LLM clients (Cursor, Claude Code, etc.). Generates L1/L2/L3 topology diagrams (PowerPoint and SVG) and manages device data (Excel) entirely from natural-language conversations with the agent.",
+  "version": "3.1.2",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/cisco-open/network-sketcher",
+  "repository": {
+    "url": "https://github.com/cisco-open/network-sketcher",
+    "source": "github"
+  },
+  "author": {
+    "name": "cisco-open",
+    "url": "https://github.com/cisco-open"
+  },
+  "category": "developer",
+  "tags": [
+    "network",
+    "cisco",
+    "diagram",
+    "powerpoint",
+    "topology",
+    "design",
+    "automation"
+  ],
+  "transport": { "type": "stdio" },
+  "runtime": {
+    "type": "python",
+    "minVersion": "3.10"
+  },
+  "install": [
+    {
+      "method": "cursor",
+      "description": "Add to Cursor's mcp.json (File > Preferences > Cursor Settings > MCP).",
+      "config": {
+        "mcpServers": {
+          "network-sketcher": {
+            "command": "python",
+            "args": ["<abs-path>/network-sketcher_local_mcp/ns_mcp_server.py"]
+          }
+        }
+      }
+    },
+    {
+      "method": "claude-code",
+      "description": "Register with the Claude Code CLI. Use --scope user|project as needed.",
+      "command": "claude mcp add network-sketcher -- python <abs-path>/network-sketcher_local_mcp/ns_mcp_server.py"
+    },
+    {
+      "method": "manual",
+      "description": "Clone the repository, install Python dependencies, then launch the server directly.",
+      "command": "git clone https://github.com/cisco-open/network-sketcher && cd network-sketcher/network-sketcher_local_mcp && python -m pip install -r requirements_mcp.txt && python ns_mcp_server.py"
+    }
+  ],
+  "capabilities": {
+    "tools": [
+      {
+        "name": "get_workspace_info",
+        "description": "Return the active workspace path and the list of .nsm master files (and other NS-generated files) in it. Always safe to call.",
+        "arguments": []
+      },
+      {
+        "name": "suggest_workspace",
+        "description": "Suggest OS-appropriate (Windows / macOS / Linux) workspace directory candidates under the user's home, with hints about which exist and are writable. Always safe to call.",
+        "arguments": []
+      },
+      {
+        "name": "set_workspace",
+        "description": "Set the active workspace directory for this session. Validates that the path is under the user's home directory, creates it if missing, and confirms it is writable.",
+        "arguments": [
+          { "name": "path", "type": "string", "required": true, "description": "Absolute path (or '~/...') under the user's home directory." }
+        ]
+      },
+      {
+        "name": "create_empty_master",
+        "description": "Create a new empty Network Sketcher master file (.nsm) in the active workspace.",
+        "arguments": [
+          { "name": "filename", "type": "string", "required": false, "description": "Optional target name; must start with '[MASTER]' and end with '.nsm'. Defaults to '[MASTER]no_data.nsm'." }
+        ]
+      },
+      {
+        "name": "get_network_state",
+        "description": "Run the standard set of show commands and return aggregated results - a lightweight summary of the network state for the agent.",
+        "arguments": [
+          { "name": "master", "type": "string", "required": true, "description": "Master filename (e.g. '[MASTER]office.nsm') in the active workspace, or an absolute path under it." }
+        ]
+      },
+      {
+        "name": "get_ai_context",
+        "description": "Generate the full AI Context file for a master and return its contents (network state plus the full CLI command reference). Recommended bootstrap call before issuing any edits.",
+        "arguments": [
+          { "name": "master", "type": "string", "required": true, "description": "Master filename in the active workspace." }
+        ]
+      },
+      {
+        "name": "run_commands",
+        "description": "Execute one or more Network Sketcher CLI commands (add / rename / delete / show) against a .nsm master. Multiple lines are batched into a single subprocess to amortise startup cost. Requires get_ai_context to have been called at least once in this session.",
+        "arguments": [
+          { "name": "master",   "type": "string", "required": true, "description": "Master filename in the active workspace." },
+          { "name": "commands", "type": "string", "required": true, "description": "Newline-separated CLI command lines (without --master)." }
+        ]
+      },
+      {
+        "name": "import_master",
+        "description": "Convert an existing .xlsx master into a .nsm in the active workspace. Use once at the start of a session to bring an existing .xlsx master under .nsm management.",
+        "arguments": [
+          { "name": "xlsx_path",   "type": "string", "required": true,  "description": "Absolute path to the source .xlsx file." },
+          { "name": "target_name", "type": "string", "required": false, "description": "Optional output filename ('[MASTER]*.nsm'). Defaults to the source basename." }
+        ]
+      },
+      {
+        "name": "export_master_xlsx",
+        "description": "Convert a .nsm master back to .xlsx for use with Excel or the Network Sketcher Offline edition. The .nsm itself is not modified.",
+        "arguments": [
+          { "name": "master", "type": "string", "required": true, "description": "Master filename in the active workspace." }
+        ]
+      },
+      {
+        "name": "export_diagram",
+        "description": "Export an L1, L2, or L3 network diagram for the given .nsm master. Output format is SVG (default, fast, browser-renderable) or PPTX (editable in PowerPoint). Requires get_ai_context to have been called at least once in this session.",
+        "arguments": [
+          { "name": "master", "type": "string", "required": true,  "description": "Master filename in the active workspace." },
+          { "name": "layer",  "type": "string", "required": true,  "description": "One of 'l1', 'l2', 'l3' (case-insensitive)." },
+          { "name": "format", "type": "string", "required": false, "description": "'svg' (default) or 'pptx'." }
+        ]
+      }
+    ],
+    "prompts": [
+      {
+        "name": "start_ns_session",
+        "description": "Bootstrap a Network Sketcher session by surveying co-registered MCP servers, ensuring a workspace is active, and loading the AI context for the given master before any edits.",
+        "arguments": [
+          { "name": "master", "type": "string", "required": true, "description": "Master filename to operate on." }
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "uri": "nsm://workspace",
+        "name": "Workspace overview",
+        "description": "JSON snapshot of the active workspace directory and its inventory of .nsm masters and generated files.",
+        "mimeType": "application/json"
+      },
+      {
+        "uri": "nsm://commands",
+        "name": "CLI command reference",
+        "description": "Full Network Sketcher CLI command reference (network-sketcher_online/ns_engine/nsm_extensions_cmd_list.txt).",
+        "mimeType": "text/plain"
+      }
+    ]
+  }
+}
