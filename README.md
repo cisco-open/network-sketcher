@@ -12,9 +12,10 @@
 
 **Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. With AI (LLM) integration, it supports network design creation and updates via an MCP server for LLM clients (Local MCP), a web browser (Online), or a desktop GUI/CLI (Offline).**
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/4bc3f87c-efc4-4b7c-bd48-c805193e699a" />
+<img width="1848" height="1028" alt="image" src="https://github.com/user-attachments/assets/26068524-6293-4f7f-ab0c-f6b7e2c8b842" />
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/073831d2-ef0d-4514-b369-099825ce9305" />
+<img width="1852" height="1039" alt="image" src="https://github.com/user-attachments/assets/b3501923-195e-45bc-9120-f6b78396e300" />
+
 
 
 Network Sketcher provides three editions:
