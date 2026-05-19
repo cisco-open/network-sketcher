@@ -2,7 +2,7 @@
     "_description": "Configuration file for Network Sketcher Online Service",
 
     "version": {
-        "value": "3.1.2",
+        "value": "3.1.2a",
         "description": "Network Sketcher version. Not used in code; for version management purposes only."
     },
 

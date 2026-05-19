@@ -475,6 +475,20 @@ class ns_cli_run():
                 if l1_type not in valid_types:
                     return ([f'[ERROR] Invalid --type value: {l1_type}. Valid values: {", ".join(valid_types)}'])
 
+                # --area argument (optional, only meaningful for per_area / per_area_tag).
+                # When provided, only the SVG for the specified area is generated; the
+                # area name must match one of the master's POSITION_SHAPE folder names
+                # exactly. Currently honored only for --format svg; with --format pptx
+                # the engine still produces all areas in one pptx file (single document
+                # per --type).
+                target_area_arg = get_next_arg(argv_array, '--area')
+                if target_area_arg is not None and target_area_arg.startswith('--'):
+                    target_area_arg = None
+                if target_area_arg is not None:
+                    target_area_arg = target_area_arg.strip() or None
+                if target_area_arg and l1_type not in ('per_area', 'per_area_tag'):
+                    return ([f'[ERROR] --area is only valid with --type per_area or per_area_tag (got --type {l1_type})'])
+
                 type_to_click = {
                     'per_area': '2-4-1',
                     'per_area_tag': '2-4-2',
@@ -561,6 +575,20 @@ class ns_cli_run():
                     if os.path.isfile(output_svg):
                         os.remove(output_svg)
 
+                    # When --area was supplied, validate against the master's
+                    # real folder list and pass the filter into the renderer.
+                    self._target_area_filter = None
+                    if target_area_arg and l1_type in ('per_area', 'per_area_tag'):
+                        import nsm_extensions
+                        area_list = nsm_extensions.ip_report.get_folder_list(self)
+                        if not area_list:
+                            dummy_tk.destroy()
+                            return ([f'[ERROR] No areas found in the master file'])
+                        if target_area_arg not in area_list:
+                            dummy_tk.destroy()
+                            return ([f'[ERROR] Area "{target_area_arg}" not found. Available areas: {", ".join(area_list)}'])
+                        self._target_area_filter = target_area_arg
+
                     import nsm_l1_svg_create
                     nsm_l1_svg_create.nsm_l1_svg_create.__init__(self)
 
@@ -569,10 +597,14 @@ class ns_cli_run():
                     if l1_type in ('per_area', 'per_area_tag'):
                         per_area_files = getattr(self, '_per_area_svg_files', [])
                         if per_area_files:
-                            return_text = f'--- L1 SVG Diagram ({l1_type}) created successfully ---\n'
+                            area_info = f', area={target_area_arg}' if target_area_arg else ''
+                            return_text = f'--- L1 SVG Diagram ({l1_type}{area_info}) created successfully ---\n'
                             return_text += f'Files: {", ".join(per_area_files)}'
                         else:
-                            return_text = '[ERROR] Failed to create L1 SVG Diagram'
+                            if target_area_arg:
+                                return_text = f'[ERROR] Failed to create L1 SVG Diagram for area "{target_area_arg}"'
+                            else:
+                                return_text = '[ERROR] Failed to create L1 SVG Diagram'
                     elif os.path.isfile(output_svg):
                         return_text = f'--- L1 SVG Diagram ({l1_type}) created successfully ---\n'
                         return_text += f'File: {output_svg}'
@@ -770,6 +802,16 @@ class ns_cli_run():
                 if l3_type not in valid_types:
                     return ([f'[ERROR] Invalid --type value: {l3_type}. Valid values: {", ".join(valid_types)}'])
 
+                # --area argument (optional, only meaningful for per_area + --format svg).
+                # When provided, only the SVG for the specified area is generated.
+                target_area_arg = get_next_arg(argv_array, '--area')
+                if target_area_arg is not None and target_area_arg.startswith('--'):
+                    target_area_arg = None
+                if target_area_arg is not None:
+                    target_area_arg = target_area_arg.strip() or None
+                if target_area_arg and l3_type != 'per_area':
+                    return ([f'[ERROR] --area is only valid with --type per_area (got --type {l3_type})'])
+
                 iDir = os.path.dirname(master_file_path)
                 if not iDir:
                     iDir = os.getcwd()
@@ -828,6 +870,20 @@ class ns_cli_run():
                     if os.path.isfile(output_svg):
                         os.remove(output_svg)
 
+                    # When --area was supplied, validate against the master's
+                    # real folder list and pass the filter into the renderer.
+                    self._target_area_filter = None
+                    if target_area_arg and l3_type == 'per_area':
+                        import nsm_extensions
+                        area_list = nsm_extensions.ip_report.get_folder_list(self)
+                        if not area_list:
+                            dummy_tk.destroy()
+                            return ([f'[ERROR] No areas found in the master file'])
+                        if target_area_arg not in area_list:
+                            dummy_tk.destroy()
+                            return ([f'[ERROR] Area "{target_area_arg}" not found. Available areas: {", ".join(area_list)}'])
+                        self._target_area_filter = target_area_arg
+
                     import nsm_l3_svg_create
                     nsm_l3_svg_create.nsm_l3_svg_create.__init__(self)
 
@@ -836,10 +892,14 @@ class ns_cli_run():
                     if l3_type == 'per_area':
                         per_area_files = getattr(self, '_per_area_svg_files', [])
                         if per_area_files:
-                            return_text = f'--- L3 SVG Diagram ({l3_type}) created successfully ---\n'
+                            area_info = f', area={target_area_arg}' if target_area_arg else ''
+                            return_text = f'--- L3 SVG Diagram ({l3_type}{area_info}) created successfully ---\n'
                             return_text += f'Files: {", ".join(per_area_files)}'
                         else:
-                            return_text = '[ERROR] Failed to create L3 SVG Diagram'
+                            if target_area_arg:
+                                return_text = f'[ERROR] Failed to create L3 SVG Diagram for area "{target_area_arg}"'
+                            else:
+                                return_text = '[ERROR] Failed to create L3 SVG Diagram'
                     elif os.path.isfile(output_svg):
                         return_text = f'--- L3 SVG Diagram ({l3_type}) created successfully ---\n'
                         return_text += f'File: {output_svg}'

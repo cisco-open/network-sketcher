@@ -252,11 +252,18 @@ _heartbeats_lock = threading.Lock()
 _svg_mem_cache: dict = {}
 _svg_mem_cache_lock = threading.Lock()
 
-# Tracks the last attribute value used when SVG thumbnails were generated for a job.
-# Used by svg_grid_stream to skip CLI re-execution when attribute unchanged and cache is warm.
-# {job_id: attr_string}  (attr_string may be '' if no attribute was selected)
+# Tracks the last attribute value used when SVG thumbnails were generated for
+# a given job + scope. Used by svg_grid_stream to skip CLI re-execution when
+# attribute is unchanged and the cache is warm.
+#   {job_id: {scope: attr_string}}
+# where scope is either '__initial__' (the all-areas / Device Tables initial
+# generation) or '<area_name>' (a single per-area generation triggered by the
+# dropdown). attr_string may be '' if no attribute was selected.
 _svg_grid_last_attr: dict = {}
 _svg_grid_last_attr_lock = threading.Lock()
+
+# Sentinel scope key for the initial (Device Tables + All Areas) generation.
+_SVG_GRID_INITIAL_SCOPE = '__initial__'
 
 
 def touch_heartbeat(job_id):
@@ -1223,7 +1230,8 @@ def run_commands(job_id):
 
     if has_mutation and new_master_name:
         set_active_master(str(work_dir), new_master_name)
-        # Invalidate SVG grid cache so next buildSvgGrid() regenerates from updated master
+        # Invalidate SVG grid cache so next buildSvgGrid() regenerates from
+        # updated master. Drop all scopes (initial + every per-area entry).
         with _svg_grid_last_attr_lock:
             _svg_grid_last_attr.pop(job_id, None)
 
@@ -1313,7 +1321,25 @@ def _find_svgs_for_cell(work_dir, cell_id, file_list=None):
 
 @app.route('/svg_grid_stream/<job_id>')
 def svg_grid_stream(job_id):
-    """SSE endpoint: generate all SVGs in parallel and stream completion events."""
+    """SSE endpoint: generate SVG thumbnails and stream completion events.
+
+    Two operating modes (selected via ``?mode=`` query):
+
+      - ``mode=initial`` (default): produce the always-shown thumbnails
+        (``l1_all`` and ``l3_all``) and trigger AI Context generation in
+        parallel. No per-area diagrams are generated here -- those wait for
+        the user to pick an area in the dropdown.
+
+      - ``mode=area``: requires an ``area`` query parameter. Generates the
+        three per-area cells (``l1_per_area_<area>``, ``l3_per_area_<area>``,
+        ``l2_area_<area>``) only. AI Context is not regenerated -- the
+        initial-mode call has already produced it.
+
+    Cache scoping: ``_svg_grid_last_attr`` is keyed by ``(job_id, scope)``
+    where scope is ``__initial__`` or the area name. This lets attribute
+    changes invalidate everything in lock-step while still allowing each
+    area to be cached independently.
+    """
     job_id = sanitize_job_id(job_id)
     if not job_id:
         abort(400)
@@ -1327,8 +1353,20 @@ def svg_grid_stream(job_id):
         abort(404)
 
     attr = request.args.get('attribute', '')
-    areas = request.args.getlist('area')
+    mode = (request.args.get('mode') or 'initial').strip().lower()
+    if mode not in ('initial', 'area'):
+        abort(400)
     limit = _cfg.get('parallel_limit', 5)
+
+    # Resolve the cache scope key + the list of tasks for this request.
+    if mode == 'initial':
+        scope = _SVG_GRID_INITIAL_SCOPE
+        area_arg = None
+    else:
+        area_arg = (request.args.get('area') or '').strip()
+        if not area_arg:
+            abort(400)
+        scope = area_arg
 
     # Build task list: (cell_id, cmd_args)
     def make_args(base, extra=None):
@@ -1344,17 +1382,24 @@ def svg_grid_stream(job_id):
     def _task(cell_ids_or_single, cmd):
         return (cell_ids_or_single if isinstance(cell_ids_or_single, list) else [cell_ids_or_single], cmd)
 
-    tasks = [
-        _task('l1_all', make_args(['export', 'l1_diagram', '--type', 'all_areas_tag'])),
-        _task([f'l1_per_area_{a}' for a in areas],
-              make_args(['export', 'l1_diagram', '--type', 'per_area_tag'])),
-        _task('l3_all', make_args(['export', 'l3_diagram', '--type', 'all_areas'])),
-        _task([f'l3_per_area_{a}' for a in areas],
-              make_args(['export', 'l3_diagram', '--type', 'per_area'])),
-    ] + [
-        _task(f'l2_area_{area}', make_args(['export', 'l2_diagram', '--area', area]))
-        for area in areas
-    ]
+    if mode == 'initial':
+        tasks = [
+            _task('l1_all', make_args(['export', 'l1_diagram', '--type', 'all_areas_tag'])),
+            _task('l3_all', make_args(['export', 'l3_diagram', '--type', 'all_areas'])),
+        ]
+    else:
+        # Single-area on-demand path. CLI was extended in v3.1.2a to accept
+        # --area for l1_diagram (per_area_tag) and l3_diagram (per_area).
+        tasks = [
+            _task(f'l1_per_area_{area_arg}',
+                  make_args(['export', 'l1_diagram', '--type', 'per_area_tag',
+                             '--area', area_arg])),
+            _task(f'l3_per_area_{area_arg}',
+                  make_args(['export', 'l3_diagram', '--type', 'per_area',
+                             '--area', area_arg])),
+            _task(f'l2_area_{area_arg}',
+                  make_args(['export', 'l2_diagram', '--area', area_arg])),
+        ]
 
     import base64 as _b64_svg
 
@@ -1440,11 +1485,13 @@ def svg_grid_stream(job_id):
             basename = master_filename.replace('[MASTER]', '').replace('.xlsx', '').replace('.nsm', '')
             ai_filename_expected = f'[AI_Context]{basename}.txt'
 
-            # --- Cache fast-path ---
-            # If the same attribute was used last time and SVGs exist (memory or disk),
-            # serve everything from cache without re-running any CLI command.
+            # --- Cache fast-path (per scope) ---
+            # If the same attribute was used last time for *this scope* and all
+            # the scope's SVGs still exist (memory or disk), serve everything
+            # from cache without re-running the CLI.
             with _svg_grid_last_attr_lock:
-                last_attr = _svg_grid_last_attr.get(job_id)
+                job_scopes = _svg_grid_last_attr.get(job_id) or {}
+                last_attr = job_scopes.get(scope)
             if last_attr is not None and last_attr == attr:
                 cache_results = []
                 all_cached = True
@@ -1459,33 +1506,44 @@ def svg_grid_stream(job_id):
                 if all_cached:
                     for _cids, (per_cell, per_cell_b64) in cache_results:
                         yield from _stream_events(per_cell, per_cell_b64)
-                    # AI context: reuse existing file if already generated
-                    ai_filename = ai_filename_expected if (work_dir / ai_filename_expected).exists() else None
-                    if not ai_filename:
-                        try:
-                            ai_ok = generate_ai_context_parallel(work_dir, master_filename)
-                            ai_filename = ai_filename_expected if ai_ok else None
-                        except Exception as exc:
-                            logger.error('AI context error (cache path): %s', exc)
-                    yield 'data: ' + json.dumps({'done': True, 'ai_filename': ai_filename}) + '\n\n'
+                    if mode == 'initial':
+                        # AI context: reuse existing file if already generated
+                        ai_filename = (ai_filename_expected
+                                       if (work_dir / ai_filename_expected).exists()
+                                       else None)
+                        if not ai_filename:
+                            try:
+                                ai_ok = generate_ai_context_parallel(work_dir, master_filename)
+                                ai_filename = ai_filename_expected if ai_ok else None
+                            except Exception as exc:
+                                logger.error('AI context error (cache path): %s', exc)
+                        yield 'data: ' + json.dumps({'done': True, 'ai_filename': ai_filename}) + '\n\n'
+                    else:
+                        # Area mode: AI Context belongs to the initial scope,
+                        # so just report which area finished.
+                        yield 'data: ' + json.dumps({'done': True, 'area': area_arg}) + '\n\n'
                     return
 
             # --- Full generation path ---
-            # Start AI context generation in a background thread immediately so it
-            # runs concurrently with SVG generation instead of sequentially after it.
-            ai_result = [None]
             ai_done_event = threading.Event()
+            ai_result = [None]
 
-            def _run_ai_context():
-                try:
-                    ai_ok = generate_ai_context_parallel(work_dir, master_filename)
-                    ai_result[0] = ai_filename_expected if ai_ok else None
-                except Exception as exc:
-                    logger.error('AI context generation error in svg_grid_stream: %s', exc)
-                finally:
-                    ai_done_event.set()
+            if mode == 'initial':
+                # Start AI context generation in a background thread so it runs
+                # concurrently with SVG generation rather than sequentially.
+                def _run_ai_context():
+                    try:
+                        ai_ok = generate_ai_context_parallel(work_dir, master_filename)
+                        ai_result[0] = ai_filename_expected if ai_ok else None
+                    except Exception as exc:
+                        logger.error('AI context generation error in svg_grid_stream: %s', exc)
+                    finally:
+                        ai_done_event.set()
 
-            threading.Thread(target=_run_ai_context, daemon=True).start()
+                threading.Thread(target=_run_ai_context, daemon=True).start()
+            else:
+                # Area mode never (re)generates AI Context.
+                ai_done_event.set()
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=limit) as executor:
                 futures = {
@@ -1496,13 +1554,16 @@ def svg_grid_stream(job_id):
                     per_cell, success, per_cell_b64 = future.result()
                     yield from _stream_events(per_cell, per_cell_b64, success)
 
-            # Record the attribute so next call can use cache fast-path
+            # Record the attribute for this scope so the next call can use cache fast-path
             with _svg_grid_last_attr_lock:
-                _svg_grid_last_attr[job_id] = attr
+                _svg_grid_last_attr.setdefault(job_id, {})[scope] = attr
 
-            # Wait for AI context thread (usually already finished by now)
-            ai_done_event.wait()
-            yield 'data: ' + json.dumps({'done': True, 'ai_filename': ai_result[0]}) + '\n\n'
+            if mode == 'initial':
+                # Wait for AI context thread (usually already finished by now)
+                ai_done_event.wait()
+                yield 'data: ' + json.dumps({'done': True, 'ai_filename': ai_result[0]}) + '\n\n'
+            else:
+                yield 'data: ' + json.dumps({'done': True, 'area': area_arg}) + '\n\n'
         except GeneratorExit:
             pass
         except Exception as exc:
@@ -2876,248 +2937,23 @@ def export_nsm_to_xlsx(job_id):
 def _render_device_preview(job_id, tabs_data, master_basename):
     """Render interactive device data preview with 4 tabs and download buttons.
 
-    tabs_data: list of dicts with keys 'id', 'label', 'headers', 'rows'
+    Thin wrapper around the shared ``ns_engine.nsm_device_table_html``
+    module so the Online edition and the Local MCP edition produce
+    pixel-identical Device Preview HTML. ``job_id`` is retained for
+    backward compatibility with callers but is no longer needed by the
+    renderer itself.
     """
-    safe_title = f'Device Preview - {master_basename}'
-
-    tabs_js_list = []
-    for tab in tabs_data:
-        escaped_headers = [h.replace('\\', '\\\\').replace("'", "\\'") for h in tab['headers']]
-        headers_js = '[' + ', '.join(f"'{h}'" for h in escaped_headers) + ']'
-        rows_js_parts = []
-        for row in tab['rows']:
-            cells = []
-            for cell in row:
-                s = str(cell) if cell is not None else ''
-                s = s.replace('\\', '\\\\').replace("'", "\\'").replace('\n', ' ').replace('\r', '')
-                cells.append(f"'{s}'")
-            rows_js_parts.append('[' + ', '.join(cells) + ']')
-        rows_js = '[' + ', '.join(rows_js_parts) + ']'
-        tab_id = tab['id'].replace('\\', '\\\\').replace("'", "\\'")
-        tab_label = tab['label'].replace('\\', '\\\\').replace("'", "\\'")
-        # Optionally serialize per-cell background colors (Attribute tab only)
-        row_colors_js = ''
-        if tab.get('row_colors'):
-            color_parts = []
-            for crow in tab['row_colors']:
-                cells = ['null' if c is None else "'" + str(c) + "'" for c in crow]
-                color_parts.append('[' + ','.join(cells) + ']')
-            row_colors_js = ',row_colors:[' + ','.join(color_parts) + ']'
-        tabs_js_list.append(
-            '{id:\'' + tab_id + '\', label:\'' + tab_label + '\', headers:' + headers_js
-            + ', rows:' + rows_js + row_colors_js + '}'
-        )
-    tabs_js = '[' + ', '.join(tabs_js_list) + ']'
-
-    return f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Preview - {safe_title}</title>
-<style>
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: #f0f2f5; color: #333; height: 100vh; display: flex; flex-direction: column; }}
-.toolbar {{ display: flex; align-items: center; gap: 12px; padding: 10px 20px;
-            background: #16213e; color: #fff; flex-shrink: 0; }}
-.toolbar h1 {{ font-size: 14px; font-weight: 500; opacity: 0.9; white-space: nowrap;
-               overflow: hidden; text-overflow: ellipsis; max-width: 50vw; }}
-.toolbar .spacer {{ flex: 1; }}
-.toolbar .row-count {{ font-size: 12px; opacity: 0.6; white-space: nowrap; }}
-.toolbar button {{ padding: 6px 16px; border: 1px solid rgba(255,255,255,0.4);
-                   background: transparent; color: #fff; border-radius: 6px; font-size: 13px;
-                   cursor: pointer; transition: all 0.2s; white-space: nowrap; }}
-.toolbar button:hover {{ background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.7); }}
-.sheet-tabs {{ display: flex; gap: 0; background: #dee2e6; border-bottom: 2px solid #4A8FE7;
-               padding: 0 16px; flex-shrink: 0; overflow-x: auto; }}
-.sheet-tab {{ padding: 8px 20px; font-size: 13px; cursor: pointer; border: none;
-              background: #dee2e6; color: #555; border-radius: 6px 6px 0 0;
-              transition: all 0.2s; white-space: nowrap; }}
-.sheet-tab:hover {{ background: #e9ecef; }}
-.sheet-tab.active {{ background: #fff; color: #4A8FE7; font-weight: 600;
-                     border-top: 2px solid #4A8FE7; }}
-#content {{ flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }}
-.table-wrap {{ flex: 1; overflow: scroll; padding: 16px; min-height: 0; }}
-.table-wrap::-webkit-scrollbar {{ width: 12px; height: 12px; }}
-.table-wrap::-webkit-scrollbar-track {{ background: #e9ecef; border-radius: 6px; }}
-.table-wrap::-webkit-scrollbar-thumb {{ background: #a0aec0; border-radius: 6px; border: 2px solid #e9ecef; }}
-.table-wrap::-webkit-scrollbar-thumb:hover {{ background: #718096; }}
-.table-wrap::-webkit-scrollbar-corner {{ background: #e9ecef; }}
-.table-wrap table {{ border-collapse: collapse; width: auto; min-width: 100%;
-                     background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-                     border-radius: 4px; overflow: hidden; font-size: 13px; }}
-.table-wrap th, .table-wrap td {{ border: 1px solid #e0e0e0; padding: 6px 12px;
-                                  text-align: left; white-space: nowrap; }}
-.table-wrap tr.header-row th {{
-    background: #4A8FE7; color: #fff; font-weight: 600; position: sticky; top: 0; z-index: 1; }}
-.table-wrap tr:nth-child(even):not(.header-row) td {{ background: #f8f9fa; }}
-.table-wrap tr:hover:not(.header-row) td {{ background: #e8f0fe; }}
-</style>
-</head>
-<body>
-<div class="toolbar">
-    <h1>{safe_title}</h1>
-    <span class="spacer"></span>
-    <span class="row-count" id="rowCount"></span>
-    <button id="btnDlCsv" title="Download current tab as CSV">&#8681; Download CSV</button>
-    <button id="btnDlHtml" title="Download current tab as HTML">&#8681; Download HTML</button>
-</div>
-<div class="sheet-tabs" id="sheetTabs"></div>
-<div id="content">
-    <div class="table-wrap" id="tableWrap"></div>
-</div>
-<script>
-(function() {{
-    var TABS = {tabs_js};
-    var currentTab = 0;
-    var masterBase = '{master_basename.replace("'", "\\'")}';
-
-    function escHtml(s) {{
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }}
-
-    function buildTable(tab) {{
-        var h = '<table><thead><tr class="header-row">';
-        for (var i = 0; i < tab.headers.length; i++) {{
-            h += '<th>' + escHtml(tab.headers[i]) + '</th>';
-        }}
-        h += '</tr></thead><tbody>';
-        for (var r = 0; r < tab.rows.length; r++) {{
-            h += '<tr>';
-            var row = tab.rows[r];
-            var colors = tab.row_colors ? tab.row_colors[r] : null;
-            var colCount = Math.max(tab.headers.length, row.length);
-            for (var c = 0; c < colCount; c++) {{
-                var v = c < row.length ? row[c] : '';
-                var bg = colors && c < colors.length && colors[c] ? colors[c] : null;
-                var style = bg ? ' style="background-color:' + bg + '"' : '';
-                h += '<td' + style + '>' + (v !== '' ? escHtml(v) : '') + '</td>';
-            }}
-            h += '</tr>';
-        }}
-        h += '</tbody></table>';
-        return h;
-    }}
-
-    function showTab(idx) {{
-        currentTab = idx;
-        document.getElementById('tableWrap').innerHTML = buildTable(TABS[idx]);
-        document.getElementById('rowCount').textContent = TABS[idx].rows.length + ' rows';
-        var btns = document.querySelectorAll('.sheet-tab');
-        for (var i = 0; i < btns.length; i++) {{
-            btns[i].classList.toggle('active', i === idx);
-        }}
-    }}
-
-    function initTabs() {{
-        var container = document.getElementById('sheetTabs');
-        for (var i = 0; i < TABS.length; i++) {{
-            (function(idx) {{
-                var b = document.createElement('button');
-                b.className = 'sheet-tab';
-                b.textContent = TABS[idx].label;
-                b.onclick = function() {{ showTab(idx); }};
-                container.appendChild(b);
-            }})(i);
-        }}
-    }}
-
-    function buildCsv(tab) {{
-        var lines = [];
-        var h = tab.headers.map(function(c) {{ return '"' + String(c).replace(/"/g,'""') + '"'; }}).join(',');
-        lines.push(h);
-        for (var r = 0; r < tab.rows.length; r++) {{
-            var row = tab.rows[r];
-            var cells = [];
-            for (var c = 0; c < tab.headers.length; c++) {{
-                var v = c < row.length ? row[c] : '';
-                cells.push('"' + String(v).replace(/"/g,'""') + '"');
-            }}
-            lines.push(cells.join(','));
-        }}
-        return lines.join('\\r\\n');
-    }}
-
-    function buildHtml(tab) {{
-        var rows = '';
-        for (var r = 0; r < tab.rows.length; r++) {{
-            rows += '<tr>';
-            var colors = tab.row_colors ? tab.row_colors[r] : null;
-            for (var c = 0; c < tab.headers.length; c++) {{
-                var v = c < tab.rows[r].length ? tab.rows[r][c] : '';
-                var bg = colors && c < colors.length && colors[c] ? colors[c] : null;
-                var style = bg ? ' style="background-color:' + bg + '"' : '';
-                rows += '<td' + style + '>' + escHtml(v) + '</td>';
-            }}
-            rows += '</tr>';
-        }}
-        var ths = tab.headers.map(function(h) {{ return '<th>' + escHtml(h) + '</th>'; }}).join('');
-        return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(tab.label) + ' - ' + escHtml(masterBase) +
-            '</title><style>body{{font-family:sans-serif;font-size:13px;background:#f0f2f5;color:#333;margin:0}}' +
-            '.toolbar{{background:#16213e;color:#fff;padding:10px 20px;font-size:14px}}' +
-            '.wrap{{padding:16px}}.wrap table{{border-collapse:collapse;width:auto;min-width:100%;background:#fff;' +
-            'box-shadow:0 1px 4px rgba(0,0,0,0.1);font-size:13px}}' +
-            'th{{background:#4A8FE7;color:#fff;font-weight:600;padding:6px 12px;text-align:left;border:1px solid #e0e0e0}}' +
-            'td{{padding:6px 12px;border:1px solid #e0e0e0}}' +
-            'tr:nth-child(even) td{{background:#f8f9fa}}tr:hover td{{background:#e8f0fe}}' +
-            '</style></head><body>' +
-            '<div class="toolbar">' + escHtml(tab.label) + ' - ' + escHtml(masterBase) +
-            ' (' + tab.rows.length + ' rows)</div>' +
-            '<div class="wrap"><table><thead><tr>' + ths + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
-            '</body></html>';
-    }}
-
-    function download(content, filename, mime) {{
-        var bom = mime === 'text/csv' ? '\\uFEFF' : '';
-        var blob = new Blob([bom + content], {{type: mime}});
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-    }}
-
-    document.getElementById('btnDlCsv').onclick = function() {{
-        var tab = TABS[currentTab];
-        var safeName = tab.label.replace(/[^a-zA-Z0-9_\\-]/g, '_');
-        download(buildCsv(tab), masterBase + '_' + safeName + '.csv', 'text/csv');
-    }};
-
-    document.getElementById('btnDlHtml').onclick = function() {{
-        var tab = TABS[currentTab];
-        var safeName = tab.label.replace(/[^a-zA-Z0-9_\\-]/g, '_');
-        download(buildHtml(tab), masterBase + '_' + safeName + '.html', 'text/html');
-    }};
-
-    initTabs();
-    // Open the tab specified by the URL hash (e.g. #l1, #l2, #l3)
-    var hashTabId = window.location.hash.replace('#', '');
-    var initIdx = 0;
-    if (hashTabId) {{
-        for (var hi = 0; hi < TABS.length; hi++) {{
-            if (TABS[hi].id === hashTabId) {{ initIdx = hi; break; }}
-        }}
-    }}
-    showTab(initIdx);
-}})();
-</script>
-</body>
-</html>'''
+    from ns_engine.nsm_device_table_html import render_device_table_html
+    return render_device_table_html(tabs_data, master_basename)
 
 
 def _get_device_tabs_data(job_id):
-    """Shared helper: fetch all 4 device tabs data from master file.
+    """Resolve the active master for ``job_id`` and delegate table building
+    to ``ns_engine.nsm_device_table_html.build_device_tabs_data``.
 
-    Returns (tabs_data list, master_basename str) or (None, None) on error.
-    Uses nsm_def.convert_master_to_array directly (in-process, no subprocess,
-    no XLSX generation) for L1/L2/L3. Device list uses run_ns_command.
+    Returns ``(tabs_data, master_basename)`` or ``(None, None)`` if the
+    job directory or master file is missing.
     """
-    import ast as _ast
-    import sys as _sys
-
     work_dir = UPLOAD_DIR / job_id
     if not work_dir.is_dir():
         return None, None
@@ -3127,211 +2963,8 @@ def _get_device_tabs_data(job_id):
         return None, None
 
     master_path = str(work_dir / master_filename)
-    master_basename = master_filename
-    for ext in ('.nsm', '.xlsx'):
-        if master_basename.lower().endswith(ext):
-            master_basename = master_basename[:-len(ext)]
-            break
-    master_basename = master_basename.replace('[MASTER]', '').strip()
-
-    # Add ns_engine dir to path so nsm_def can be imported directly
-    _engine_dir = str(BASE_DIR / 'ns_engine')
-    if _engine_dir not in _sys.path:
-        _sys.path.insert(0, _engine_dir)
-    try:
-        import nsm_def as _nsm_def
-    except ImportError:
-        logger.warning('nsm_def import failed; falling back to empty tabs')
-        return None, None
-
-    def _read_section(ws_name, section):
-        try:
-            return _nsm_def.convert_master_to_array(ws_name, master_path, section)
-        except Exception as exc:
-            logger.warning('convert_master_to_array %s/%s failed: %s', ws_name, section, exc)
-            return []
-
-    # --- POSITION_SHAPE: build device -> area lookup (used by L1 and Attribute) ---
-    ps_raw = _read_section('Master_Data', '<<POSITION_SHAPE>>')
-    _device_area_map = {}
-    _cur_folder = None
-    for _item in ps_raw:
-        if not isinstance(_item, list) or len(_item) < 2:
-            continue
-        _row = _item[1]
-        if not isinstance(_row, list):
-            continue
-        if _row and _row[0] and _row[0] not in ('', '<END>', '<<POSITION_SHAPE>>', '_AIR_'):
-            _cur_folder = _row[0]
-        if _cur_folder:
-            _area_label = '_N/A_' if '_wp_' in _cur_folder else _cur_folder
-            for _val in _row:
-                if _val and _val not in ('', '<END>', '_AIR_', '<<POSITION_SHAPE>>', _cur_folder) \
-                        and not str(_val).startswith('_AIR_'):
-                    _device_area_map[str(_val)] = _area_label
-        if isinstance(_row, list) and len(_row) == 1 and _row[0] == '<END>':
-            _cur_folder = None
-
-    # --- L2: Master_Data_L2 / <<L2_TABLE>> ---
-    # Cols: 0=Area, 1=Device Name, 2=Port Mode(formula/empty), 3=Port Name,
-    #       4=Virtual Port Mode(formula/empty), 5=Virtual Port Name,
-    #       6=Connected L2 Segment, 7=L2 (L3 Virtual Port)
-    # Skip formula cols 2 and 4.
-    l2_raw = _read_section('Master_Data_L2', '<<L2_TABLE>>')
-    l2_data = [r[1] for r in l2_raw if isinstance(r, list) and r[0] > 2]
-    USE_L2 = [0, 1, 3, 5, 6, 7]
-    l2_headers = ['Area', 'Device Name', 'Port Name', 'Virtual Port Name',
-                  'Connected L2 Segment', 'L2 (L3 Virtual Port)']
-    l2_rows = [
-        [str(row[i]) if i < len(row) and row[i] is not None and row[i] != '' else ''
-         for i in USE_L2]
-        for row in l2_data
-    ]
-
-    # --- L3: Master_Data_L3 / <<L3_TABLE>> ---
-    # Cols: 0=Area, 1=Device Name, 2=L3 IF Name, 3=L3 Instance Name,
-    #       4=IP Address / Subnet mask, 5=[VPN] Target Device Name,
-    #       6=[VPN] Target L3 Port Name
-    l3_raw = _read_section('Master_Data_L3', '<<L3_TABLE>>')
-    l3_hdr_row = next((r[1] for r in l3_raw if isinstance(r, list) and r[0] == 2), [])
-    l3_headers = [h for h in l3_hdr_row if h is not None]
-    l3_data = [r[1] for r in l3_raw if isinstance(r, list) and r[0] > 2]
-    l3_rows = [
-        [str(c) if c is not None else '' for c in row[:len(l3_headers)]]
-        for row in l3_data
-    ]
-
-    # --- L1: Excel-compatible format (one row per device×port, 2 rows per link) ---
-    # POSITION_LINE raw col indices:
-    #   0=From_Name, 1=To_Name, 2=From_Tag_raw, 3=To_Tag_raw,
-    #   12=From_Port_prefix, 13=From_Speed, 14=From_Duplex, 15=From_Port_Type,
-    #   16=To_Port_prefix, 17=To_Speed, 18=To_Duplex, 19=To_Port_Type
-    pl_raw = _read_section('Master_Data', '<<POSITION_LINE>>')
-    pl_data = [r[1] for r in pl_raw if isinstance(r, list) and r[0] > 2]
-    l1_headers = [
-        'Area', 'Device Name', 'Port Name', 'Abbreviation(Diagram)',
-        'Speed', 'Duplex', 'Port Type',
-        '[src] Device Name', '[src] Port Name', '[dst] Device Name', '[dst] Port Name',
-    ]
-
-    def _make_port(raw_tag, prefix):
-        """Return (full_port_name, abbreviation) from raw tag and prefix."""
-        if ' ' in raw_tag:
-            parts = raw_tag.split(' ')
-            return (prefix + ' ' + parts[-1]).strip(), parts[0]
-        return (prefix or raw_tag).strip(), raw_tag
-
-    l1_rows = []
-    for row in pl_data:
-        if len(row) < 20:
-            continue
-        from_dev = row[0] or ''
-        to_dev   = row[1] or ''
-        from_full, from_abbr = _make_port(row[2] or '', row[12] or '')
-        to_full,   to_abbr   = _make_port(row[3] or '', row[16] or '')
-        from_raw = row[2] or ''
-        to_raw   = row[3] or ''
-        # Row A: From デバイス視点
-        l1_rows.append([
-            _device_area_map.get(from_dev, ''), from_dev,
-            from_full, from_abbr,
-            row[13] or '', row[14] or '', row[15] or '',
-            from_dev, from_raw, to_dev, to_raw,
-        ])
-        # Row B: To デバイス視点
-        l1_rows.append([
-            _device_area_map.get(to_dev, ''), to_dev,
-            to_full, to_abbr,
-            row[17] or '', row[18] or '', row[19] or '',
-            from_dev, from_raw, to_dev, to_raw,
-        ])
-
-    # Sort: Area昇順 → Device Name昇順 → ポート番号昇順（数値ソート）
-    l1_rows.sort(key=lambda x: (
-        x[0], x[1],
-        _nsm_def.get_if_value(x[2]),
-        x[2],
-    ))
-
-    # --- Attribute: show attribute --one_msg ---
-
-    # Each non-device-name cell is "['value', [R, G, B]]". Extract text + color.
-    attr_r = run_ns_command(['show', 'attribute', '--master', master_path, '--one_msg'])
-    attr_headers = ['Area', 'Device Name']
-    attr_rows = []
-    attr_row_colors = []   # same shape as attr_rows; None or 'rgb(R,G,B)' per cell
-    if attr_r and attr_r.returncode == 0:
-        try:
-            raw_attr = _ast.literal_eval(attr_r.stdout.strip())
-            if raw_attr and isinstance(raw_attr[0], list):
-                attr_headers = ['Area'] + raw_attr[0]
-                for row in raw_attr[1:]:
-                    vals = []
-                    cols = []
-                    for i, cell in enumerate(row):
-                        if i == 0:
-                            dev = str(cell) if cell is not None else ''
-                            area = _device_area_map.get(dev, '')
-                            vals = [area, dev]
-                            cols = [None, None]
-                        else:
-                            try:
-                                cell_list = _ast.literal_eval(str(cell))
-                                text = cell_list[0] if cell_list else ''
-                                text = '' if text in ('<EMPTY>', None) else str(text)
-                                rgb = cell_list[1] if len(cell_list) > 1 else None
-                                if rgb and isinstance(rgb, list) and len(rgb) == 3 \
-                                        and tuple(rgb) != (255, 255, 255):
-                                    color = f'rgb({rgb[0]},{rgb[1]},{rgb[2]})'
-                                else:
-                                    color = None
-                            except Exception:
-                                text = str(cell) if cell is not None else ''
-                                color = None
-                            vals.append(text)
-                            cols.append(color)
-                    attr_rows.append(vals)
-                    attr_row_colors.append(cols)
-        except Exception:
-            pass
-
-    # Sort Attribute rows: Area descending, then Device Name descending within each Area
-    if attr_rows:
-        _combined = list(zip(attr_rows, attr_row_colors))
-        _combined.sort(
-            key=lambda x: (x[0][0] if x[0] else '', x[0][1] if len(x[0]) > 1 else ''),
-            reverse=False,
-        )
-        attr_rows, attr_row_colors = map(list, zip(*_combined))
-
-    tabs_data = [
-        {
-            'id': 'l1',
-            'label': 'L1 Table',
-            'headers': l1_headers,
-            'rows': l1_rows,
-        },
-        {
-            'id': 'l2',
-            'label': 'L2 Table',
-            'headers': l2_headers,
-            'rows': l2_rows,
-        },
-        {
-            'id': 'l3',
-            'label': 'L3 Table',
-            'headers': l3_headers,
-            'rows': l3_rows,
-        },
-        {
-            'id': 'attribute',
-            'label': 'Attribute',
-            'headers': attr_headers,
-            'rows': attr_rows,
-            'row_colors': attr_row_colors,
-        },
-    ]
-    return tabs_data, master_basename
+    from ns_engine.nsm_device_table_html import build_device_tabs_data
+    return build_device_tabs_data(master_path)
 
 
 @app.route('/device_preview_data/<job_id>')
@@ -4289,6 +3922,20 @@ canvas {{ background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 
 @app.route('/download_all/<job_id>')
 def download_all(job_id):
+    """Build and return a ZIP of generated artifacts for the job.
+
+    Two modes (selected by query parameters):
+
+      - **Area-scoped (v3.1.2a, SVG mode dropdown)**: when ``?area=<name>``
+        is supplied, the ZIP includes only artifacts relevant to that area:
+        the common all-areas SVGs, the area's three per-area SVGs, the
+        Device Table HTML, the AI Context txt, and the .nsm master. Missing
+        SVGs are (re)generated on demand. Use ``?attr=<value>`` to align
+        the SVG attribute with what the user picked in the thumbnail grid.
+
+      - **Whole-job (legacy)**: when ``area`` is omitted, the entire job
+        directory is bundled (PPTX mode, session restore, generic flows).
+    """
     job_id = sanitize_job_id(job_id)
     if not job_id:
         abort(400)
@@ -4297,29 +3944,232 @@ def download_all(job_id):
     if not work_dir.is_dir():
         abort(404)
 
-    master_filename = get_active_master(str(work_dir)) or ''
+    master_filename = get_active_master(str(work_dir))
+    if not master_filename:
+        abort(404)
 
-    zip_name = 'network_sketcher_output.zip'
+    area_arg = (request.args.get('area') or '').strip()
+    attr_arg = request.args.get('attr', '')
+    scope_arg = (request.args.get('scope') or '').strip().lower()
+
+    basename = master_filename.replace('[MASTER]', '')
+    if basename.lower().endswith('.nsm'):
+        basename = basename[: -len('.nsm')]
+    elif basename.lower().endswith('.xlsx'):
+        basename = basename[: -len('.xlsx')]
+
+    # ---- Lightweight ZIP (v3.1.2a, SVG mode, area not yet selected) ------
+    # Returned when the front-end shows the post-upload state: only the
+    # always-generated artifacts (Device Tables HTML, L1/L3 all-areas SVG,
+    # AI Context txt, and the .nsm master) are bundled. Per-area diagrams
+    # are NOT generated here -- they need an area pick from the dropdown.
+    if not area_arg and scope_arg == 'lightweight':
+        files_to_zip = []
+
+        # All-areas SVGs (ensure via CLI if missing)
+        for cli_args_extra, expected_filename in [
+            (['export', 'l1_diagram', '--type', 'all_areas_tag'],
+             f'[L1_DIAGRAM]AllAreasTag_{basename}.svg'),
+            (['export', 'l3_diagram', '--type', 'all_areas'],
+             f'[L3_DIAGRAM]AllAreas_{basename}.svg'),
+        ]:
+            target = work_dir / expected_filename
+            if not target.is_file():
+                cli_args = list(cli_args_extra) + [
+                    '--master', str(work_dir / master_filename),
+                    '--format', 'svg',
+                ]
+                if attr_arg and any(x in ('l1_diagram', 'l3_diagram') for x in cli_args):
+                    cli_args += ['--attribute', attr_arg]
+                try:
+                    run_ns_command_subprocess(cli_args, work_dir, master_filename)
+                except Exception as exc:
+                    logger.warning('download_all (lightweight): regenerate %s failed: %s',
+                                   expected_filename, exc)
+            if target.is_file():
+                files_to_zip.append(target)
+
+        # Device Table HTML -- regenerate to guarantee freshness
+        device_html_name = f'[DEVICE_TABLE]{basename}.html'
+        device_html_path = work_dir / device_html_name
+        try:
+            try:
+                from nsm_device_table_html import (
+                    build_device_tabs_data, render_device_table_html,
+                )
+            except ImportError:
+                from ns_engine.nsm_device_table_html import (
+                    build_device_tabs_data, render_device_table_html,
+                )
+            tabs_data, master_basename = build_device_tabs_data(
+                str(work_dir / master_filename))
+            if tabs_data:
+                html_text = render_device_table_html(
+                    tabs_data, master_basename or basename)
+                with open(str(device_html_path), 'w', encoding='utf-8') as df:
+                    df.write(html_text)
+                files_to_zip.append(device_html_path)
+        except Exception as exc:
+            logger.warning('download_all (lightweight): Device Table HTML failed: %s', exc)
+
+        # AI Context (skip if not yet generated)
+        ai_path = work_dir / f'[AI_Context]{basename}.txt'
+        if ai_path.is_file():
+            files_to_zip.append(ai_path)
+
+        # Master .nsm itself (only when the active master is a .nsm)
+        if master_filename.lower().endswith('.nsm'):
+            files_to_zip.append(work_dir / master_filename)
+
+        zip_name = f'{basename}.zip'
+        zip_path = work_dir / zip_name
+        with zipfile.ZipFile(str(zip_path), 'w', zipfile.ZIP_DEFLATED) as zf:
+            for fpath in files_to_zip:
+                if fpath and Path(fpath).is_file():
+                    zf.write(str(fpath), Path(fpath).name)
+
+        request._ns_download_filename = zip_name
+        return send_file(
+            str(zip_path),
+            as_attachment=True,
+            download_name=zip_name,
+        )
+
+    # ---- Legacy whole-job ZIP (no area filter, no scope) -----------------
+    if not area_arg:
+        zip_name = 'network_sketcher_output.zip'
+        zip_path = work_dir / zip_name
+        with zipfile.ZipFile(str(zip_path), 'w', zipfile.ZIP_DEFLATED) as zf:
+            for f in sorted(os.listdir(work_dir)):
+                if f == zip_name or '__TMP__' in f:
+                    continue
+                if f.startswith('.'):
+                    continue
+                if f.startswith('[MASTER]') and f.endswith('.xlsx'):
+                    continue
+                if f.startswith('[L2_TABLE]') or f.startswith('[L3_TABLE]'):
+                    continue
+                fpath = os.path.join(work_dir, f)
+                if os.path.isfile(fpath):
+                    zf.write(fpath, f)
+        request._ns_download_filename = zip_name
+        return send_file(
+            str(zip_path),
+            as_attachment=True,
+            download_name=zip_name,
+        )
+
+    # ---- Area-scoped ZIP --------------------------------------------------
+    safe_area = _safe_area_for_filename(area_arg)
+
+    # ---- Helpers -----------------------------------------------------------
+    def _ensure_via_cli(cmd_args_extra, expected_filename):
+        """Run the engine to (re)generate ``expected_filename`` if missing.
+
+        Returns the absolute path on disk if the file exists after the call,
+        else None. Failures are logged but do not abort the ZIP (so a partial
+        ZIP is still useful).
+        """
+        target = work_dir / expected_filename
+        if target.is_file():
+            return target
+        cli_args = list(cmd_args_extra) + [
+            '--master', str(work_dir / master_filename),
+            '--format', 'svg',
+        ]
+        if attr_arg and any(x in ('l1_diagram', 'l3_diagram') for x in cli_args):
+            cli_args += ['--attribute', attr_arg]
+        try:
+            run_ns_command_subprocess(cli_args, work_dir, master_filename)
+        except Exception as exc:
+            logger.warning('download_all: regenerate %s failed: %s',
+                           expected_filename, exc)
+        return target if target.is_file() else None
+
+    # ---- Build the file list ----------------------------------------------
+    files_to_zip = []
+
+    # Common all-areas SVGs
+    f = _ensure_via_cli(
+        ['export', 'l1_diagram', '--type', 'all_areas_tag'],
+        f'[L1_DIAGRAM]AllAreasTag_{basename}.svg',
+    )
+    if f:
+        files_to_zip.append(f)
+
+    f = _ensure_via_cli(
+        ['export', 'l3_diagram', '--type', 'all_areas'],
+        f'[L3_DIAGRAM]AllAreas_{basename}.svg',
+    )
+    if f:
+        files_to_zip.append(f)
+
+    # Per-area SVGs for the selected area
+    f = _ensure_via_cli(
+        ['export', 'l1_diagram', '--type', 'per_area_tag', '--area', area_arg],
+        f'[L1_DIAGRAM]PerAreaTag_{basename}_{safe_area}.svg',
+    )
+    if f:
+        files_to_zip.append(f)
+
+    f = _ensure_via_cli(
+        ['export', 'l3_diagram', '--type', 'per_area', '--area', area_arg],
+        f'[L3_DIAGRAM]PerArea_{basename}_{safe_area}.svg',
+    )
+    if f:
+        files_to_zip.append(f)
+
+    f = _ensure_via_cli(
+        ['export', 'l2_diagram', '--area', area_arg],
+        f'[L2_DIAGRAM]{area_arg}_{basename}.svg',
+    )
+    if f:
+        files_to_zip.append(f)
+
+    # Device Table HTML -- always regenerate to guarantee freshness (cheap)
+    device_html_name = f'[DEVICE_TABLE]{basename}.html'
+    device_html_path = work_dir / device_html_name
+    try:
+        try:
+            from nsm_device_table_html import (
+                build_device_tabs_data, render_device_table_html,
+            )
+        except ImportError:
+            from ns_engine.nsm_device_table_html import (
+                build_device_tabs_data, render_device_table_html,
+            )
+        tabs_data, master_basename = build_device_tabs_data(
+            str(work_dir / master_filename))
+        if tabs_data:
+            html_text = render_device_table_html(tabs_data, master_basename or basename)
+            with open(str(device_html_path), 'w', encoding='utf-8') as df:
+                df.write(html_text)
+            files_to_zip.append(device_html_path)
+    except Exception as exc:
+        logger.warning('download_all: Device Table HTML generation failed: %s', exc)
+
+    # AI Context (skip if not yet generated; do not block ZIP)
+    ai_path = work_dir / f'[AI_Context]{basename}.txt'
+    if ai_path.is_file():
+        files_to_zip.append(ai_path)
+
+    # Master .nsm itself (only when the active master is a .nsm)
+    if master_filename.lower().endswith('.nsm'):
+        files_to_zip.append(work_dir / master_filename)
+
+    # ---- Assemble ZIP ------------------------------------------------------
+    zip_name = f'{basename}_{safe_area}.zip'
     zip_path = work_dir / zip_name
     with zipfile.ZipFile(str(zip_path), 'w', zipfile.ZIP_DEFLATED) as zf:
-        for f in sorted(os.listdir(work_dir)):
-            if f == zip_name or '__TMP__' in f:
-                continue
-            if f.startswith('.'):
-                continue
-            if f.startswith('[MASTER]') and f.endswith('.xlsx'):
-                continue
-            if f.startswith('[L2_TABLE]') or f.startswith('[L3_TABLE]'):
-                continue
-            fpath = os.path.join(work_dir, f)
-            if os.path.isfile(fpath):
-                zf.write(fpath, f)
+        for fpath in files_to_zip:
+            if fpath and Path(fpath).is_file():
+                zf.write(str(fpath), Path(fpath).name)
 
-    request._ns_download_filename = 'network_sketcher_output.zip'
+    request._ns_download_filename = zip_name
     return send_file(
         str(zip_path),
         as_attachment=True,
-        download_name='network_sketcher_output.zip',
+        download_name=zip_name,
     )
 
 
@@ -5043,6 +4893,7 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
 
     var currentJobId = null;
     var currentAreas = [];
+    var currentSelectedArea = ''; // area chosen via the per-area dropdown (SVG mode only)
     var currentBasename = '';
     var currentMasterFilename = '';
     var currentDeviceCount = 0;
@@ -5088,11 +4939,36 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
     }
 
     // ------------------------------------------------------------------ //
-    // SVG Grid: build the preview grid and start streaming SVG generation //
+    // SVG Grid: hybrid dropdown model (v3.1.2a)                          //
+    //                                                                    //
+    // - Initial render shows three rows only: Device Tables, All Areas,  //
+    //   and a Per-area dropdown row. The per-area cells start empty      //
+    //   with placeholder text; nothing is generated until the user picks //
+    //   an area from the dropdown.                                       //
+    // - Each area selection triggers an on-demand SSE call that produces //
+    //   only that area's L1 / L2 / L3 thumbnails. Server-side cache is   //
+    //   keyed by (attribute, area), so re-picking the same area after    //
+    //   it has been generated once is instantaneous.                     //
+    // - ZIP button is hidden until the per-area generation completes,    //
+    //   then becomes available with ?area=&attr= query parameters that   //
+    //   restrict the ZIP to the selected area's diagrams.                //
     // ------------------------------------------------------------------ //
+
+    // cellMap is reused by both the initial SSE and the per-area SSE, so it
+    // lives outside buildSvgGrid().
+    var svgGridCellMap = {};
+    var svgGridSelAttr = '';
+    var svgGridPerAreaEventSource = null;
+    var svgGridPerAreaStartTime = 0;
+
     function buildSvgGrid(initAttr) {
-        // Close any existing SSE stream
+        // Close any existing SSE streams (both initial and per-area)
         if (svgGridEventSource) { svgGridEventSource.close(); svgGridEventSource = null; }
+        if (svgGridPerAreaEventSource) {
+            svgGridPerAreaEventSource.close();
+            svgGridPerAreaEventSource = null;
+        }
+        svgGridCellMap = {};
 
         // Determine selected attribute: prefer initAttr (passed from change handler),
         // then the existing DOM dropdown, then the first title.
@@ -5105,27 +4981,16 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                 selAttr = currentAttributeTitles[0];
             }
         }
+        svgGridSelAttr = selAttr;
 
-        // Row definitions: [row_id, row_label]
-        var rows = [
-            ['all_areas', 'All Areas'],
-        ];
-        for (var ai = 0; ai < currentAreas.length; ai++) {
-            rows.push(['area_' + currentAreas[ai], currentAreas[ai]]);
-        }
+        // Reset per-area selection on every (re)build (e.g. attribute toggle).
+        currentSelectedArea = '';
 
-        // Column definitions: [col_id, col_label, cell_for_row_fn]
-        // cell_for_row_fn(row_id) => grid cell_id for this col+row combo
+        // Column definitions
         var cols = [
-            { id: 'l1', label: 'Layer 1', cellId: function(row_id) {
-                if (row_id === 'all_areas') return 'l1_all';
-                return 'l1_per_area_' + row_id.replace(/^area_/, ''); } },
-            { id: 'l2', label: 'Layer 2', cellId: function(row_id) {
-                if (row_id === 'all_areas') return null;
-                return 'l2_area_' + row_id.replace(/^area_/, ''); } },
-            { id: 'l3', label: 'Layer 3', cellId: function(row_id) {
-                if (row_id === 'all_areas') return 'l3_all';
-                return 'l3_per_area_' + row_id.replace(/^area_/, ''); } },
+            { id: 'l1', label: 'Layer 1' },
+            { id: 'l2', label: 'Layer 2' },
+            { id: 'l3', label: 'Layer 3' },
         ];
 
         // Build HTML table
@@ -5148,9 +5013,14 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
             }
             attrSel2.value = selAttr;   // restore previously selected attribute
             selAttr = attrSel2.value || currentAttributeTitles[0];
+            svgGridSelAttr = selAttr;
             attrSel2.addEventListener('change', function() {
                 var savedAttr = this.value;   // capture before DOM is cleared
                 if (svgGridEventSource) { svgGridEventSource.close(); svgGridEventSource = null; }
+                if (svgGridPerAreaEventSource) {
+                    svgGridPerAreaEventSource.close();
+                    svgGridPerAreaEventSource = null;
+                }
                 outputList.innerHTML = '';
                 buildSvgGrid(savedAttr);      // pass saved value to next build
             });
@@ -5175,13 +5045,10 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
             hrow.appendChild(th);
         }
 
-        // Body rows — collect all unique cell_ids to stream
         var tbody = table.createTBody();
-        var cellMap = {}; // cell_id => td element (may map to multiple tds)
 
-        // --- Device File row (top, before All Areas) ---
+        // --- Device File row (top) ---
         var devPreviewUrl = '/device_preview/' + currentJobId;
-        // col id -> tab id mapping: L1->l1 interface, L2->l2 interface, L3->l3 interface
         var devColTabMap = { l1: 'l1', l2: 'l2', l3: 'l3' };
         var devTr = tbody.insertRow();
         devTr.className = 'device-file-row';
@@ -5189,48 +5056,97 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
         devThCell.className = 'row-header';
         devThCell.innerHTML = '<a href="' + devPreviewUrl + '" target="_blank" '
             + 'style="text-decoration:none;color:inherit;">Device Tables</a>';
-        var devTdByTabId = {};  // tabId -> td element
+        var devTdByTabId = {};
         for (var dci = 0; dci < cols.length; dci++) {
             var dTd = devTr.insertCell();
             dTd.innerHTML = '<div class="cell-spinner">&#8987;</div>';
             devTdByTabId[devColTabMap[cols[dci].id]] = dTd;
         }
 
-        // --- Diagram rows (All Areas + per-area) ---
-        for (var ri = 0; ri < rows.length; ri++) {
-            var row_id = rows[ri][0];
-            var row_label = rows[ri][1];
-            var tr = tbody.insertRow();
-
-            var tdHeader = tr.insertCell();
-            tdHeader.className = 'row-header';
-            tdHeader.textContent = row_label;
-
-            for (var ci2 = 0; ci2 < cols.length; ci2++) {
-                var cell_id = cols[ci2].cellId(row_id);
-                var td = tr.insertCell();
-
-                if (!cell_id) {
-                    // N/A cell (e.g., L2 for All Areas)
-                    td.innerHTML = '<div class="cell-na">N/A</div>';
-                    continue;
-                }
-
-                // Spinner placeholder
-                td.setAttribute('data-cell', cell_id);
-                td.innerHTML = '<div class="cell-spinner">&#8987;</div>';
-
-                if (!cellMap[cell_id]) cellMap[cell_id] = [];
-                cellMap[cell_id].push(td);
+        // --- All Areas row ---
+        var allTr = tbody.insertRow();
+        var allHdr = allTr.insertCell();
+        allHdr.className = 'row-header';
+        allHdr.textContent = 'All Areas';
+        for (var ci_all = 0; ci_all < cols.length; ci_all++) {
+            var allTd = allTr.insertCell();
+            var allCellId = null;
+            if (cols[ci_all].id === 'l1') allCellId = 'l1_all';
+            else if (cols[ci_all].id === 'l3') allCellId = 'l3_all';
+            // L2 has no All-Areas variant
+            if (!allCellId) {
+                allTd.innerHTML = '<div class="cell-na">N/A</div>';
+            } else {
+                allTd.setAttribute('data-cell', allCellId);
+                allTd.innerHTML = '<div class="cell-spinner">&#8987;</div>';
+                if (!svgGridCellMap[allCellId]) svgGridCellMap[allCellId] = [];
+                svgGridCellMap[allCellId].push(allTd);
             }
+        }
+
+        // --- Per-area dropdown row ---
+        // Only shown when the master has real (non-waypoint) areas.
+        var perAreaTr = null;
+        var perAreaCellsByCol = {};   // 'l1'|'l2'|'l3' -> td element
+        if (currentAreas.length > 0) {
+            perAreaTr = tbody.insertRow();
+            perAreaTr.id = 'svgGridPerAreaRow';
+            var perAreaHdr = perAreaTr.insertCell();
+            perAreaHdr.className = 'row-header';
+            // Build dropdown with a placeholder + every real area
+            var sel = document.createElement('select');
+            sel.id = 'svgGridAreaSelect';
+            sel.style.cssText = 'max-width:160px;font-size:13px;padding:4px 6px;';
+            var placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = '(select an area)';
+            sel.appendChild(placeholder);
+            for (var aii = 0; aii < currentAreas.length; aii++) {
+                var opt = document.createElement('option');
+                opt.value = currentAreas[aii];
+                opt.textContent = currentAreas[aii];
+                sel.appendChild(opt);
+            }
+            sel.value = '';
+            perAreaHdr.appendChild(sel);
+
+            for (var ci_pa = 0; ci_pa < cols.length; ci_pa++) {
+                var paTd = perAreaTr.insertCell();
+                paTd.innerHTML = '<div class="cell-na" style="color:#9aa5b1;">'
+                    + 'Select an area<br>to generate</div>';
+                perAreaCellsByCol[cols[ci_pa].id] = paTd;
+            }
+
+            sel.addEventListener('change', function() {
+                var areaName = this.value || '';
+                if (!areaName) {
+                    // User cleared the selection -- reset to placeholder state
+                    currentSelectedArea = '';
+                    for (var k in perAreaCellsByCol) {
+                        if (Object.prototype.hasOwnProperty.call(perAreaCellsByCol, k)) {
+                            perAreaCellsByCol[k].innerHTML =
+                                '<div class="cell-na" style="color:#9aa5b1;">'
+                                + 'Select an area<br>to generate</div>';
+                        }
+                    }
+                    if (svgGridPerAreaEventSource) {
+                        svgGridPerAreaEventSource.close();
+                        svgGridPerAreaEventSource = null;
+                    }
+                    // Re-enable the lightweight ZIP download (initial state).
+                    setZipButtonLightweight();
+                    return;
+                }
+                currentSelectedArea = areaName;
+                requestAreaThumbnails(areaName, perAreaCellsByCol);
+            });
         }
 
         scrollDiv.appendChild(table);
         wrapper.appendChild(scrollDiv);
         outputList.appendChild(wrapper);
 
-        // --- Fetch Device File thumbnail data in parallel with SSE ---
-        // Render iframe thumbnails directly — no fetch needed
+        // --- Render Device Tables iframe thumbnails ---
         (function renderDeviceIframes() {
             Object.keys(devTdByTabId).forEach(function(tabId) {
                 var tabUrl = '/device_preview/' + currentJobId + '#' + tabId;
@@ -5238,19 +5154,12 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
             });
         })();
 
-        // Build SSE URL
-        var sseUrl = '/svg_grid_stream/' + currentJobId;
-        var sseParams = [];
-        if (selAttr) sseParams.push('attribute=' + encodeURIComponent(selAttr));
-        for (var ai2 = 0; ai2 < currentAreas.length; ai2++) {
-            sseParams.push('area=' + encodeURIComponent(currentAreas[ai2]));
-        }
-        if (sseParams.length) sseUrl += '?' + sseParams.join('&');
+        // --- Build INITIAL SSE URL: All Areas + AI Context only ---
+        var sseUrl = '/svg_grid_stream/' + currentJobId + '?mode=initial';
+        if (selAttr) sseUrl += '&attribute=' + encodeURIComponent(selAttr);
 
-        // Start SSE
         var svgGridTotalEl = document.getElementById('svgGridTotal');
         if (svgGridTotalEl) {
-            // Show estimated generation time until SSE done replaces it with actual time
             if (currentDeviceCount > 0) {
                 svgGridTotalEl.textContent = _fmtEstimate(_estimateSec(currentDeviceCount, _PERF_DIAGRAMS));
                 svgGridTotalEl.style.display = 'flex';
@@ -5260,12 +5169,12 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
         }
         var svgGridStartTime = Date.now();
 
-        // Re-disable ZIP button while SVG generation is running (covers attribute toggle)
-        if (currentJobId) {
-            btnDownloadAll.href = '/download_all/' + currentJobId;
-            btnDownloadAll.classList.add('disabled');
-            btnDownloadAll.style.display = 'block';
-        }
+        // ZIP button: hidden while the initial generation is in flight;
+        // the initial SSE 'done' handler below enables it with a lightweight
+        // ZIP URL (Device Tables HTML + L1_all + L3_all + AI Context + .nsm),
+        // and a subsequent area pick swaps the URL to the area-scoped one.
+        btnDownloadAll.classList.add('disabled');
+        btnDownloadAll.style.display = 'none';
 
         svgGridEventSource = new EventSource(sseUrl);
 
@@ -5280,9 +5189,7 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                         svgGridTotalEl.textContent = 'Generated in ' + formatElapsed(svgElapsed);
                         svgGridTotalEl.style.display = 'flex';
                     }
-                    // Enable ZIP download button now that all SVGs are ready
-                    btnDownloadAll.classList.remove('disabled');
-                    // Remove spinner and add Download button
+                    // AI Context Download button
                     var aiRow = document.getElementById('fileActionsAiRow');
                     var aiSpinner = document.getElementById('fileActionsAiSpinner');
                     if (aiSpinner) aiSpinner.remove();
@@ -5298,45 +5205,119 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                             activateUpdateLlmButtons(dlLink.href, msg.ai_filename);
                         }
                     }
+                    // Enable lightweight ZIP download now that the initial
+                    // artifacts (Device Tables + L1_all + L3_all + AI Context)
+                    // are ready. If the user later picks an area, the URL is
+                    // upgraded to the area-scoped ZIP in requestAreaThumbnails().
+                    setZipButtonLightweight();
                     return;
                 }
-                var cell_id = msg.cell;
-                var tds = cellMap[cell_id];
-                if (!tds) return;
-
-                var inner = '';
-                if (msg.error || !msg.files || msg.files.length === 0) {
-                    inner = '<div class="cell-error">&#10007;<br>Error</div>';
-                } else {
-                    // Build viewer URL: use first SVG file, pass filter prefix if multiple
-                    var firstFile = msg.files[0];
-                    var viewerUrl = '/preview/' + currentJobId + '/' + encodeURIComponent(firstFile);
-                    if (msg.filter) viewerUrl += '?filter=' + encodeURIComponent(msg.filter);
-                    // Thumbnail: use base64 data URI from SSE payload if available (avoids
-                    // Windows file-lock races between shutil.move and browser HTTP requests).
-                    // Fall back to /svg_raw/ URL for large files not embedded in the SSE event.
-                    var fallbackUrl = '/svg_raw/' + currentJobId + '/' + encodeURIComponent(firstFile)
-                        + '?v=' + encodeURIComponent(selAttr || '_');
-                    var thumbUrl = msg.svg_b64
-                        ? 'data:image/svg+xml;base64,' + msg.svg_b64
-                        : fallbackUrl;
-                    var dataFallback = msg.svg_b64
-                        ? ' data-fallback-src="' + escapeAttr(fallbackUrl) + '"'
-                        : '';
-                    inner = '<a class="svg-cell-inner" href="' + viewerUrl + '" target="_blank">'
-                        + '<img class="svg-thumb" src="' + thumbUrl + '"' + dataFallback + ' alt="' + escapeHtml(cell_id) + '" loading="eager" onerror="svgThumbRetry(this)">'
-                        + '<span class="svg-cell-label">' + escapeHtml(firstFile) + '</span>'
-                        + '</a>';
-                }
-                for (var ti2 = 0; ti2 < tds.length; ti2++) {
-                    tds[ti2].innerHTML = inner;
-                }
-
+                renderCellFromSseMessage(msg, svgGridCellMap, svgGridSelAttr);
             } catch (e) {}
         };
 
         svgGridEventSource.onerror = function() {
             if (svgGridEventSource) { svgGridEventSource.close(); svgGridEventSource = null; }
+        };
+    }
+
+    // Set the ZIP button to the lightweight (no area selected) download URL.
+    // Used when the initial SSE completes and when the user clears their
+    // area selection in the per-area dropdown.
+    function setZipButtonLightweight() {
+        if (!currentJobId) return;
+        var href = '/download_all/' + currentJobId + '?scope=lightweight';
+        if (svgGridSelAttr) href += '&attr=' + encodeURIComponent(svgGridSelAttr);
+        btnDownloadAll.href = href;
+        btnDownloadAll.classList.remove('disabled');
+        btnDownloadAll.style.display = 'block';
+    }
+
+    // Common SSE message renderer for a single grid cell update.
+    function renderCellFromSseMessage(msg, cellMap, selAttr) {
+        var cell_id = msg.cell;
+        var tds = cellMap[cell_id];
+        if (!tds) return;
+        var inner = '';
+        if (msg.error || !msg.files || msg.files.length === 0) {
+            inner = '<div class="cell-error">&#10007;<br>Error</div>';
+        } else {
+            var firstFile = msg.files[0];
+            var viewerUrl = '/preview/' + currentJobId + '/' + encodeURIComponent(firstFile);
+            if (msg.filter) viewerUrl += '?filter=' + encodeURIComponent(msg.filter);
+            var fallbackUrl = '/svg_raw/' + currentJobId + '/' + encodeURIComponent(firstFile)
+                + '?v=' + encodeURIComponent(selAttr || '_');
+            var thumbUrl = msg.svg_b64
+                ? 'data:image/svg+xml;base64,' + msg.svg_b64
+                : fallbackUrl;
+            var dataFallback = msg.svg_b64
+                ? ' data-fallback-src="' + escapeAttr(fallbackUrl) + '"'
+                : '';
+            inner = '<a class="svg-cell-inner" href="' + viewerUrl + '" target="_blank">'
+                + '<img class="svg-thumb" src="' + thumbUrl + '"' + dataFallback + ' alt="' + escapeHtml(cell_id) + '" loading="eager" onerror="svgThumbRetry(this)">'
+                + '<span class="svg-cell-label">' + escapeHtml(firstFile) + '</span>'
+                + '</a>';
+        }
+        for (var ti = 0; ti < tds.length; ti++) {
+            tds[ti].innerHTML = inner;
+        }
+    }
+
+    // Request per-area thumbnails for the user-selected area.
+    // Each call closes any previous per-area stream, repopulates the three
+    // per-area cells with spinners, opens a new SSE in mode=area, and on
+    // completion enables the ZIP button with area/attr query parameters.
+    function requestAreaThumbnails(areaName, perAreaCellsByCol) {
+        if (svgGridPerAreaEventSource) {
+            svgGridPerAreaEventSource.close();
+            svgGridPerAreaEventSource = null;
+        }
+        // Spinner placeholders + (re-)register cells in cellMap
+        var l1cell = 'l1_per_area_' + areaName;
+        var l2cell = 'l2_area_' + areaName;
+        var l3cell = 'l3_per_area_' + areaName;
+        svgGridCellMap[l1cell] = [perAreaCellsByCol.l1];
+        svgGridCellMap[l2cell] = [perAreaCellsByCol.l2];
+        svgGridCellMap[l3cell] = [perAreaCellsByCol.l3];
+        for (var k in perAreaCellsByCol) {
+            if (Object.prototype.hasOwnProperty.call(perAreaCellsByCol, k)) {
+                perAreaCellsByCol[k].innerHTML = '<div class="cell-spinner">&#8987;</div>';
+            }
+        }
+
+        // Keep the lightweight ZIP active while per-area generation runs;
+        // the SSE 'done' handler upgrades the URL to the area-scoped ZIP.
+
+        var sseUrl = '/svg_grid_stream/' + currentJobId
+            + '?mode=area'
+            + '&area=' + encodeURIComponent(areaName);
+        if (svgGridSelAttr) sseUrl += '&attribute=' + encodeURIComponent(svgGridSelAttr);
+        svgGridPerAreaStartTime = Date.now();
+
+        svgGridPerAreaEventSource = new EventSource(sseUrl);
+        svgGridPerAreaEventSource.onmessage = function(ev) {
+            try {
+                var msg = JSON.parse(ev.data);
+                if (msg.done) {
+                    svgGridPerAreaEventSource.close();
+                    svgGridPerAreaEventSource = null;
+                    // Upgrade ZIP button to the area-scoped download URL.
+                    var zipHref = '/download_all/' + currentJobId
+                        + '?area=' + encodeURIComponent(areaName)
+                        + '&attr=' + encodeURIComponent(svgGridSelAttr || '');
+                    btnDownloadAll.href = zipHref;
+                    btnDownloadAll.classList.remove('disabled');
+                    btnDownloadAll.style.display = 'block';
+                    return;
+                }
+                renderCellFromSseMessage(msg, svgGridCellMap, svgGridSelAttr);
+            } catch (e) {}
+        };
+        svgGridPerAreaEventSource.onerror = function() {
+            if (svgGridPerAreaEventSource) {
+                svgGridPerAreaEventSource.close();
+                svgGridPerAreaEventSource = null;
+            }
         };
     }
 
@@ -5352,6 +5333,10 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
 
     document.getElementById('formatToggle').addEventListener('change', function() {
         if (svgGridEventSource) { svgGridEventSource.close(); svgGridEventSource = null; }
+        if (svgGridPerAreaEventSource) {
+            svgGridPerAreaEventSource.close();
+            svgGridPerAreaEventSource = null;
+        }
         outputMode = this.checked ? 'pptx' : 'svg';
         document.getElementById('labelSvg').classList.toggle('active', !this.checked);
         document.getElementById('labelPptx').classList.toggle('active', this.checked);
@@ -6271,15 +6256,12 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
         // Reflect AI Context checkbox in the selected count immediately
         if (typeof updateSelectedCount === 'function') updateSelectedCount();
 
-        // ZIP download button: show disabled in SVG mode immediately after upload;
-        // hide again when switching away from SVG mode before generation completes.
-        if (outputMode === 'svg' && currentJobId) {
-            btnDownloadAll.href = '/download_all/' + currentJobId;
+        // ZIP download button: in SVG mode the per-area dropdown drives it
+        // (see requestAreaThumbnails); keep it hidden until the user picks
+        // an area. In PPTX mode the ZIP is whole-job and is enabled by the
+        // PPTX generation completion handlers below.
+        if (outputMode === 'svg') {
             btnDownloadAll.classList.add('disabled');
-            btnDownloadAll.style.display = 'block';
-        } else if (btnDownloadAll.classList.contains('disabled')) {
-            // Switched away from SVG mode while generation was still pending — hide button
-            btnDownloadAll.classList.remove('disabled');
             btnDownloadAll.style.display = 'none';
         }
     }
@@ -6377,9 +6359,16 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                         if (aiCb) { aiCb.disabled = true; aiCb.checked = false; }
                     }
                 }
-                btnDownloadAll.href = '/download_all/' + currentJobId;
-                btnDownloadAll.classList.remove('disabled');
-                btnDownloadAll.style.display = 'block';
+                if (outputMode === 'svg') {
+                    // SVG mode uses area-scoped ZIP; the per-area dropdown
+                    // controls visibility/enabled state of the button.
+                    btnDownloadAll.classList.add('disabled');
+                    btnDownloadAll.style.display = 'none';
+                } else {
+                    btnDownloadAll.href = '/download_all/' + currentJobId;
+                    btnDownloadAll.classList.remove('disabled');
+                    btnDownloadAll.style.display = 'block';
+                }
                 btnReset.style.display = 'block';
                 updateSelectedCount();
             }
@@ -6616,9 +6605,16 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                 selectionSection.style.opacity = '';
                 btnGenerate.disabled = false;
                 btnGenerate.style.display = '';
-                btnDownloadAll.href = '/download_all/' + currentJobId;
-                btnDownloadAll.classList.remove('disabled');
-                btnDownloadAll.style.display = 'block';
+                if (outputMode === 'svg') {
+                    // SVG mode uses area-scoped ZIP; the per-area dropdown
+                    // controls visibility/enabled state of the button.
+                    btnDownloadAll.classList.add('disabled');
+                    btnDownloadAll.style.display = 'none';
+                } else {
+                    btnDownloadAll.href = '/download_all/' + currentJobId;
+                    btnDownloadAll.classList.remove('disabled');
+                    btnDownloadAll.style.display = 'block';
+                }
                 btnReset.style.display = 'block';
                 generationTotal.style.display = 'none';
                 saveSession();
@@ -6767,9 +6763,16 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                 summary.style.display = 'block';
             }
 
-            btnDownloadAll.href = '/download_all/' + currentJobId;
-            btnDownloadAll.classList.remove('disabled');
-            btnDownloadAll.style.display = 'block';
+            if (outputMode === 'svg') {
+                // SVG mode uses area-scoped ZIP; keep the button hidden until
+                // the user picks an area from the per-area dropdown.
+                btnDownloadAll.classList.add('disabled');
+                btnDownloadAll.style.display = 'none';
+            } else {
+                btnDownloadAll.href = '/download_all/' + currentJobId;
+                btnDownloadAll.classList.remove('disabled');
+                btnDownloadAll.style.display = 'block';
+            }
 
             if (data.generated_files && data.generated_files.length > 0) {
                 await addDownloadButtons();

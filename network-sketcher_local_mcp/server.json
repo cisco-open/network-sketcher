@@ -3,7 +3,7 @@
   "name": "io.github.cisco-open/network-sketcher",
   "title": "Network Sketcher (Local MCP)",
   "description": "AI-native MCP server that wraps the Network Sketcher engine to design and manage Cisco network configurations from LLM clients (Cursor, Claude Code, etc.). Generates L1/L2/L3 topology diagrams (PowerPoint and SVG) and manages device data (Excel) entirely from natural-language conversations with the agent.",
-  "version": "3.1.2",
+  "version": "3.1.2a",
   "license": "Apache-2.0",
   "homepage": "https://github.com/cisco-open/network-sketcher",
   "repository": {
@@ -118,11 +118,19 @@
       },
       {
         "name": "export_diagram",
-        "description": "Export an L1, L2, or L3 network diagram for the given .nsm master. Output format is SVG (default, fast, browser-renderable) or PPTX (editable in PowerPoint). Requires get_ai_context to have been called at least once in this session.",
+        "description": "Export an L1, L2, or L3 network diagram for the given .nsm master. Output format is SVG (default, fast, browser-renderable) or PPTX (editable in PowerPoint). When 'area' is omitted, the legacy behaviour is preserved (L1: all_areas_tag, L3: all_areas, L2: first area). When 'area' is supplied, only that single area is generated (L1/L3 require format='svg'; L2 supports area for both formats). Requires get_ai_context to have been called at least once in this session.",
         "arguments": [
           { "name": "master", "type": "string", "required": true,  "description": "Master filename in the active workspace." },
           { "name": "layer",  "type": "string", "required": true,  "description": "One of 'l1', 'l2', 'l3' (case-insensitive)." },
-          { "name": "format", "type": "string", "required": false, "description": "'svg' (default) or 'pptx'." }
+          { "name": "format", "type": "string", "required": false, "description": "'svg' (default) or 'pptx'." },
+          { "name": "area",   "type": "string", "required": false, "description": "Optional area name. When given, only that area's diagram is generated; otherwise the legacy all-areas-or-first-area behaviour applies. For L1/L3 this requires format='svg'." }
+        ]
+      },
+      {
+        "name": "export_device_table_html",
+        "description": "Export an interactive HTML Device Table preview from a .nsm master (.xlsx masters are rejected). The output is a single self-contained HTML file ('[DEVICE_TABLE]{basename}.html') with six tabs (L1 / L2 / L3 / Attribute / IP Address_Summary / IP Address_List) whose layout matches the Network Sketcher Online edition's Device Preview screen, including sticky-header tables, per-tab CSV/HTML download buttons, and URL-hash initial-tab selection. No external CDN or scripts are referenced, so the file can be opened directly from disk or shared as a single artifact.",
+        "arguments": [
+          { "name": "master", "type": "string", "required": true, "description": "Master filename in the active workspace (e.g. '[MASTER]office.nsm')." }
         ]
       }
     ],

@@ -247,8 +247,20 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
     # Derive per-area file path template: /dir/[L1_DIAGRAM]PerAreaTag_<base>_<area>.svg
     base_no_ext = os.path.splitext(save_svg_file)[0] if save_svg_file else None
 
+    # Optional single-area filter:
+    # When the caller (CLI / web layer) sets ``ctx._target_area_filter`` to
+    # an area name, Pass 1 still scans every area so that any future
+    # cross-area sizing logic stays consistent, but Pass 2 only renders the
+    # requested area. This is the primary speed-up path used by the Online
+    # SVG mode's per-area dropdown and the Local MCP ``--area`` flag.
+    target_area = getattr(ctx, '_target_area_filter', None)
+    if target_area is not None:
+        target_area = str(target_area).strip() or None
+
     saved_svg_paths = []
     for tmp_folder_name, current_y_grid_array, convert_tuple in per_area_data:
+        if target_area and str(tmp_folder_name) != target_area:
+            continue
         ctx.tmp_folder_name = tmp_folder_name
         ctx.position_folder_array = current_y_grid_array
         ctx.position_folder_tuple = convert_tuple
