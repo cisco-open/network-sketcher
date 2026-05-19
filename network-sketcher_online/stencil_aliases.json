@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "_comment": "Stencil mapping for draw.io stencilization. Edit freely; restart of ns_web_start.py is NOT required (mtime-based hot reload). Keys are draw.io official Cisco stencil IDs (mxgraph.*). v2 schema: each shape has 'exact', 'prefix', 'contains' keyword lists. Matching is case-/whitespace-/hyphen-/underscore-/slash-insensitive. Resolution priority for each device: (1) master Default column = 'WayPoint' -> cloud (color-independent), (2) master Stencil Type column starting with 'mxgraph.' -> passthrough, (3) Stencil Type column exact alias match, (4) longest prefix match against device name + non-special attribute columns (Role/Model/OS/Type/...), (5) longest contains match against the same sources, (6) default_shape. Symmetry rule: when Default = 'DEVICE', the 'mxgraph.cisco.storage.cloud' shape is removed from the heuristic candidate set in steps (4) and (5), because a DEVICE row is by definition a real device; cloud rendering for a DEVICE row must be requested explicitly via the Stencil Type column (steps (2)/(3)). Use 'prefix' for short abbreviations (fw, fpr, rt, ap, pc, sw, n9, ir, ncs, hx, ucs) so they only match at the start of a token; use 'contains' for full words (firewall, router, switch) that may appear anywhere. Stencil filter: only cells whose name appears in the master AND whose Default column equals 'DEVICE' or 'WayPoint' are stencilized; color-based filtering has been removed so user palette edits do not affect classification. v1 backward compatibility: a top-level 'aliases' key with flat lists is still accepted and treated as 'exact'-only. Model number expansion convention: 4-digit Cisco model numbers are expanded into four canonical keywords -- the numeric form with the last 2 digits zeroed (granular sub-models are intentionally dropped) plus three textual prefixes 'C##', 'CAT##', 'Catalyst##' built from the first 2 digits. Example: 9166 -> ['9100', 'C91', 'CAT91', 'Catalyst91']. For Cisco Nexus switches an additional 'N##' / 'Nexus##' pair is registered so that DC names like 'Nexus-9332-Spine' or 'N9300-Leaf01' resolve to the Layer 3 stencil. Special note for the 93xx range: Catalyst 9300 (L2 access) and Nexus / generic L3 9300-class both expand to 'C93/CAT93/Catalyst93'; tie-breaking follows JSON declaration order, so workgroup_switch (L2) is intentionally declared BEFORE layer_3_switch in this file -- this aligns with the real-world fact that Catalyst 9300 is most commonly an L2 access switch. Nexus naming (N93/Nexus93/n9 prefix) is unique to L3 and never collides with L2. Override per device with the Stencil Type column when the heuristic generalisation is undesirable (e.g. set Stencil Type = 'mxgraph.cisco.switches.layer_3_switch' for a Catalyst 9300 acting as L3). Keyword sources: classified per Cisco product portfolio data sourced from Catalyst 9000 / Nexus 9000 / Catalyst 9800 / Catalyst 9100 / Cisco 8000 / ISR 1000+4000 / ASR 1000 / Secure Firewall 1000-4200 / UCS C-/B-/X-Series / Catalyst SD-WAN documentation (verified via TechQA-MATCHA Cisco docs corpus, Apr 2026).",
+  "_comment": "Stencil mapping for draw.io stencilization (keys are draw.io official mxgraph.cisco.* shape IDs). v2 schema: each shape has 'exact' / 'prefix' / 'contains' keyword lists; matching is case-, whitespace-, hyphen-, underscore- and slash-insensitive, and edits are picked up via mtime-based hot reload in ns_web_start.py with no restart required. Resolution priority per device: master Default='WayPoint' -> cloud; else master 'Stencil Type' column (passthrough if value starts with 'mxgraph.', otherwise treated as exact alias); else longest 'prefix' match; else longest 'contains' match against device name + non-special attribute columns; else default_shape. See _resolve_stencil() in ns_web_start.py for the canonical spec, the 4-digit model expansion convention (e.g. 9166 -> 9100 / C91 / CAT91 / Catalyst91), the Default='DEVICE' cloud-exclusion symmetry rule, and v1 'aliases' flat-list backward compatibility.",
   "default_shape": "mxgraph.cisco.servers.standard_host",
   "shapes": {
     "mxgraph.cisco.security.firewall": {
@@ -8,22 +8,12 @@
         "firewall", "fw", "ngfw",
         "asa", "ftd", "ftdv", "fmc", "fmcv", "securefirewall",
         "fpr", "firepower",
-        "branchfirewall", "edgefirewall", "internetfirewall",
-        "1000", "C10", "CAT10", "Catalyst10",
-        "2100", "C21", "CAT21", "Catalyst21",
-        "3100", "C31", "CAT31", "Catalyst31",
-        "4100", "C41", "CAT41", "Catalyst41",
-        "4200", "C42", "CAT42", "Catalyst42"
+        "branchfirewall", "edgefirewall", "internetfirewall"
       ],
-      "prefix": ["fw", "fpr", "firepower"],
+      "prefix": ["fw", "fpr", "firepower", "securefirewall"],
       "contains": [
         "firewall", "asa", "ftd", "ftdv", "ngfw", "fmc", "fmcv",
-        "fpr", "firepower",
-        "1000", "C10", "CAT10", "Catalyst10",
-        "2100", "C21", "CAT21", "Catalyst21",
-        "3100", "C31", "CAT31", "Catalyst31",
-        "4100", "C41", "CAT41", "Catalyst41",
-        "4200", "C42", "CAT42", "Catalyst42"
+        "fpr", "firepower", "securefirewall"
       ]
     },
     "mxgraph.cisco.wireless.wireless_lan_controller": {
@@ -42,11 +32,7 @@
       "exact": [
         "ap", "accesspoint", "wirelessap", "flexconnectap",
         "iw", "industrialwireless",
-        "9100", "C91", "CAT91", "Catalyst91",
-        "1500", "C15", "CAT15", "Catalyst15",
-        "1800", "C18", "CAT18", "Catalyst18",
-        "2800", "C28", "CAT28", "Catalyst28",
-        "3800", "C38", "CAT38", "Catalyst38"
+        "9100", "C91", "CAT91", "Catalyst91"
       ],
       "prefix": ["ap", "iw"],
       "contains": [
@@ -58,45 +44,38 @@
       "exact": [
         "router", "rt",
         "edgerouter", "wanrouter", "branchrouter",
-        "isr", "isr1k", "isr4k", "isr1100", "isr1101",
-        "isr4321", "isr4331", "isr4351", "isr4431", "isr4451", "isr4461",
-        "asr", "asr1k", "asr9k", "asr1001", "asr1002", "asr1006",
-        "ir1101", "ir1800", "ir8100",
-        "ncs", "ncs540", "ncs560", "ncs5500", "ncs5700",
-        "csr1000v", "isrv", "c8000v", "c8500", "c8300", "c8200",
+        "isr", "isr1k", "isr4k", "isr11", "isr43", "isr44",
+        "asr", "asr1k", "asr9k", "asr10",
+        "ir11", "ir18", "ir81",
+        "ncs", "ncs540", "ncs560", "ncs55", "ncs57",
+        "csr10", "isrv", "c80", "c85", "c83", "c82",
         "8000", "C80", "CAT80", "Catalyst80",
         "8200", "C82", "CAT82", "Catalyst82",
         "8300", "C83", "CAT83", "Catalyst83",
-        "8500", "C85", "CAT85", "Catalyst85",
-        "4300", "C43", "CAT43", "Catalyst43",
-        "4400", "C44", "CAT44", "Catalyst44"
+        "8500", "C85", "CAT85", "Catalyst85"
       ],
       "prefix": ["rt", "router", "wan", "ir", "ncs"],
       "contains": [
         "router", "isr", "asr", "edge",
-        "csr1000v", "isrv", "c8000v",
+        "csr10", "isrv", "c80",
         "ncs",
         "8000", "C80", "CAT80", "Catalyst80",
         "8200", "C82", "CAT82", "Catalyst82",
         "8300", "C83", "CAT83", "Catalyst83",
-        "8500", "C85", "CAT85", "Catalyst85",
-        "4300", "C43", "CAT43", "Catalyst43",
-        "4400", "C44", "CAT44", "Catalyst44"
+        "8500", "C85", "CAT85", "Catalyst85"
       ]
     },
     "mxgraph.cisco.switches.workgroup_switch": {
       "exact": [
         "switch", "sw", "l2switch", "l2sw",
         "accessswitch", "access", "officeswitch",
-        "ie", "ie3300", "ie3400", "industrialswitch",
-        "9200", "C92", "CAT92", "Catalyst92",
-        "9300", "C93", "CAT93", "Catalyst93"
+        "ie", "industrialswitch",
+        "9200", "C92", "CAT92", "Catalyst92"
       ],
       "prefix": ["sw", "l2", "ie"],
       "contains": [
         "switch", "access", "industrial",
-        "9200", "C92", "CAT92", "Catalyst92",
-        "9300", "C93", "CAT93", "Catalyst93"
+        "9200", "C92", "CAT92", "Catalyst92"
       ]
     },
     "mxgraph.cisco.switches.layer_3_switch": {
@@ -110,10 +89,10 @@
         "n95", "nexus95",
         "n98", "nexus98",
         "9300", "C93", "CAT93", "Catalyst93",
-        "93180",
         "9400", "C94", "CAT94", "Catalyst94",
         "9500", "C95", "CAT95", "Catalyst95",
-        "9600", "C96", "CAT96", "Catalyst96"
+        "9600", "C96", "CAT96", "Catalyst96",
+        "ie3300", "ie3400"
       ],
       "prefix": ["core", "leaf", "spine", "l3", "n9"],
       "contains": [
@@ -122,7 +101,6 @@
         "n95", "nexus95",
         "n98", "nexus98",
         "9300", "C93", "CAT93", "Catalyst93",
-        "93180",
         "9400", "C94", "CAT94", "Catalyst94",
         "9500", "C95", "CAT95", "Catalyst95",
         "9600", "C96", "CAT96", "Catalyst96"
