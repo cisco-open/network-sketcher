@@ -178,7 +178,7 @@ npx @lobehub/market-cli@^0.0 mcp comment cisco-open-network-sketcher \
 > **AI-native software:** Network Sketcher Online is designed around AI (LLM) interaction — generate AI context, send it to an LLM, and paste the resulting commands back to update your network design, all within the browser.
 
 
-<img width="1559" height="879" alt="image" src="https://github.com/user-attachments/assets/0b87904c-f5b3-4585-a7bc-5b3b1e62c610" />
+<img width="1620" height="898" alt="image" src="https://github.com/user-attachments/assets/cd645a8b-9661-4f74-8bf3-cd12b3395c82" />
 
 
 ### Demo Video (Ver 3.0.1b)
@@ -215,16 +215,6 @@ Network Sketcher Online supports two output modes:
 - Session persistence across browser refreshes with automatic cleanup
 - HTTPS enforced with auto-generated self-signed certificates
 - All settings managed via `ns_web_config.json`
-
-### What's New in 3.1.2 (Online)
-
-- **Download for draw.io (stencil)** — new export option that produces a `.drawio` file with Cisco `mxgraph.cisco.*` stencils auto-applied to all devices and waypoints. Geometry, links, and labels are preserved.
-- **Customizable stencil mapping** (`network-sketcher_online/stencil_aliases.json`) — stencil resolution is driven by an editable JSON file (longest-match across `exact` / `prefix` / `contains` keys). 4-digit model numbers (e.g. `9166`) automatically expand to common variants (`9100` / `C91` / `CAT91` / `Catalyst91`). Catalyst, Nexus, Firepower, Router, AP, Server, and Industrial Switch presets are included.
-- **`Stencil Type` column override** (Attribute sheet of the master file) — operators can pin any device or waypoint to an explicit `mxgraph.*` shape ID for cases the auto-resolver does not cover.
-- **Conditional opacity** — L2 diagrams render all stencils at 45% opacity to keep links visible; L3 diagrams apply the same effect only to devices that contain L3 instances.
-- **Fix:** `rename attribute_bulk` plain-string updates now preserve the existing color instead of silently resetting to white. Initial color setting still requires the full `[name, [r, g, b]]` form. (Same parser fix is also applied to the Offline / Local MCP editions.)
-- **Fix:** L3 draw.io export — IP labels are no longer attached to a large page-frame rectangle.
-- **AI Context updated** (`ns_engine/nsm_extensions_cmd_list.txt`) — documents the new `Stencil Type` column, the `attribute_bulk` color-preservation behavior, and reinforces RULE 14 / RULE 16 guidance.
 
 ## Limitations (Online)
 - Designed for use on internal networks only. Not intended for deployment on the public internet.
