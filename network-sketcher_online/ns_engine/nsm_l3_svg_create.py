@@ -296,7 +296,17 @@ class nsm_l3_svg_create:
         out = getattr(self, 'output_svg_file', None)
 
         if l3_type == 'per_area':
-            # Generate one SVG per area (split by OUTLINE_NORMAL boundaries)
+            # Generate one SVG per area (split by OUTLINE_NORMAL boundaries).
+            # Optional single-area filter: when the caller sets
+            # ``self._target_area_filter`` to an area name, capture is still
+            # run over every area (cheap, single CLI invocation already done)
+            # but only the matching area is rendered + saved. This is the
+            # primary speed-up path used by the Online SVG mode's per-area
+            # dropdown and the Local MCP ``--area`` flag.
+            target_area = getattr(self, '_target_area_filter', None)
+            if target_area is not None:
+                target_area = str(target_area).strip() or None
+
             area_groups = _split_capture_by_area(capture_list)
             saved_paths = []
             base_no_ext = os.path.splitext(out)[0] if out else None
@@ -310,6 +320,8 @@ class nsm_l3_svg_create:
                 area_name = _area_name_from_capture(area_items)
                 # Skip spurious groups that have no FOLDER_NORMAL (no area name)
                 if not area_name:
+                    continue
+                if target_area and area_name != target_area:
                     continue
                 safe_name = _safe_area_name_l3(area_name)
                 title_text = f'[L3] {area_name}'

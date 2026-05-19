@@ -1,11 +1,6 @@
 {
     "_description": "Network Sketcher Local MCP Edition configuration. The MCP server reads this file at startup. Each top-level entry has 'value' (the actual setting) and 'description' (human-readable note).",
 
-    "version": {
-        "value": "3.1.2",
-        "description": "Network Sketcher Local MCP Edition version. Informational only."
-    },
-
     "working_directory": {
         "value": "",
         "description": "OPTIONAL initial workspace. If a non-empty absolute path is provided, the server uses it as the active workspace at startup (auto-created if missing). If empty (recommended for cross-platform portability), no workspace is active at startup; the AI agent must call suggest_workspace() to see OS-appropriate candidates and then set_workspace(path) to pick one. Use '~' for home expansion."

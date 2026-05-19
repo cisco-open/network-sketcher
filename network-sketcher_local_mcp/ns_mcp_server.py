@@ -1027,7 +1027,8 @@ async def export_master_xlsx(master: str) -> str:
 
 
 @mcp.tool()
-async def export_diagram(master: str, layer: str, format: str = 'svg') -> str:
+async def export_diagram(master: str, layer: str, format: str = 'svg',
+                         area: Optional[str] = None) -> str:
     """Export an L1, L2, or L3 network diagram for the given .nsm master.
 
     PREREQUISITE: You MUST have called get_ai_context(master) (or at least
@@ -1040,6 +1041,19 @@ async def export_diagram(master: str, layer: str, format: str = 'svg') -> str:
         layer:  One of 'l1', 'l2', 'l3' (case-insensitive).
         format: 'svg' (default) or 'pptx'. SVG is faster and renders in the
                 browser. PPTX is editable in PowerPoint.
+        area:   Optional area name. When omitted, the legacy behaviour is
+                preserved (L1: all_areas_tag, L3: all_areas, L2: first area
+                in the master). When given:
+                  - L1 generates only that area's per-area-tag SVG
+                    (file: '[L1_DIAGRAM]PerAreaTag_<basename>_<area>.svg').
+                  - L3 generates only that area's per-area SVG
+                    (file: '[L3_DIAGRAM]PerArea_<basename>_<area>.svg').
+                  - L2 generates that area's diagram
+                    (file: '[L2_DIAGRAM]<area>_<basename>.svg' or .pptx).
+                area is only honored together with format='svg' for L1/L3
+                (the engine's PPTX path always produces an all-areas pptx);
+                L2 accepts area for both formats. Unknown area names are
+                rejected by the engine with a clear error.
 
     Returns:
         A summary describing which files were generated, plus the engine
@@ -1062,19 +1076,139 @@ async def export_diagram(master: str, layer: str, format: str = 'svg') -> str:
     if fmt not in {'svg', 'pptx'}:
         return f"[ERROR] Invalid format '{format}'. Must be 'svg' or 'pptx'."
 
+    area_norm: Optional[str] = None
+    if area is not None:
+        if not isinstance(area, str) or not area.strip():
+            return f"[ERROR] Invalid area '{area}'. Must be a non-empty string."
+        area_norm = area.strip()
+        if layer_norm in ('l1', 'l3') and fmt != 'svg':
+            return (
+                f"[ERROR] area is only supported with format='svg' for layer "
+                f"'{layer_norm}' (got format='{fmt}'). L2 supports area for "
+                f"both formats."
+            )
+
     cli_args = [
         'export', f'{layer_norm}_diagram',
         '--master', str(master_path),
         '--format', fmt,
     ]
+    if area_norm:
+        if layer_norm == 'l1':
+            cli_args += ['--type', 'per_area_tag', '--area', area_norm]
+        elif layer_norm == 'l3':
+            cli_args += ['--type', 'per_area', '--area', area_norm]
+        else:  # l2 already takes --area natively
+            cli_args += ['--area', area_norm]
+
     result = await _run(cli_args)
     ok, msg = _classify_result(result)
     status = 'OK' if ok else 'FAIL'
+    area_info = f" --area {area_norm}" if area_norm else ''
     return (
-        f"[{status}] export {layer_norm}_diagram --format {fmt}\n"
+        f"[{status}] export {layer_norm}_diagram --format {fmt}{area_info}\n"
         f"Master: {master_path.name}\n"
         f"{msg.strip()}"
     )
+
+
+@mcp.tool()
+async def export_device_table_html(master: str) -> str:
+    """Export an interactive HTML Device Table preview from a .nsm master.
+
+    Generates a single self-contained HTML file with four tabs (L1 Table /
+    L2 Table / L3 Table / Attribute) whose layout, styling, and behaviour
+    match the Online edition's Device Preview screen (sticky-header table,
+    per-tab CSV / HTML download buttons, URL-hash initial tab selection).
+
+    The output file is written next to the master as
+    ``[DEVICE_TABLE]{basename}.html`` and contains no external CDN /
+    script references, so it can be opened directly from disk or shared
+    as a single artifact.
+
+    PREREQUISITE: call get_ai_context(master) (or at least
+    get_network_state(master)) once per session for this master so you
+    understand the data being exported.
+
+    Args:
+        master: Master filename inside the working directory
+                (e.g. '[MASTER]office.nsm') or an absolute path inside
+                the active workspace.
+
+    Returns:
+        A summary describing the generated file and its size.
+    """
+    err = _require_workspace()
+    if err:
+        return err
+    try:
+        master_path = _resolve_master(master)
+    except ValueError as e:
+        return f'[ERROR] {e}'
+    if not master_path.is_file():
+        return f"[ERROR] Master file not found: {master_path}"
+
+    # Run the device-table build in an isolated subprocess.
+    # ns_engine.nsm_adapter.run_cli (invoked transitively by
+    # build_device_tabs_data) temporarily redirects sys.stdout / sys.stderr to
+    # capture CLI output. Doing that inside this long-running MCP server
+    # process would clash with FastMCP's stdio JSON-RPC transport and wedge
+    # the server. The dedicated worker isolates that redirect from our
+    # transport, in the same spirit as _run_batch / _ns_cli_worker.py.
+    worker_path = _MCP_DIR / '_device_table_worker.py'
+    if not worker_path.is_file():
+        return f'[ERROR] Device-table worker not found: {worker_path}'
+
+    payload = json.dumps({
+        'engine_dir': str(_ENGINE_DIR),
+        'online_dir': str(_ONLINE_DIR),
+        'master_path': str(master_path),
+    }, ensure_ascii=False).encode('utf-8')
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, str(worker_path),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_bytes, stderr_bytes = await proc.communicate(input=payload)
+    except OSError as e:
+        return f'[ERROR] Device-table worker launch failed: {e}'
+
+    stderr_text = stderr_bytes.decode('utf-8', errors='replace').strip()
+    if stderr_text:
+        logger.debug('Device-table worker stderr: %s', stderr_text)
+
+    try:
+        data = json.loads(stdout_bytes.decode('utf-8', errors='replace'))
+    except json.JSONDecodeError as e:
+        return (
+            f"[ERROR] Device-table worker output parse failed: {e}\n"
+            f"stdout={stdout_bytes!r}\n"
+            f"stderr={stderr_text}"
+        )
+
+    if not data.get('ok'):
+        err_msg = data.get('error', 'Unknown error')
+        tb = (data.get('traceback') or '').strip()
+        details = f'\n{tb}' if tb else ''
+        return (
+            f"[ERROR] export_device_table_html\n"
+            f"Master: {master_path.name}\n"
+            f"{err_msg}{details}"
+        )
+
+    out_path = data['output_path']
+    return (
+        f"[OK] export_device_table_html\n"
+        f"Master: {master_path.name}\n"
+        f"Output: {Path(out_path).name}\n"
+        f"Location: {out_path}\n"
+        f"Size: {int(data['size_bytes']):,} bytes\n"
+        f"Rows: {data['row_summary']}"
+    )
+
 
 # ---------------------------------------------------------------------------
 # Prompts

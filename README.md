@@ -430,10 +430,10 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Change attributes | ✅ | ✅ | ✅ | ✅ |
 | Add / delete VPNs | ❌ | ❌ | ✅ | ❌ |
 | Flow management | ❌ | ❌ | ✅ | ❌ |
-| Export various reports | ❌ | ❌ | ✅ | ❌ |
+| Export various reports | ✅ (IP Address only) | ✅ (IP Address only) | ✅ | ❌ |
 | Export empty master files (no data) | ✅ | ✅ | ❌ | ✅ |
 | Export AI context files | ✅ | ✅ | ✅ | ✅ |
-| Export device files | ❌ | ✅ | ✅ | ✅ |
+| Export device files | ✅ | ✅ | ✅ | ✅ |
 | Generate L1/L2/L3 topology diagrams | ✅ | ✅ | ✅ | ✅ |
 | Export diagrams as SVG (Visio-compatible) / draw.io (with Cisco stencils) | ❌ | ✅ | ❌ | ❌ |
 
