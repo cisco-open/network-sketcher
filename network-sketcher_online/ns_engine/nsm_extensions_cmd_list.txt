@@ -29,6 +29,7 @@ Architecture rules (sorted by rule number, all MANDATORY):
 - RULE 9   Port-channel VLAN symmetry
 - RULE 10  Valid IPv4 address range constraints
 - RULE 11  L2/L3 trunk port type compatibility
+- RULE 11.5 Endpoint device IP assignment (no SVI on servers/PCs/IoT)
 - RULE 12  Wireless AP configuration (FlexConnect default)
 - RULE 13  Office LAN mandatory wireless AP requirement
 - RULE 14  Mandatory device attribute configuration (Model and OS)
@@ -2331,7 +2332,7 @@ VALIDITY MATRIX:
 Configuration                              | Valid | Action
 -------------------------------------------|-------|------------------
 L2 Port (2+ VLANs) <-> L2 Port (2+ VLANs)  | Yes   | None
-L2 Port (1 VLAN) <-> L3 Physical Port      | Yes   | Exception allowed
+L2 Port (1 VLAN) <-> L3 Physical Port      | Yes   | Exception allowed (see RULE 11.5 for endpoint side)
 L3 Physical Port <-> L3 Physical Port      | Yes   | None
 L2 Port (2+ VLANs) <-> L3 Physical Port    | NO    | Convert to L2+SVI
 
@@ -2377,9 +2378,88 @@ KEY PRINCIPLE:
 "Single VLAN to L3 physical port = VALID exception."
 "Any SVI (Vlan <ID>) created MUST be bound to an L2 segment on the SVI itself (Loopback excluded)."
 
+## RULE 11.5: ENDPOINT DEVICE IP ASSIGNMENT (NO SVI ON SERVERS / PCs / IoT)
+
+CRITICAL: For physical endpoint devices (servers, PCs, printers, IoT,
+storage arrays, hypervisor hosts), assign the IP DIRECTLY to the L1
+physical port (L3 physical). DO NOT create an SVI (Vlan X) on endpoint
+devices. (Wireless APs are the only endpoint-side exception -- see RULE 12.)
+
+DEVICE CATEGORY DECISION TABLE:
+| Category              | IP location      | SVI on device | L2 segment on device | Stencil Type (RULE 16)         |
+|-----------------------|------------------|---------------|----------------------|--------------------------------|
+| Network infrastructure| SVI (Vlan X)     | YES           | YES (RULE 15)        | Router / L3 SW / FW / WLC      |
+| Wireless AP           | SVI (Vlan X)     | YES (RULE 12) | YES (RULE 15)        | Access Point                   |
+| Endpoint device       | L1 physical port | NO            | NO                   | Server / PC / Printer / Storage|
+
+KEYWORD CLASSIFICATION (use to decide category from device name / role):
+- ENDPOINT category keywords: server, host, PC, workstation, workload,
+  VM, hypervisor, ESXi, Hyper-V, KVM, Linux, Windows, printer, IoT,
+  sensor, camera, storage, NAS, SAN target, bare-metal
+- If Stencil Type (RULE 16) is in {standard_host, server, workstation,
+  pc, printer, storage}, treat as ENDPOINT.
+
+PHYSICAL TOPOLOGY (the L2 (1 VLAN) <-> L3 Physical exception in RULE 11):
+- Switch (Leaf / Access) side : L2 trunk carrying 1 VLAN + SVI as gateway
+- Endpoint side                : L3 physical port with IP directly bound
+
+EXAMPLE (CORRECT) - Leaf <-> bare-metal server:
+  # Switch side: 1-VLAN trunk + SVI gateway (subject to RULE 15)
+  add l2_segment_bulk   "[['Leaf1','Ethernet 1/1',['Vlan1000']]]"
+  add virtual_port_bulk "[['Leaf1',['Vlan 1000']]]"
+  add l2_segment_bulk   "[['Leaf1','Vlan 1000',['Vlan1000']]]"
+  add ip_address_bulk   "[['Leaf1','Vlan 1000',['10.31.11.1/24']]]"
+
+  # Endpoint side: IP DIRECTLY on L1 physical, NO SVI, NO l2_segment
+  add ip_address_bulk   "[['Server-01','Ethernet 1',['10.31.11.101/24']]]"
+
+ANTI-PATTERN (WRONG - DO NOT DO):
+  add l2_segment_bulk   "[['Server-01','Ethernet 1',['Vlan1000']]]"        # WRONG
+  add virtual_port_bulk "[['Server-01',['Vlan 1000']]]"                    # WRONG
+  add l2_segment_bulk   "[['Server-01','Vlan 1000',['Vlan1000']]]"         # WRONG
+  add ip_address_bulk   "[['Server-01','Vlan 1000',['10.31.11.101/24']]]"  # WRONG
+WHY WRONG: Real endpoint NICs (Linux eth0, Windows Ethernet0, ESXi vmkN)
+bind IP directly to the physical interface; they do not have switch-like
+SVI semantics. Modeling an SVI on an endpoint misrepresents device
+behaviour and pollutes show l2_broadcast_domain / show l3_broadcast_domain.
+
+OPTIONAL: 802.1Q TAGGED ENDPOINT NIC (e.g. ESXi vmnic with multiple VLANs):
+Use a subinterface via vport_l1if_direct_binding and bind VLAN tags via
+vport_l2_direct_binding. The IP goes on the subinterface, NOT on an SVI.
+
+  add vport_l1if_direct_binding "Server-01" "Ethernet 1" "Ethernet 1.1000"
+  add vport_l2_direct_binding   "Server-01" "Ethernet 1.1000" "Vlan1000"
+  add ip_address_bulk           "[['Server-01','Ethernet 1.1000',['10.31.11.101/24']]]"
+
+VERIFICATION CHECKLIST FOR RULE 11.5:
+1. For every device whose Stencil Type / role is an endpoint:
+   - show l2_interface         : NO "Vlan <ID>" row for this device
+   - show device_interface     : NO "Vlan <ID>" virtual_port entry
+   - show l3_interface         : IP present on the L1 physical port row
+2. For the switch on the other side of the L1 link:
+   - show l2_interface         : Physical port carries exactly the matching VLAN
+   - show l2_interface         : Matching "Vlan <ID>" SVI row IS bound (RULE 15)
+   - show l3_interface         : Gateway IP present on the SVI
+
+INTERACTION WITH OTHER RULES:
+- RULE 11   : Endpoint <-> Switch link is the documented "L2 (1 VLAN) <->
+              L3 Physical" exception. This rule fixes WHICH SIDE is L3 physical.
+- RULE 12   : Wireless APs are the ONLY endpoint-class device that DOES
+              require an SVI (FlexConnect Management SVI). Servers / PCs
+              / IoT do NOT.
+- RULE 15   : "SVI-to-L2 binding mandatory" applies only when an SVI
+              exists. Endpoints under RULE 11.5 have no SVI by design,
+              so RULE 15 is not triggered for them.
+- RULE 16   : Use the Stencil Type column to classify endpoints
+              consistently (Server / PC / Printer / Storage stencils).
+- RULE 17   : Port speed / duplex / media settings on the endpoint's
+              L1 physical port are still mandatory.
+
 ## RULE 12: WIRELESS ACCESS POINT CONFIGURATION (FLEXCONNECT MODE DEFAULT)
 
 CRITICAL: Wireless APs require SVI-based IP configuration for proper operation.
+NOTE: APs are the ONLY endpoint-class device that uses an SVI. Servers /
+PCs / IoT / Storage do NOT use SVI -- see RULE 11.5.
 MANDATORY DEFAULT: If AP mode is NOT explicitly specified, ALWAYS use FlexConnect mode.
 
 DEFAULT MODE SELECTION:
@@ -2788,6 +2868,9 @@ NON-COMPLIANCE (ERROR CONDITIONS):
 INTERACTION WITH OTHER RULES:
 - Rule 7 (Execution Sequence): After add virtual_port_bulk, you MUST ensure SVI
   binding is completed with add l2_segment_bulk within the same Phase 3 workflow.
+- Rule 11.5 (Endpoint device IP assignment): Endpoint devices (servers,
+  PCs, printers, IoT, storage) have NO SVI by design, so this rule does
+  not apply to them. IP is bound directly to the L1 physical port instead.
 - Rule 12 (Wireless AP FlexConnect default): AP management SVIs (e.g., Vlan 10)
   MUST also follow this rule (SVI bound on AP's SVI row), while Loopback remains
   excluded.
