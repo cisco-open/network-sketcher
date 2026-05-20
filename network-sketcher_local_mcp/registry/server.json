@@ -1,0 +1,41 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.cisco-open/network-sketcher",
+  "title": "Network Sketcher (Local MCP)",
+  "description": "AI-native MCP server to design and manage Cisco network diagrams (L1/L2/L3, PPT/SVG) from LLMs.",
+  "version": "3.1.2",
+  "repository": {
+    "url": "https://github.com/cisco-open/network-sketcher",
+    "source": "github",
+    "subfolder": "network-sketcher_local_mcp"
+  },
+  "websiteUrl": "https://github.com/cisco-open/network-sketcher#installation-local-mcp",
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "license": "Apache-2.0",
+      "category": "developer",
+      "tags": [
+        "network",
+        "cisco",
+        "diagram",
+        "powerpoint",
+        "topology",
+        "design",
+        "automation"
+      ],
+      "runtime": {
+        "type": "python",
+        "minVersion": "3.10"
+      },
+      "transport": {
+        "type": "stdio"
+      },
+      "capabilitiesSummary": {
+        "toolsCount": 10,
+        "promptsCount": 1,
+        "resourcesCount": 2
+      },
+      "installationNote": "See https://github.com/cisco-open/network-sketcher#installation-local-mcp for full Cursor / Claude Code / Manual setup instructions."
+    }
+  }
+}
