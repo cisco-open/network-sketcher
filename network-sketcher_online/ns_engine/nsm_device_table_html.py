@@ -64,6 +64,235 @@ def _ensure_nsm_def_importable() -> Optional[object]:
         return None
 
 
+def _is_length_number(v) -> bool:
+    """True if ``v`` is a numeric length (excludes bool which is also int)."""
+    if isinstance(v, bool):
+        return False
+    return isinstance(v, (int, float))
+
+
+# Cell classes used by the Placement-tab filtering pipeline.
+# Excluded cells become '' AND their row/column gets dropped if every
+# surviving cell in that row/column is also Excluded. Kept and Sticky cells
+# both prevent that drop (they are "real" content), but only Kept can hold a
+# non-empty value; Sticky always renders as ''.
+_CLS_KEPT = 'K'      # original value preserved (including originally '' cells)
+_CLS_STICKY = 'S'    # excluded but reserves its slot ('_AIR_' per spec)
+_CLS_EXCLUDED = 'E'  # excluded; removable when its whole row/col is excluded
+
+
+def _pack_classified(rows: List[List[Tuple[str, str]]]) -> List[List[str]]:
+    """Pack a 3-class grid toward top-left.
+
+    Each cell is ``(value, cls)`` where ``cls`` is _CLS_KEPT / _CLS_STICKY /
+    _CLS_EXCLUDED. Rows whose every cell is Excluded are dropped (top-pack);
+    columns whose every cell is Excluded across the surviving rows are dropped
+    (left-pack). All-Excluded columns at the right edge are likewise dropped
+    so that purely-decorative trailing slots (e.g. ``<END>`` terminators)
+    don't bloat the output. Sticky/Kept cells anchor their row & column even
+    when their rendered value is ''.
+    """
+    if not rows:
+        return []
+    max_len = max((len(r) for r in rows), default=0)
+    if max_len == 0:
+        return []
+    # Pad short rows with Excluded blanks so the matrix is rectangular.
+    padded = [
+        list(r) + [('', _CLS_EXCLUDED)] * (max_len - len(r))
+        for r in rows
+    ]
+    # Drop rows whose every cell is Excluded.
+    survivors = [r for r in padded if any(c[1] != _CLS_EXCLUDED for c in r)]
+    if not survivors:
+        return []
+    # Drop columns whose every cell is Excluded across the surviving rows.
+    keep_cols = [
+        i for i in range(max_len)
+        if any(survivors[r][i][1] != _CLS_EXCLUDED
+               for r in range(len(survivors)))
+    ]
+    return [[r[i][0] for i in keep_cols] for r in survivors]
+
+
+def _build_area_position_rows(pf_raw) -> List[List[str]]:
+    """Filter ``<<POSITION_FOLDER>>`` rows and pack toward top-left.
+
+    Cell classification (per spec
+    "長さを示す数字 / <<POSITION_FOLDER>> / <SET_WIDTH> ... 上方向と左方向に詰める。
+     ただし元々空欄の値のセルは空欄のままで詰めない"):
+      - numeric length values → ``_CLS_EXCLUDED`` (removable)
+      - ``<<POSITION_FOLDER>>`` / ``<SET_WIDTH>`` markers → ``_CLS_EXCLUDED``
+      - originally empty cells → ``_CLS_KEPT`` (anchor their row/col)
+      - all other strings (area names / waypoints) → ``_CLS_KEPT``
+    Rows/cols that contain at least one Kept cell are preserved, so a column
+    whose only content is an originally-empty cell in some row will not be
+    silently dropped.
+    """
+    classified: List[List[Tuple[str, str]]] = []
+    for item in pf_raw or []:
+        if not isinstance(item, list) or len(item) < 2:
+            continue
+        cells = item[1]
+        if not isinstance(cells, list):
+            continue
+        row_cls: List[Tuple[str, str]] = []
+        for cell in cells:
+            if cell is None:
+                # Treated as originally-empty; preserve as anchor cell.
+                row_cls.append(('', _CLS_KEPT))
+                continue
+            if _is_length_number(cell):
+                row_cls.append(('', _CLS_EXCLUDED))
+                continue
+            if cell in ('<<POSITION_FOLDER>>', '<SET_WIDTH>'):
+                row_cls.append(('', _CLS_EXCLUDED))
+                continue
+            row_cls.append((str(cell), _CLS_KEPT))
+        classified.append(row_cls)
+    return _pack_classified(classified)
+
+
+def _parse_position_shape_blocks(
+        ps_raw) -> List[Tuple[str, List[List[str]]]]:
+    """Group ``<<POSITION_SHAPE>>`` rows into ``(area_name, raw_rows)`` blocks.
+
+    A block starts with a row whose first cell is a non-empty token that is
+    not one of the structural markers (``<<POSITION_SHAPE>>``, ``<END>``,
+    ``_AIR_``), and ends at the next single-cell ``['<END>']`` row.
+    Continuation rows (starting with '') are appended to the current block.
+    """
+    blocks: List[Tuple[str, List[List[str]]]] = []
+    cur_area: Optional[str] = None
+    cur_rows: List[List[str]] = []
+    for item in ps_raw or []:
+        if not isinstance(item, list) or len(item) < 2:
+            continue
+        cells = item[1]
+        if not isinstance(cells, list):
+            continue
+        # Skip the section header row.
+        if cells and cells[0] == '<<POSITION_SHAPE>>':
+            continue
+        # Single-cell <END> marks the end of a block.
+        if len(cells) == 1 and cells[0] == '<END>':
+            if cur_area is not None and cur_rows:
+                blocks.append((cur_area, cur_rows))
+            cur_area = None
+            cur_rows = []
+            continue
+        first = cells[0] if cells else ''
+        if first and first not in (
+                '<<POSITION_SHAPE>>', '<END>', '_AIR_'):
+            # Start of a new block.
+            if cur_area is not None and cur_rows:
+                # Defensive: previous block had no <END> separator.
+                blocks.append((cur_area, cur_rows))
+            cur_area = str(first)
+            cur_rows = [list(cells)]
+        elif cur_area is not None:
+            cur_rows.append(list(cells))
+    if cur_area is not None and cur_rows:
+        blocks.append((cur_area, cur_rows))
+    return blocks
+
+
+def _strip_leading_empty_cols(rows: List[List[str]]) -> List[List[str]]:
+    """Remove leading columns whose every cell is '' (or absent).
+
+    Repeats until the leftmost column contains at least one non-empty cell.
+    Applied to Device Position tables only -- per the spec amendment a fully
+    empty left edge is dropped even though `_pack_classified` would normally
+    preserve such a column when its cells originated from ``_AIR_`` or
+    originally-empty placeholders.
+    """
+    if not rows:
+        return rows
+    out = [list(r) for r in rows]
+    while True:
+        if not out or not out[0]:
+            break
+        leftmost_has_value = any(
+            (len(r) > 0 and r[0] != '') for r in out
+        )
+        if leftmost_has_value:
+            break
+        for r in out:
+            if r:
+                r.pop(0)
+    # An entirely emptied row would now be []; drop it (top-pack again).
+    return [r for r in out if any(c != '' for c in r)] or out
+
+
+def _build_device_position_table(area_name: str,
+                                 raw_rows: List[List[str]]
+                                 ) -> List[List[str]]:
+    """Filter a single area's ``<<POSITION_SHAPE>>`` block and pack top-left.
+
+    Cell classification (per spec
+    "<<POSITION_SHAPE>>、<END>、Area名 は ... 上方向と左方向に詰める。
+     _AIR_は記載の対象外だが、空欄のままで詰めない"):
+      - ``<<POSITION_SHAPE>>`` / ``<END>`` markers → ``_CLS_EXCLUDED``
+      - area name at row=0 col=0 of the block (first occurrence only;
+        devices whose name happens to match elsewhere are preserved)
+        → ``_CLS_EXCLUDED``
+      - ``_AIR_`` (grid spacer) → ``_CLS_STICKY`` (renders as '' but anchors
+        its row/col so the surrounding device grid stays aligned)
+      - originally empty cells → ``_CLS_KEPT`` (anchor; value '')
+      - all other strings (device names) → ``_CLS_KEPT``
+
+    Post-processing (Device-Position-specific): any leading column whose
+    every cell is empty is dropped, even though it may have been anchored
+    by ``_CLS_STICKY`` / originally-empty cells. This makes Device Position
+    tables hug the left edge for readability.
+    """
+    classified: List[List[Tuple[str, str]]] = []
+    area_removed = False
+    for r_idx, row in enumerate(raw_rows):
+        row_cls: List[Tuple[str, str]] = []
+        for c_idx, cell in enumerate(row):
+            cell_str = '' if cell is None else str(cell)
+            if cell_str in ('<<POSITION_SHAPE>>', '<END>'):
+                row_cls.append(('', _CLS_EXCLUDED))
+                continue
+            if (not area_removed and r_idx == 0 and c_idx == 0
+                    and cell_str == area_name):
+                row_cls.append(('', _CLS_EXCLUDED))
+                area_removed = True
+                continue
+            if cell_str == '_AIR_':
+                row_cls.append(('', _CLS_STICKY))
+                continue
+            row_cls.append((cell_str, _CLS_KEPT))
+        classified.append(row_cls)
+    packed = _pack_classified(classified)
+    return _strip_leading_empty_cols(packed)
+
+
+def _build_placement_tables(pf_raw, ps_raw) -> List[dict]:
+    """Build the sub-table list rendered inside the Placement tab.
+
+    Returns ``[{title, rows}, ...]`` where the first entry is the
+    ``All Areas Position`` table (from POSITION_FOLDER) and subsequent
+    entries are per-area ``(AreaName) Position(L1,L2)`` tables (from
+    POSITION_SHAPE) in the order encountered in the master file.
+    The ``(L1,L2)`` suffix indicates that the placement applies to both
+    the L1 and L2 diagrams.
+    """
+    out: List[dict] = []
+    area_pos = _build_area_position_rows(pf_raw)
+    if area_pos:
+        out.append({'title': 'All Areas Position', 'rows': area_pos})
+    for area_name, raw_rows in _parse_position_shape_blocks(ps_raw):
+        rows = _build_device_position_table(area_name, raw_rows)
+        if rows:
+            out.append({
+                'title': f'{area_name} Position(L1,L2)',
+                'rows': rows,
+            })
+    return out
+
+
 def _fetch_attribute_output(master_path: str) -> Optional[str]:
     """Run `show attribute --master <path> --one_msg` in-process via
     `ns_engine.nsm_adapter.run_cli`. Returns stdout text on success, None on
@@ -136,6 +365,9 @@ def build_device_tabs_data(master_path: str
             logger.warning('convert_master_to_array %s/%s failed: %s',
                            ws_name, section, exc)
             return []
+
+    # --- POSITION_FOLDER: area layout grid (consumed by Placement tab) -------
+    pf_raw = _read_section('Master_Data', '<<POSITION_FOLDER>>')
 
     # --- POSITION_SHAPE: build device -> area lookup (used by L1 + Attribute) -
     ps_raw = _read_section('Master_Data', '<<POSITION_SHAPE>>')
@@ -290,6 +522,14 @@ def build_device_tabs_data(master_path: str
         )
         attr_rows, attr_row_colors = map(list, zip(*combined))
 
+    # --- Placement: Area Position + per-area Device Position sub-tables ------
+    # Multi-table tab: the data lives under ``tables`` (list of {title, rows}),
+    # while ``headers``/``rows`` are kept as empty placeholders so consumers
+    # that pre-date this tab (e.g. ``/device_preview_data/`` thumbnail JSON)
+    # continue to work without a KeyError.
+    placement_tables = _build_placement_tables(pf_raw, ps_raw)
+    placement_total = sum(len(t.get('rows') or []) for t in placement_tables)
+
     tabs_data = [
         {
             'id': 'l1',
@@ -315,6 +555,14 @@ def build_device_tabs_data(master_path: str
             'headers': attr_headers,
             'rows': attr_rows,
             'row_colors': attr_row_colors,
+        },
+        {
+            'id': 'placement',
+            'label': 'Placement',
+            'headers': [],
+            'rows': [],
+            'tables': placement_tables,
+            'total_rows': placement_total,
         },
     ]
 
@@ -375,6 +623,20 @@ def _tabs_to_json(tabs_data: List[dict]) -> str:
                     for c in crow
                 ])
             item['row_colors'] = colors_out
+        if tab.get('tables'):
+            tables_out: List[dict] = []
+            for sub in tab['tables']:
+                sub_rows = []
+                for row in sub.get('rows') or []:
+                    sub_rows.append([
+                        ('' if v is None else str(v))
+                        for v in row
+                    ])
+                tables_out.append({
+                    'title': str(sub.get('title', '')),
+                    'rows': sub_rows,
+                })
+            item['tables'] = tables_out
         normalised.append(item)
 
     payload = json.dumps(normalised, ensure_ascii=False)
@@ -444,6 +706,23 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
     background: #4A8FE7; color: #fff; font-weight: 600; position: sticky; top: 0; z-index: 1; }}
 .table-wrap tr:nth-child(even):not(.header-row) td {{ background: #f8f9fa; }}
 .table-wrap tr:hover:not(.header-row) td {{ background: #e8f0fe; }}
+/* Placement tab: multiple titled sub-tables stacked vertically. Each
+   sub-table shrinks to its own content width (overrides the L1/L2/L3
+   `min-width: 100%` rule) so a 1-column table doesn't span the viewport.
+   Cell padding is slightly wider than the default to give the device
+   names visual breathing room without enabling line wrap. */
+.placement-section {{ margin-bottom: 24px; }}
+.placement-section:last-child {{ margin-bottom: 0; }}
+.placement-title {{
+    font-size: 14px; font-weight: 600; color: #fff; background: #4A8FE7;
+    padding: 6px 14px; border-radius: 4px 4px 0 0; display: inline-block;
+    margin: 0; }}
+.placement-section table {{
+    margin-top: 0; width: auto !important; min-width: 0 !important;
+    table-layout: auto; display: table; }}
+.placement-section th,
+.placement-section td {{ padding: 6px 16px; white-space: nowrap; }}
+.placement-section td.placement-empty {{ background: #fafbfc; min-width: 24px; }}
 </style>
 </head>
 <body>
@@ -468,7 +747,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }}
 
-    function buildTable(tab) {{
+    function buildSingleTable(tab) {{
         var h = '<table><thead><tr class="header-row">';
         for (var i = 0; i < tab.headers.length; i++) {{
             h += '<th>' + escHtml(tab.headers[i]) + '</th>';
@@ -491,10 +770,54 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
         return h;
     }}
 
+    function buildMultiTable(tab) {{
+        // Placement-style tab: render each sub-table with its own title.
+        // Sub-tables have no semantic column headers (POSITION_FOLDER /
+        // POSITION_SHAPE are 2D layout grids), so we omit <thead>.
+        var h = '';
+        for (var ti = 0; ti < tab.tables.length; ti++) {{
+            var sub = tab.tables[ti];
+            h += '<div class="placement-section">';
+            h += '<div class="placement-title">' + escHtml(sub.title) + '</div>';
+            h += '<table><tbody>';
+            for (var r = 0; r < sub.rows.length; r++) {{
+                h += '<tr>';
+                var row = sub.rows[r];
+                for (var c = 0; c < row.length; c++) {{
+                    var v = row[c];
+                    var cls = (v === '' || v === null || v === undefined) ? ' class="placement-empty"' : '';
+                    h += '<td' + cls + '>' + (v ? escHtml(v) : '') + '</td>';
+                }}
+                h += '</tr>';
+            }}
+            h += '</tbody></table>';
+            h += '</div>';
+        }}
+        return h || '<div style="padding:24px;color:#7a8a9e;">No placement data.</div>';
+    }}
+
+    function buildTable(tab) {{
+        if (tab.tables && tab.tables.length > 0) {{
+            return buildMultiTable(tab);
+        }}
+        return buildSingleTable(tab);
+    }}
+
+    function rowCountOf(tab) {{
+        if (tab.tables && tab.tables.length > 0) {{
+            var total = 0;
+            for (var ti = 0; ti < tab.tables.length; ti++) {{
+                total += (tab.tables[ti].rows || []).length;
+            }}
+            return total;
+        }}
+        return (tab.rows || []).length;
+    }}
+
     function showTab(idx) {{
         currentTab = idx;
         document.getElementById('tableWrap').innerHTML = buildTable(TABS[idx]);
-        document.getElementById('rowCount').textContent = TABS[idx].rows.length + ' rows';
+        document.getElementById('rowCount').textContent = rowCountOf(TABS[idx]) + ' rows';
         var btns = document.querySelectorAll('.sheet-tab');
         for (var i = 0; i < btns.length; i++) {{
             btns[i].classList.toggle('active', i === idx);
@@ -514,18 +837,45 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
         }}
     }}
 
+    function csvEscape(v) {{
+        return '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"';
+    }}
+
     function buildCsv(tab) {{
+        if (tab.tables && tab.tables.length > 0) {{
+            return buildMultiCsv(tab);
+        }}
         var lines = [];
-        var h = tab.headers.map(function(c) {{ return '"' + String(c).replace(/"/g,'""') + '"'; }}).join(',');
+        var h = tab.headers.map(csvEscape).join(',');
         lines.push(h);
         for (var r = 0; r < tab.rows.length; r++) {{
             var row = tab.rows[r];
             var cells = [];
             for (var c = 0; c < tab.headers.length; c++) {{
                 var v = c < row.length ? row[c] : '';
-                cells.push('"' + String(v).replace(/"/g,'""') + '"');
+                cells.push(csvEscape(v));
             }}
             lines.push(cells.join(','));
+        }}
+        return lines.join('\\r\\n');
+    }}
+
+    function buildMultiCsv(tab) {{
+        // Concatenate every sub-table with its title row; blank line between
+        // tables for readability when opened in a spreadsheet app.
+        var lines = [];
+        for (var ti = 0; ti < tab.tables.length; ti++) {{
+            var sub = tab.tables[ti];
+            if (ti > 0) lines.push('');
+            lines.push(csvEscape(sub.title));
+            for (var r = 0; r < sub.rows.length; r++) {{
+                var row = sub.rows[r];
+                var cells = [];
+                for (var c = 0; c < row.length; c++) {{
+                    cells.push(csvEscape(row[c]));
+                }}
+                lines.push(cells.join(','));
+            }}
         }}
         return lines.join('\\r\\n');
     }}

@@ -320,6 +320,10 @@ class nsm_l2_svg_create:
 
         target_area = str(self.comboL2_3_6.get())
 
+        # When target_area is empty, render every area (and all WP folders)
+        # into one SVG instead of filtering to a single area.
+        all_areas_mode = (target_area == '')
+
         new_l2_table_array = []
         for item in self.l2_table_array:
             if item[0] != 1 and item[0] != 2:
@@ -340,7 +344,7 @@ class nsm_l2_svg_create:
                     wp_set.add(device_name)
                     wp_list_array.append(device_name)
             else:
-                if target_area == area_name:
+                if all_areas_mode or target_area == area_name:
                     if device_name not in device_set:
                         device_set.add(device_name)
                         device_list_array.append(device_name)
@@ -384,6 +388,110 @@ class nsm_l2_svg_create:
                     l2_style_shape_array.append([item[0], row])
 
             l2_style_shape_tuple = nsm_def.convert_array_to_tuple(l2_style_shape_array)
+
+            # In all-areas mode, skip the per-area folder/WP extraction
+            # entirely and reuse the master's full POSITION_FOLDER grid.
+            #
+            # Important alignment note:
+            #   The width/height overlay loops below match folder cells by
+            #   ``grid_row[0] == row_idx - 1`` to write measured widths into
+            #   the <SET_WIDTH> row immediately preceding each data row. To
+            #   make this work, ``current_y_grid_array`` and
+            #   ``extract_folder_tuple_new`` MUST share the same row-index
+            #   space. We therefore preserve the master's original row indices
+            #   verbatim (no -1 adjustment) and reuse self.position_folder_tuple
+            #   directly. Diverging the two row-index spaces silently
+            #   corrupts the override (folder names get overwritten by widths).
+            if all_areas_mode:
+                extract_folder_tuple_new = self.position_folder_tuple
+
+                master_folder_size_array = nsm_def.get_folder_width_size(
+                    extract_folder_tuple_new, l2_style_shape_tuple,
+                    self.position_shape_tuple, 0.8)
+
+                # Capture every row of the master's POSITION_FOLDER section
+                # using the ORIGINAL row indices. We split out the header row
+                # so we can reattach it at the end (the renderer needs the
+                # <<POSITION_FOLDER>> width row to seed its column widths).
+                header_row = None
+                current_y_grid_array = []
+                for tmp in self.position_folder_array:
+                    if not (isinstance(tmp, list) and len(tmp) == 2 and
+                            isinstance(tmp[1], list)):
+                        continue
+                    row_vals = tmp[1]
+                    if row_vals and str(row_vals[0]).startswith('<<'):
+                        if header_row is None:
+                            header_row = [tmp[0], list(row_vals)]
+                        continue
+                    current_y_grid_array.append([tmp[0], list(row_vals)])
+
+                update_y_grid = copy.deepcopy(current_y_grid_array)
+
+                for grid_key in extract_folder_tuple_new:
+                    folder_val = extract_folder_tuple_new[grid_key]
+                    if not isinstance(folder_val, str):
+                        continue
+                    for measured in master_folder_size_array[2]:
+                        if (folder_val == measured[1][0][0] and
+                                measured[1][0][0] != 10 and
+                                isinstance(measured[1][0][0], str)):
+                            row_idx = grid_key[0]
+                            col_idx = grid_key[1]
+                            if measured[1][0][1] != 0:
+                                for i, grid_row in enumerate(current_y_grid_array):
+                                    if grid_row[0] == row_idx - 1:
+                                        if col_idx - 1 < len(update_y_grid[i][1]):
+                                            update_y_grid[i][1][col_idx - 1] = measured[1][0][1]
+                                        break
+
+                for i, grid_row in enumerate(current_y_grid_array):
+                    if isinstance(grid_row[1][0], (int, float)):
+                        max_h = grid_row[1][0]
+                        for col_entry in grid_row[1:]:
+                            if isinstance(col_entry, list):
+                                for sub in col_entry:
+                                    for measured in master_folder_size_array[2]:
+                                        if measured[1][0][0] == sub:
+                                            if max_h < measured[1][0][2]:
+                                                max_h = measured[1][0][2]
+                            elif isinstance(col_entry, str):
+                                for measured in master_folder_size_array[2]:
+                                    if measured[1][0][0] == col_entry:
+                                        if max_h < measured[1][0][2]:
+                                            max_h = measured[1][0][2]
+                        update_y_grid[i][1][0] = max_h
+
+                # Reassemble the override: header first (if present), then
+                # data rows in master order. Row indices are reflowed 1..N
+                # to keep convert_array_to_tuple happy if any caller needs it.
+                extract_folder_array = []
+                next_row = 1
+                if header_row is not None:
+                    extract_folder_array.append([next_row, header_row[1]])
+                    next_row += 1
+                for grid_row in update_y_grid:
+                    extract_folder_array.append([next_row, grid_row[1]])
+                    next_row += 1
+
+                try:
+                    master_root = nsm_def.get_root_folder_tuple(self, master_folder_size_array, '')
+                    self.root_width = master_root[2, 7]
+                    self.root_hight = master_root[2, 8]
+                except Exception:
+                    self.root_width = float(master_folder_size_array[0]) + 1.0
+                    self.root_hight = float(master_folder_size_array[3]) + 1.0
+
+                self.root_left = 0.28
+                self.root_top = 1.42
+
+                l2_bulk_override = copy.deepcopy(bulk)
+                l2_bulk_override['<<STYLE_SHAPE>>'] = l2_style_shape_array
+                l2_bulk_override['<<POSITION_FOLDER>>'] = extract_folder_array
+                self._preloaded_bulk = l2_bulk_override
+
+                nsm_ddx_svg_l2.ns_ddx_svg_l2_run.__init__(self)
+                return
 
             # ===== Extract target folder + connected WP folders =====
             wp_with_folder_tuple = {}

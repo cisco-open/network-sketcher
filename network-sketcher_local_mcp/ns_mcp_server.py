@@ -351,6 +351,27 @@ _SERVER_INSTRUCTIONS = (
     "should you plan and issue commands via run_commands() or other "
     "mutating tools. This prevents wasted edits based on stale "
     "assumptions and ensures you use the correct CLI syntax.\n\n"
+    "FINALIZATION REQUIREMENT: When you have finished constructing a new "
+    "master or substantially editing an existing one via run_commands, "
+    "you MUST call build_default_outputs(master) as the final step. The "
+    "tool now runs THREE chained steps in one call:\n"
+    "  1. export combined_diagram --type all_areas: produces the "
+    "[L1L2L3_DIAGRAM]AllAreas_<base>.html tabbed viewer (primary "
+    "deliverable) plus the three per-layer SVGs "
+    "([L1_DIAGRAM]AllAreasTag_*, [L2_DIAGRAM]AllAreas_*, "
+    "[L3_DIAGRAM]AllAreas_*) as side effects.\n"
+    "  2. export_device_table_html: produces [DEVICE_TABLE]<base>.html.\n"
+    "  3. AI Context regeneration: produces [AI_Context]<base>.txt.\n"
+    "The returned summary lists six rows -- one per individual artifact "
+    "(L1 SVG / L2 SVG / L3 SVG / L1L2L3 HTML / Device Table / AI "
+    "Context) -- so partial failures are visible at a glance ('Summary: "
+    "N/6 succeeded.'). Do NOT individually call export_diagram / "
+    "export_device_table_html / get_ai_context for routine finalization; "
+    "use build_default_outputs instead. Per-area combined HTMLs are NOT "
+    "produced by default -- if you need one, request it explicitly via "
+    "run_commands([\"export combined_diagram --type per_area --area "
+    "<name>\"]). Individual tools remain available for ad-hoc per-area or "
+    "PPTX exports.\n\n"
     "FILE FORMAT: This edition operates on .nsm (ZIP+Parquet) master "
     "files exclusively for performance. If the workspace contains a "
     "legacy .xlsx master, call import_master(xlsx_path) once to convert "
@@ -754,6 +775,39 @@ async def get_network_state(master: str) -> str:
     return '\n\n'.join(sections) + '\n'
 
 
+def _ai_context_path(master_path: Path) -> Path:
+    """Return the AI Context file path that the engine writes for master_path.
+
+    The engine names it '[AI_Context]<basename>.txt' where <basename> is the
+    master stem with the '[MASTER]' prefix and '.nsm' suffix stripped.
+    """
+    base = master_path.stem  # e.g. '[MASTER]office' or '[MASTER]office.nsm'
+    if base.lower().startswith('[master]'):
+        base = base[8:]      # strip '[MASTER]' -> 'office'
+    if base.lower().endswith('.nsm'):
+        base = base[:-4]
+    return _WORK_DIR / f'[AI_Context]{base}.txt'
+
+
+async def _regenerate_ai_context(master_path: Path) -> tuple[bool, Path, str]:
+    """Re-run `export ai_context_file` for master_path.
+
+    Returns (ok, ai_context_path, classified_message). The CLI is always
+    invoked with --accept-security-risk so it never blocks on the
+    interactive consent prompt (this MCP process has no TTY).
+    """
+    result = await _run([
+        'export', 'ai_context_file',
+        '--master', str(master_path),
+        '--accept-security-risk',
+    ])
+    ok, msg = _classify_result(result)
+    ai_path = _ai_context_path(master_path)
+    if ok and not ai_path.is_file():
+        ok = False
+    return ok, ai_path, msg
+
+
 @mcp.tool()
 async def get_ai_context(master: str) -> str:
     """Generate the full AI Context file for a master and return its contents.
@@ -781,23 +835,7 @@ async def get_ai_context(master: str) -> str:
     if not master_path.is_file():
         return f"[ERROR] Master file not found: {master_path}"
 
-    # --accept-security-risk skips the input() prompt that would otherwise
-    # block this server (no TTY).
-    result = await _run([
-        'export', 'ai_context_file',
-        '--master', str(master_path),
-        '--accept-security-risk',
-    ])
-    ok, msg = _classify_result(result)
-
-    # Engine names the AI Context file as '[AI_Context]<basename>.txt'
-    # where <basename> is the master stem WITHOUT the '[MASTER]' prefix.
-    base = master_path.stem  # e.g. '[MASTER]office' or '[MASTER]office.nsm'
-    if base.lower().startswith('[master]'):
-        base = base[8:]      # strip '[MASTER]' → 'office'
-    if base.lower().endswith('.nsm'):
-        base = base[:-4]
-    ai_path = _WORK_DIR / f'[AI_Context]{base}.txt'
+    ok, ai_path, msg = await _regenerate_ai_context(master_path)
     if not ai_path.is_file():
         return f"[ERROR] AI Context file was not generated.\n{msg.strip()}"
 
@@ -1041,9 +1079,21 @@ async def export_diagram(master: str, layer: str, format: str = 'svg',
         layer:  One of 'l1', 'l2', 'l3' (case-insensitive).
         format: 'svg' (default) or 'pptx'. SVG is faster and renders in the
                 browser. PPTX is editable in PowerPoint.
-        area:   Optional area name. When omitted, the legacy behaviour is
-                preserved (L1: all_areas_tag, L3: all_areas, L2: first area
-                in the master). When given:
+        area:   Optional area name. When omitted, every layer now emits a
+                combined All-Areas diagram so that L1/L2/L3 share a
+                uniform default contract:
+                  - L1: all_areas_tag
+                    (file: '[L1_DIAGRAM]AllAreasTag_<basename>.svg' or .pptx).
+                  - L2: all_areas
+                    (file: '[L2_DIAGRAM]AllAreas_<basename>.svg').
+                    NOTE: PPTX output for L2 area=None is not yet supported
+                    by the engine ('--type all_areas requires --format svg'),
+                    so the legacy first-area PPTX behaviour is preserved
+                    when format='pptx' (file:
+                    '[L2_DIAGRAM]<first_area>_<basename>.pptx').
+                  - L3: all_areas
+                    (file: '[L3_DIAGRAM]AllAreas_<basename>.svg' or .pptx).
+                When given:
                   - L1 generates only that area's per-area-tag SVG
                     (file: '[L1_DIAGRAM]PerAreaTag_<basename>_<area>.svg').
                   - L3 generates only that area's per-area SVG
@@ -1100,6 +1150,19 @@ async def export_diagram(master: str, layer: str, format: str = 'svg',
             cli_args += ['--type', 'per_area', '--area', area_norm]
         else:  # l2 already takes --area natively
             cli_args += ['--area', area_norm]
+    else:
+        # area=None: emit a combined All-Areas diagram for every layer so
+        # that L1/L2/L3 share a uniform default contract.
+        # - L1 already defaults to --type all_areas_tag at the engine level.
+        # - L3 already defaults to --type all_areas at the engine level.
+        # - L2 historically defaulted to --type per_area + first_area, so
+        #   we explicitly request --type all_areas here for SVG. The L2
+        #   engine path enforces SVG-only for --type all_areas
+        #   (nsm_cli.py: '--type all_areas requires --format svg'), so for
+        #   PPTX we keep the legacy first-area fallback to avoid breaking
+        #   existing PPTX callers.
+        if layer_norm == 'l2' and fmt == 'svg':
+            cli_args += ['--type', 'all_areas']
 
     result = await _run(cli_args)
     ok, msg = _classify_result(result)
@@ -1110,6 +1173,75 @@ async def export_diagram(master: str, layer: str, format: str = 'svg',
         f"Master: {master_path.name}\n"
         f"{msg.strip()}"
     )
+
+
+async def _build_device_table(master_path: Path) -> dict:
+    """Run _device_table_worker.py for master_path.
+
+    Returns a dict with the worker's JSON payload, augmented with a top-level
+    'ok' boolean. Possible keys:
+        ok            : bool   -- True if the worker reported success.
+        output_path   : str    -- absolute path of the generated HTML file.
+        size_bytes    : int    -- size of the generated HTML file.
+        row_summary   : str    -- human-readable row counts per tab.
+        error         : str    -- error message when ok is False.
+        traceback     : str    -- optional traceback text when ok is False.
+
+    Doing the device-table build in an isolated subprocess keeps
+    ns_engine.nsm_adapter.run_cli's transient sys.stdout/sys.stderr redirect
+    from clashing with FastMCP's stdio JSON-RPC transport (same rationale as
+    _run_batch / _ns_cli_worker.py).
+    """
+    worker_path = _MCP_DIR / '_device_table_worker.py'
+    if not worker_path.is_file():
+        return {
+            'ok': False,
+            'error': f'Device-table worker not found: {worker_path}',
+        }
+
+    payload = json.dumps({
+        'engine_dir': str(_ENGINE_DIR),
+        'online_dir': str(_ONLINE_DIR),
+        'master_path': str(master_path),
+    }, ensure_ascii=False).encode('utf-8')
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, str(worker_path),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_bytes, stderr_bytes = await proc.communicate(input=payload)
+    except OSError as e:
+        return {
+            'ok': False,
+            'error': f'Device-table worker launch failed: {e}',
+        }
+
+    stderr_text = stderr_bytes.decode('utf-8', errors='replace').strip()
+    if stderr_text:
+        logger.debug('Device-table worker stderr: %s', stderr_text)
+
+    try:
+        data = json.loads(stdout_bytes.decode('utf-8', errors='replace'))
+    except json.JSONDecodeError as e:
+        return {
+            'ok': False,
+            'error': (
+                f"Device-table worker output parse failed: {e}\n"
+                f"stdout={stdout_bytes!r}\n"
+                f"stderr={stderr_text}"
+            ),
+        }
+
+    if not isinstance(data, dict):
+        return {
+            'ok': False,
+            'error': f'Device-table worker returned non-object payload: {data!r}',
+        }
+    data['ok'] = bool(data.get('ok'))
+    return data
 
 
 @mcp.tool()
@@ -1148,47 +1280,7 @@ async def export_device_table_html(master: str) -> str:
     if not master_path.is_file():
         return f"[ERROR] Master file not found: {master_path}"
 
-    # Run the device-table build in an isolated subprocess.
-    # ns_engine.nsm_adapter.run_cli (invoked transitively by
-    # build_device_tabs_data) temporarily redirects sys.stdout / sys.stderr to
-    # capture CLI output. Doing that inside this long-running MCP server
-    # process would clash with FastMCP's stdio JSON-RPC transport and wedge
-    # the server. The dedicated worker isolates that redirect from our
-    # transport, in the same spirit as _run_batch / _ns_cli_worker.py.
-    worker_path = _MCP_DIR / '_device_table_worker.py'
-    if not worker_path.is_file():
-        return f'[ERROR] Device-table worker not found: {worker_path}'
-
-    payload = json.dumps({
-        'engine_dir': str(_ENGINE_DIR),
-        'online_dir': str(_ONLINE_DIR),
-        'master_path': str(master_path),
-    }, ensure_ascii=False).encode('utf-8')
-
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, str(worker_path),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout_bytes, stderr_bytes = await proc.communicate(input=payload)
-    except OSError as e:
-        return f'[ERROR] Device-table worker launch failed: {e}'
-
-    stderr_text = stderr_bytes.decode('utf-8', errors='replace').strip()
-    if stderr_text:
-        logger.debug('Device-table worker stderr: %s', stderr_text)
-
-    try:
-        data = json.loads(stdout_bytes.decode('utf-8', errors='replace'))
-    except json.JSONDecodeError as e:
-        return (
-            f"[ERROR] Device-table worker output parse failed: {e}\n"
-            f"stdout={stdout_bytes!r}\n"
-            f"stderr={stderr_text}"
-        )
-
+    data = await _build_device_table(master_path)
     if not data.get('ok'):
         err_msg = data.get('error', 'Unknown error')
         tb = (data.get('traceback') or '').strip()
@@ -1208,6 +1300,173 @@ async def export_device_table_html(master: str) -> str:
         f"Size: {int(data['size_bytes']):,} bytes\n"
         f"Rows: {data['row_summary']}"
     )
+
+
+def _master_basename(master_path: Path) -> str:
+    """Return <basename> as the engine uses it for derived filenames.
+
+    The engine strips the '[MASTER]' prefix and the '.nsm' suffix when
+    naming '[L1_DIAGRAM]AllAreasTag_<base>.svg' / '[AI_Context]<base>.txt'
+    / '[DEVICE_TABLE]<base>.html' etc.
+    """
+    base = master_path.stem
+    if base.lower().startswith('[master]'):
+        base = base[8:]
+    if base.lower().endswith('.nsm'):
+        base = base[:-4]
+    return base
+
+
+@mcp.tool()
+async def build_default_outputs(master: str) -> str:
+    """Generate the default deliverable bundle for a .nsm master.
+
+    Runs the following three steps in a single call:
+      1. export combined_diagram --type all_areas
+         Produces FOUR artifacts in one shot:
+           - [L1_DIAGRAM]AllAreasTag_<base>.svg  (per-layer side effect)
+           - [L2_DIAGRAM]AllAreas_<base>.svg     (per-layer side effect)
+           - [L3_DIAGRAM]AllAreas_<base>.svg     (per-layer side effect)
+           - [L1L2L3_DIAGRAM]AllAreas_<base>.html (combined tabbed HTML
+             viewer; primary deliverable)
+         The combined HTML embeds all three layer SVGs in a self-contained
+         page with three switchable tabs (L1 / L2 / L3) styled to match
+         the Device Table viewer. Per-layer SVGs are reused if already
+         present in the workspace; missing ones are generated as needed.
+      2. export_device_table_html
+         (file: [DEVICE_TABLE]<base>.html)
+      3. (re-)generate AI Context file
+         (file: [AI_Context]<base>.txt)
+
+    Each step is judged independently; if one step fails the remaining
+    steps still execute and the per-step status is reflected in the
+    returned summary. The summary lists six rows -- one per individual
+    artifact -- so callers can see which layers (if any) failed even when
+    the combined HTML succeeded.
+
+    Per-area combined HTMLs (e.g. ``[L1L2L3_DIAGRAM]<area>_<base>.html``)
+    are NOT generated by default. If you need one, request it explicitly
+    via ``run_commands(["export combined_diagram --type per_area --area
+    <name>"])`` after this tool returns.
+
+    Call this ONCE as the final step after constructing or substantially
+    updating a network so that diagrams, the Device Table preview, and the
+    AI Context bundle are all refreshed in lock-step. Prefer this tool
+    over individually calling export_diagram / export_device_table_html /
+    get_ai_context for routine finalization.
+
+    Args:
+        master: Master filename inside the working directory
+                (e.g. '[MASTER]office.nsm') or an absolute path inside
+                the active workspace.
+
+    Returns:
+        A multi-line summary listing each artifact's status, the generated
+        file path, and a trailing 'Summary: N/6 succeeded.' line.
+    """
+    err = _require_workspace()
+    if err:
+        return err
+    try:
+        master_path = _resolve_master(master)
+    except ValueError as e:
+        return f'[ERROR] {e}'
+    if not master_path.is_file():
+        return f"[ERROR] Master file not found: {master_path}"
+
+    base = _master_basename(master_path)
+
+    # Single CLI invocation: combined_diagram bundles the three per-layer
+    # SVGs into [L1L2L3_DIAGRAM]AllAreas_<base>.html and emits any missing
+    # SVGs as a side effect. We re-check each artifact's existence below
+    # so per-layer success/failure can be reported even when the combined
+    # HTML itself exists (or vice versa).
+    combined_cmd = [
+        'export', 'combined_diagram',
+        '--master', str(master_path),
+        '--type', 'all_areas',
+    ]
+    combined_result = await _run(combined_cmd)
+    combined_ok, combined_msg = _classify_result(combined_result)
+
+    artifact_specs = [
+        ('L1 SVG',      _WORK_DIR / f'[L1_DIAGRAM]AllAreasTag_{base}.svg'),
+        ('L2 SVG',      _WORK_DIR / f'[L2_DIAGRAM]AllAreas_{base}.svg'),
+        ('L3 SVG',      _WORK_DIR / f'[L3_DIAGRAM]AllAreas_{base}.svg'),
+        ('L1L2L3 HTML', _WORK_DIR / f'[L1L2L3_DIAGRAM]AllAreas_{base}.html'),
+    ]
+
+    lines: List[str] = [f'[build_default_outputs] Master: {master_path.name}', '']
+    succeeded = 0
+    failure_details: List[str] = []
+
+    # Track whether any artifact was produced so we can decide whether to
+    # surface the combined_diagram CLI output as a single failure-detail
+    # block (avoids spamming the summary when only one layer failed).
+    any_artifact_failed = False
+    for label, expected_path in artifact_specs:
+        if expected_path.is_file():
+            try:
+                size = expected_path.stat().st_size
+            except OSError:
+                size = 0
+            lines.append(
+                f'[OK]   {label}: {expected_path.name} ({size:,} bytes)'
+            )
+            succeeded += 1
+        else:
+            lines.append(f'[FAIL] {label}: {expected_path.name}')
+            any_artifact_failed = True
+
+    if any_artifact_failed:
+        snippet = (combined_msg or '').strip()
+        if not snippet and not combined_ok:
+            snippet = '(no stdout/stderr captured from combined_diagram)'
+        if snippet:
+            failure_details.append(
+                f'--- combined_diagram stderr/stdout ---\n{snippet}'
+            )
+
+    dt_data = await _build_device_table(master_path)
+    if dt_data.get('ok'):
+        out_path_str = dt_data['output_path']
+        out_name = Path(out_path_str).name
+        rows = dt_data.get('row_summary', '')
+        lines.append(
+            f'[OK]   Device Table: {out_name} '
+            f'({int(dt_data["size_bytes"]):,} bytes, Rows: {rows})'
+        )
+        succeeded += 1
+    else:
+        lines.append(f'[FAIL] Device Table: [DEVICE_TABLE]{base}.html')
+        err_msg = (dt_data.get('error') or 'Unknown error').strip()
+        tb = (dt_data.get('traceback') or '').strip()
+        details = err_msg + (f'\n{tb}' if tb else '')
+        if details:
+            failure_details.append(f'--- Device Table ---\n{details}')
+
+    ctx_ok, ctx_path, ctx_msg = await _regenerate_ai_context(master_path)
+    if ctx_ok and ctx_path.is_file():
+        try:
+            ctx_size = ctx_path.stat().st_size
+        except OSError:
+            ctx_size = 0
+        lines.append(
+            f'[OK]   AI Context:   {ctx_path.name} ({ctx_size:,} bytes)'
+        )
+        succeeded += 1
+    else:
+        lines.append(f'[FAIL] AI Context:   {ctx_path.name}')
+        snippet = (ctx_msg or '').strip()
+        if snippet:
+            failure_details.append(f'--- AI Context ---\n{snippet}')
+
+    lines.append('')
+    lines.append(f'Summary: {succeeded}/6 succeeded.')
+    if failure_details:
+        lines.append('')
+        lines.extend(failure_details)
+    return '\n'.join(lines)
 
 
 # ---------------------------------------------------------------------------

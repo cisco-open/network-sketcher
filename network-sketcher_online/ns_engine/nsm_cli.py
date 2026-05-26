@@ -74,6 +74,7 @@ class ns_cli_run():
             'export l1_diagram',
             'export l2_diagram',
             'export l3_diagram',
+            'export combined_diagram',
         ]
 
         if next_arg == None or '--' in next_arg or str('export ' + next_arg) not in export_command_list:
@@ -691,13 +692,42 @@ class ns_cli_run():
                     dummy_tk.destroy()
                     return ([f'[ERROR] No areas found in the master file'])
 
-                # --area argument (default: first area)
-                target_area = get_next_arg(argv_array, '--area')
-                if target_area is None or target_area.startswith('--'):
-                    target_area = area_list[0]
-                if target_area not in area_list:
+                # --type all_areas renders every area into a single combined
+                # SVG. --type per_area keeps the legacy --area-only behavior.
+                # DEFAULTING:
+                #   When neither --type nor --area is provided AND --format is
+                #   svg (or defaulted to svg), fall back to all_areas so that
+                #   L1/L2/L3 share the same AllAreas default contract.
+                #   PPTX is kept on the legacy first-area path because the
+                #   engine rejects all_areas + pptx (see check further below).
+                l2_type = get_next_arg(argv_array, '--type')
+                if l2_type is not None and l2_type.startswith('--'):
+                    l2_type = None
+                valid_l2_types = ('all_areas', 'per_area')
+                if l2_type is not None and l2_type not in valid_l2_types:
                     dummy_tk.destroy()
-                    return ([f'[ERROR] Area "{target_area}" not found. Available areas: {", ".join(area_list)}'])
+                    return ([f'[ERROR] Invalid --type value: {l2_type}. Valid values: {", ".join(valid_l2_types)}'])
+
+                # Peek --area and --format non-destructively to decide the
+                # default --type when the caller omitted both.
+                _peek_area = get_next_arg(argv_array, '--area')
+                if _peek_area is not None and _peek_area.startswith('--'):
+                    _peek_area = None
+                _peek_format = get_next_arg(argv_array, '--format')
+                if _peek_format is not None and _peek_format.startswith('--'):
+                    _peek_format = None
+                _peek_format_norm = (_peek_format or 'pptx').lower()
+                if l2_type is None and _peek_area is None and _peek_format_norm == 'svg':
+                    l2_type = 'all_areas'
+
+                if l2_type == 'all_areas':
+                    target_area = ''  # empty => All Areas mode in nsm_l2_svg_create
+                else:
+                    # --area argument (default: first area). per_area is the legacy default.
+                    target_area = _peek_area if _peek_area is not None else area_list[0]
+                    if target_area not in area_list:
+                        dummy_tk.destroy()
+                        return ([f'[ERROR] Area "{target_area}" not found. Available areas: {", ".join(area_list)}'])
 
                 # Mock comboL2_3_6 for area selection
                 class MockCombo:
@@ -716,7 +746,11 @@ class ns_cli_run():
                 self.comboATTR_1_1 = MockCombo(attribute_title_list[0] if attribute_title_list else '')
 
                 self.click_value = 'L2-3-2'
-                output_pptx = os.path.join(iDir, '[L2_DIAGRAM]' + target_area + '_' + basename_clean + '.pptx')
+                # Use 'AllAreas' as the filename infix when --type all_areas is
+                # selected (matches the L1/L3 AllAreas naming convention). The
+                # per-area path keeps the original `<area>` infix.
+                output_pptx_area_label = 'AllAreas' if l2_type == 'all_areas' else target_area
+                output_pptx = os.path.join(iDir, '[L2_DIAGRAM]' + output_pptx_area_label + '_' + basename_clean + '.pptx')
                 self.outFileTxt_L2_3_4_1.insert(tk.END, output_pptx)
                 self.outFileTxt_2_1.insert(tk.END, output_pptx)
                 self.output_ppt_file = output_pptx
@@ -733,8 +767,14 @@ class ns_cli_run():
                 if output_format not in ('pptx', 'svg'):
                     output_format = 'pptx'
 
+                # PPTX is not supported for --type all_areas (SVG only).
+                if l2_type == 'all_areas' and output_format != 'svg':
+                    dummy_tk.destroy()
+                    return ([f'[ERROR] --type all_areas requires --format svg (PPTX is not supported).'])
+
                 if output_format == 'svg':
-                    output_svg = os.path.join(iDir, '[L2_DIAGRAM]' + target_area + '_' + basename_clean + '.svg')
+                    output_svg_area_label = 'AllAreas' if l2_type == 'all_areas' else target_area
+                    output_svg = os.path.join(iDir, '[L2_DIAGRAM]' + output_svg_area_label + '_' + basename_clean + '.svg')
                     self.output_svg_file = output_svg
                     self.output_format = 'svg'
 
@@ -747,7 +787,8 @@ class ns_cli_run():
                     dummy_tk.destroy()
 
                     if os.path.isfile(output_svg):
-                        return_text = f'--- L2 SVG Diagram (area: {target_area}) created successfully ---\n'
+                        scope_label = 'all areas' if l2_type == 'all_areas' else f'area: {target_area}'
+                        return_text = f'--- L2 SVG Diagram ({scope_label}) created successfully ---\n'
                         return_text += f'File: {output_svg}'
                     else:
                         return_text = '[ERROR] Failed to create L2 SVG Diagram'
@@ -995,6 +1036,227 @@ class ns_cli_run():
                 import traceback
                 error_detail = traceback.format_exc()
                 return ([f'[ERROR] Failed to export L3 Diagram: {str(e)}\n\nDetails:\n{error_detail}'])
+
+        # Combined L1/L2/L3 Diagram (single tabbed HTML viewer).
+        # Output: [L1L2L3_DIAGRAM]AllAreas_<base>.html (--type all_areas)
+        #         [L1L2L3_DIAGRAM]<safe_area>_<base>.html (--type per_area --area <name>)
+        # Each layer's SVG is reused if already present in the master directory;
+        # missing layers are regenerated by recursing into export l[1-3]_diagram
+        # so callers (Local MCP build_default_outputs, Online ↓html(L1,L2,L3)
+        # download endpoint, ad-hoc CLI) get a one-shot artifact.
+        if next_arg == 'combined_diagram':
+            try:
+                if not os.path.isfile(master_file_path):
+                    return ([f'[ERROR] Master file not found: {master_file_path}'])
+
+                filename = os.path.basename(master_file_path)
+                if not filename.startswith('[MASTER]'):
+                    return ([f'[ERROR] Master file must start with "[MASTER]". Current filename: {filename}'])
+
+                combined_type = get_next_arg(argv_array, '--type')
+                if combined_type is None or combined_type.startswith('--'):
+                    combined_type = 'all_areas'
+                if combined_type not in ('all_areas', 'per_area'):
+                    return ([f'[ERROR] Invalid --type value: {combined_type}. Valid values: all_areas, per_area'])
+
+                target_area = None
+                if combined_type == 'per_area':
+                    target_area_arg = get_next_arg(argv_array, '--area')
+                    if target_area_arg is None or target_area_arg.startswith('--'):
+                        return ([f'[ERROR] --type per_area requires --area <name>'])
+                    target_area = target_area_arg.strip()
+                    if not target_area:
+                        return ([f'[ERROR] --area must be a non-empty area name'])
+
+                # Optional flag: by default we regenerate any missing per-layer
+                # SVG so a fresh master can produce the combined HTML in one
+                # CLI invocation. Pass --regen-missing false to bundle only
+                # whatever SVGs already exist (used during scripted bundling).
+                regen_missing = True
+                regen_arg = get_next_arg(argv_array, '--regen-missing')
+                if regen_arg is not None and not regen_arg.startswith('--'):
+                    regen_missing = regen_arg.strip().lower() in ('1', 'true', 'yes', 'on')
+
+                iDir = os.path.dirname(master_file_path)
+                if not iDir:
+                    iDir = os.getcwd()
+                basename_without_ext = os.path.splitext(os.path.basename(master_file_path))[0]
+                basename_clean = basename_without_ext.replace('[MASTER]', '')
+
+                # Validate target_area against the master folder list.
+                if target_area is not None:
+                    import nsm_extensions
+                    area_list = nsm_extensions.ip_report.get_folder_list(self) or []
+                    if not area_list:
+                        return ([f'[ERROR] No areas found in the master file'])
+                    if target_area not in area_list:
+                        return ([f'[ERROR] Area "{target_area}" not found. Available areas: {", ".join(area_list)}'])
+
+                # Sanitize area name for the subset of filenames that are
+                # produced by the SVG renderers (L1/L3 PerArea path); L2 keeps
+                # the raw area string. _safe_area mirrors
+                # ns_web_start._safe_area_for_filename().
+                import re as _re
+                def _safe_area(name):
+                    safe = _re.sub(r'[\\/*?:"<>|]', '-', str(name))
+                    safe = safe.strip('. ')
+                    return safe or 'Area'
+
+                if combined_type == 'all_areas':
+                    layer_filenames = {
+                        'l1': f'[L1_DIAGRAM]AllAreasTag_{basename_clean}.svg',
+                        'l2': f'[L2_DIAGRAM]AllAreas_{basename_clean}.svg',
+                        'l3': f'[L3_DIAGRAM]AllAreas_{basename_clean}.svg',
+                    }
+                    combined_filename = f'[L1L2L3_DIAGRAM]AllAreas_{basename_clean}.html'
+                    scope_label = 'All Areas'
+                    layer_argvs = {
+                        'l1': ['export', 'l1_diagram', '--type', 'all_areas_tag', '--format', 'svg'],
+                        'l2': ['export', 'l2_diagram', '--type', 'all_areas', '--format', 'svg'],
+                        'l3': ['export', 'l3_diagram', '--type', 'all_areas', '--format', 'svg'],
+                    }
+                else:
+                    safe = _safe_area(target_area)
+                    layer_filenames = {
+                        'l1': f'[L1_DIAGRAM]PerAreaTag_{basename_clean}_{safe}.svg',
+                        # L2 PerArea uses the raw area name (matches Online
+                        # convention from _find_svgs_for_cell 'l2_area_<area>').
+                        'l2': f'[L2_DIAGRAM]{target_area}_{basename_clean}.svg',
+                        'l3': f'[L3_DIAGRAM]PerArea_{basename_clean}_{safe}.svg',
+                    }
+                    combined_filename = f'[L1L2L3_DIAGRAM]{safe}_{basename_clean}.html'
+                    scope_label = target_area
+                    layer_argvs = {
+                        'l1': ['export', 'l1_diagram', '--type', 'per_area_tag',
+                               '--area', target_area, '--format', 'svg'],
+                        'l2': ['export', 'l2_diagram', '--type', 'per_area',
+                               '--area', target_area, '--format', 'svg'],
+                        'l3': ['export', 'l3_diagram', '--type', 'per_area',
+                               '--area', target_area, '--format', 'svg'],
+                    }
+
+                layer_paths = {layer: os.path.join(iDir, fn)
+                               for layer, fn in layer_filenames.items()}
+
+                # status: 'reused' / 'generated' / 'missing' / 'failed' / 'read_failed'
+                layer_status = {layer: 'pending' for layer in ('l1', 'l2', 'l3')}
+                layer_msgs = {}
+
+                for layer in ('l1', 'l2', 'l3'):
+                    p = layer_paths[layer]
+                    if os.path.isfile(p):
+                        layer_status[layer] = 'reused'
+                        layer_msgs[layer] = (
+                            f'reused existing {layer_filenames[layer]}'
+                        )
+                        continue
+                    if not regen_missing:
+                        layer_status[layer] = 'missing'
+                        layer_msgs[layer] = (
+                            f'{layer_filenames[layer]} not found '
+                            f'(--regen-missing=false)'
+                        )
+                        continue
+                    # Recurse into cli_export to (re)build this layer's SVG.
+                    try:
+                        sub_result = ns_cli_run.cli_export(
+                            self, master_file_path, layer_argvs[layer]
+                        )
+                        sub_msg = (sub_result[0]
+                                   if isinstance(sub_result, list) and sub_result
+                                   else '')
+                        if os.path.isfile(p):
+                            layer_status[layer] = 'generated'
+                            layer_msgs[layer] = (
+                                f'generated {layer_filenames[layer]}'
+                            )
+                        else:
+                            layer_status[layer] = 'failed'
+                            short = (sub_msg.splitlines()[0]
+                                     if sub_msg else 'unknown error')[:240]
+                            layer_msgs[layer] = (
+                                f'{layer.upper()} regeneration did not produce '
+                                f'{layer_filenames[layer]}: {short}'
+                            )
+                    except Exception as e:
+                        layer_status[layer] = 'failed'
+                        layer_msgs[layer] = (
+                            f'{layer.upper()} regeneration raised exception: {e}'
+                        )
+
+                # Read whatever SVGs ended up on disk. Treat read failures as
+                # missing so the renderer still produces the HTML with
+                # placeholder tabs for the broken layers.
+                layer_svgs = {}
+                for layer in ('l1', 'l2', 'l3'):
+                    p = layer_paths[layer]
+                    if not os.path.isfile(p):
+                        layer_svgs[layer] = None
+                        continue
+                    try:
+                        # SVG files are emitted as UTF-8 by nsm_l[1-3]_svg_create;
+                        # if a future encoding change creeps in we still want
+                        # the combined HTML to be produced rather than crashing.
+                        with open(p, 'r', encoding='utf-8') as fh:
+                            layer_svgs[layer] = fh.read()
+                    except Exception as e:
+                        layer_svgs[layer] = None
+                        layer_status[layer] = 'read_failed'
+                        layer_msgs[layer] = (
+                            f'{layer.upper()} SVG read failed: {e}'
+                        )
+
+                # Render the self-contained tabbed HTML.
+                import nsm_l1l2l3_html
+                html_text = nsm_l1l2l3_html.render_l1l2l3_html(
+                    layer_svgs=layer_svgs,
+                    master_basename=basename_clean,
+                    scope_label=scope_label,
+                    mode='standalone',
+                )
+
+                combined_path = os.path.join(iDir, combined_filename)
+                if os.path.isfile(combined_path):
+                    try:
+                        os.remove(combined_path)
+                    except Exception:
+                        pass
+                try:
+                    with open(combined_path, 'w', encoding='utf-8') as fh:
+                        fh.write(html_text)
+                except Exception as e:
+                    return ([f'[ERROR] Failed to write combined HTML to '
+                             f'{combined_path}: {e}'])
+
+                if not os.path.isfile(combined_path):
+                    return ([f'[ERROR] Combined HTML missing after write: '
+                             f'{combined_path}'])
+
+                ok_layers = [
+                    layer for layer in ('l1', 'l2', 'l3')
+                    if layer_status[layer] in ('reused', 'generated')
+                ]
+                return_text = (
+                    f'--- Combined L1/L2/L3 Diagram ({combined_type}) '
+                    f'created successfully ---\n'
+                )
+                return_text += f'File: {combined_path}\n'
+                for layer in ('l1', 'l2', 'l3'):
+                    return_text += (
+                        f'  {layer.upper()}: '
+                        f'[{layer_status[layer]}] {layer_msgs[layer]}\n'
+                    )
+                return_text += (
+                    f'Layers bundled: {len(ok_layers)}/3 '
+                    f'({", ".join(l.upper() for l in ok_layers) or "none"})'
+                )
+                return ([return_text])
+
+            except Exception as e:
+                import traceback
+                error_detail = traceback.format_exc()
+                return ([f'[ERROR] Failed to export combined diagram: '
+                         f'{str(e)}\n\nDetails:\n{error_detail}'])
 
 
     def cli_rename(self, master_file_path, argv_array):  # add at ver 2.5.4

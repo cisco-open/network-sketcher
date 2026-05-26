@@ -1511,16 +1511,24 @@ File: C:\work\[L1_DIAGRAM]PerArea_test.pptx
 
 ## export l2_diagram
 
-Exports a Layer 2 (VLAN/broadcast domain) diagram for a specific area as a PowerPoint (.pptx) file. The output file is created in the same directory as the Master file.
+Exports a Layer 2 (VLAN/broadcast domain) diagram. By default the diagram covers a single area and is rendered as PowerPoint (.pptx); with --type all_areas every area is combined into a single SVG. The output file is created in the same directory as the Master file.
 
 ```bash
 export l2_diagram
+export l2_diagram --type <type>
 export l2_diagram --area <area_name>
+export l2_diagram --type all_areas --format svg
 ```
 
 Options:
 
---area : Specifies the target area name. If omitted, the first available area is used. Waypoint areas (ending with _wp_) are excluded from the available areas.
+--type : Specifies the diagram scope. Valid values are:
+- per_area (default) : Single-area diagram (PPTX or SVG)
+- all_areas : All areas combined into a single SVG (SVG only; PPTX is not supported for this type)
+
+--area : Specifies the target area name when --type per_area. If omitted, the first available area is used. Waypoint areas (ending with _wp_) are excluded from the available areas. Ignored for --type all_areas.
+
+--format : Output format. Valid values are pptx (default; per_area only) and svg.
 
 * ex.
 +Export l2_diagram (default: first area)+
@@ -1535,10 +1543,17 @@ $ export l2_diagram --area Office
 --- L2 Diagram (area: Office) created successfully ---
 File: C:\work\[L2_DIAGRAM]Office_test.pptx
 
++Export l2_diagram (all_areas)+
+
+$ export l2_diagram --type all_areas --format svg
+--- L2 SVG Diagram (all areas) created successfully ---
+File: C:\work\[L2_DIAGRAM]AllAreas_test.svg
+
 [Tips]
-* The output filename is automatically generated as [L2_DIAGRAM]area_name_master_file_name.pptx
+* For per_area, the output filename is [L2_DIAGRAM]area_name_master_file_name.pptx (or .svg)
+* For all_areas, the output filename is [L2_DIAGRAM]AllAreas_master_file_name.svg
 * If the output file already exists, it will be overwritten
-* To export diagrams for all areas, run the command for each area individually
+* PPTX output is not supported for --type all_areas (use --format svg)
 
 
 ## export l3_diagram
@@ -1572,6 +1587,57 @@ File: C:\work\[L3_DIAGRAM]PerArea_test.pptx
 [Tips]
 * The output filename is automatically generated based on the type: [L3_DIAGRAM]AllAreas_ or [L3_DIAGRAM]PerArea_ followed by the master file name
 * If the output file already exists, it will be overwritten
+
+
+## export combined_diagram
+
+Exports a combined L1/L2/L3 diagram viewer as a single self-contained HTML file. The HTML embeds all three layer SVGs and presents them as three switchable tabs (L1 / L2 / L3), matching the on-screen tabbed preview in the Online edition. The output file is created in the same directory as the Master file.
+
+If any per-layer SVG (`[L1_DIAGRAM]AllAreasTag_*.svg`, `[L2_DIAGRAM]AllAreas_*.svg`, `[L3_DIAGRAM]AllAreas_*.svg` for `--type all_areas`; the corresponding `[Lx_DIAGRAM]Per...*` filenames for `--type per_area`) is missing in the master directory, this command regenerates only the missing layers by recursing into `export l1_diagram` / `export l2_diagram` / `export l3_diagram`. Existing per-layer SVGs are reused as-is.
+
+```bash
+export combined_diagram
+export combined_diagram --type all_areas
+export combined_diagram --type per_area --area <area_name>
+export combined_diagram --type all_areas --regen-missing false
+```
+
+Options:
+
+--type : Diagram scope. Valid values:
+  - all_areas (default) : Bundles `[L1_DIAGRAM]AllAreasTag_<base>.svg`, `[L2_DIAGRAM]AllAreas_<base>.svg` and `[L3_DIAGRAM]AllAreas_<base>.svg` into `[L1L2L3_DIAGRAM]AllAreas_<base>.html`.
+  - per_area : Bundles the L1/L2/L3 SVGs for one area into `[L1L2L3_DIAGRAM]<safe_area>_<base>.html`. Requires `--area`.
+
+--area : (per_area only) Area name to bundle. Must match a folder name in the master file exactly.
+
+--regen-missing : (default true) When false, the command only bundles per-layer SVGs that already exist on disk. Layers whose SVG is missing render a "Not generated yet" placeholder in the corresponding tab.
+
+* ex.
++Export combined_diagram (default: all_areas)+
+
+$ export combined_diagram
+--- Combined L1/L2/L3 Diagram (all_areas) created successfully ---
+File: C:\work\[L1L2L3_DIAGRAM]AllAreas_test.html
+  L1: [reused] reused existing [L1_DIAGRAM]AllAreasTag_test.svg
+  L2: [generated] generated [L2_DIAGRAM]AllAreas_test.svg
+  L3: [reused] reused existing [L3_DIAGRAM]AllAreas_test.svg
+Layers bundled: 3/3 (L1, L2, L3)
+
++Export combined_diagram (per_area)+
+
+$ export combined_diagram --type per_area --area Office_LAN
+--- Combined L1/L2/L3 Diagram (per_area) created successfully ---
+File: C:\work\[L1L2L3_DIAGRAM]Office_LAN_test.html
+  L1: [generated] generated [L1_DIAGRAM]PerAreaTag_test_Office_LAN.svg
+  L2: [generated] generated [L2_DIAGRAM]Office_LAN_test.svg
+  L3: [generated] generated [L3_DIAGRAM]PerArea_test_Office_LAN.svg
+Layers bundled: 3/3 (L1, L2, L3)
+
+[Tips]
+* The output filename always starts with `[L1L2L3_DIAGRAM]` so it is easy to distinguish from the per-layer SVG files.
+* The combined HTML can be opened directly in a browser (no server required); per-tab download buttons are intentionally hidden in standalone mode because the file is already on disk.
+* The Local MCP `build_default_outputs()` calls this command for `--type all_areas` to produce a single HTML viewer alongside the Device Table and AI Context. Per-area combined HTMLs are not generated by default; request them explicitly via `run_commands(["export combined_diagram --type per_area --area <name>"])` when needed.
+* If `--regen-missing false` is supplied and any layer SVG is missing, the corresponding tab in the combined HTML shows a "Not generated yet" placeholder (the file is still produced).
 
 
 # CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS

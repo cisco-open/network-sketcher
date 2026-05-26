@@ -131,8 +131,15 @@ def main() -> None:
         })
         return
 
+    def _tab_row_count(t: dict) -> int:
+        sub_tables = t.get('tables') or []
+        if sub_tables:
+            # Multi-table tab (e.g. Placement): sum all sub-table rows.
+            return sum(len(s.get('rows') or []) for s in sub_tables)
+        return len(t.get('rows') or [])
+
     row_summary = ', '.join(
-        f"{t['label']}={len(t.get('rows') or [])}" for t in tabs_data
+        f"{t['label']}={_tab_row_count(t)}" for t in tabs_data
     )
     _emit({
         'ok': True,
