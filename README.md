@@ -416,16 +416,9 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | --- | --- | --- | --- | --- |
 | Create master file from PowerPoint rough sketch | ❌ | ❌ | ✅ | ❌ |
 | Convert master files from Visio, Draw.io, NetBox, CML | ❌ | ❌ | ✅ | ❌ |
-| Area placement | ✅ (user-specified) | ✅ (user-specified) | ✅ (automatic) | ✅ (user-specified) |
-| Create / delete / modify areas | ✅ | ✅ | ✅ | ✅ |
-| Place / create / delete / modify devices | ✅ | ✅ | ✅ | ✅ |
-| Place / create / delete / modify waypoints | ✅ | ✅ | ✅ | ✅ |
-| Add Layer 1 connections | ✅ | ✅ | ✅ | ✅ |
-| Delete Layer 1 connections | ✅ | ✅ | ⚠️ (port cannot be specified) | ✅ |
-| Change Layer 1 port names | ✅ | ✅ | ✅ | ✅ |
-| Change Layer 1 connection details (e.g., duplex) | ✅ | ✅ | ✅ | ✅ |
-| Change Layer 2 segments (VLAN) | ✅ | ✅ | ✅ | ✅ |
-| Add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ | ✅ | ✅ |
+| Place / create / delete / modify areas, devices, waypoints | ✅ | ✅ | ✅ (areas auto-placed in GUI) | ✅ |
+| Add / delete / modify Layer 1 connections (port names, duplex, etc.) | ✅ | ✅ | ⚠️ (port cannot be specified on delete) | ✅ |
+| Change Layer 2 segments (VLAN) / add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ | ✅ | ✅ |
 | Change IP addresses / Layer 3 instances (VRF) | ✅ | ✅ | ✅ | ✅ |
 | Change attributes | ✅ | ✅ | ✅ | ✅ |
 | Add / delete VPNs | ❌ | ❌ | ✅ | ❌ |

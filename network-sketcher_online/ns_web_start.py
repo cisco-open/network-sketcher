@@ -266,6 +266,57 @@ _svg_grid_last_attr_lock = threading.Lock()
 _SVG_GRID_INITIAL_SCOPE = '__initial__'
 
 
+# When an SVG file's root <svg> element declares a width/height larger than
+# what Chromium's image rasterizer can handle (~16384 px on either axis,
+# https://crbug.com/431005 and related), the browser silently renders an
+# <img src="...svg"> as a blank box. The largest L2/L3 All Areas diagrams
+# for ~1000-device networks easily exceed this limit (e.g. height=29922
+# for L3 with 1024 devices). To keep thumbnails visible in every browser,
+# /svg_raw/ accepts a `?thumb=1` query parameter that serves a normalized
+# copy of the SVG with width/height scaled down to fit inside the safe
+# canvas limit. The viewBox attribute is kept untouched so the SVG still
+# scales to whatever CSS size the <img> element was given.
+_SVG_THUMB_MAX_DIM = 2048
+_SVG_ROOT_TAG_RE = re.compile(rb'<svg\b([^>]*)>', re.IGNORECASE)
+_SVG_WIDTH_RE = re.compile(r'\bwidth\s*=\s*"([0-9.]+)(?:px)?"', re.IGNORECASE)
+_SVG_HEIGHT_RE = re.compile(r'\bheight\s*=\s*"([0-9.]+)(?:px)?"', re.IGNORECASE)
+
+
+def _normalize_svg_for_thumb(svg_bytes):
+    """Return SVG bytes whose root <svg> width/height fit inside ``_SVG_THUMB_MAX_DIM``.
+
+    Only the first occurrence of the root <svg> tag is rewritten. If the file
+    has no width/height attributes (viewBox-only) or already fits, the input
+    is returned unchanged. The function is safe on malformed input — any
+    parsing failure short-circuits back to the original bytes.
+    """
+    try:
+        m = _SVG_ROOT_TAG_RE.search(svg_bytes, 0, 4096)
+        if not m:
+            return svg_bytes
+        attrs_text = m.group(1).decode('utf-8', errors='replace')
+        wm = _SVG_WIDTH_RE.search(attrs_text)
+        hm = _SVG_HEIGHT_RE.search(attrs_text)
+        if not wm or not hm:
+            return svg_bytes
+        w = float(wm.group(1))
+        h = float(hm.group(1))
+        if w <= 0 or h <= 0:
+            return svg_bytes
+        longest = max(w, h)
+        if longest <= _SVG_THUMB_MAX_DIM:
+            return svg_bytes
+        scale = _SVG_THUMB_MAX_DIM / longest
+        new_w = round(w * scale, 2)
+        new_h = round(h * scale, 2)
+        new_attrs = _SVG_WIDTH_RE.sub(f'width="{new_w}"', attrs_text, count=1)
+        new_attrs = _SVG_HEIGHT_RE.sub(f'height="{new_h}"', new_attrs, count=1)
+        new_tag = ('<svg' + new_attrs + '>').encode('utf-8')
+        return svg_bytes[:m.start()] + new_tag + svg_bytes[m.end():]
+    except Exception:
+        return svg_bytes
+
+
 def touch_heartbeat(job_id):
     with _heartbeats_lock:
         _heartbeats[job_id] = time.time()
@@ -1288,6 +1339,7 @@ def _find_svgs_for_cell(work_dir, cell_id, file_list=None):
       l3_all                  → [L3_DIAGRAM]AllAreas_ (single file)
       l3_per_area_<area>      → [L3_DIAGRAM]PerArea_*_<safe_area>.svg (per-area file)
       l2_area_<area>          → [L2_DIAGRAM]<area>_ (single file)
+      l2_all                  → [L2_DIAGRAM]AllAreas_ (single file)
     """
     if file_list is not None:
         files = [f for f in file_list if f.lower().endswith('.svg')]
@@ -1313,10 +1365,67 @@ def _find_svgs_for_cell(work_dir, cell_id, file_list=None):
         return sorted([f for f in files
                         if f.startswith('[L3_DIAGRAM]PerArea_') and
                         os.path.splitext(f)[0].endswith('_' + safe)])
+    if cell_id == 'l2_all':
+        return sorted([f for f in files if f.startswith('[L2_DIAGRAM]AllAreas_')])
     if cell_id.startswith('l2_area_'):
         area = cell_id[len('l2_area_'):]
         return sorted([f for f in files if f.startswith(f'[L2_DIAGRAM]{area}_')])
     return []
+
+
+def _resolve_layer_files(work_dir, scope, file_list=None):
+    """Map a viewer scope to the L1/L2/L3 SVG filenames for that scope.
+
+    Used by ``/diagram_preview/<job_id>`` (live tabbed viewer) and the CLI
+    bridge in ``/diagram_preview_html/<job_id>`` to translate a UI cell
+    selection (e.g. clicking the L2 thumbnail of "Office_LAN") into a
+    consistent triple of L1/L2/L3 filenames so the user can switch between
+    layers within a single window.
+
+    Args:
+        work_dir: Path-like work directory for the job (used as fallback
+                  when ``file_list`` is not supplied).
+        scope: ``'all'`` for All Areas, or ``'area:<area_name>'`` for the
+               per-area scope.
+        file_list: Optional iterable of filenames to resolve against. When
+                   omitted the directory is scanned. Mirrors the
+                   ``_find_svgs_for_cell`` semantics.
+
+    Returns:
+        ``dict`` ``{'l1': filename or None, 'l2': ..., 'l3': ...}`` where
+        ``None`` marks a layer whose SVG has not been generated yet (the
+        live viewer falls back to a "Not generated yet" placeholder for
+        that tab). Filenames are basenames within ``work_dir``.
+    """
+    scope = (scope or '').strip()
+    if not scope:
+        return {'l1': None, 'l2': None, 'l3': None}
+
+    if scope == 'all':
+        cell_ids = {'l1': 'l1_all', 'l2': 'l2_all', 'l3': 'l3_all'}
+    elif scope.startswith('area:'):
+        area = scope[len('area:'):]
+        if not area:
+            return {'l1': None, 'l2': None, 'l3': None}
+        cell_ids = {
+            'l1': 'l1_per_area_' + area,
+            # NOTE: L2 per-area cell uses 'l2_area_<area>' (NOT 'l2_per_area_'),
+            # matching _find_svgs_for_cell's existing contract. Renaming would
+            # invalidate every cached client URL, so we keep this asymmetry.
+            'l2': 'l2_area_' + area,
+            'l3': 'l3_per_area_' + area,
+        }
+    else:
+        return {'l1': None, 'l2': None, 'l3': None}
+
+    resolved = {}
+    for layer, cell_id in cell_ids.items():
+        matches = _find_svgs_for_cell(work_dir, cell_id, file_list=file_list)
+        # Multiple matches are theoretically possible (e.g. legacy + tag-less
+        # variants) but in practice only one per cell is produced; we pick
+        # the first deterministically so the live viewer is reproducible.
+        resolved[layer] = matches[0] if matches else None
+    return resolved
 
 
 @app.route('/svg_grid_stream/<job_id>')
@@ -1326,9 +1435,9 @@ def svg_grid_stream(job_id):
     Two operating modes (selected via ``?mode=`` query):
 
       - ``mode=initial`` (default): produce the always-shown thumbnails
-        (``l1_all`` and ``l3_all``) and trigger AI Context generation in
-        parallel. No per-area diagrams are generated here -- those wait for
-        the user to pick an area in the dropdown.
+        (``l1_all``, ``l2_all`` and ``l3_all``) and trigger AI Context
+        generation in parallel. No per-area diagrams are generated here --
+        those wait for the user to pick an area in the dropdown.
 
       - ``mode=area``: requires an ``area`` query parameter. Generates the
         three per-area cells (``l1_per_area_<area>``, ``l3_per_area_<area>``,
@@ -1385,6 +1494,7 @@ def svg_grid_stream(job_id):
     if mode == 'initial':
         tasks = [
             _task('l1_all', make_args(['export', 'l1_diagram', '--type', 'all_areas_tag'])),
+            _task('l2_all', make_args(['export', 'l2_diagram', '--type', 'all_areas'])),
             _task('l3_all', make_args(['export', 'l3_diagram', '--type', 'all_areas'])),
         ]
     else:
@@ -1432,7 +1542,13 @@ def svg_grid_stream(job_id):
                 except Exception:
                     pass
             if svg_bytes and len(svg_bytes) <= 300 * 1024:
-                per_cell_b64[fname] = _b64_svg.b64encode(svg_bytes).decode('ascii')
+                # Normalize width/height before base64-inlining so the
+                # decoded data: URL also stays under Chromium's 16384-px
+                # canvas limit. The original bytes in _svg_mem_cache are
+                # untouched and still served full-size by /svg_raw/.
+                per_cell_b64[fname] = _b64_svg.b64encode(
+                    _normalize_svg_for_thumb(svg_bytes)
+                ).decode('ascii')
         return per_cell, per_cell_b64
 
     def _run_task(cell_ids, cmd_args):
@@ -1455,7 +1571,12 @@ def svg_grid_stream(job_id):
                         try:
                             if svg_path.stat().st_size <= 300 * 1024:
                                 with open(str(svg_path), 'rb') as _f:
-                                    per_cell_b64[found[0]] = _b64_svg.b64encode(_f.read()).decode('ascii')
+                                    # Normalize root <svg> width/height to keep
+                                    # the inlined data: URL within Chromium's
+                                    # 16384-px image rasterizer limit.
+                                    per_cell_b64[found[0]] = _b64_svg.b64encode(
+                                        _normalize_svg_for_thumb(_f.read())
+                                    ).decode('ascii')
                         except Exception:
                             pass
             else:
@@ -1482,6 +1603,17 @@ def svg_grid_stream(job_id):
 
     def generate():
         try:
+            # Flush HTTP response headers + keep the TCP/TLS connection alive
+            # immediately so EventSource.onopen fires in the browser even when
+            # the first real cell event is delayed (e.g. the L2 All Areas
+            # subprocess can take 15-20s before yielding anything for large
+            # masters). Without this, some Windows network stacks / proxies /
+            # antivirus / TLS MITM layers treat the long silence as a dead
+            # connection and drop it. SSE comment lines (starting with `:`)
+            # are ignored by browsers but force Werkzeug to flush the
+            # response so the client sees the connection as established.
+            yield ': keepalive\n\n'
+
             basename = master_filename.replace('[MASTER]', '').replace('.xlsx', '').replace('.nsm', '')
             ai_filename_expected = f'[AI_Context]{basename}.txt'
 
@@ -1550,17 +1682,40 @@ def svg_grid_stream(job_id):
                     executor.submit(_run_task, cell_ids, cmd_args): cell_ids
                     for cell_ids, cmd_args in tasks
                 }
-                for future in concurrent.futures.as_completed(futures):
-                    per_cell, success, per_cell_b64 = future.result()
-                    yield from _stream_events(per_cell, per_cell_b64, success)
+                # Replaced concurrent.futures.as_completed() with a polling
+                # loop that emits an SSE heartbeat every few seconds while
+                # tasks are still running. This keeps the connection alive
+                # for slow tasks (e.g. the L2 All Areas subprocess for large
+                # masters can complete after L1 but before L3) so the
+                # browser's EventSource does not get torn down by idle-aware
+                # network middleboxes (Windows TLS proxy, AV, corporate
+                # firewall, etc.). Heartbeats are SSE comment lines (`:`)
+                # and are silently ignored by the EventSource API.
+                _SSE_HEARTBEAT_INTERVAL = 5.0
+                pending = set(futures.keys())
+                while pending:
+                    done, pending = concurrent.futures.wait(
+                        pending,
+                        timeout=_SSE_HEARTBEAT_INTERVAL,
+                        return_when=concurrent.futures.FIRST_COMPLETED,
+                    )
+                    if not done:
+                        yield ': keepalive\n\n'
+                        continue
+                    for future in done:
+                        per_cell, success, per_cell_b64 = future.result()
+                        yield from _stream_events(per_cell, per_cell_b64, success)
 
             # Record the attribute for this scope so the next call can use cache fast-path
             with _svg_grid_last_attr_lock:
                 _svg_grid_last_attr.setdefault(job_id, {})[scope] = attr
 
             if mode == 'initial':
-                # Wait for AI context thread (usually already finished by now)
-                ai_done_event.wait()
+                # Wait for AI context thread (usually already finished by now).
+                # Send periodic heartbeats while waiting so the connection
+                # stays alive even if AI Context outlasts the SVG cells.
+                while not ai_done_event.wait(timeout=_SSE_HEARTBEAT_INTERVAL):
+                    yield ': keepalive\n\n'
                 yield 'data: ' + json.dumps({'done': True, 'ai_filename': ai_result[0]}) + '\n\n'
             else:
                 yield 'data: ' + json.dumps({'done': True, 'area': area_arg}) + '\n\n'
@@ -2874,12 +3029,20 @@ def svg_raw(job_id, filename):
         abort(403)
     if not filename.lower().endswith('.svg'):
         abort(404)
+    # ?thumb=1 -> serve a copy with normalized width/height so very tall or
+    # very wide SVGs (especially L2/L3 All Areas for ~1000-device networks)
+    # don't trip Chromium's 16384-px image rasterization limit and end up
+    # rendered as a blank <img>. The actual file on disk and the in-memory
+    # cache are never modified — only the response body is rewritten.
+    thumb_mode = request.args.get('thumb') == '1'
     # Serve from in-memory cache when available (populated by run_ns_command_subprocess).
     # This avoids Windows AV file-lock issues that can occur when send_file() tries to
     # open the file after shutil.move() — even if _wait_readable() already confirmed it.
     with _svg_mem_cache_lock:
         svg_bytes = _svg_mem_cache.get(job_id, {}).get(filename)
     if svg_bytes is not None:
+        if thumb_mode:
+            svg_bytes = _normalize_svg_for_thumb(svg_bytes)
         return Response(svg_bytes, mimetype='image/svg+xml')
     # Fallback: serve from disk with retry (for files not yet cached, or cache miss).
     # Use continue (not break) when file is not yet visible, to handle transient
@@ -2892,6 +3055,19 @@ def svg_raw(job_id, filename):
                 continue
             break
         try:
+            if thumb_mode:
+                # Read once so we can normalize before sending. send_file() can't
+                # easily transform the body, so we hand back a Response instead.
+                try:
+                    with open(str(filepath), 'rb') as _fh:
+                        raw = _fh.read()
+                    return Response(_normalize_svg_for_thumb(raw),
+                                    mimetype='image/svg+xml')
+                except PermissionError:
+                    if _attempt < 2:
+                        import time as _t_svg
+                        _t_svg.sleep(0.15 * (_attempt + 1))
+                    continue
             return send_file(str(filepath), mimetype='image/svg+xml')
         except PermissionError:
             if _attempt < 2:
@@ -3006,6 +3182,162 @@ def device_preview(job_id):
 
     html = _render_device_preview(job_id, tabs_data, master_basename)
     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+
+@app.route('/diagram_preview/<job_id>')
+def diagram_preview(job_id):
+    """Render the L1/L2/L3 tabbed live diagram preview.
+
+    Replaces the per-SVG ``/preview/<job>/<filename>`` viewer for L1, L2 and
+    L3 thumbnails: clicking any of those thumbnails opens this route, which
+    presents three tabs (L1, L2, L3) for the same scope so the user can
+    switch between layers in a single window. The tab content is fetched
+    from ``/svg_raw/<job>/<filename>`` on first activation.
+
+    Query parameters:
+      - ``scope``: ``all`` (default) for All Areas, or ``area:<area_name>``
+        for a specific area cell.
+    """
+    job_id = sanitize_job_id(job_id)
+    if not job_id:
+        abort(400)
+
+    work_dir = UPLOAD_DIR / job_id
+    if not work_dir.is_dir():
+        abort(404)
+
+    master_filename = get_active_master(str(work_dir))
+    if not master_filename:
+        abort(404)
+
+    master_basename = (
+        os.path.splitext(master_filename)[0].replace('[MASTER]', '')
+    )
+
+    scope = request.args.get('scope', 'all').strip() or 'all'
+    if scope == 'all':
+        scope_label = 'All Areas'
+    elif scope.startswith('area:'):
+        area_name = scope[len('area:'):].strip()
+        if not area_name:
+            abort(400)
+        scope_label = area_name
+    else:
+        abort(400)
+
+    layer_filenames = _resolve_layer_files(str(work_dir), scope)
+
+    from ns_engine.nsm_l1l2l3_html import render_l1l2l3_html
+    html = render_l1l2l3_html(
+        layer_svgs={},
+        master_basename=master_basename,
+        scope_label=scope_label,
+        mode='live',
+        job_id=job_id,
+        layer_filenames=layer_filenames,
+    )
+    return html, 200, {'Content-Type': 'text/html; charset=utf-8',
+                       # /svg_raw/ caching is per-job; prevent the live viewer
+                       # itself from being cached so newly generated layers
+                       # appear when the user reloads.
+                       'Cache-Control': 'no-store'}
+
+
+@app.route('/diagram_preview_html/<job_id>')
+def diagram_preview_html(job_id):
+    """Build and serve the combined L1/L2/L3 standalone HTML for download.
+
+    Backs the "↓ html(L1,L2,L3)" toolbar button in /diagram_preview/. The
+    L1/L2/L3 SVGs that drive the live viewer already exist in the job
+    work_dir (produced by the SVG grid SSE), so this route simply reads
+    them, hands them to ``render_l1l2l3_html(mode='standalone')`` and
+    streams the resulting self-contained HTML back as an attachment.
+
+    We deliberately avoid spawning a CLI subprocess here: the engine's
+    ``export combined_diagram`` is meant for headless use (Local MCP,
+    ad-hoc scripting), and reusing the SVGs already on disk avoids both
+    the regeneration latency and the worker's task-dir isolation that
+    would otherwise hide the existing per-layer SVGs from the bundler.
+
+    Query parameters:
+      - ``scope``: ``all`` (default) for All Areas, or ``area:<area_name>``.
+    """
+    job_id = sanitize_job_id(job_id)
+    if not job_id:
+        abort(400)
+
+    work_dir = UPLOAD_DIR / job_id
+    if not work_dir.is_dir():
+        abort(404)
+
+    master_filename = get_active_master(str(work_dir))
+    if not master_filename:
+        abort(404)
+
+    basename = master_filename.replace('[MASTER]', '')
+    if basename.lower().endswith('.nsm'):
+        basename = basename[: -len('.nsm')]
+    elif basename.lower().endswith('.xlsx'):
+        basename = basename[: -len('.xlsx')]
+
+    scope = (request.args.get('scope') or 'all').strip()
+    if scope == 'all':
+        scope_label = 'All Areas'
+        expected_filename = f'[L1L2L3_DIAGRAM]AllAreas_{basename}.html'
+    elif scope.startswith('area:'):
+        area_name = scope[len('area:'):].strip()
+        if not area_name:
+            abort(400)
+        scope_label = area_name
+        safe = _safe_area_for_filename(area_name)
+        expected_filename = f'[L1L2L3_DIAGRAM]{safe}_{basename}.html'
+    else:
+        abort(400)
+
+    layer_filenames = _resolve_layer_files(str(work_dir), scope)
+    layer_svgs = {}
+    for layer in ('l1', 'l2', 'l3'):
+        fname = layer_filenames.get(layer)
+        layer_svgs[layer] = None
+        if fname and (work_dir / fname).is_file():
+            try:
+                with open(str(work_dir / fname), 'r', encoding='utf-8') as fh:
+                    layer_svgs[layer] = fh.read()
+            except Exception as exc:
+                logger.warning('diagram_preview_html: could not read %s: %s',
+                               fname, exc)
+
+    if not any(layer_svgs.values()):
+        # Nothing to bundle; surface a 404 rather than a confusing empty
+        # download. The user must generate at least one layer SVG first
+        # (initial SSE produces all-areas; per-area requires the dropdown
+        # selection or "Generate Selected").
+        abort(404)
+
+    from ns_engine.nsm_l1l2l3_html import render_l1l2l3_html
+    html_text = render_l1l2l3_html(
+        layer_svgs=layer_svgs,
+        master_basename=basename,
+        scope_label=scope_label,
+        mode='standalone',
+    )
+
+    target_path = work_dir / expected_filename
+    try:
+        with open(str(target_path), 'w', encoding='utf-8') as fh:
+            fh.write(html_text)
+    except Exception as exc:
+        logger.error('diagram_preview_html: could not write %s: %s',
+                     target_path, exc)
+        abort(500)
+
+    request._ns_download_filename = expected_filename
+    return send_file(
+        str(target_path),
+        as_attachment=True,
+        download_name=expected_filename,
+        mimetype='text/html',
+    )
 
 
 def _render_svg_viewer(job_id, filename, work_dir, filter_prefix=''):
@@ -3924,17 +4256,28 @@ canvas {{ background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 def download_all(job_id):
     """Build and return a ZIP of generated artifacts for the job.
 
-    Two modes (selected by query parameters):
+    The ZIP always carries the per-layer L1/L2/L3 SVG files alongside
+    the combined ``[L1L2L3_DIAGRAM]*.html`` viewer(s). Three modes are
+    selected by query parameters:
 
-      - **Area-scoped (v3.1.2a, SVG mode dropdown)**: when ``?area=<name>``
-        is supplied, the ZIP includes only artifacts relevant to that area:
-        the common all-areas SVGs, the area's three per-area SVGs, the
-        Device Table HTML, the AI Context txt, and the .nsm master. Missing
-        SVGs are (re)generated on demand. Use ``?attr=<value>`` to align
-        the SVG attribute with what the user picked in the thumbnail grid.
+      - **Lightweight (``?scope=lightweight``)**: post-upload state.
+        Bundles the three all-areas SVGs
+        (``[L1_DIAGRAM]AllAreasTag``, ``[L2_DIAGRAM]AllAreas``,
+        ``[L3_DIAGRAM]AllAreas``), the AllAreas combined HTML viewer,
+        the Device Tables HTML, AI Context txt, and the .nsm master.
 
-      - **Whole-job (legacy)**: when ``area`` is omitted, the entire job
-        directory is bundled (PPTX mode, session restore, generic flows).
+      - **Area-scoped (v3.1.2a, SVG mode dropdown, ``?area=<name>``)**:
+        Bundles the three all-areas SVGs *plus* the area's three
+        per-area SVGs, the AllAreas + per-area combined HTML viewers,
+        Device Table HTML, AI Context txt, and the .nsm master.
+        Missing SVGs are (re)generated on demand. Use ``?attr=<value>``
+        to align the SVG attribute with what the user picked in the
+        thumbnail grid.
+
+      - **Whole-job (legacy, no scope/area)**: bundles every artifact
+        in the job directory (PPTX mode, session restore, generic
+        flows). The AllAreas combined HTML is best-effort regenerated
+        when the per-layer SVG triple is on disk.
     """
     job_id = sanitize_job_id(job_id)
     if not job_id:
@@ -3958,36 +4301,113 @@ def download_all(job_id):
     elif basename.lower().endswith('.xlsx'):
         basename = basename[: -len('.xlsx')]
 
+    # ---- Helpers (shared by both ZIP paths) -------------------------------
+    def _ensure_via_cli(cmd_args_extra, expected_filename):
+        """Run the engine to (re)generate ``expected_filename`` if missing.
+
+        Returns the absolute path on disk if the file exists after the call,
+        else None. Failures are logged but do not abort the ZIP (so a partial
+        ZIP is still useful).
+        """
+        target = work_dir / expected_filename
+        if target.is_file():
+            return target
+        cli_args = list(cmd_args_extra) + [
+            '--master', str(work_dir / master_filename),
+            '--format', 'svg',
+        ]
+        if attr_arg and any(x in ('l1_diagram', 'l3_diagram') for x in cli_args):
+            cli_args += ['--attribute', attr_arg]
+        try:
+            run_ns_command_subprocess(cli_args, work_dir, master_filename)
+        except Exception as exc:
+            logger.warning('download_all: regenerate %s failed: %s',
+                           expected_filename, exc)
+        return target if target.is_file() else None
+
+    def _build_combined_html_for_zip(scope, scope_label):
+        """Render ``[L1L2L3_DIAGRAM]<scope>_<basename>.html`` from the L1/L2/L3
+        SVGs already on disk for ``scope`` and return the path on success.
+
+        ``scope`` follows the same vocabulary as ``_resolve_layer_files``:
+        ``'all'`` for All Areas, ``'area:<name>'`` for a per-area scope.
+        ``scope_label`` is the human-readable label embedded in the page
+        title (e.g. ``'All Areas'`` or the area name).
+
+        Returns ``None`` (with a warning) if no per-layer SVG is available
+        or if rendering fails -- the ZIP is still built without the combined
+        HTML so the user receives a useful download.
+        """
+        if scope == 'all':
+            out_name = f'[L1L2L3_DIAGRAM]AllAreas_{basename}.html'
+        elif scope.startswith('area:'):
+            area_name = scope[len('area:'):]
+            safe = _safe_area_for_filename(area_name)
+            out_name = f'[L1L2L3_DIAGRAM]{safe}_{basename}.html'
+        else:
+            return None
+
+        layer_filenames = _resolve_layer_files(str(work_dir), scope)
+        layer_svgs = {'l1': None, 'l2': None, 'l3': None}
+        have_any = False
+        for layer in ('l1', 'l2', 'l3'):
+            fname = layer_filenames.get(layer)
+            if fname and (work_dir / fname).is_file():
+                try:
+                    with open(str(work_dir / fname), 'r', encoding='utf-8') as fh:
+                        layer_svgs[layer] = fh.read()
+                    have_any = True
+                except Exception as exc:
+                    logger.warning('download_all: could not read %s: %s', fname, exc)
+        if not have_any:
+            return None
+
+        try:
+            try:
+                from nsm_l1l2l3_html import render_l1l2l3_html
+            except ImportError:
+                from ns_engine.nsm_l1l2l3_html import render_l1l2l3_html
+            html_text = render_l1l2l3_html(
+                layer_svgs=layer_svgs,
+                master_basename=basename,
+                scope_label=scope_label,
+                mode='standalone',
+            )
+            out_path = work_dir / out_name
+            with open(str(out_path), 'w', encoding='utf-8') as fh:
+                fh.write(html_text)
+            return out_path
+        except Exception as exc:
+            logger.warning('download_all: combined html (%s) failed: %s', out_name, exc)
+            return None
+
     # ---- Lightweight ZIP (v3.1.2a, SVG mode, area not yet selected) ------
-    # Returned when the front-end shows the post-upload state: only the
-    # always-generated artifacts (Device Tables HTML, L1/L3 all-areas SVG,
-    # AI Context txt, and the .nsm master) are bundled. Per-area diagrams
-    # are NOT generated here -- they need an area pick from the dropdown.
+    # Returned when the front-end shows the post-upload state. The ZIP
+    # bundles the per-layer all-areas SVGs ([L1_DIAGRAM]AllAreasTag,
+    # [L2_DIAGRAM]AllAreas, [L3_DIAGRAM]AllAreas), the combined L1/L2/L3
+    # viewer ([L1L2L3_DIAGRAM]AllAreas_*.html), the Device Tables HTML,
+    # AI Context txt, and the .nsm master.
     if not area_arg and scope_arg == 'lightweight':
         files_to_zip = []
 
-        # All-areas SVGs (ensure via CLI if missing)
+        # All-areas SVGs (also inlined into the combined HTML below).
         for cli_args_extra, expected_filename in [
             (['export', 'l1_diagram', '--type', 'all_areas_tag'],
              f'[L1_DIAGRAM]AllAreasTag_{basename}.svg'),
+            (['export', 'l2_diagram', '--type', 'all_areas'],
+             f'[L2_DIAGRAM]AllAreas_{basename}.svg'),
             (['export', 'l3_diagram', '--type', 'all_areas'],
              f'[L3_DIAGRAM]AllAreas_{basename}.svg'),
         ]:
-            target = work_dir / expected_filename
-            if not target.is_file():
-                cli_args = list(cli_args_extra) + [
-                    '--master', str(work_dir / master_filename),
-                    '--format', 'svg',
-                ]
-                if attr_arg and any(x in ('l1_diagram', 'l3_diagram') for x in cli_args):
-                    cli_args += ['--attribute', attr_arg]
-                try:
-                    run_ns_command_subprocess(cli_args, work_dir, master_filename)
-                except Exception as exc:
-                    logger.warning('download_all (lightweight): regenerate %s failed: %s',
-                                   expected_filename, exc)
-            if target.is_file():
-                files_to_zip.append(target)
+            svg_path = _ensure_via_cli(cli_args_extra, expected_filename)
+            if svg_path:
+                files_to_zip.append(svg_path)
+
+        # Combined L1/L2/L3 standalone HTML (single artifact replacing the
+        # three per-layer SVGs in the ZIP).
+        combined_html = _build_combined_html_for_zip('all', 'All Areas')
+        if combined_html:
+            files_to_zip.append(combined_html)
 
         # Device Table HTML -- regenerate to guarantee freshness
         device_html_name = f'[DEVICE_TABLE]{basename}.html'
@@ -4036,7 +4456,17 @@ def download_all(job_id):
         )
 
     # ---- Legacy whole-job ZIP (no area filter, no scope) -----------------
+    # Used by the PPTX/non-SVG mode and session-restore flows. The ZIP
+    # bundles every artifact in the work_dir, including the per-layer
+    # L1/L2/L3 SVGs alongside the [L1L2L3_DIAGRAM]*.html viewer(s). When
+    # the all-areas SVG triple is present we (re)build the AllAreas
+    # combined HTML so it is guaranteed present. Per-area combined HTMLs
+    # that already exist on disk are bundled as-is.
     if not area_arg:
+        # Best-effort generation of the AllAreas combined HTML; ignored if
+        # the per-layer SVGs are not on disk.
+        _build_combined_html_for_zip('all', 'All Areas')
+
         zip_name = 'network_sketcher_output.zip'
         zip_path = work_dir / zip_name
         with zipfile.ZipFile(str(zip_path), 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -4062,69 +4492,47 @@ def download_all(job_id):
     # ---- Area-scoped ZIP --------------------------------------------------
     safe_area = _safe_area_for_filename(area_arg)
 
-    # ---- Helpers -----------------------------------------------------------
-    def _ensure_via_cli(cmd_args_extra, expected_filename):
-        """Run the engine to (re)generate ``expected_filename`` if missing.
-
-        Returns the absolute path on disk if the file exists after the call,
-        else None. Failures are logged but do not abort the ZIP (so a partial
-        ZIP is still useful).
-        """
-        target = work_dir / expected_filename
-        if target.is_file():
-            return target
-        cli_args = list(cmd_args_extra) + [
-            '--master', str(work_dir / master_filename),
-            '--format', 'svg',
-        ]
-        if attr_arg and any(x in ('l1_diagram', 'l3_diagram') for x in cli_args):
-            cli_args += ['--attribute', attr_arg]
-        try:
-            run_ns_command_subprocess(cli_args, work_dir, master_filename)
-        except Exception as exc:
-            logger.warning('download_all: regenerate %s failed: %s',
-                           expected_filename, exc)
-        return target if target.is_file() else None
-
     # ---- Build the file list ----------------------------------------------
+    # The ZIP includes the per-layer L1/L2/L3 SVGs (3 all-areas + 3
+    # per-area), the combined L1/L2/L3 viewer HTMLs (one for All Areas
+    # plus one for the selected area), the Device Table HTML, AI Context
+    # txt, and the .nsm master.
     files_to_zip = []
 
-    # Common all-areas SVGs
-    f = _ensure_via_cli(
-        ['export', 'l1_diagram', '--type', 'all_areas_tag'],
-        f'[L1_DIAGRAM]AllAreasTag_{basename}.svg',
-    )
-    if f:
-        files_to_zip.append(f)
+    # All-areas SVGs (also inlined into the AllAreas combined HTML).
+    for cli_args_extra, expected_filename in [
+        (['export', 'l1_diagram', '--type', 'all_areas_tag'],
+         f'[L1_DIAGRAM]AllAreasTag_{basename}.svg'),
+        (['export', 'l2_diagram', '--type', 'all_areas'],
+         f'[L2_DIAGRAM]AllAreas_{basename}.svg'),
+        (['export', 'l3_diagram', '--type', 'all_areas'],
+         f'[L3_DIAGRAM]AllAreas_{basename}.svg'),
+    ]:
+        svg_path = _ensure_via_cli(cli_args_extra, expected_filename)
+        if svg_path:
+            files_to_zip.append(svg_path)
 
-    f = _ensure_via_cli(
-        ['export', 'l3_diagram', '--type', 'all_areas'],
-        f'[L3_DIAGRAM]AllAreas_{basename}.svg',
-    )
-    if f:
-        files_to_zip.append(f)
+    # Per-area SVGs (also inlined into the per-area combined HTML).
+    for cli_args_extra, expected_filename in [
+        (['export', 'l1_diagram', '--type', 'per_area_tag', '--area', area_arg],
+         f'[L1_DIAGRAM]PerAreaTag_{basename}_{safe_area}.svg'),
+        (['export', 'l3_diagram', '--type', 'per_area', '--area', area_arg],
+         f'[L3_DIAGRAM]PerArea_{basename}_{safe_area}.svg'),
+        (['export', 'l2_diagram', '--area', area_arg],
+         f'[L2_DIAGRAM]{area_arg}_{basename}.svg'),
+    ]:
+        svg_path = _ensure_via_cli(cli_args_extra, expected_filename)
+        if svg_path:
+            files_to_zip.append(svg_path)
 
-    # Per-area SVGs for the selected area
-    f = _ensure_via_cli(
-        ['export', 'l1_diagram', '--type', 'per_area_tag', '--area', area_arg],
-        f'[L1_DIAGRAM]PerAreaTag_{basename}_{safe_area}.svg',
-    )
-    if f:
-        files_to_zip.append(f)
-
-    f = _ensure_via_cli(
-        ['export', 'l3_diagram', '--type', 'per_area', '--area', area_arg],
-        f'[L3_DIAGRAM]PerArea_{basename}_{safe_area}.svg',
-    )
-    if f:
-        files_to_zip.append(f)
-
-    f = _ensure_via_cli(
-        ['export', 'l2_diagram', '--area', area_arg],
-        f'[L2_DIAGRAM]{area_arg}_{basename}.svg',
-    )
-    if f:
-        files_to_zip.append(f)
+    # Combined L1/L2/L3 viewer HTMLs (one for All Areas + one for the
+    # selected area), bundled alongside the per-layer SVGs above.
+    combined_all = _build_combined_html_for_zip('all', 'All Areas')
+    if combined_all:
+        files_to_zip.append(combined_all)
+    combined_area = _build_combined_html_for_zip(f'area:{area_arg}', area_arg)
+    if combined_area:
+        files_to_zip.append(combined_area)
 
     # Device Table HTML -- always regenerate to guarantee freshness (cheap)
     device_html_name = f'[DEVICE_TABLE]{basename}.html'
@@ -5072,8 +5480,8 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
             var allTd = allTr.insertCell();
             var allCellId = null;
             if (cols[ci_all].id === 'l1') allCellId = 'l1_all';
+            else if (cols[ci_all].id === 'l2') allCellId = 'l2_all';
             else if (cols[ci_all].id === 'l3') allCellId = 'l3_all';
-            // L2 has no All-Areas variant
             if (!allCellId) {
                 allTd.innerHTML = '<div class="cell-na">N/A</div>';
             } else {
@@ -5161,7 +5569,16 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
         var svgGridTotalEl = document.getElementById('svgGridTotal');
         if (svgGridTotalEl) {
             if (currentDeviceCount > 0) {
-                svgGridTotalEl.textContent = _fmtEstimate(_estimateSec(currentDeviceCount, _PERF_DIAGRAMS));
+                // L2 All Areas runs in parallel with L1/L3 inside the
+                // initial SSE pool, so the wall-clock estimate is the
+                // max of the L1+L3 baseline and the L2 estimate (NOT
+                // their sum).
+                var initSec = _estimateSec(currentDeviceCount, _PERF_DIAGRAMS) || 0;
+                var l2Sec = estimateSeconds('l2_all_areas',
+                                            currentDeviceCount,
+                                            currentAreas.length) || 0;
+                var totalSec = Math.max(initSec, l2Sec);
+                svgGridTotalEl.textContent = _fmtEstimate(totalSec);
                 svgGridTotalEl.style.display = 'flex';
             } else {
                 svgGridTotalEl.style.display = 'none';
@@ -5171,8 +5588,8 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
 
         // ZIP button: hidden while the initial generation is in flight;
         // the initial SSE 'done' handler below enables it with a lightweight
-        // ZIP URL (Device Tables HTML + L1_all + L3_all + AI Context + .nsm),
-        // and a subsequent area pick swaps the URL to the area-scoped one.
+        // ZIP URL (Device Tables HTML + L1_all + L2_all + L3_all + AI Context
+        // + .nsm), and a subsequent area pick swaps the URL to the area-scoped one.
         btnDownloadAll.classList.add('disabled');
         btnDownloadAll.style.display = 'none';
 
@@ -5206,9 +5623,10 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                         }
                     }
                     // Enable lightweight ZIP download now that the initial
-                    // artifacts (Device Tables + L1_all + L3_all + AI Context)
-                    // are ready. If the user later picks an area, the URL is
-                    // upgraded to the area-scoped ZIP in requestAreaThumbnails().
+                    // artifacts (Device Tables + L1_all + L2_all + L3_all
+                    // + AI Context) are ready. If the user later picks an
+                    // area, the URL is upgraded to the area-scoped ZIP in
+                    // requestAreaThumbnails().
                     setZipButtonLightweight();
                     return;
                 }
@@ -5233,6 +5651,41 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
         btnDownloadAll.style.display = 'block';
     }
 
+    // Map a cell_id to the L1/L2/L3 tabbed viewer URL (/diagram_preview/...)
+    // for L1/L2/L3 cells, or null for everything else (caller falls back to
+    // the per-SVG /preview/<job>/<filename> viewer).
+    //
+    // Cell -> scope/layer mapping (mirrors _resolve_layer_files on the server):
+    //   l1_all                 -> scope=all,            layer=l1
+    //   l2_all                 -> scope=all,            layer=l2
+    //   l3_all                 -> scope=all,            layer=l3
+    //   l1_per_area_<area>     -> scope=area:<area>,    layer=l1
+    //   l2_area_<area>         -> scope=area:<area>,    layer=l2
+    //   l3_per_area_<area>     -> scope=area:<area>,    layer=l3
+    function buildDiagramViewerUrl(cellId, jobId) {
+        if (!cellId || !jobId) return null;
+        var scope = null;
+        var layer = null;
+        if (cellId === 'l1_all')      { scope = 'all'; layer = 'l1'; }
+        else if (cellId === 'l2_all') { scope = 'all'; layer = 'l2'; }
+        else if (cellId === 'l3_all') { scope = 'all'; layer = 'l3'; }
+        else if (cellId.indexOf('l1_per_area_') === 0) {
+            scope = 'area:' + cellId.substring('l1_per_area_'.length);
+            layer = 'l1';
+        } else if (cellId.indexOf('l3_per_area_') === 0) {
+            scope = 'area:' + cellId.substring('l3_per_area_'.length);
+            layer = 'l3';
+        } else if (cellId.indexOf('l2_area_') === 0) {
+            scope = 'area:' + cellId.substring('l2_area_'.length);
+            layer = 'l2';
+        } else {
+            return null;
+        }
+        return '/diagram_preview/' + encodeURIComponent(jobId)
+            + '?scope=' + encodeURIComponent(scope)
+            + '#' + layer;
+    }
+
     // Common SSE message renderer for a single grid cell update.
     function renderCellFromSseMessage(msg, cellMap, selAttr) {
         var cell_id = msg.cell;
@@ -5243,10 +5696,23 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
             inner = '<div class="cell-error">&#10007;<br>Error</div>';
         } else {
             var firstFile = msg.files[0];
-            var viewerUrl = '/preview/' + currentJobId + '/' + encodeURIComponent(firstFile);
-            if (msg.filter) viewerUrl += '?filter=' + encodeURIComponent(msg.filter);
+            // Prefer the L1/L2/L3 tabbed viewer for diagram cells so the
+            // user can flip between layers in one window. Non-diagram cells
+            // (or any unrecognised cell_id) fall back to the per-SVG
+            // viewer.
+            var viewerUrl = buildDiagramViewerUrl(cell_id, currentJobId);
+            if (!viewerUrl) {
+                viewerUrl = '/preview/' + currentJobId + '/' + encodeURIComponent(firstFile);
+                if (msg.filter) viewerUrl += '?filter=' + encodeURIComponent(msg.filter);
+            }
+            // Always request the thumbnail variant (`?thumb=1`) so the
+            // server can shrink width/height attributes that would
+            // otherwise exceed Chromium's 16384-px image rasterizer
+            // limit and render as a blank box. The full-size SVG remains
+            // available via `?thumb=0`/no flag, used by the preview page.
             var fallbackUrl = '/svg_raw/' + currentJobId + '/' + encodeURIComponent(firstFile)
-                + '?v=' + encodeURIComponent(selAttr || '_');
+                + '?v=' + encodeURIComponent(selAttr || '_')
+                + '&thumb=1';
             var thumbUrl = msg.svg_b64
                 ? 'data:image/svg+xml;base64,' + msg.svg_b64
                 : fallbackUrl;
@@ -5514,6 +5980,12 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
             device_file:     [[13, 7],  [64, 19], [256, 64],  [1024, 314]],
             l1_diagram:      [[13, 5],  [64, 6],  [256, 29],  [1024, 390]],
             l2_per_area:     [[13, 7],  [64, 13], [256, 51],  [1024, 413]],
+            // Empirical bench points for the L2 All Areas SVG.
+            //   1024 devices on a 32x32 single-area master => ~17s end-to-end
+            //   via the SSE pipeline (CLI 17s + ~2s subprocess overhead).
+            // Smaller points are interpolated proportionally; replace with
+            // real measurements as they become available.
+            l2_all_areas:    [[13, 6],  [64, 8],  [256, 11],  [1024, 19]],
             l3_diagram:      [[13, 7],  [64, 10], [256, 56],  [1024, 863]],
             ai_context_file: [[13, 20], [64, 30], [256, 90],  [1024, 350]]
         };
