@@ -1990,6 +1990,10 @@ LOCAL DEF
 '''
 #add at ver 2.4.1
 def get_optimize_y_grid_array(self):
+    # Lane packing (interval graph coloring): for each segment, pick the
+    # lowest-index lane whose existing intervals do not horizontally overlap
+    # the candidate. The first segment in each group keeps its original Y
+    # (= lane 0); subsequent lanes are first_shape_top + k * 0.25 inches.
     print('--- optimize_y_grid_array ---')
     y_grid_segment_per_inches = 0.25
     x_grid_segment_buffer = 0.03
@@ -2003,32 +2007,39 @@ def get_optimize_y_grid_array(self):
     done_y_grid_segment_array = []
     for idx_key in shapes_by_index:
         group = shapes_by_index[idx_key]
-        placed = []
+        if not group:
+            continue
+
+        first_shape_top = group[0][1]
+        lanes = []  # lanes[k] = list of (left_with_buf, right_with_buf)
+
         for num, seg in enumerate(group):
+            seg_left = round(seg[0] - x_grid_segment_buffer, 3)
+            seg_right = round(seg[0] + seg[2] + x_grid_segment_buffer, 3)
+
             if num == 0:
-                placed.append([idx_key, seg])
-                first_shape_top = seg[1]
-            else:
-                cand_left = seg[0]
-                cand_right = round(seg[0] + seg[2], 3)
-                last_shape_top = first_shape_top
+                lanes.append([(seg_left, seg_right)])
+                done_y_grid_segment_array.append([idx_key, seg])
+                continue
 
-                for p in placed:
-                    p_data = p[1]
-                    p_left = round(p_data[0] - x_grid_segment_buffer, 3)
-                    p_right = round(p_data[0] + p_data[2] + x_grid_segment_buffer, 3)
+            placed_k = None
+            for k, lane in enumerate(lanes):
+                conflict = False
+                for (lane_left, lane_right) in lane:
+                    if lane_left <= seg_right and lane_right >= seg_left:
+                        conflict = True
+                        break
+                if not conflict:
+                    placed_k = k
+                    break
+            if placed_k is None:
+                placed_k = len(lanes)
+                lanes.append([])
 
-                    if p_right < round(cand_left, 3) or p_left > cand_right:
-                        continue
+            lanes[placed_k].append((seg_left, seg_right))
+            new_top = round(first_shape_top + placed_k * y_grid_segment_per_inches, 3)
+            done_y_grid_segment_array.append([idx_key, [seg[0], new_top, seg[2], seg[3]]])
 
-                    p_top_r = round(p_data[1], 3)
-                    needed = p_top_r + y_grid_segment_per_inches
-                    if needed > last_shape_top:
-                        last_shape_top = needed
-
-                placed.append([idx_key, [seg[0], last_shape_top, seg[2], seg[3]]])
-
-        done_y_grid_segment_array.extend(placed)
     return done_y_grid_segment_array
 
 

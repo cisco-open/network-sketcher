@@ -1940,13 +1940,14 @@ LOCAL DEF
 '''
 #add at ver 2.4.1
 def get_optimize_y_grid_array(self):
+    # Lane packing (interval graph coloring): for each segment, pick the
+    # lowest-index lane whose existing intervals do not horizontally overlap
+    # the candidate. The first segment in each group keeps its original Y
+    # (= lane 0); subsequent lanes are first_shape_top + k * 0.25 inches.
     print('--- optimize_y_grid_array ---')
-    #print('[index_5,[shape_left, shape_top, shape_width, shape_hight]]')
-    #print(self.y_grid_segment_array)
     y_grid_segment_per_inches = 0.25 #inches
     x_grid_segment_buffer = 0.03 #inches
 
-    # Iterate through the list and group shapes by index_5
     shapes_by_index = {}
     for index_5, shape_data in self.y_grid_segment_array:
         if index_5 not in shapes_by_index:
@@ -1954,62 +1955,41 @@ def get_optimize_y_grid_array(self):
         shapes_by_index[index_5].append(shape_data)
 
     done_y_grid_segment_array = []
-    for tmp_shapes_by_index in shapes_by_index:
-        kari_done_y_grid_segment_array = []
-        for tmp_number, tmp_tmp_shapes_by_index in enumerate(shapes_by_index[tmp_shapes_by_index]):
-            #print('check segment start --> ',tmp_shapes_by_index,tmp_number,tmp_tmp_shapes_by_index)
+    for idx_key in shapes_by_index:
+        group = shapes_by_index[idx_key]
+        if not group:
+            continue
 
+        first_shape_top = group[0][1]
+        lanes = []  # lanes[k] = list of (left_with_buf, right_with_buf)
 
-            if tmp_number == 0:
-                kari_done_y_grid_segment_array.append([tmp_shapes_by_index,tmp_tmp_shapes_by_index])
-                first_shape_top = tmp_tmp_shapes_by_index[1]
-            else:
-                candidate_y_grid_segment_shape = tmp_tmp_shapes_by_index
-                #print('candidate_y_grid_segment_shape---> ', candidate_y_grid_segment_shape)
+        for num, seg in enumerate(group):
+            seg_left = round(seg[0] - x_grid_segment_buffer, 3)
+            seg_right = round(seg[0] + seg[2] + x_grid_segment_buffer, 3)
 
-                '''i = count_upside_segment'''
-                last_shape_top = first_shape_top
-                h=0
-                k = len(kari_done_y_grid_segment_array)
-                while h < k: # check per segment
-                    candidate_shape_top = tmp_tmp_shapes_by_index[1]
-                    #count_upside_segment = int(abs(first_shape_top - candidate_y_grid_segment_shape[1]) / y_grid_segment_per_inches)
-                    j = 0
-                    i = len(kari_done_y_grid_segment_array)
-                    #print('kari_done_y_grid_segment_array --> ', kari_done_y_grid_segment_array)
-                    tmp_kari_done_y_grid_segment_array = kari_done_y_grid_segment_array[h]
-                    while j < i: #check y-grid duplicate
-                        candidate_shape_top -= y_grid_segment_per_inches
-                        #Check to overlapping [shape_left, shape_top, shape_width, shape_hight]
-                        #print('overlap check---> ', (tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2]) ,x_grid_segment_buffer,candidate_y_grid_segment_shape[0],tmp_kari_done_y_grid_segment_array[1][1], candidate_shape_top)
+            if num == 0:
+                lanes.append([(seg_left, seg_right)])
+                done_y_grid_segment_array.append([idx_key, seg])
+                continue
 
-                        if round((tmp_kari_done_y_grid_segment_array[1][0] + tmp_kari_done_y_grid_segment_array[1][2] + x_grid_segment_buffer), 3) >= round(candidate_y_grid_segment_shape[0], 3) and \
-                            round((tmp_kari_done_y_grid_segment_array[1][0] - x_grid_segment_buffer), 3) <= round(candidate_y_grid_segment_shape[0] + candidate_y_grid_segment_shape[2], 3):
-                            if round(tmp_kari_done_y_grid_segment_array[1][1], 3) == round(candidate_shape_top, 3):
-                                #partial overlap
-                                if last_shape_top < (candidate_shape_top + y_grid_segment_per_inches):
-                                    last_shape_top = (candidate_shape_top + y_grid_segment_per_inches)
-                                    #print('partial overlap---> ', [tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],(candidate_shape_top + y_grid_segment_per_inches),candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
-                                    break
+            placed_k = None
+            for k, lane in enumerate(lanes):
+                conflict = False
+                for (lane_left, lane_right) in lane:
+                    if lane_left <= seg_right and lane_right >= seg_left:
+                        conflict = True
+                        break
+                if not conflict:
+                    placed_k = k
+                    break
+            if placed_k is None:
+                placed_k = len(lanes)
+                lanes.append([])
 
-                            elif round(tmp_kari_done_y_grid_segment_array[1][1], 3) == round((candidate_shape_top + y_grid_segment_per_inches), 3):
-                                #exact match
-                                if last_shape_top < (candidate_shape_top + y_grid_segment_per_inches + y_grid_segment_per_inches):
-                                    last_shape_top = (candidate_shape_top + y_grid_segment_per_inches + y_grid_segment_per_inches)
-                                    #print('Y grid is same as initial value ---> ', [tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],(candidate_shape_top + y_grid_segment_per_inches + y_grid_segment_per_inches),candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
-                                    break
-                            j += 1
-                        else:
-                            break
+            lanes[placed_k].append((seg_left, seg_right))
+            new_top = round(first_shape_top + placed_k * y_grid_segment_per_inches, 3)
+            done_y_grid_segment_array.append([idx_key, [seg[0], new_top, seg[2], seg[3]]])
 
-                    h += 1
-
-                #print('<append written array> --> ',[tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],last_shape_top,candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
-                kari_done_y_grid_segment_array.append([tmp_shapes_by_index,[candidate_y_grid_segment_shape[0],last_shape_top,candidate_y_grid_segment_shape[2],candidate_y_grid_segment_shape[3]]])
-
-        #print('<<one line array>> --> ',kari_done_y_grid_segment_array)
-        done_y_grid_segment_array = done_y_grid_segment_array + kari_done_y_grid_segment_array
-    #print('done_y_grid_segment_array --> ',done_y_grid_segment_array)
     return done_y_grid_segment_array
 
 
