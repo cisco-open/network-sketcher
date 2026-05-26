@@ -7416,6 +7416,35 @@ class def_common():
         for row in area_location_array:
             return_msg += f'  {row}\n'
 
+        # Sync with L2/L3 layers ONLY when new areas were added. Pure
+        # relocation of existing areas does not alter (Area, Device Name,
+        # Port Name) tuples, so the regenerated L2/L3 would be identical
+        # to the current contents; skipping sync saves ~100-500ms.
+        if new_areas:
+            import tkinter as tk
+            dummy_tk = tk.Toplevel()
+            dummy_tk.withdraw()
+            self.full_filepath = master_file_path
+            self.main1_1_entry_1 = tk.Entry(dummy_tk)
+            self.main1_1_entry_1.insert(tk.END, master_file_path)
+
+            self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+            self.inFileTxt_L3_1_1.delete(0, tk.END)
+            self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+            self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+            self.outFileTxt_11_2.delete(0, tk.END)
+            self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+            self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+            self.inFileTxt_L2_1_1.delete(0, tk.END)
+            self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+            import nsm_sync_between_layers
+            nsm_sync_between_layers.l1_master_device_and_line_sync_with_l2l3_master(self)
+
+            dummy_tk.destroy()
+
         return ([return_msg.strip()])
 
     @staticmethod

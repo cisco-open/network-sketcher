@@ -462,6 +462,33 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
         elif current_len > 8:
             item[1] = item[1][:8]
 
+    # ========== STEP 4.5: Build valid (Area, Device Name) set from POSITION_SHAPE ==========
+    # Used to drop orphan rows during merge (rows referencing devices that no
+    # longer exist after delete device/waypoint/area). The recreated L2/L3
+    # tables already exclude those devices; original tables may still carry
+    # stale entries that the merge would otherwise re-introduce.
+    valid_devices = set()
+    _position_shape_array = self._preloaded_master_sections.get('<<POSITION_SHAPE>>', []) or []
+    _current_area = None
+    for _item in _position_shape_array:
+        if not isinstance(_item, list) or len(_item) < 2 or not isinstance(_item[1], list):
+            continue
+        _row = _item[1]
+        if len(_row) == 0:
+            continue
+        _first = _row[0]
+        if isinstance(_first, str):
+            if _first == '<END>':
+                _current_area = None
+                continue
+            if _first not in ('', '<<POSITION_SHAPE>>', '_AIR_'):
+                _current_area = _first
+        if _current_area is None:
+            continue
+        for _val in _row[1:]:
+            if isinstance(_val, str) and _val not in ('', '<END>', '_AIR_', '<<POSITION_SHAPE>>'):
+                valid_devices.add((_current_area, _val))
+
     # ========== STEP 5: Merge L2 data (FIXED VERSION) ==========
     # Create two separate collections:
     # - Dictionary for entries with non-empty Port Name (for fast lookup)
@@ -499,12 +526,18 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
             new_master_l2_table_array.append(result)
 
     # ★★★ FIX 1: Add original entries with empty Port Name ★★★
+    # Filter out orphans whose device no longer exists in POSITION_SHAPE.
     for original_data in original_l2_without_port:
+        if (original_data[0], original_data[1]) not in valid_devices:
+            continue  # Drop orphan row from deleted device
         result = original_data[:8] + [0, '']
         new_master_l2_table_array.append(result)
 
     # ★★★ FIX 2: Add unmatched original entries (not re-created, Port Name != '') ★★★
+    # Filter out orphans whose device no longer exists in POSITION_SHAPE.
     for original_data in original_l2_with_port.values():
+        if (original_data[0], original_data[1]) not in valid_devices:
+            continue  # Drop orphan row from deleted device
         if_value = nsm_def.get_if_value(original_data[3])
         portname = str(nsm_def.split_portname(original_data[3])[0])
         result = original_data[:8] + [if_value, portname]
@@ -581,7 +614,10 @@ def l1_master_device_and_line_sync_with_l2l3_master(self):
             new_master_l3_table_array.append(result)
 
     # ★★★ FIX 3: Add unmatched original L3 entries (not re-created) ★★★
+    # Filter out orphans whose device no longer exists in POSITION_SHAPE.
     for original_data in original_l3_dict.values():
+        if (original_data[0], original_data[1]) not in valid_devices:
+            continue  # Drop orphan row from deleted device
         if_value = nsm_def.get_if_value(original_data[2])
         portname = str(nsm_def.split_portname(original_data[2])[0])
         result = original_data[:5] + [if_value, portname]

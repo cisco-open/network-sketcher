@@ -1857,6 +1857,9 @@ class  get_l2_broadcast_domains():
                             tmp_opposite_if_array = get_l2_broadcast_domains.get_opposite_if(self,device_name,if_name)
                             #print('          + device_name,if_name -> ', device_name,if_name ,'    +++tmp_oppsite_if_array -> ',tmp_opposite_if_array)
 
+                            if tmp_opposite_if_array is None or len(tmp_opposite_if_array) < 2:
+                                continue
+
                             #bug fix at ve 2.5.1b
                             now2_device_l2_boradcast_domain_array = []
                             for sublist in device_l2_boradcast_domain_array:
@@ -1935,6 +1938,8 @@ class  get_l2_broadcast_domains():
             device_name = tmp_device_l2_directly_l3vport_array[0]
             if_name = tmp_device_l2_directly_l3vport_array[2][2]
             tmp_opposite_if_array = get_l2_broadcast_domains.get_opposite_if(self, device_name, if_name)
+            if tmp_opposite_if_array is None or len(tmp_opposite_if_array) < 2:
+                continue
             tmp_opposite_l2seg_num = get_l2_broadcast_domains.get_l2seg_count_on_if(self, tmp_opposite_if_array[0], tmp_opposite_if_array[1])
             if tmp_opposite_l2seg_num == 0:
                 #print(tmp_device_l2_directly_l3vport_array)
@@ -2019,6 +2024,8 @@ class  get_l2_broadcast_domains():
             device_name = tmp_device_l2_other_array[0]
             if_name = tmp_device_l2_other_array[2][2]
             tmp_opposite_if_array = get_l2_broadcast_domains.get_opposite_if(self, device_name, if_name)
+            if tmp_opposite_if_array is None or len(tmp_opposite_if_array) < 2:
+                continue
 
             if tmp_device_l2_other_array[1] == '__EDGE_L3__':
                 for tmp_tmp_device_l2_other_array in device_l2_other_array:
