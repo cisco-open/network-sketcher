@@ -1067,6 +1067,20 @@ This command uses a unique two-level quoting structure that differs from all oth
 Correct: `rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]"`
 Wrong:   `rename attribute_bulk "'[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]"` ← extra `'` breaks parsing
 
+**[CRITICAL] Device-name field MUST be a single string (device-list notation is NOT supported)**
+Unlike many other bulk commands (e.g., `add l2_segment_bulk`, `add ip_address_bulk`, `add portchannel_bulk`, `add port_info_bulk`, `add vport_l1if_direct_binding_bulk`) which accept a **list of device names** as the first element to apply the same setting to multiple devices in one entry, `rename attribute_bulk` does **NOT** support the device-list notation. The first element of every entry MUST be a single device-name **string** (or the literal string `'Device Name'` for the header row).
+
+If a list is supplied as the first element, the engine raises:
+`[ERROR] Invalid attribute_bulk array format: 'list' object has no attribute 'strip'`
+
+To apply the same attribute set to many devices, repeat one entry per device:
+
+Correct (per-device entries):
+`rename attribute_bulk "[['DC1-Edge-MPLS', \"['DEVICE',[235,241,222]]\", ...],['DC1-Edge-INET', \"['DEVICE',[235,241,222]]\", ...]]"`
+
+Wrong (device-list notation — NOT supported):
+`rename attribute_bulk "[[['DC1-Edge-MPLS','DC1-Edge-INET'], \"['DEVICE',[235,241,222]]\", ...]]"`
+
 **[IMPORTANT] Outer-quote closing pattern (common LLM mistake):**
 - Correct ending: `...\"['',[]]\"]]"`   — last `\"` (closes final attribute) + `]]` (closes entry+outer) + `"` (closes shell quote)
 - Wrong   ending: `...\"['',[]]\"]]\""`  — extra `\"` before the outer closing `"` leaves a stray `"` after `]]`
