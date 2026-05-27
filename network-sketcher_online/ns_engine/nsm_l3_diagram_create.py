@@ -266,6 +266,18 @@ class  nsm_l3_diagram_create():
                         print(f"[L3 All Areas] Adjusting slide_width: {self.slide_width:.2f} -> {required_width:.2f} inches (max_right_edge={self.calculated_max_right_edge:.2f})")
                         self.slide_width = required_width
 
+                # Snap WayPoints in `_wp_`-only Area Position rows AFTER the
+                # slide_width adjustment above so the overflow check uses the
+                # final diagram width (not the pre-bump GET_SIZE value).
+                # Otherwise WayPoints anchored near the rightmost device would
+                # spuriously exceed overflow_limit and fall back to natural
+                # left (observed on Sample.figure5 NAGAINAMAE-TEST-WAN-fix001
+                # which should snap above DC-TOP3 / FW-12 but was skipped
+                # because slide_width was still the pre-bump 24.01 instead of
+                # the final 27.58).
+                if self.flag_re_create == True:
+                    _compute_wp_x_snap_targets(self)
+
             '''CREATE L3 DIAGRAM (reuse cached result from __init__)'''
             #self.result_get_l2_broadcast_domains = nsm_def.get_l2_broadcast_domains.run(self, excel_maseter_file)  ## 'self.update_l2_table_array, device_l2_boradcast_domain_array, device_l2_directly_l3vport_array, device_l2_other_array, marged_l2_broadcast_group_array'
             #self.active_ppt = Presentation()  # define target ppt object
@@ -809,6 +821,19 @@ class  nsm_l3_diagram_create():
                     shape_text  = tmp_tmp_target_position_shape_array
                     shape_type  = 'DEVICE_NORMAL'
                     shape_left  = self.left_margin + left_offset
+                    # WayPoint X-snap override: in L3-4-1 All Areas 2nd pass
+                    # CREATE, snap WayPoints in `_wp_`-only Area Position rows
+                    # to their precomputed target X (center-aligned over the
+                    # leftmost connected device). left_offset is intentionally
+                    # left untouched so downstream shapes in the same row
+                    # continue their natural cascade. See
+                    # _compute_wp_x_snap_targets for selection criteria.
+                    if (self.click_value_l3 == 'L3-4-1'
+                            and action_type == 'CREATE'
+                            and self.flag_re_create == True):
+                        _wp_target = getattr(self, '_wp_x_target', None)
+                        if _wp_target and shape_text in _wp_target:
+                            shape_left = _wp_target[shape_text]
                     shape_top   = self.top_margin + top_offset
                     shape_width_hight_array = get_text_wh_cached(self,self.shae_font_large_size,tmp_tmp_target_position_shape_array)
                     shape_width = shape_width_hight_array[0]
@@ -2144,7 +2169,10 @@ def compute_l3_device_shifts(self):
     # device needs on top of the cascaded movement of devices to its left.
     # Iteration: a fixpoint loop runs until no collisions remain or MAX_ITER
     # is reached. Each iteration only ever increases shifts (monotone).
-    BUFFER = 0.10  # inches. Must exceed the ±0.075" line bucketing wiggle.
+    BUFFER = 0.20  # inches. Doubled from 0.10 per user request for more
+                   # breathing room between L3 segment connectors and device
+                   # edges (per Sever-13~1~ visual gap feedback). Still
+                   # safely exceeds the ±0.075" line bucketing wiggle.
     MAX_ITER = 50
 
     if not hasattr(self, '_collision_lines_per_area') or not self._collision_lines_per_area:
@@ -2333,6 +2361,266 @@ def compute_l3_device_shifts(self):
     # 7. Bump calculated_max_right_edge by max total growth across Y-bands.
     if hasattr(self, 'calculated_max_right_edge') and max_total_growth > 0:
         self.calculated_max_right_edge += max_total_growth
+
+
+def _compute_wp_x_snap_targets(self):
+    # Compute absolute target X (inches) for WayPoints whose Area Position
+    # row contains only `_wp_`-suffixed area names (or blanks). Snaps each
+    # such WayPoint horizontally near its leftmost connected device (center-
+    # aligned). Falls back to natural cascade for WayPoints that fail any
+    # check (no connection, no device position data, would overflow slide).
+    #
+    # Output: self._wp_x_target = {wp_name: absolute_target_left}
+    # The draw loop consults this dict after computing the natural shape_left
+    # and overrides if the entry exists. Designed for L3-4-1 All Areas mode,
+    # 2nd pass only (after compute_l3_device_shifts has run). Operates on
+    # _collision_devs_per_area populated in the 1st pass.
+    #
+    # IMPORTANT: In All Areas mode, create_master_file_one_area rewrites
+    # POSITION_FOLDER and POSITION_SHAPE on the staging master to a single
+    # 'All Areas' composite, which loses the `_wp_` folder identity. We must
+    # therefore read these sections from the ORIGINAL master file
+    # (self.inFileTxt_L3_3_1.get()), not the rewritten staging copy.
+    self._wp_x_target = {}
+
+    devs_per_area = getattr(self, '_collision_devs_per_area', None)
+    if not devs_per_area:
+        return
+
+    # Merge per-area device geometry into a single dict for cross-area
+    # lookup (All Areas mode uses a single composite key but stay defensive).
+    all_devs = {}
+    for area_devs in devs_per_area.values():
+        all_devs.update(area_devs)
+    if not all_devs:
+        return
+
+    # Load original (pre-rewrite) sections to retrieve `_wp_` folder identity.
+    try:
+        orig_master = self.inFileTxt_L3_3_1.get()
+    except AttributeError:
+        return
+    if not orig_master:
+        return
+    try:
+        orig_pos_folder = nsm_def.convert_master_to_array(
+            'Master_Data', orig_master, '<<POSITION_FOLDER>>')
+        orig_pos_shape = nsm_def.convert_master_to_array(
+            'Master_Data', orig_master, '<<POSITION_SHAPE>>')
+        orig_pos_line = nsm_def.convert_master_to_array(
+            'Master_Data', orig_master, '<<POSITION_LINE>>')
+    except Exception:
+        return
+    if not orig_pos_folder or not orig_pos_shape:
+        return
+
+    # 1. Identify target rows: every non-empty cell ends with '_wp_'.
+    target_rows = []
+    for entry in orig_pos_folder:
+        if not entry or len(entry) < 2:
+            continue
+        cells = entry[1] if isinstance(entry[1], list) else []
+        if not cells:
+            continue
+        if cells[0] in ('<<POSITION_FOLDER>>', '<SET_WIDTH>'):
+            continue
+        area_cells = [c for c in cells[1:] if isinstance(c, str)]
+        non_empty = [c for c in area_cells if c != '']
+        if not non_empty:
+            continue
+        if all(c.endswith('_wp_') for c in non_empty):
+            target_rows.append(non_empty)
+    if not target_rows:
+        return
+
+    # 2. Collect `_wp_` folder names (any folder appearing in any cell).
+    wp_folders = set()
+    for entry in orig_pos_folder:
+        if not entry or len(entry) < 2:
+            continue
+        cells = entry[1] if isinstance(entry[1], list) else []
+        if not cells or cells[0] in ('<<POSITION_FOLDER>>', '<SET_WIDTH>'):
+            continue
+        for c in cells[1:]:
+            if isinstance(c, str) and c.endswith('_wp_'):
+                wp_folders.add(c)
+    if not wp_folders:
+        return
+
+    # 3. Rebuild WP_name -> wp_folder from original POSITION_SHAPE. Each row
+    #    that contains a wp_folder name has its other (non-marker, non-folder)
+    #    cells treated as WP device names belonging to that folder.
+    wp_to_folder = {}
+    for entry in orig_pos_shape:
+        if not entry or len(entry) < 2:
+            continue
+        if entry[0] in (1, 2):  # header rows
+            continue
+        cells = entry[1] if isinstance(entry[1], list) else []
+        if not cells:
+            continue
+        folder_in_row = None
+        for c in cells:
+            if isinstance(c, str) and c in wp_folders:
+                folder_in_row = c
+                break
+        if folder_in_row is None:
+            continue
+        for c in cells:
+            if not isinstance(c, str):
+                continue
+            if c == folder_in_row or c == '<END>' or c.startswith('<'):
+                continue
+            if c == '':
+                continue
+            wp_to_folder[c] = folder_in_row
+    if not wp_to_folder:
+        return
+
+    # 4. Identify WPs placed in target rows.
+    target_areas = set()
+    for row in target_rows:
+        target_areas.update(row)
+    target_wps = {wp: f for wp, f in wp_to_folder.items() if f in target_areas}
+    if not target_wps:
+        return
+    wp_set = set(wp_to_folder.keys())
+
+    # 5. Build WayPoint -> connected device map from original POSITION_LINE.
+    wp_to_devices = {}
+    for item in orig_pos_line:
+        if not item or len(item) < 2:
+            continue
+        if item[0] in (1, 2):
+            continue
+        cells = item[1] if isinstance(item[1], list) else []
+        if len(cells) < 2:
+            continue
+        from_name, to_name = cells[0], cells[1]
+        if not isinstance(from_name, str) or not isinstance(to_name, str):
+            continue
+        if from_name in wp_set and to_name not in wp_set:
+            wp_to_devices.setdefault(from_name, set()).add(to_name)
+        if to_name in wp_set and from_name not in wp_set:
+            wp_to_devices.setdefault(to_name, set()).add(from_name)
+    target_wp_to_row = {wp: row for wp in target_wps for row in target_rows if target_wps[wp] in row}
+
+    # 6. Provisional target_x: center the WayPoint above the leftmost
+    #    connected device. Skip when geometry is missing.
+    #    `_collision_devs_per_area` captures 1st pass coordinates; the
+    #    leftmost device may have moved rightward in 2nd pass due to
+    #    compute_l3_device_shifts (line-over-device avoidance). We add the
+    #    device's own extra_shift as a first-order correction. Cumulative
+    #    cascade from prior devices in the same row is ignored for
+    #    simplicity ("rough placement" accepted by spec).
+    extra_shift = getattr(self, 'device_extra_shift', {}) or {}
+    provisional = {}
+    for wp_name in target_wps:
+        wp_info = all_devs.get(wp_name)
+        if not wp_info:
+            continue
+        connected = wp_to_devices.get(wp_name, set())
+        if not connected:
+            continue
+        dev_info_list = []
+        for dev in connected:
+            d = all_devs.get(dev)
+            if d:
+                shifted_left = d['left'] + extra_shift.get(dev, 0.0)
+                dev_info_list.append((shifted_left, d['width']))
+        if not dev_info_list:
+            continue
+        dev_info_list.sort(key=lambda x: x[0])
+        leftmost_left, leftmost_width = dev_info_list[0]
+        dev_center = leftmost_left + leftmost_width / 2.0
+        target_left = dev_center - wp_info['width'] / 2.0
+        if target_left < self.left_margin:
+            target_left = self.left_margin
+        provisional[wp_name] = target_left
+
+    if not provisional:
+        return
+
+    # 6.5. Line-over-device safety check. Project each target WP's owned
+    # connector lines to where they would land after snap
+    # (line_x_new = line.natural_x + delta) and discard the snap when the
+    # projected line passes vertically through any other device's post-shift
+    # x-range. compute_l3_device_shifts resolved collisions based on the
+    # 1st-pass (unshifted) line positions, so a WP snap that moves the line
+    # rightward by `delta` can re-introduce a collision against a device
+    # that had already been shifted. Observed on Sample.figure51 where WAN-1
+    # snap moved its connector into the (now-shifted) WAN-1R~1~ x-range.
+    lines_by_dev = {}
+    for area_lines in getattr(self, '_collision_lines_per_area', {}).values():
+        for ln in area_lines:
+            lines_by_dev.setdefault(ln['device_name'], []).append(ln)
+
+    safe_provisional = {}
+    for wp_name, target_left in provisional.items():
+        wp_info = all_devs.get(wp_name)
+        if not wp_info:
+            continue
+        delta = target_left - wp_info['left']
+        wp_lines = lines_by_dev.get(wp_name, [])
+        collision = False
+        for ln in wp_lines:
+            line_new_x = ln['natural_x'] + delta
+            y0, y1 = ln['y0'], ln['y1']
+            for other_name, other_info in all_devs.items():
+                if other_name == wp_name:
+                    continue
+                other_left = other_info['left'] + extra_shift.get(other_name, 0.0)
+                other_right = other_left + other_info['width']
+                other_top = other_info['top']
+                other_bot = other_top + other_info['height']
+                # x-containment uses ±0.075" tolerance for line bucketing
+                # wiggle; y overlap is strict half-open interval.
+                if (other_left - 0.075 < line_new_x < other_right + 0.075
+                        and y0 < other_bot and other_top < y1):
+                    collision = True
+                    break
+            if collision:
+                break
+        if not collision:
+            safe_provisional[wp_name] = target_left
+
+    provisional = safe_provisional
+    if not provisional:
+        return
+
+    # 7. Per-row overlap avoidance and overflow check.
+    between = getattr(self, 'between_shape_column', 0.5)
+    # Use calculated_max_right_edge when available (post calculate_area_offset)
+    # so the limit reflects the actual diagram width, not the unadjusted
+    # slide_width. Fall back to slide_width - margin.
+    overflow_limit = getattr(self, 'slide_width', 56.0) - 1.0
+    edge = getattr(self, 'calculated_max_right_edge', 0.0)
+    if edge > overflow_limit:
+        overflow_limit = edge
+
+    final = {}
+    for row in target_rows:
+        row_wps = []
+        for area_name in row:
+            for wp_name, folder in target_wps.items():
+                if folder == area_name and wp_name in provisional:
+                    geom = all_devs.get(wp_name)
+                    if geom:
+                        row_wps.append((wp_name, provisional[wp_name], geom['width']))
+        row_wps.sort(key=lambda w: w[1])
+        last_right = None
+        for wp_name, target_x, width in row_wps:
+            # Push right to clear prior WP in the same row.
+            if last_right is not None and target_x < last_right + between:
+                target_x = last_right + between
+            # Overflow policy: skip (keep natural cascade) if it would not
+            # fit within the diagram.
+            if target_x + width > overflow_limit:
+                continue
+            final[wp_name] = target_x
+            last_right = target_x + width
+
+    self._wp_x_target = final
 
 
 def _detect_and_fix_2nd_pass_overlaps(self):
