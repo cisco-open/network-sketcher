@@ -238,6 +238,13 @@ class  ns_l3_diagram_create():
             if self.click_value_l3 == 'L3-4-1':
                 create_master_file_one_area.calculate_area_offset(self)
 
+                # Compute per-device rightward shifts to avoid L3 segment
+                # connector lines passing over other devices. Runs only in
+                # 2nd pass; bumps calculated_max_right_edge so slide_width
+                # adjusts.
+                if self.flag_re_create == True:
+                    compute_l3_device_shifts(self)
+
                 # Recalculate slide_width based on actual area positions after calculate_area_offset
                 # calculated_max_right_edge is computed in calculate_area_offset() and contains
                 # the maximum (area_start_x + area_width) across all areas
@@ -273,6 +280,24 @@ class  ns_l3_diagram_create():
             else:
                 self.active_ppt = Presentation()
 
+            # Snapshot mutable state before 2nd pass CREATE so the conditional
+            # 3rd pass (overlap-fix re-render) can restore baseline accurately.
+            # position_shape_array / position_folder_array are deepcopied
+            # because l3_area_create mutates their inner lists.
+            if self.flag_re_create == True and self.click_value_l3 == 'L3-4-1':
+                import copy as _copy
+                _svg_cap = getattr(self, '_svg_capture_list', None)
+                self._state_snapshot = {
+                    'y_grid_segment_array': list(self.y_grid_segment_array),
+                    'add_shape_array': list(self.add_shape_array),
+                    'add_shape_write_array': list(getattr(self, 'add_shape_write_array', [])),
+                    'per_index2_after_array': list(self.per_index2_after_array),
+                    'add_shape_array_len': len(self.add_shape_array),
+                    'svg_capture_list_len': (len(_svg_cap) if _svg_cap is not None else None),
+                    'position_shape_array': _copy.deepcopy(self.position_shape_array),
+                    'position_folder_array': _copy.deepcopy(getattr(self, 'position_folder_array', [])),
+                }
+
             for tmp_new_position_folder_array in self.folder_wp_name_array[0]:
                 action_type = 'CREATE'
                 offset_x = 0.0 #inches
@@ -291,6 +316,19 @@ class  ns_l3_diagram_create():
             if self.flag_re_create == False and self.click_value_l3 == 'L3-4-1':
                 #print("[L3 Diagram] 1st pass done (skip save)")
                 return
+
+            # Conditional 3rd pass: detect same-Y X-overlap among segment
+            # bars in 2nd pass entries and retry CREATE with adjusted
+            # optimize_y_grid_array until no overlap or MAX_RETRIES reached.
+            if self.flag_re_create == True and self.click_value_l3 == 'L3-4-1' and hasattr(self, '_state_snapshot'):
+                MAX_RETRIES = 5
+                for _retry in range(MAX_RETRIES):
+                    had_overlap = _detect_and_fix_2nd_pass_overlaps(self)
+                    if not had_overlap:
+                        break
+                    _restore_state_and_rerender(self)
+                else:
+                    print(f"[L3 overlap fix] Warning: did not converge after {MAX_RETRIES} retries")
 
             ### save pptx file
             self.active_ppt.save(self.output_ppt_file)
@@ -716,6 +754,14 @@ class  ns_l3_diagram_create():
                     if action_type == 'CREATE' and tmp_tmp_target_position_shape_array not in '_AIR_' and self.flag_second_page == False:
                         shape_name = tmp_tmp_target_position_shape_array
                         left_offset += create_master_file_one_area.get_l3_shape_offset(self,shape_name ,left_offset)
+                        # Add the per-device collision-avoidance shift computed
+                        # by compute_l3_device_shifts(). The cumulative cascade
+                        # within a row is handled automatically by the existing
+                        # `left_offset += shape_width + between_shape_column`
+                        # accumulation, so we only inject this device's own
+                        # additional delta (0 for non-shifted devices).
+                        if hasattr(self, 'device_extra_shift'):
+                            left_offset += self.device_extra_shift.get(shape_name, 0.0)
 
                 tmp_left_array = []
                 tmp_right_array = []
@@ -863,6 +909,16 @@ class  ns_l3_diagram_create():
 
                         if self.click_value_l3 == 'L3-4-1':
                             self.add_shape_array.append([shape_type, shape_left, shape_top , shape_width, shape_hight, shape_text])  # add ver 2.3.3
+
+                        # Capture per-device positions in 1st pass CREATE for
+                        # the post-pass collision-avoidance shift analysis.
+                        if self.click_value_l3 == 'L3-4-1' and self.flag_re_create == False and action_type == 'CREATE':
+                            if shape_type in ('DEVICE_NORMAL', 'DEVICE_L3_INSTANCE', 'WAY_POINT_NORMAL'):
+                                if not hasattr(self, '_collision_devs_per_area'):
+                                    self._collision_devs_per_area = {}
+                                area_devs = self._collision_devs_per_area.setdefault(target_folder_name, {})
+                                if shape_text != '_AIR_' and shape_text not in area_devs:
+                                    area_devs[shape_text] = {'left': shape_left, 'top': shape_top, 'width': shape_width, 'height': shape_hight}
 
                         '''GET Folder and Outline position'''
                         # get folder left
@@ -1656,6 +1712,20 @@ class  ns_l3_diagram_create():
                                     inche_from_connect_x = chosen_x
                                     inche_to_connect_x = chosen_x
 
+                                    # Capture line geometry in 1st pass for the
+                                    # post-pass device-shift collision analysis
+                                    # (see compute_l3_device_shifts).
+                                    if action_type == 'CREATE' and self.click_value_l3 == 'L3-4-1' and self.flag_re_create == False:
+                                        if not hasattr(self, '_collision_lines_per_area'):
+                                            self._collision_lines_per_area = {}
+                                        natural_x = tmp_all_l3if_tag_array[1] + tmp_all_l3if_tag_array[3] * 0.5
+                                        self._collision_lines_per_area.setdefault(target_folder_name, []).append({
+                                            'device_name': tmp_all_l3if_tag_array[7],
+                                            'natural_x': natural_x,
+                                            'y0': min(inche_from_connect_y, inche_to_connect_y),
+                                            'y1': max(inche_from_connect_y, inche_to_connect_y),
+                                        })
+
                                     # Rest of the code remains unchanged
                                     if self.click_value_VPN == 'VPN-1-3':
                                         if [tmp_all_l3if_tag_array[7], tmp_all_l3if_tag_array[6]] in self.vpn_hostname_if_list:
@@ -1932,6 +2002,13 @@ class  ns_l3_diagram_create():
         if action_type == 'CREATE':
             self._t_get_l3_segment_num = 0.0
 
+        # Capture per-area row layout for the post-pass device-shift collision
+        # analysis. Only record once during the 1st pass.
+        if action_type == 'CREATE' and self.click_value_l3 == 'L3-4-1' and self.flag_re_create == False:
+            if not hasattr(self, '_collision_rows_per_area'):
+                self._collision_rows_per_area = {}
+            self._collision_rows_per_area[target_folder_name] = [list(r) for r in target_position_shape_array]
+
         return ([outline_shape_type, outline_shape_left, outline_shape_top, outline_shape_width, outline_shape_hight, folder_shape_text])
 
 
@@ -1940,10 +2017,10 @@ LOCAL DEF
 '''
 #add at ver 2.4.1
 def get_optimize_y_grid_array(self):
-    # Lane packing (interval graph coloring): for each segment, pick the
-    # lowest-index lane whose existing intervals do not horizontally overlap
-    # the candidate. The first segment in each group keeps its original Y
-    # (= lane 0); subsequent lanes are first_shape_top + k * 0.25 inches.
+    # Global lane packing: pick smallest k such that lane Y =
+    # first_shape_top + k * 0.25 has no X overlap with any segment ALREADY
+    # placed at that Y across ALL groups. This catches cross-group collisions
+    # the previous per-group algorithm missed.
     print('--- optimize_y_grid_array ---')
     y_grid_segment_per_inches = 0.25 #inches
     x_grid_segment_buffer = 0.03 #inches
@@ -1954,43 +2031,304 @@ def get_optimize_y_grid_array(self):
             shapes_by_index[index_5] = []
         shapes_by_index[index_5].append(shape_data)
 
+    global_lanes = {}
     done_y_grid_segment_array = []
+
     for idx_key in shapes_by_index:
         group = shapes_by_index[idx_key]
         if not group:
             continue
 
         first_shape_top = group[0][1]
-        lanes = []  # lanes[k] = list of (left_with_buf, right_with_buf)
 
         for num, seg in enumerate(group):
             seg_left = round(seg[0] - x_grid_segment_buffer, 3)
             seg_right = round(seg[0] + seg[2] + x_grid_segment_buffer, 3)
 
-            if num == 0:
-                lanes.append([(seg_left, seg_right)])
-                done_y_grid_segment_array.append([idx_key, seg])
-                continue
-
-            placed_k = None
-            for k, lane in enumerate(lanes):
+            k = 0
+            Y = first_shape_top
+            while k < 1000:
+                Y = round(first_shape_top + k * y_grid_segment_per_inches, 3)
                 conflict = False
-                for (lane_left, lane_right) in lane:
-                    if lane_left <= seg_right and lane_right >= seg_left:
+                for (ll, lr) in global_lanes.get(Y, []):
+                    if not (lr < seg_left or ll > seg_right):
                         conflict = True
                         break
                 if not conflict:
-                    placed_k = k
                     break
-            if placed_k is None:
-                placed_k = len(lanes)
-                lanes.append([])
+                k += 1
 
-            lanes[placed_k].append((seg_left, seg_right))
-            new_top = round(first_shape_top + placed_k * y_grid_segment_per_inches, 3)
-            done_y_grid_segment_array.append([idx_key, [seg[0], new_top, seg[2], seg[3]]])
+            global_lanes.setdefault(Y, []).append((seg_left, seg_right))
+            if num == 0 and k == 0:
+                done_y_grid_segment_array.append([idx_key, seg])
+            else:
+                done_y_grid_segment_array.append([idx_key, [seg[0], Y, seg[2], seg[3]]])
 
     return done_y_grid_segment_array
+
+
+def compute_l3_device_shifts(self):
+    # Detect L3 segment connector lines that vertically pass over other devices
+    # and compute per-device rightward shifts that resolve every collision.
+    # Cascade within a row is automatic via the existing
+    # `left_offset += shape_width + between_shape_column` accumulation in the
+    # device draw loop, so we only store the *additional* delta that each
+    # device needs on top of the cascaded movement of devices to its left.
+    BUFFER = 0.10  # inches. Must exceed the ±0.075" line bucketing wiggle.
+    MAX_ITER = 50
+
+    if not hasattr(self, '_collision_lines_per_area') or not self._collision_lines_per_area:
+        return
+    rows_per_area = getattr(self, '_collision_rows_per_area', {})
+    devs_per_area = getattr(self, '_collision_devs_per_area', {})
+    shape_folder_tuple = getattr(self, 'shape_folder_tuple', {})
+
+    self.device_extra_shift = {}
+
+    def _per_area_cumul(row, shifts_self, shifts_iter=None):
+        # Per-device cumulative shift, resetting at each area boundary so it
+        # matches the actual draw-loop behavior (get_l3_shape_offset resets
+        # left_offset to area_start_x at the first device of each area row).
+        out = {}
+        acc = 0.0
+        last_area = None
+        for d in row:
+            d_area = shape_folder_tuple.get(d)
+            if d_area != last_area:
+                acc = 0.0
+                last_area = d_area
+            acc += shifts_self.get(d, 0.0)
+            if shifts_iter is not None:
+                acc += shifts_iter.get(d, 0.0)
+            out[d] = acc
+        return out
+
+    for area_name, lines in self._collision_lines_per_area.items():
+        rows = rows_per_area.get(area_name, [])
+        devs = devs_per_area.get(area_name, {})
+        if not rows or not lines or not devs:
+            continue
+
+        row_order = []
+        for row in rows:
+            row_devs = [d for d in row if isinstance(d, str) and d in devs and d != '_AIR_']
+            row_devs.sort(key=lambda d: devs[d]['left'])
+            row_order.append(row_devs)
+
+        lines_by_dev = {}
+        for line in lines:
+            lines_by_dev.setdefault(line['device_name'], []).append(line)
+
+        for _iteration in range(MAX_ITER):
+            base_cumul = {}
+            for row in row_order:
+                base_cumul.update(_per_area_cumul(row, self.device_extra_shift))
+
+            iter_extra = {}
+            any_added = False
+
+            for row in row_order:
+                running = 0.0
+                last_area = None
+                for d in row:
+                    d_area = shape_folder_tuple.get(d)
+                    if d_area != last_area:
+                        running = 0.0
+                        last_area = d_area
+                    cumul_d = base_cumul.get(d, 0.0) + running
+                    d_lines = lines_by_dev.get(d, [])
+                    if not d_lines:
+                        continue
+                    max_need = 0.0
+                    for line in d_lines:
+                        effective_x = line['natural_x'] + cumul_d
+                        for blocker_name, b in devs.items():
+                            if blocker_name == d:
+                                continue
+                            b_left = b['left'] + base_cumul.get(blocker_name, 0.0) + iter_extra.get(blocker_name, 0.0)
+                            b_right = b_left + b['width']
+                            if not (b_left < effective_x < b_right):
+                                continue
+                            if line['y0'] < b['top'] + b['height'] and b['top'] < line['y1']:
+                                need = b_right - effective_x + BUFFER
+                                if need > max_need:
+                                    max_need = need
+                    if max_need > 0:
+                        iter_extra[d] = max_need
+                        running += max_need
+                        any_added = True
+
+            if not any_added:
+                break
+            for d, need in iter_extra.items():
+                self.device_extra_shift[d] = self.device_extra_shift.get(d, 0.0) + need
+        else:
+            print(f"[L3 collision] Warning: shift fixpoint did not converge after {MAX_ITER} iterations for area '{area_name}'")
+
+    # Per-area expansion propagation: when devices in area A shift right,
+    # subsequent areas IN THE SAME HORIZONTAL Y-BAND shift right by the
+    # cumulative expansion of all prior areas in that band to avoid frame
+    # overlap. Areas in different Y-bands are independent.
+    if not self.device_extra_shift:
+        return
+
+    update_start_area_array = getattr(self, 'update_start_area_array', [])
+
+    area_expansion = {}
+    for area_name, rows in rows_per_area.items():
+        devs = devs_per_area.get(area_name, {})
+        for row in rows:
+            row_devs = [d for d in row if isinstance(d, str) and d in devs and d != '_AIR_']
+            row_devs.sort(key=lambda d: devs[d]['left'])
+            cumul_in_area = _per_area_cumul(row_devs, self.device_extra_shift)
+            for d, c in cumul_in_area.items():
+                d_area = shape_folder_tuple.get(d)
+                if d_area is None:
+                    continue
+                if c > area_expansion.get(d_area, 0.0):
+                    area_expansion[d_area] = c
+
+    if not area_expansion:
+        return
+
+    area_top = {}
+    for area_devs in devs_per_area.values():
+        for d_name, d_info in area_devs.items():
+            d_real_area = shape_folder_tuple.get(d_name)
+            if d_real_area is None:
+                continue
+            t = d_info['top']
+            if d_real_area not in area_top or area_top[d_real_area] > t:
+                area_top[d_real_area] = t
+
+    area_orig_start = {}
+    for entry in update_start_area_array:
+        if isinstance(entry, (list, tuple)) and len(entry) >= 2:
+            a, sx = entry[0], entry[1]
+            if a not in area_orig_start or area_orig_start[a] > sx:
+                area_orig_start[a] = sx
+
+    Y_BAND_TOLERANCE = 0.5
+    y_bands = []
+    for area_name, top in sorted(area_top.items(), key=lambda x: x[1]):
+        placed = False
+        for band in y_bands:
+            if abs(band[0] - top) <= Y_BAND_TOLERANCE:
+                band[1].append(area_name)
+                placed = True
+                break
+        if not placed:
+            y_bands.append((top, [area_name]))
+
+    area_offset_addition = {}
+    max_total_growth = 0.0
+    for band_top, band_areas in y_bands:
+        band_areas_sorted = sorted(
+            (a for a in band_areas if a in area_orig_start),
+            key=lambda a: area_orig_start[a],
+        )
+        cumul_exp = 0.0
+        for area_name in band_areas_sorted:
+            area_offset_addition[area_name] = cumul_exp
+            cumul_exp += area_expansion.get(area_name, 0.0)
+        if cumul_exp > max_total_growth:
+            max_total_growth = cumul_exp
+
+    for entry in update_start_area_array:
+        if isinstance(entry, (list, tuple)) and len(entry) >= 2:
+            a = entry[0]
+            add = area_offset_addition.get(a, 0.0)
+            if add > 0:
+                entry[1] += add
+
+    if hasattr(self, 'calculated_max_right_edge') and max_total_growth > 0:
+        self.calculated_max_right_edge += max_total_growth
+
+
+def _detect_and_fix_2nd_pass_overlaps(self):
+    # Detect same-Y X-overlap among 2nd pass segment bar entries in
+    # y_grid_segment_array. When found, push the LATER segment's optimize Y
+    # down by 0.25" so the next CREATE pass places it on the next lane.
+    # Returns True if any overlaps were detected (re-render needed).
+    snap = getattr(self, '_state_snapshot', None)
+    if snap is None:
+        return False
+    snapshot_len = len(snap['y_grid_segment_array'])
+    new_entries = self.y_grid_segment_array[snapshot_len:]
+    if not new_entries:
+        return False
+
+    x_buf = 0.03
+    by_y = {}
+    for local_idx, entry in enumerate(new_entries):
+        _, seg = entry
+        Y = round(seg[1], 3)
+        by_y.setdefault(Y, []).append((local_idx, seg))
+
+    overlap_local_idxs = set()
+    for Y, items in by_y.items():
+        if len(items) < 2:
+            continue
+        for i, (ia, sa) in enumerate(items):
+            la = sa[0] - x_buf
+            ra = sa[0] + sa[2] + x_buf
+            for ib, sb in items[i + 1:]:
+                lb = sb[0] - x_buf
+                rb = sb[0] + sb[2] + x_buf
+                if not (ra < lb or rb < la):
+                    overlap_local_idxs.add(max(ia, ib))
+
+    if not overlap_local_idxs:
+        return False
+
+    y_step = 0.25
+    opt = getattr(self, 'optimize_y_grid_array', None)
+    if opt is None:
+        return False
+    for li in overlap_local_idxs:
+        if li >= len(opt):
+            continue
+        opt[li][1][1] = round(opt[li][1][1] + y_step, 3)
+
+    return True
+
+
+def _restore_state_and_rerender(self):
+    # Restore mutable state arrays to their pre-2nd-pass-CREATE snapshot and
+    # re-run the CREATE pass with the updated optimize_y_grid_array.
+    # position_shape_array / position_folder_array are deepcopied because
+    # l3_area_create mutates their inner lists.
+    # IMPORTANT: do NOT `from pptx import Presentation` locally here -- the
+    # SVG path monkeypatches the module-level Presentation with
+    # _MockPresentation. A local import bypasses the mock and breaks SVG
+    # 3rd pass rendering (TypeError: expected lxml.etree._Element). Use
+    # the module-level `Presentation` instead.
+    import copy
+    snap = self._state_snapshot
+    self.y_grid_segment_array = list(snap['y_grid_segment_array'])
+    self.add_shape_array = list(snap['add_shape_array'])
+    self.add_shape_write_array = list(snap['add_shape_write_array'])
+    self.per_index2_after_array = list(snap['per_index2_after_array'])
+    self.position_shape_array = copy.deepcopy(snap['position_shape_array'])
+    self.position_folder_array = copy.deepcopy(snap['position_folder_array'])
+
+    svg_cap_len = snap.get('svg_capture_list_len')
+    svg_cap = getattr(self, '_svg_capture_list', None)
+    if svg_cap is not None and svg_cap_len is not None:
+        del svg_cap[svg_cap_len:]
+
+    self.active_ppt = Presentation()
+
+    for tmp_new_position_folder_array in self.folder_wp_name_array[0]:
+        action_type = 'CREATE'
+        offset_x = 0.0
+        offset_y = 0.0
+        for tmp_page_size_array in self.page_size_array:
+            if tmp_page_size_array[5] == tmp_new_position_folder_array:
+                offset_x = tmp_page_size_array[1]
+                offset_y = tmp_page_size_array[2]
+                break
+        ns_l3_diagram_create.l3_area_create(self, tmp_new_position_folder_array, action_type, offset_x, offset_y)
 
 
 def get_shape_width_if_array(self,device_name):

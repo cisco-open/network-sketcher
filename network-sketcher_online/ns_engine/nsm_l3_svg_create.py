@@ -589,9 +589,20 @@ def _run_all_areas(ctx, ppt_meta_file, capture_list, cap_en, mod):
     cap_en[0] = True
     ctx.flag_re_create = True
 
+    # Expose capture_list to the diagram engine so the conditional 3rd pass
+    # (overlap-fix re-render) can truncate captured entries back to the 2nd
+    # pass baseline before re-rendering.
+    ctx._svg_capture_list = capture_list
+
     try:
         mod.nsm_l3_diagram_create.__init__(ctx)
     except UnicodeEncodeError:
+        pass
+
+    # Clean up the back-reference so subsequent invocations start fresh.
+    try:
+        del ctx._svg_capture_list
+    except AttributeError:
         pass
 
     ctx._l3_data_cache = None
