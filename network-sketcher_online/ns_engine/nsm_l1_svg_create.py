@@ -27,6 +27,7 @@ export path, but does NOT use openpyxl or create staging xlsx files.
 Uses bulk loading to read all sections in a single file open.
 """
 
+import math
 import os
 import re
 
@@ -98,8 +99,13 @@ class nsm_l1_svg_create:
 
             self.root_left = 0.28
             self.root_top = 1.42
-            self.root_width = float(master_folder_size_array[0]) + 1.0
-            self.root_hight = float(master_folder_size_array[3]) + 1.0
+            # Match PerArea's root-width formula (math.ceil(width * 12) / 10 ~= 1.2x).
+            # Previously AllArea used a fixed +1.0 margin while PerArea used 1.2x;
+            # that asymmetry caused folders to render at very different absolute
+            # sizes between the two views (see investigation: [MASTER]5site_wan_2dc.nsm
+            # HQ rendered ~2x larger in AllArea than in PerArea).
+            self.root_width = math.ceil(float(master_folder_size_array[0]) * 12) / 10
+            self.root_hight = math.ceil(float(master_folder_size_array[3]) * 12) / 10
 
             nsm_ddx_svg.ns_ddx_svg_run.__init__(self)
 
@@ -223,8 +229,10 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
             rw = float(master_root_folder_tuple[2, 7])
             rh = float(master_root_folder_tuple[2, 8])
         except Exception:
-            rw = float(master_folder_size_array[0]) + 1.0
-            rh = float(master_folder_size_array[3]) + 1.0
+            # Fallback: mirror get_root_folder_tuple's ~1.2x ceiling so the
+            # AllArea / PerArea paths use the same scaling factor (was: +1.0).
+            rw = math.ceil(float(master_folder_size_array[0]) * 12) / 10
+            rh = math.ceil(float(master_folder_size_array[3]) * 12) / 10
 
         if rw > all_slide_max_width:
             all_slide_max_width = rw

@@ -220,6 +220,29 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 .layer-placeholder .icon {{ font-size: 48px; opacity: 0.3; }}
 .layer-loading {{ position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
                   color: #666; font-size: 14px; }}
+/* Right-click "copy text" context menu over <text>/<tspan> in the rendered SVG.
+   Ported from _render_svg_viewer in ns_web_start.py so the tabbed L1/L2/L3
+   viewer regains the copy affordance that existed in the legacy /preview/
+   single-SVG viewer. */
+.ctx-menu {{
+    position: fixed; background: #fff; border: 1px solid #ccc;
+    border-radius: 6px; padding: 4px 0; z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none;
+    min-width: 160px;
+}}
+.ctx-menu li {{
+    list-style: none; padding: 8px 18px; cursor: pointer;
+    font-size: 13px; color: #333; white-space: nowrap;
+}}
+.ctx-menu li:hover {{ background: #4A8FE7; color: #fff; }}
+.ctx-feedback {{
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: #fff; padding: 6px 18px;
+    border-radius: 20px; font-size: 13px; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+    max-width: 80vw; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+}}
 </style>
 </head>
 <body>
@@ -234,6 +257,10 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
         {layers_html}
     </div>
 </div>
+<ul class="ctx-menu" id="ctxMenu">
+    <li id="ctxCopy">Copy text</li>
+</ul>
+<div class="ctx-feedback" id="ctxFeedback">Copied</div>
 <script>
 (function() {{
     var MODE = {mode_js};                  // 'standalone' or 'live'
@@ -608,8 +635,108 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
         if (btnFit) btnFit.onclick = function() {{ fitToWindow(); }};
     }}
 
+    // --- Right-click "copy text" context menu (ported from
+    //     _render_svg_viewer in ns_web_start.py). Activates only when the
+    //     contextmenu target is a <text> or <tspan> inside the rendered SVG;
+    //     other right-clicks fall through to the browser's default menu.
+    function setupContextMenu() {{
+        if (!viewerEl) return;
+        var ctxMenu = document.getElementById('ctxMenu');
+        var ctxFeedback = document.getElementById('ctxFeedback');
+        if (!ctxMenu || !ctxFeedback) return;
+        var feedbackTimer = null;
+
+        function showCtxMenu(x, y, label) {{
+            ctxMenu.style.left = x + 'px';
+            ctxMenu.style.top = y + 'px';
+            ctxMenu.style.display = 'block';
+            document.getElementById('ctxCopy').onclick = function() {{
+                if (navigator.clipboard && navigator.clipboard.writeText) {{
+                    navigator.clipboard.writeText(label).then(function() {{
+                        hideCtxMenu();
+                        showFeedback(label);
+                    }}).catch(function() {{
+                        fallbackCopy(label);
+                    }});
+                }} else {{
+                    fallbackCopy(label);
+                }}
+            }};
+        }}
+
+        // execCommand fallback for non-HTTPS environments.
+        function fallbackCopy(label) {{
+            try {{
+                var ta = document.createElement('textarea');
+                ta.value = label;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                hideCtxMenu();
+                showFeedback(label);
+            }} catch(e) {{}}
+        }}
+
+        function hideCtxMenu() {{
+            ctxMenu.style.display = 'none';
+        }}
+
+        // Show a toast with the copied string. Long strings are truncated
+        // (CSS handles visual overflow as a safety net, JS truncates the
+        // explicit string so users see a sensible preview).
+        function showFeedback(label) {{
+            var preview = label == null ? '' : String(label);
+            var MAX = 80;
+            if (preview.length > MAX) {{
+                preview = preview.substring(0, MAX - 3) + '...';
+            }}
+            ctxFeedback.textContent = 'Copied: "' + preview + '"';
+            ctxFeedback.style.opacity = '1';
+            clearTimeout(feedbackTimer);
+            feedbackTimer = setTimeout(function() {{
+                ctxFeedback.style.opacity = '0';
+            }}, 1800);
+        }}
+
+        viewerEl.addEventListener('contextmenu', function(e) {{
+            // クリック対象が <text> または <tspan> 要素か（祖先もたどる）
+            var el = e.target;
+            while (el && el !== viewerEl) {{
+                var tag = el.tagName ? el.tagName.toLowerCase() : '';
+                if (tag === 'text' || tag === 'tspan') break;
+                el = el.parentElement;
+            }}
+            if (!el || el === viewerEl) return;
+            var tag = el.tagName ? el.tagName.toLowerCase() : '';
+            if (tag !== 'text' && tag !== 'tspan') return;
+
+            // <tspan> の場合は親 <text> 全体のテキストを取得
+            var textEl = (tag === 'tspan') ? el.closest('text') : el;
+            var label = (textEl || el).textContent.trim();
+            if (!label) return;
+
+            e.preventDefault();
+            // メニューが画面外に出ないよう位置を調整
+            var menuW = 180, menuH = 42;
+            var x = Math.min(e.clientX, window.innerWidth - menuW - 8);
+            var y = Math.min(e.clientY, window.innerHeight - menuH - 8);
+            showCtxMenu(x, y, label);
+        }});
+
+        document.addEventListener('click', function(e) {{
+            if (!ctxMenu.contains(e.target)) hideCtxMenu();
+        }});
+        document.addEventListener('keydown', function(e) {{
+            if (e.key === 'Escape') hideCtxMenu();
+        }});
+    }}
+
     initTabs();
     setupPanZoom();
+    setupContextMenu();
     // Initial tab from URL hash (#l1 / #l2 / #l3); fallback to first available.
     var hashLayer = (window.location.hash || '').replace('#', '');
     var initLayer = null;

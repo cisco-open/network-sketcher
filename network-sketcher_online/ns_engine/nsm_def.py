@@ -800,8 +800,14 @@ def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_
                         tmp_hight
                     ])
 
-                master_width_size_folder.append([folder_num, tmp_folder_size])
-                master_folder_size.append([folder_num, tmp_folder_size])
+                    # Bug fix: keep the per-folder appends INSIDE the else branch.
+                    # Previously these two lines were at the outer indent level,
+                    # causing every empty cell to re-append the *previous* non-empty
+                    # tmp_folder_size as a stale duplicate. That inflated each row's
+                    # final_width (and thus slide_max_width / root_width) whenever a
+                    # row contained empty separators or trailing '' cells.
+                    master_width_size_folder.append([folder_num, tmp_folder_size])
+                    master_folder_size.append([folder_num, tmp_folder_size])
 
         if i == 0:
             # No folders in this row - use fixed width
@@ -831,10 +837,15 @@ def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_
         else:
             average_width = 0.5  # Default if no shapes exist
 
-        # Calculate total width: actual folders + (average × empty_folder_count)
-        # Empty folders from master_folder_tuple use average width
-        final_width = tmp_sum_width + (average_width * empty_folder_count)
+        # Each empty cell is stored as `air_width_each` (= average * 0.2) in the
+        # POSITION_FOLDER <SET_WIDTH> row, and the SVG renderer uses those stored
+        # weights for proportional layout. final_width must use the SAME width
+        # per empty cell so the slide size and the per-row col_sum match;
+        # otherwise non-max rows get horizontally stretched (which is what made
+        # the AllArea HQ in [MASTER]5site_wan_2dc.nsm render ~2x wider than the
+        # PerArea HQ).
         air_width_each = average_width * 0.2 if non_empty_count > 0 else 0.1
+        final_width = tmp_sum_width + (air_width_each * empty_folder_count)
 
         # Store actual widths (NO ratio applied yet)
         master_width_size_y_grid.append([folder_num, final_width, air_width_each])

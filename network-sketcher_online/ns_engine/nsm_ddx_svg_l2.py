@@ -963,12 +963,18 @@ def _render_vport_tags(parts, tag_size_array, used_vport_names, direction,
                     vp_left = last_phys_left + last_phys_width + offset_vport_l3 + between_tag * 0.5
                     offset_vport_l3 += vp_w + between_tag * 0.5
                 else:
+                    # Unknown vp_type: fall back to next-to-phys placement and
+                    # apply the offset only when this orphan vport has no
+                    # physical IF (i.e. listed in other_if_array). Previously
+                    # this branch + the `for other_if in other_if_array` loop
+                    # below BOTH fired for L3/GRAY vports that lacked a phys
+                    # IF, double-counting `offset_vport_l3`. That pushed the
+                    # vport tags far to the right and caused the device frame
+                    # (and through it the area frame) to render wider than the
+                    # layout had reserved — visible as Br0X-Edge-RT / Access-SW
+                    # overflowing their Br0X area frames in the L2 diagram.
                     vp_left = last_phys_left + last_phys_width + offset_vport_l3 + between_tag * 0.5
-
-                # other_if_array (loopback etc)
-                for other_if in other_if_array:
-                    if other_if == row[5]:
-                        vp_left = last_phys_left + last_phys_width + offset_vport_l3 + between_tag * 0.5
+                    if row[5] in other_if_array:
                         offset_vport_l3 += vp_w + between_tag * 0.5
 
                 parts.append(_render_l2_shape(

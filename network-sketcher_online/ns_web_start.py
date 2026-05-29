@@ -87,6 +87,154 @@ def _load_help_messages():
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
+# Command reference source (single source of truth shared with AI Context and
+# the Local MCP nsm://commands resource).
+CMD_REF_PATH = BASE_DIR / 'ns_engine' / 'nsm_extensions_cmd_list.txt'
+_cmd_ref_cache = None
+
+# Verbs the Update Master "Run" actually executes. Any other verb (currently
+# only `export`) is skipped at run time ("(skipped) ..."), so such commands are
+# also excluded from the Command Reference viewer. Single source of truth:
+# /run_commands references this same set.
+RUNNABLE_VERBS = {'add', 'delete', 'rename', 'show'}
+
+
+def _normalize_quotes(text):
+    """Normalize smart/curly quotes to straight quotes.
+
+    Some examples in nsm_extensions_cmd_list.txt use typographic quotes
+    (U+2018/U+2019 single, U+201C/U+201D double). The Run validator expects
+    straight quotes, so the insertable syntax must be normalized.
+    """
+    if not text:
+        return text
+    return (text
+            .replace('\u2018', "'").replace('\u2019', "'")
+            .replace('\u201c', '"').replace('\u201d', '"'))
+
+
+def _load_command_reference():
+    """Parse nsm_extensions_cmd_list.txt into a structured command reference.
+
+    Returns a list of categories:
+        [{'category': str, 'items': [{'id', 'title', 'body', 'syntax'}]}]
+
+    Only the command portion is included; everything from the first
+    ``## RULE`` heading onward (architecture rules) is excluded. The result
+    is cached in module global ``_cmd_ref_cache`` (parsed once).
+    """
+    global _cmd_ref_cache
+    if _cmd_ref_cache is not None:
+        return _cmd_ref_cache
+
+    try:
+        with open(CMD_REF_PATH, 'r', encoding='utf-8') as f:
+            raw = f.read()
+    except OSError:
+        _cmd_ref_cache = []
+        return _cmd_ref_cache
+
+    lines = raw.splitlines()
+
+    # Cut off at the first architecture-rule heading (## RULE ...).
+    cut = len(lines)
+    for i, ln in enumerate(lines):
+        if ln.startswith('## RULE'):
+            cut = i
+            break
+    lines = lines[:cut]
+
+    import re as _re
+
+    _cat_re = _re.compile(r'^##\s+(Show|Add|Delete|Rename|Export)\s+Commands\s+reference\s*$', _re.I)
+    _quoting_re = _re.compile(r'^##\s+IMPORTANT:\s*Quoting', _re.I)
+
+    # Split into ## blocks (heading + body lines until next ## heading).
+    blocks = []  # (heading_text, [body_lines])
+    cur_head = None
+    cur_body = []
+    for ln in lines:
+        if ln.startswith('## '):
+            if cur_head is not None:
+                blocks.append((cur_head, cur_body))
+            cur_head = ln[3:].strip()
+            cur_body = []
+        elif ln.startswith('# '):
+            # Top-level title / TOC: ignore as a standalone block.
+            if cur_head is not None:
+                blocks.append((cur_head, cur_body))
+                cur_head = None
+                cur_body = []
+        else:
+            if cur_head is not None:
+                cur_body.append(ln)
+    if cur_head is not None:
+        blocks.append((cur_head, cur_body))
+
+    def _extract_syntax(body_lines):
+        """Return the first ```bash fenced block's content (normalized)."""
+        in_fence = False
+        collected = []
+        for ln in body_lines:
+            stripped = ln.strip()
+            if not in_fence:
+                if stripped.startswith('```'):
+                    in_fence = True
+                continue
+            if stripped.startswith('```'):
+                break
+            collected.append(ln)
+        syntax = '\n'.join(collected).strip()
+        return _normalize_quotes(syntax)
+
+    def _slug(text):
+        return _re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
+
+    categories = []
+    current = None
+    for head, body in blocks:
+        if _quoting_re.match('## ' + head):
+            # Quoting rules: informational section (no command/syntax).
+            body_text = '\n'.join(body).strip()
+            categories.append({
+                'category': 'Quoting Rules',
+                'items': [{
+                    'id': 'quoting-rules',
+                    'title': 'Quoting Rules for All Commands',
+                    'body': body_text,
+                    'syntax': '',
+                }],
+            })
+            current = None
+            continue
+
+        cat_m = _cat_re.match('## ' + head)
+        if cat_m:
+            current = {'category': cat_m.group(1).capitalize(), 'items': []}
+            categories.append(current)
+            continue
+
+        # Individual command block (only counted when under a category).
+        if current is not None:
+            # Exclude commands the Run action would skip (verb not runnable,
+            # currently only `export`). The verb is the first token of the
+            # heading, e.g. "export l1_diagram" -> "export".
+            verb = head.split()[0].lower() if head.split() else ''
+            if verb not in RUNNABLE_VERBS:
+                continue
+            body_text = '\n'.join(body).strip()
+            current['items'].append({
+                'id': _slug(head),
+                'title': head,
+                'body': body_text,
+                'syntax': _extract_syntax(body),
+            })
+
+    # Drop empty categories (e.g. Export once all its items are excluded).
+    categories = [c for c in categories if c['items']]
+    _cmd_ref_cache = categories
+    return _cmd_ref_cache
+
 _cfg = _load_config()
 _help_msgs = _load_help_messages()
 
@@ -483,6 +631,20 @@ def logo():
     if logo_path.is_file():
         return send_file(str(logo_path), mimetype='image/png')
     abort(404)
+
+
+@app.route('/command_reference')
+def command_reference():
+    """Return the parsed Network Sketcher CLI command reference as JSON.
+
+    Lazily fetched by the in-app Command Reference drawer on first open, so
+    the (sizeable) reference does not weigh down the initial page load.
+    """
+    data = _load_command_reference()
+    resp = jsonify(data)
+    # Reference content is static per server build; allow client/proxy cache.
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    return resp
 
 
 @app.route('/create_empty_master', methods=['POST'])
@@ -1176,6 +1338,53 @@ def _run_deferred_sync(master_path):
         logger.warning('Deferred sync fallback: %s', e)
 
 
+# --- CLI command failure detection (for the Update Master "Run" results) ---
+# The engine signals failure inconsistently: most paths print the bracketed
+# marker, but in two casings ([ERROR] and [Error]); others print a bare
+# "Error:" line or a specific rejection phrase with no marker at all; and
+# uncaught exceptions surface only via a non-zero return code / stderr.
+# A stdout-only "[ERROR]" check therefore misclassified many real failures as
+# success (green). The matchers below are intentionally narrow (anchored /
+# bracketed / fixed phrases) to avoid flagging legitimate success output.
+_ERR_BRACKET_RE = re.compile(r'\[error\]', re.IGNORECASE)   # [ERROR] or [Error]
+_ERR_LINE_RE = re.compile(r'(?im)^\s*Error:')               # bare "Error:" line start
+_FAILURE_PHRASES = (
+    'Input must start with',
+    '[WARNING] No ',
+    'No matching entry found',
+    'is already used in an existing link',
+    'IP Address format is invalid',
+    'Invalid virtual port name',
+    'Invalid portchannel name',
+    'Validation error:',
+    'Not found in the argument',
+    'Not found in arguments',
+    'ERROR and STOP',
+    'cannot find section',
+    # bulk partial-failure summaries (some entries failed; surface as failure)
+    'with errors',
+    'error(s)',
+    'Not found:',
+)
+
+
+def _command_failed(result, stdout):
+    """Return True if a CLI command result represents a failure.
+
+    Catches: missing result, non-zero return code (uncaught exceptions /
+    TypeError paths that print only to stderr), the bracketed error marker in
+    either casing, a bare "Error:" line, and known rejection/partial-failure
+    phrases. Deliberately ignores idempotent "No change made" no-ops.
+    """
+    if result is None:
+        return True
+    if getattr(result, 'returncode', 0) != 0:
+        return True
+    if _ERR_BRACKET_RE.search(stdout) or _ERR_LINE_RE.search(stdout):
+        return True
+    return any(p in stdout for p in _FAILURE_PHRASES)
+
+
 @app.route('/run_commands/<job_id>', methods=['POST'])
 def run_commands(job_id):
     job_id = sanitize_job_id(job_id)
@@ -1197,7 +1406,7 @@ def run_commands(job_id):
 
     lines = [l.strip() for l in commands_text.splitlines() if l.strip() and not l.strip().startswith('#')]
 
-    ALLOWED_VERBS = {'add', 'delete', 'rename', 'show'}
+    ALLOWED_VERBS = RUNNABLE_VERBS
     MUTATING_VERBS = {'add', 'delete', 'rename'}
     has_mutation = any(
         (shlex.split(l)[0] if l else '') in MUTATING_VERBS
@@ -1223,7 +1432,6 @@ def run_commands(job_id):
         new_master_name = None
         target_master_path = str(work_dir / master_filename)
 
-    FAILURE_MARKERS = ('[ERROR]', 'Input must start with', '[WARNING] No ')
     SYNCABLE_SUBCMDS = {'l1_link_bulk', 'device_location'}
 
     parsed_lines = []
@@ -1268,7 +1476,7 @@ def run_commands(job_id):
         result = run_ns_command(cmd_args)
         stdout = (result.stdout or '') if result else ''
         stderr = (result.stderr or '') if result else ''
-        ok = result is not None and not any(m in stdout for m in FAILURE_MARKERS)
+        ok = not _command_failed(result, stdout)
         results.append({'command': line, 'success': ok, 'output': stdout + stderr})
         if not ok:
             errors.append(line)
@@ -4912,7 +5120,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 }
 .output-copy-only:hover { background: #0984e3; color: white; }
 .llm-prompt-area {
-    display: none; width: 100%; margin-top: 4px; padding: 8px 10px;
+    display: none; width: 100%; margin-top: 4px; padding: 4px 10px;
     border: 1.5px solid #0984e3; border-radius: 8px; background: #f0f7ff;
     box-sizing: border-box; flex-basis: 100%;
 }
@@ -4953,8 +5161,21 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 .output-preview-csv:hover { background: #eef2ff; }
 .update-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
 .cli-command-area {
-    width: 100%; padding: 4px 10px 10px; border: 1.5px solid #00b894; border-radius: 8px;
+    width: 100%; padding: 2px 10px 5px; border: 1.5px solid #00b894; border-radius: 8px;
     background: #f0faf6; box-sizing: border-box;
+}
+/* Halve the top/bottom inner padding of the Update Master card only.
+   The global .card rule uses padding: 28px; we override just the
+   vertical axis on this section to make the frame more compact. */
+#updateSection.card {
+    padding-top: 14px;
+    padding-bottom: 14px;
+}
+/* Halve the gap between the "Update Master" heading and the
+   "Paste CLI commands..." description below it (global .card h2 uses
+   margin-bottom: 16px). */
+#updateSection.card h2 {
+    margin-bottom: 8px;
 }
 .collapsible-header {
     display: flex; align-items: center; gap: 6px;
@@ -4969,6 +5190,81 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 }
 .collapsible-arrow.open { transform: rotate(90deg); }
 .collapsible-body { padding-top: 4px; }
+/* ---- Command Reference drawer ---- */
+.cmdref-trigger {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; font-size: 11px; font-weight: 600;
+    color: #00897b; background: #fff; border: 1px solid #00b894;
+    border-radius: 12px; cursor: pointer; white-space: nowrap;
+    transition: all 0.15s; line-height: 1.6;
+}
+.cmdref-trigger:hover { background: #00b894; color: #fff; }
+/* In the Run action row, keep the reference trigger on the left while
+   run-status + Run button stay right-aligned. */
+.update-actions .cmdref-trigger { margin-right: auto; }
+.cmdref-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    z-index: 10000; display: none; opacity: 0; transition: opacity 0.2s;
+}
+.cmdref-overlay.open { display: block; opacity: 1; }
+.cmdref-drawer {
+    position: fixed; top: 0; right: 0; height: 100%;
+    width: min(600px, 94vw); background: #fff; z-index: 10001;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+    transform: translateX(100%); transition: transform 0.22s ease;
+    display: flex; flex-direction: column;
+}
+.cmdref-drawer.open { transform: translateX(0); }
+.cmdref-head {
+    display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+    background: #16213e; color: #fff; flex-shrink: 0;
+}
+.cmdref-head h3 { font-size: 15px; font-weight: 600; margin: 0; flex: 1; }
+.cmdref-close {
+    background: transparent; border: 1px solid rgba(255,255,255,0.4);
+    color: #fff; border-radius: 6px; width: 28px; height: 28px;
+    font-size: 16px; cursor: pointer; line-height: 1;
+}
+.cmdref-close:hover { background: rgba(255,255,255,0.15); }
+.cmdref-searchbar { padding: 10px 18px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+.cmdref-searchbar input {
+    width: 100%; padding: 8px 12px; font-size: 13px;
+    border: 1px solid #d0d8e8; border-radius: 6px; box-sizing: border-box;
+}
+.cmdref-searchbar input:focus { outline: none; border-color: var(--primary); }
+.cmdref-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+.cmdref-cat { padding: 8px 18px 2px; font-size: 12px; font-weight: 700;
+    color: #00897b; text-transform: uppercase; letter-spacing: 0.04em;
+    position: sticky; top: 0; background: #fff; }
+.cmdref-item { padding: 8px 18px 12px; border-bottom: 1px solid #f0f0f0; }
+.cmdref-item-title { font-size: 13px; font-weight: 700; color: #1a2744;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
+.cmdref-syntax {
+    margin: 6px 0; padding: 8px 10px; background: #0f1b2d; color: #e6edf3;
+    border-radius: 6px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px; white-space: pre-wrap; word-break: break-word;
+}
+.cmdref-actions { display: flex; gap: 6px; margin: 4px 0 6px; }
+.cmdref-btn {
+    padding: 3px 12px; font-size: 11px; font-weight: 600; border-radius: 5px;
+    cursor: pointer; transition: all 0.15s; border: 1px solid #00b894;
+    background: #fff; color: #00897b;
+}
+.cmdref-btn:hover { background: #00b894; color: #fff; }
+.cmdref-btn.copy { border-color: #0984e3; color: #0984e3; }
+.cmdref-btn.copy:hover { background: #0984e3; color: #fff; }
+.cmdref-desc { font-size: 12px; color: #555; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-word; }
+.cmdref-desc code { background: #eef2f7; padding: 1px 4px; border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 11px; }
+.cmdref-empty { padding: 24px 18px; color: #888; font-size: 13px; text-align: center; }
+.cmdref-feedback {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.78); color: #fff; padding: 7px 20px;
+    border-radius: 20px; font-size: 13px; pointer-events: none; z-index: 10002;
+    opacity: 0; transition: opacity 0.3s; max-width: 80vw; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+}
 .cmd-input {
     width: 100%; padding: 8px 10px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 13px; border: 1px solid #d0d8e8; border-radius: 6px; resize: vertical;
@@ -4999,6 +5295,13 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
     cursor: pointer; text-decoration: underline;
 }
 .view-log-link:hover { color: var(--primary-dark); }
+.copy-log-btn {
+    display: inline-block; margin-top: 8px; margin-left: 6px; padding: 1px 10px;
+    font-size: 11px; font-weight: 600; color: #0984e3; background: #fff;
+    border: 1px solid #0984e3; border-radius: 5px; cursor: pointer;
+    vertical-align: baseline; transition: all 0.15s;
+}
+.copy-log-btn:hover { background: #0984e3; color: #fff; }
 .cmd-output {
     display: none; margin: 4px 0 8px 18px; padding: 8px 10px; background: #fff;
     border: 1px solid #e0e0e0; border-radius: 6px; white-space: pre-wrap;
@@ -5148,25 +5451,6 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
         <h2>&#9998; Update Master <span class="help-icon" onclick="event.stopPropagation();toggleHelp('update_master')">?</span></h2>
         <div class="help-tooltip" id="help-update_master"></div>
         <p class="update-desc">Paste CLI commands generated by an LLM from the AI Context file. Each line is executed against the current master file.</p>
-        <div class="cli-command-area">
-            <div class="collapsible-header" id="cliCommandsHeader">
-                <span class="collapsible-title">CLI Commands</span>
-                <span class="help-icon" onclick="event.stopPropagation();toggleHelp('cli_commands')">?</span>
-                <span class="collapsible-arrow">&#9654;</span>
-            </div>
-            <div class="help-tooltip" id="help-cli_commands"></div>
-            <div class="collapsible-body" id="cliCommandsBody" style="display:none;">
-                <textarea id="cmdInput" class="cmd-input" rows="8" placeholder="show device&#10;show l1_link&#10;add device Router-A SW-1B RIGHT&#10;add l1_link_bulk &quot;[['SW-1B','WAN-1','GigabitEthernet 0/24','GigabitEthernet 0/24']]&quot;&#10;delete device OldDevice"></textarea>
-                <div class="update-actions">
-                    <div class="run-status" id="runStatus" style="display:none;"></div>
-                    <button class="btn-run" id="btnRun">Run</button>
-                </div>
-            </div>
-        </div>
-        <div class="run-progress" id="runProgress" style="display:none;">
-            <div class="spinner"></div> <span id="runProgressText">Executing commands...</span>
-        </div>
-        <div class="run-results" id="runResults" style="display:none;"></div>
         <div class="llm-prompt-area" id="llmPromptArea" style="display:none;">
             <div class="collapsible-header" id="llmCommandsHeader">
                 <span class="collapsible-title">LLM Prompt</span>
@@ -5186,7 +5470,41 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
                 </div>
             </div>
         </div>
+        <div class="cli-command-area">
+            <div class="collapsible-header" id="cliCommandsHeader">
+                <span class="collapsible-title">CLI Commands</span>
+                <span class="help-icon" onclick="event.stopPropagation();toggleHelp('cli_commands')">?</span>
+                <span class="collapsible-arrow">&#9654;</span>
+            </div>
+            <div class="help-tooltip" id="help-cli_commands"></div>
+            <div class="collapsible-body" id="cliCommandsBody" style="display:none;">
+                <textarea id="cmdInput" class="cmd-input" rows="8" placeholder="show device&#10;show l1_link&#10;add device Router-A SW-1B RIGHT&#10;add l1_link_bulk &quot;[['SW-1B','WAN-1','GigabitEthernet 0/24','GigabitEthernet 0/24']]&quot;&#10;delete device OldDevice"></textarea>
+                <div class="update-actions">
+                    <button type="button" class="cmdref-trigger" id="btnCmdRef" onclick="openCmdRef();" title="Browse the Network Sketcher command reference">&#128214; Command Reference</button>
+                    <div class="run-status" id="runStatus" style="display:none;"></div>
+                    <button class="btn-run" id="btnRun">Run</button>
+                </div>
+            </div>
+        </div>
+        <div class="run-progress" id="runProgress" style="display:none;">
+            <div class="spinner"></div> <span id="runProgressText">Executing commands...</span>
+        </div>
+        <div class="run-results" id="runResults" style="display:none;"></div>
     </div>
+
+    <!-- Command Reference drawer -->
+    <div class="cmdref-overlay" id="cmdRefOverlay" onclick="closeCmdRef()"></div>
+    <div class="cmdref-drawer" id="cmdRefDrawer" role="dialog" aria-label="Command Reference">
+        <div class="cmdref-head">
+            <h3>&#128214; Command Reference</h3>
+            <button type="button" class="cmdref-close" id="cmdRefClose" onclick="closeCmdRef()" title="Close">&#10005;</button>
+        </div>
+        <div class="cmdref-searchbar">
+            <input type="text" id="cmdRefSearch" placeholder="Search commands (e.g., l1_link, area, ip_address)" autocomplete="off">
+        </div>
+        <div class="cmdref-body" id="cmdRefBody"></div>
+    </div>
+    <div class="cmdref-feedback" id="cmdRefFeedback"></div>
 
     <!-- Selection Section -->
     <div class="card" id="selectionSection" style="display:none;">
@@ -5272,6 +5590,172 @@ function initCollapsible(headerId, bodyId) {
 }
 initCollapsible('cliCommandsHeader', 'cliCommandsBody');
 initCollapsible('llmCommandsHeader', 'llmCommandsBody');
+
+// ===== Command Reference drawer =====
+var _cmdRefData = null;        // cached parsed reference (categories)
+var _cmdRefLoaded = false;
+var _cmdRefFbTimer = null;
+
+function _cmdRefEscapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// Lightweight inline-markdown: backtick code spans only (descriptions are
+// plain text otherwise). Everything is HTML-escaped first.
+function _cmdRefDesc(text) {
+    var esc = _cmdRefEscapeHtml(text);
+    esc = esc.replace(/`([^`]+)`/g, function(m, c) { return '<code>' + c + '</code>'; });
+    return esc;
+}
+
+function _cmdRefNormalizeQuotes(s) {
+    // Mirror server-side _normalize_quotes so inserted text uses straight
+    // quotes accepted by the Run validator.
+    return String(s == null ? '' : s)
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201c\u201d]/g, '"');
+}
+
+function openCmdRef() {
+    var overlay = document.getElementById('cmdRefOverlay');
+    var drawer = document.getElementById('cmdRefDrawer');
+    overlay.classList.add('open');
+    drawer.classList.add('open');
+    var search = document.getElementById('cmdRefSearch');
+    if (!_cmdRefLoaded) {
+        var body = document.getElementById('cmdRefBody');
+        body.innerHTML = '<div class="cmdref-empty">Loading...</div>';
+        fetch('/command_reference').then(function(r) { return r.json(); })
+            .then(function(data) {
+                _cmdRefData = data || [];
+                _cmdRefLoaded = true;
+                _renderCmdRef('');
+            })
+            .catch(function() {
+                body.innerHTML = '<div class="cmdref-empty">Failed to load command reference.</div>';
+            });
+    } else {
+        _renderCmdRef(search ? search.value : '');
+    }
+    setTimeout(function() { if (search) search.focus(); }, 60);
+}
+
+function closeCmdRef() {
+    document.getElementById('cmdRefOverlay').classList.remove('open');
+    document.getElementById('cmdRefDrawer').classList.remove('open');
+}
+
+function _renderCmdRef(filter) {
+    var body = document.getElementById('cmdRefBody');
+    if (!_cmdRefData) { return; }
+    var q = (filter || '').trim().toLowerCase();
+    var html = '';
+    var matchCount = 0;
+    for (var ci = 0; ci < _cmdRefData.length; ci++) {
+        var cat = _cmdRefData[ci];
+        var items = cat.items || [];
+        var rows = '';
+        for (var ii = 0; ii < items.length; ii++) {
+            var it = items[ii];
+            if (q) {
+                var hay = (it.title + ' ' + (it.body || '') + ' ' + (it.syntax || '')).toLowerCase();
+                if (hay.indexOf(q) === -1) continue;
+            }
+            matchCount++;
+            var actions = '';
+            if (it.syntax) {
+                actions = '<div class="cmdref-actions">'
+                    + '<button type="button" class="cmdref-btn" onclick="cmdRefInsert(' + ci + ',' + ii + ')">Insert</button>'
+                    + '<button type="button" class="cmdref-btn copy" onclick="cmdRefCopy(' + ci + ',' + ii + ')">Copy</button>'
+                    + '</div>';
+            }
+            var syntaxHtml = it.syntax
+                ? '<div class="cmdref-syntax">' + _cmdRefEscapeHtml(it.syntax) + '</div>'
+                : '';
+            rows += '<div class="cmdref-item">'
+                + '<div class="cmdref-item-title">' + _cmdRefEscapeHtml(it.title) + '</div>'
+                + syntaxHtml + actions
+                + '<div class="cmdref-desc">' + _cmdRefDesc(it.body || '') + '</div>'
+                + '</div>';
+        }
+        if (rows) {
+            html += '<div class="cmdref-cat">' + _cmdRefEscapeHtml(cat.category) + '</div>' + rows;
+        }
+    }
+    if (!matchCount) {
+        html = '<div class="cmdref-empty">No commands match "' + _cmdRefEscapeHtml(filter) + '".</div>';
+    }
+    body.innerHTML = html;
+}
+
+function _cmdRefSyntaxAt(ci, ii) {
+    try { return _cmdRefData[ci].items[ii].syntax || ''; } catch (e) { return ''; }
+}
+
+function cmdRefInsert(ci, ii) {
+    var syntax = _cmdRefNormalizeQuotes(_cmdRefSyntaxAt(ci, ii));
+    if (!syntax) return;
+    var ta = document.getElementById('cmdInput');
+    if (!ta) return;
+    // Ensure the CLI Commands body is expanded so the user sees the result.
+    var bodyEl = document.getElementById('cliCommandsBody');
+    if (bodyEl && bodyEl.style.display === 'none') {
+        bodyEl.style.display = '';
+        var arrow = document.querySelector('#cliCommandsHeader .collapsible-arrow');
+        if (arrow) arrow.classList.add('open');
+    }
+    var cur = ta.value;
+    if (cur && !cur.endsWith('\n')) cur += '\n';
+    ta.value = cur + syntax + '\n';
+    ta.focus();
+    ta.scrollTop = ta.scrollHeight;
+    _cmdRefFeedback('Inserted into CLI Commands');
+}
+
+function cmdRefCopy(ci, ii) {
+    var syntax = _cmdRefNormalizeQuotes(_cmdRefSyntaxAt(ci, ii));
+    if (!syntax) return;
+    var done = function() { _cmdRefFeedback('Copied: ' + syntax); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(syntax).then(done).catch(function() { _cmdRefCopyFallback(syntax, done); });
+    } else {
+        _cmdRefCopyFallback(syntax, done);
+    }
+}
+
+function _cmdRefCopyFallback(text, done) {
+    try {
+        var t = document.createElement('textarea');
+        t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        document.execCommand('copy'); document.body.removeChild(t);
+        done();
+    } catch (e) {}
+}
+
+function _cmdRefFeedback(msg) {
+    var fb = document.getElementById('cmdRefFeedback');
+    if (!fb) return;
+    fb.textContent = msg;
+    fb.style.opacity = '1';
+    clearTimeout(_cmdRefFbTimer);
+    _cmdRefFbTimer = setTimeout(function() { fb.style.opacity = '0'; }, 1600);
+}
+
+(function() {
+    var search = document.getElementById('cmdRefSearch');
+    if (search) {
+        search.addEventListener('input', function() { _renderCmdRef(this.value); });
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var drawer = document.getElementById('cmdRefDrawer');
+            if (drawer && drawer.classList.contains('open')) closeCmdRef();
+        }
+    });
+})();
 
 (function() {
     var dropzone = document.getElementById('dropzone');
@@ -6987,6 +7471,7 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                 html += '<span class="view-log-link" id="expandResultsLink">&#9654; Show '
                      + totalCount + ' results</span> ';
                 html += '<span class="view-log-link" id="viewLogLink">&#9654; View Log</span>';
+                html += '<button type="button" class="copy-log-btn" id="copyLogBtn" title="Copy the View Log to clipboard">Copy Log</button>';
             }
             runResults.innerHTML = html;
             runResults.style.display = 'block';
@@ -7020,6 +7505,33 @@ initCollapsible('llmCommandsHeader', 'llmCommandsBody');
                         else outputs[k].classList.add('visible');
                     }
                     logLink.innerHTML = anyVisible ? '&#9654; View Log' : '&#9660; Hide Log';
+                });
+            }
+            // Copy Log button: assemble the full run log (command + output per
+            // result) as plain text and copy it to the clipboard, regardless of
+            // whether the log is currently expanded in the UI.
+            var copyLogBtn = document.getElementById('copyLogBtn');
+            if (copyLogBtn && data.results) {
+                var _logResults = data.results;
+                copyLogBtn.addEventListener('click', function() {
+                    var lines = [];
+                    for (var li = 0; li < _logResults.length; li++) {
+                        var rr = _logResults[li];
+                        var mark = rr.skipped ? '(skipped)' : (rr.success ? '[OK]' : '[ERROR]');
+                        lines.push(mark + ' ' + (rr.command || ''));
+                        if (rr.output && rr.output.trim()) {
+                            lines.push(rr.output.replace(/\s+$/, ''));
+                        }
+                    }
+                    var logText = lines.join('\n');
+                    var done = function() { _cmdRefFeedback('View Log copied'); };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(logText).then(done).catch(function() {
+                            _cmdRefCopyFallback(logText, done);
+                        });
+                    } else {
+                        _cmdRefCopyFallback(logText, done);
+                    }
                 });
             }
 

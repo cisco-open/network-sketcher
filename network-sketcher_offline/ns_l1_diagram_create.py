@@ -304,8 +304,13 @@ class  ns_l1_diagram_create():
             self.root_left = 0.28
             self.root_top =  1.42
 
-            self.root_width = float(master_folder_size_array[0]) + 1.0
-            self.root_hight = float(master_folder_size_array[3]) + 1.0
+            # Use the same root-width formula PerArea uses (math.ceil(width * 12) / 10 == ~1.2x with ceiling).
+            # Previously AllArea used a fixed +1.0 margin while PerArea used ~1.2x;
+            # that asymmetry made AllArea slides scale folders at a different
+            # magnification than PerArea, so the same folder appeared at very
+            # different absolute sizes in the two views.
+            self.root_width = math.ceil(float(master_folder_size_array[0]) * 12) / 10
+            self.root_hight = math.ceil(float(master_folder_size_array[3]) * 12) / 10
 
             if self.flag_summary_diagram == False:
                 self.keep_root_width = self.root_width
