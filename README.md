@@ -33,7 +33,7 @@ You can use any combination.
 | Multi-user | Single user | Multiple users via browser | Single user |
 | Client requires | **Python + MCP client** | Web browser only | Python runtime environment |
 | AI-native design | **Yes (most direct)** | Yes | No |
-| Master format | **`.nsm` only (`.xlsx` via import/export)** | `.nsm` internally; `.xlsx` at boundary | `.xlsx` only |
+| Master format | **`.nsm` only (`.xlsx` via import/export)** | `.xlsx` / `.nsm` both | `.xlsx` only |
 | Internal data storage | No | No | No |
 | External communication | stdio to LLM client (local) | [HTTPS](https://github.com/cisco-open/network-sketcher/wiki/User_Guide(Online_Edition)%5BEN%5D#external-communication) | No |
 | Tested platforms | Windows (Mac OS, Linux compatible by design) | Windows (Mac OS, Linux untested) | Windows, Mac OS, Linux |
