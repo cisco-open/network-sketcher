@@ -439,11 +439,26 @@ class nsm_l2_svg_create:
                             row_idx = grid_key[0]
                             col_idx = grid_key[1]
                             if measured[1][0][1] != 0:
+                                matched = False
                                 for i, grid_row in enumerate(current_y_grid_array):
                                     if grid_row[0] == row_idx - 1:
                                         if col_idx - 1 < len(update_y_grid[i][1]):
                                             update_y_grid[i][1][col_idx - 1] = measured[1][0][1]
+                                        matched = True
                                         break
+                                # Fallback: when an area sits directly under the
+                                # <<POSITION_FOLDER>> header (no <SET_WIDTH> row in
+                                # between), row_idx-1 points at the header row, which
+                                # was split out into header_row and is absent from
+                                # current_y_grid_array. The header row seeds this
+                                # area row's column widths in compute_folder_grid, so
+                                # write the measured L2 width directly into it.
+                                # Without this, the area keeps its L1 width and L2
+                                # devices overflow the area frame (AllAreas only).
+                                if (not matched and header_row is not None and
+                                        header_row[0] == row_idx - 1 and
+                                        col_idx - 1 < len(header_row[1])):
+                                    header_row[1][col_idx - 1] = measured[1][0][1]
 
                 for i, grid_row in enumerate(current_y_grid_array):
                     if isinstance(grid_row[1][0], (int, float)):
