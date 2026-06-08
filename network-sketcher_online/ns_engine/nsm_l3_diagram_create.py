@@ -353,6 +353,68 @@ class  nsm_l3_diagram_create():
                 #print("[L3 Diagram] 1st pass done (skip save)")
                 return
 
+            # Runaway-device pull-back (quality-independent): a device connected
+            # by a long L3 segment can land far to the right of its area's
+            # device cluster (e.g. SRV_* at the end of a cross-diagram segment),
+            # which makes the area frame overrun and overlap the next area's
+            # frame. The grid-column layout does not cause this (it is driven by
+            # L3 connectivity), so it cannot be fixed by compacting the master.
+            # Here we measure the drawn positions, and for any area whose
+            # rightmost device is separated from the rest of the cluster by a
+            # large horizontal gap, we pull that device back to align with the
+            # area's rightmost cluster device via device_extra_shift, then
+            # re-render. Runs before the segment lane-separation retry so the
+            # latter operates on the final X positions.
+            if self.flag_re_create == True and self.click_value_l3 == 'L3-4-1' and hasattr(self, '_state_snapshot'):
+                import copy as _pb_copy
+                PULLBACK_MAX_RETRIES = 8
+                # Phase A - horizontal compaction to convergence. Each area's
+                # devices are swept and any oversized empty band (a device
+                # cluster dragged far right next to its cross-area peers) is
+                # closed by pulling the right group left. This is monotonic-left
+                # and bounded by the area's natural packed width, so it always
+                # converges, and it is the primary tool for over-spread areas
+                # (long inter-area connector lines are accepted as the trade-off
+                # for removing the overrun). The resulting state is snapshotted
+                # as the safe fallback: it keeps the page width sane even if the
+                # following separation dance fails to settle.
+                for _pb_retry in range(PULLBACK_MAX_RETRIES):
+                    if _pull_back_runaway_devices(self):
+                        _restore_state_and_rerender(self)
+                        continue
+                    break
+                _pb_shift_baseline = _pb_copy.deepcopy(getattr(self, 'device_extra_shift', {}) or {})
+                _pb_slide_baseline = getattr(self, 'slide_width', 0.0)
+                # Phase B - interleaved compaction + separation. Separation
+                # pushes overlapping area frames apart (right); a bridging device
+                # that belongs to the left area but is wired into the right area
+                # chases that push, so compaction re-fires to pull it back,
+                # shrinking the left area until the frames clear. This dance is
+                # what resolves side-by-side area overlaps. It is guarded against
+                # divergence (dense masters where areas interleave within rows so
+                # the chase never settles): if the separation shift stops
+                # shrinking we roll back to the Phase-A compaction-only fallback
+                # rather than ballooning the page width.
+                _pb_prev_sep = None
+                _pb_diverged = False
+                for _pb_retry in range(PULLBACK_MAX_RETRIES):
+                    if _pull_back_runaway_devices(self):
+                        _restore_state_and_rerender(self)
+                        continue
+                    _pb_sep = _separate_overlapping_areas(self)
+                    if _pb_sep > 1e-6:
+                        if _pb_prev_sep is not None and _pb_sep > _pb_prev_sep - 1e-6:
+                            _pb_diverged = True
+                            break
+                        _pb_prev_sep = _pb_sep
+                        _restore_state_and_rerender(self)
+                        continue
+                    break
+                if _pb_diverged:
+                    self.device_extra_shift = _pb_shift_baseline
+                    self.slide_width = _pb_slide_baseline
+                    _restore_state_and_rerender(self)
+
             # Conditional 3rd pass: detect same-Y X-overlap among segment
             # bars in 2nd pass entries and retry CREATE with adjusted
             # optimize_y_grid_array until no overlap or MAX_RETRIES reached.
@@ -2928,6 +2990,256 @@ def _detect_and_fix_2nd_pass_overlaps(self):
         opt[li][1][1] = round(opt[li][1][1] + y_step, 3)
 
     return True
+
+
+def _pull_back_runaway_devices(self, gap_threshold=2.0):
+    # Compact each real area horizontally by closing oversized empty bands.
+    # Connectivity-driven placement can drag a device - or a whole sub-cluster
+    # of devices (e.g. servers pulled next to their cross-area peers) - far to
+    # the right of the rest of the area, leaving a wide empty vertical band of
+    # X between a left group and a right group. That overruns the area frame
+    # and makes it overlap the neighbouring area. Here we sweep each area's
+    # devices left to right and, wherever a clean empty band (no device of any
+    # row spans it) is wider than `gap_threshold` inches, pull the entire right
+    # group - and everything further right - left so the band shrinks to one
+    # normal column gap. The shift is a negative delta on device_extra_shift[
+    # name] (same hook the 3rd-pass rightward collision shift uses), which moves
+    # the device AND its connected segment geometry on the next CREATE pass.
+    # Resolving the area overlap is prioritised, so the inter-area connector
+    # lines of the pulled-back devices may become long and cross other content.
+    # The move is purely leftward and bounded by the area's natural packed
+    # width, so it converges (unlike the area-separation step, which can
+    # diverge). A single runaway device is just a right group of size one, so
+    # this generalises - and preserves - the previous single-device behaviour
+    # (it lands one column to the right of the left group).
+    # Returns True when at least one device was moved (caller must re-render);
+    # False when nothing changed.
+    write_arr = getattr(self, 'add_shape_write_array', None)
+    uad = getattr(self, 'unique_area_device_array', [])
+    if not write_arr or not uad:
+        return False
+
+    dev_area = {}
+    for ad in uad:
+        if isinstance(ad, (list, tuple)) and len(ad) >= 2:
+            dev_area[ad[1]] = ad[0]
+
+    # area_name -> { device_name: [min_left, max_right] } aggregated over every
+    # shape carrying that device's name (icon + tags), matching the shapes the
+    # drawn area frame is built from.
+    area_devs = {}
+    for sh in write_arr:
+        if not isinstance(sh, (list, tuple)) or len(sh) < 6:
+            continue
+        name = sh[5]
+        a = dev_area.get(name)
+        if a is None or '_wp_' in a:
+            continue
+        left = sh[1]
+        right = sh[1] + sh[3]
+        top = sh[2]
+        ext = area_devs.setdefault(a, {}).get(name)
+        if ext is None:
+            area_devs[a][name] = [left, right, top]
+        else:
+            if left < ext[0]:
+                ext[0] = left
+            if right > ext[1]:
+                ext[1] = right
+            if top < ext[2]:
+                ext[2] = top
+
+    if not hasattr(self, 'device_extra_shift') or self.device_extra_shift is None:
+        self.device_extra_shift = {}
+
+    spacing = getattr(self, 'between_shape_column', 0.5)
+
+    # Step 1 - per-area target shift. Sweep each area left to right and close
+    # every clean empty band (no device of any row reaches into it) wider than
+    # gap_threshold by accruing a cumulative leftward `pull`. Devices at/after a
+    # band inherit the accrued pull, so their target shift is -pull; devices
+    # before the first band keep target 0.
+    target = {}
+    for a, devs in area_devs.items():
+        if len(devs) < 2:
+            continue
+        order = sorted(devs.items(), key=lambda kv: kv[1][0])  # by min_left
+        pull = 0.0
+        prev_max_right = None
+        for name, (dleft, dright, _dtop) in order:
+            eff_left = dleft - pull
+            if prev_max_right is not None and (eff_left - prev_max_right) > gap_threshold:
+                pull += (eff_left - prev_max_right) - spacing
+                eff_left = dleft - pull
+            if pull > 1e-6:
+                target[name] = -pull
+            eff_right = dright - pull
+            if prev_max_right is None or eff_right > prev_max_right:
+                prev_max_right = eff_right
+
+    if not target:
+        return False
+
+    # Step 2 - apply targets through the row cascade. device_extra_shift is
+    # summed into the per-row running left_offset, so a device's net move equals
+    # the sum of deltas injected at or before it in its row. Walking each row
+    # left to right we inject only the INCREMENT between consecutive devices'
+    # targets. This is the crux of holding everything else still: when a pulled
+    # device (target -pull) is followed by a device of ANOTHER area (target 0),
+    # that next device receives +pull, cancelling the cascade so the neighbour
+    # area stays exactly where it was. Only the over-spread devices move left;
+    # the long inter-area connector lines that result are the accepted
+    # trade-off. (Injecting -pull on every pulled device instead would both sum
+    # per row and drag the trailing areas left.)
+    row_dev = {}
+    for a, devs in area_devs.items():
+        for name, (dleft, dright, dtop) in devs.items():
+            row_dev.setdefault(round(dtop, 2), []).append((dleft, name))
+
+    changed = False
+    for _key, lst in row_dev.items():
+        lst.sort()
+        prev_target = 0.0
+        for _l, name in lst:
+            tgt = target.get(name, 0.0)
+            inc = tgt - prev_target
+            if abs(inc) > 1e-9:
+                self.device_extra_shift[name] = self.device_extra_shift.get(name, 0.0) + inc
+                changed = True
+            prev_target = tgt
+
+    return changed
+
+
+def _separate_overlapping_areas(self, area_margin_x=0.5, area_margin_y=0.3, desired_gap=0.5):
+    # Detect drawn area frames that overlap horizontally (while also overlapping
+    # vertically, i.e. they are genuinely side by side on the page) and push the
+    # right-hand area - and every area further right - to the right so the
+    # frames clear with `desired_gap` between them. In All-Areas mode every area
+    # is drawn inside ONE combined page, so an area cannot be moved via a
+    # per-area page offset; instead the shift is added to device_extra_shift for
+    # every device of the area (the per-device draw hook moves the device AND its
+    # connected segment geometry), which rigidly translates the whole area and
+    # its frame to the right while preserving its internal layout. Only areas
+    # that actually overlap are moved; non-overlapping layouts are left
+    # untouched, so this is a no-op (returns 0.0) for normal masters. The area
+    # frame is reproduced exactly as it is drawn at L1648-1684: bounding box of
+    # every shape in the area (devices + segment bars + labels) expanded by
+    # area_margin_x / area_margin_y, with '_wp_' areas excluded (they draw no
+    # frame). Returns the largest per-area shift applied this round (0.0 when
+    # nothing was shifted); the caller uses the magnitude to detect divergence.
+    write_arr = getattr(self, 'add_shape_write_array', None)
+    uad = getattr(self, 'unique_area_device_array', [])
+    if not write_arr or not uad:
+        return 0.0
+
+    dev_area = {}
+    for ad in uad:
+        if isinstance(ad, (list, tuple)) and len(ad) >= 2:
+            dev_area[ad[1]] = ad[0]
+
+    # area_name -> [min_left, min_top, max_right, max_bottom] over all shapes
+    bbox = {}
+    for sh in write_arr:
+        if not isinstance(sh, (list, tuple)) or len(sh) < 6:
+            continue
+        a = dev_area.get(sh[5])
+        if a is None or '_wp_' in a:
+            continue
+        l = sh[1]
+        t = sh[2]
+        r = sh[1] + sh[3]
+        b = sh[2] + sh[4]
+        f = bbox.get(a)
+        if f is None:
+            bbox[a] = [l, t, r, b]
+        else:
+            f[0] = min(f[0], l)
+            f[1] = min(f[1], t)
+            f[2] = max(f[2], r)
+            f[3] = max(f[3], b)
+
+    if len(bbox) < 2:
+        return 0.0
+
+    # Expand bounding boxes by the drawn frame margins.
+    frames = {a: [f[0] - area_margin_x, f[1] - area_margin_y,
+                  f[2] + area_margin_x, f[3] + area_margin_y]
+              for a, f in bbox.items()}
+
+    # Left-to-right sweep: each area is pushed right just enough to clear every
+    # previously placed area it overlaps vertically. Only rightward shifts are
+    # ever produced, and an area that already clears its predecessors keeps its
+    # original position (shift 0).
+    order = sorted(frames.items(), key=lambda kv: kv[1][0])
+    shifts = {}
+    for i in range(len(order)):
+        iname, iframe = order[i]
+        required_left = iframe[0]
+        for j in range(i):
+            jname, jframe = order[j]
+            j_right = jframe[2] + shifts.get(jname, 0.0)
+            y_overlap = (jframe[1] < iframe[3]) and (iframe[1] < jframe[3])
+            if y_overlap and required_left < j_right + desired_gap:
+                required_left = j_right + desired_gap
+        sh = required_left - iframe[0]
+        if sh > 1e-6:
+            shifts[iname] = sh
+
+    if not shifts:
+        return 0.0
+
+    if not hasattr(self, 'device_extra_shift') or self.device_extra_shift is None:
+        self.device_extra_shift = {}
+
+    # Apply the per-area target shift through the row cascade. device_extra_shift
+    # is summed into the per-row running left_offset, so a device's net move is
+    # the sum of every delta injected at or before it in its row. Injecting the
+    # full target on every device would therefore sum per row and overshoot (the
+    # cause of the earlier runaway page width); instead, walking each row left to
+    # right, we inject only the INCREMENT between consecutive devices' targets.
+    # This both moves an area rigidly and lets areas further right inherit the
+    # push for free (their increment is measured relative to the area in front
+    # of them), so the net shift of every device equals its area's target.
+    dev_pos = {}  # device_name -> [min_left, min_top]
+    for sh in write_arr:
+        if not isinstance(sh, (list, tuple)) or len(sh) < 6:
+            continue
+        name = sh[5]
+        a = dev_area.get(name)
+        if a is None or '_wp_' in a:
+            continue
+        rec = dev_pos.get(name)
+        if rec is None:
+            dev_pos[name] = [sh[1], sh[2]]
+        else:
+            if sh[1] < rec[0]:
+                rec[0] = sh[1]
+            if sh[2] < rec[1]:
+                rec[1] = sh[2]
+
+    rows = {}
+    for name, (l, t) in dev_pos.items():
+        rows.setdefault(round(t, 2), []).append((l, name))
+
+    for _key, lst in rows.items():
+        lst.sort()
+        prev_target = 0.0
+        for _l, name in lst:
+            target = shifts.get(dev_area.get(name), 0.0)
+            inc = target - prev_target
+            if abs(inc) > 1e-9:
+                self.device_extra_shift[name] = self.device_extra_shift.get(name, 0.0) + inc
+            prev_target = target
+
+    max_shift = max(shifts.values(), default=0.0)
+    if max_shift <= 1e-6:
+        return 0.0
+
+    # Grow the page so the shifted areas are not clipped.
+    self.slide_width = getattr(self, 'slide_width', 0.0) + max_shift
+
+    return max_shift
 
 
 def _restore_state_and_rerender(self):

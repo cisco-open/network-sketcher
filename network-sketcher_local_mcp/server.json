@@ -3,7 +3,7 @@
   "name": "io.github.cisco-open/network-sketcher",
   "title": "Network Sketcher (Local MCP)",
   "description": "AI-native MCP server that wraps the Network Sketcher engine to design and manage Cisco network configurations from LLM clients (Cursor, Claude Code, etc.). Generates L1/L2/L3 topology diagrams (PowerPoint and SVG) and manages device data (Excel) entirely from natural-language conversations with the agent.",
-  "version": "3.1.2j",
+  "version": "3.1.2k",
   "license": "Apache-2.0",
   "homepage": "https://github.com/cisco-open/network-sketcher",
   "repository": {
