@@ -240,8 +240,31 @@ class  nsm_l3_diagram_create():
                 # and _collision_rows_per_area). The shifts are applied during
                 # the device draw via the per-device hook below; this pass
                 # also bumps calculated_max_right_edge so slide_width adjusts.
-                if self.flag_re_create == True:
+                if self.flag_re_create == True and getattr(self, '_l3_render_quality', 3) >= 3:
+                    # Pass 1 (cross-area): seed device_extra_shift and detect
+                    # over-spread. If over-spread, immediately re-pack with
+                    # same-area-only blocker checking + left-pack relaxation so
+                    # the 2nd pass CREATE below already draws the packed layout
+                    # (previously this packing ran as a separate 4th pass after
+                    # rendering & discarding the spread layout). The packed
+                    # calculated_max_right_edge then drives slide_width below.
+                    self._l3_packed_applied = False
                     compute_l3_device_shifts(self)
+                    if _detect_l3_overspread(self):
+                        self._l3_same_area_only = True
+                        try:
+                            compute_l3_device_shifts(self)
+                            self._l3_packed_applied = True
+                        finally:
+                            self._l3_same_area_only = False
+                elif self.flag_re_create == True:
+                    # Quality 2: skip the entire 3rd pass (device collision-shift).
+                    # Devices keep their natural left-aligned positions from the
+                    # 1st/2nd pass; connector lines are NOT routed around devices.
+                    # device_extra_shift stays empty so the per-device draw hook
+                    # (left_offset += device_extra_shift.get(name, 0.0)) adds 0.
+                    self.device_extra_shift = {}
+                    self._l3_packed_applied = False
 
                 # Recalculate slide_width based on actual area positions after calculate_area_offset
                 # calculated_max_right_edge is computed in calculate_area_offset() and contains
@@ -333,8 +356,17 @@ class  nsm_l3_diagram_create():
             # Conditional 3rd pass: detect same-Y X-overlap among segment
             # bars in 2nd pass entries and retry CREATE with adjusted
             # optimize_y_grid_array until no overlap or MAX_RETRIES reached.
-            if self.flag_re_create == True and self.click_value_l3 == 'L3-4-1' and hasattr(self, '_state_snapshot'):
-                MAX_RETRIES = 5
+            # The device packing for over-spread layouts now happens BEFORE the
+            # 2nd pass CREATE (see the compute_l3_device_shifts block after
+            # calculate_area_offset), so the 2nd pass already drew the packed
+            # layout. This lane-separation retry therefore operates directly on
+            # the packed bars. When the packed path ran, the packed layout needs
+            # more lane-separation iterations (shorter bars create new same-Y
+            # X-overlaps that must be pushed onto free lanes), so the retry
+            # budget is raised; otherwise the original budget is kept so
+            # non-over-spread diagrams (5site/flow) behave exactly as before.
+            if self.flag_re_create == True and self.click_value_l3 == 'L3-4-1' and hasattr(self, '_state_snapshot') and getattr(self, '_l3_render_quality', 3) >= 3:
+                MAX_RETRIES = 120 if getattr(self, '_l3_packed_applied', False) else 50
                 for _retry in range(MAX_RETRIES):
                     had_overlap = _detect_and_fix_2nd_pass_overlaps(self)
                     if not had_overlap:
@@ -2160,6 +2192,42 @@ def get_optimize_y_grid_array(self):
     return done_y_grid_segment_array
 
 
+def _detect_l3_overspread(self, threshold=3.0):
+    # Return True if any device row's cumulative line-over-device shift exceeds
+    # `threshold` inches. Legitimate single-row nudges are well under 1.1" in
+    # practice (measured across bug_fix0605 / 5site_2DC_WAN / flow_topology),
+    # while the multi-row misalignment cascade spreads a row by 30-44". A 3.0"
+    # threshold cleanly separates the two, so the conditional 4th pass only
+    # fires on the pathological case and leaves all other diagrams untouched.
+    shifts = getattr(self, 'device_extra_shift', None)
+    if not shifts:
+        return False
+    rows_per_area = getattr(self, '_collision_rows_per_area', {})
+    devs_per_area = getattr(self, '_collision_devs_per_area', {})
+    shape_folder_tuple = getattr(self, 'shape_folder_tuple', {})
+    for area_name, rows in rows_per_area.items():
+        devs = devs_per_area.get(area_name, {})
+        if not devs:
+            continue
+        for row in rows:
+            row_devs = [d for d in row
+                        if isinstance(d, str) and d in devs and d != '_AIR_']
+            if not row_devs:
+                continue
+            row_devs.sort(key=lambda d: devs[d]['left'])
+            acc = 0.0
+            last_area = None
+            for d in row_devs:
+                d_area = shape_folder_tuple.get(d)
+                if d_area != last_area:
+                    acc = 0.0
+                    last_area = d_area
+                acc += shifts.get(d, 0.0)
+                if acc > threshold:
+                    return True
+    return False
+
+
 def compute_l3_device_shifts(self):
     # Detect L3 segment connector lines that vertically pass over other devices
     # and compute per-device rightward shifts that resolve every collision.
@@ -2173,13 +2241,63 @@ def compute_l3_device_shifts(self):
                    # breathing room between L3 segment connectors and device
                    # edges (per Sever-13~1~ visual gap feedback). Still
                    # safely exceeds the ±0.075" line bucketing wiggle.
-    MAX_ITER = 50
+    MAX_ITER = 1000
+
+    # Same-area blocker limiting (conditional L3 "4th pass"). Normally False
+    # (original behaviour: a connector must clear EVERY device it vertically
+    # passes over, across all areas). When the 4th pass sets
+    # self._l3_same_area_only=True before re-invoking this function, the
+    # collision check ignores blockers that belong to a DIFFERENT real area.
+    # This removes the pathological over-shift where a row's devices cascade
+    # rightward into the next area's column band and then shift further to
+    # clear THAT area's devices (which the per-area expansion propagation
+    # below moves out of the way anyway). With same-area-only blockers each
+    # device only clears its own area's upper rows, so devices pack tightly
+    # behind the first one that cleared the block (e.g. PC_NewY_4 sits just
+    # right of PC_NewY_3 instead of jumping past Atlanta). Constraint A
+    # (connector not over an upper device) still holds within the area, and
+    # across areas the expansion propagation keeps the bands separated.
+    same_area_only = getattr(self, '_l3_same_area_only', False)
 
     if not hasattr(self, '_collision_lines_per_area') or not self._collision_lines_per_area:
         return
     rows_per_area = getattr(self, '_collision_rows_per_area', {})
     devs_per_area = getattr(self, '_collision_devs_per_area', {})
     shape_folder_tuple = getattr(self, 'shape_folder_tuple', {})
+
+    # Re-entry guard: this function may be called a second time by the
+    # conditional 4th pass (with same_area_only set). The per-area expansion
+    # propagation below mutates update_start_area_array in place
+    # (entry[1] += add). On the normal call we snapshot the clean baseline
+    # start_x values; on the 4th-pass re-call we restore them first so
+    # additions are recomputed from the baseline instead of accumulating
+    # (no double-shift). The snapshot is keyed to the normal call so it is
+    # refreshed for every export.
+    _usa = getattr(self, 'update_start_area_array', None)
+    if _usa:
+        if not same_area_only:
+            self._update_start_area_orig = [
+                (e[1] if isinstance(e, (list, tuple)) and len(e) >= 2 else None)
+                for e in _usa
+            ]
+        elif hasattr(self, '_update_start_area_orig'):
+            for e, orig in zip(_usa, self._update_start_area_orig):
+                if orig is not None and isinstance(e, list) and len(e) >= 2:
+                    e[1] = orig
+
+    # Re-entry guard for calculated_max_right_edge (same rationale as the
+    # update_start_area_array guard above). Step 7 below does
+    # `calculated_max_right_edge += max_total_growth`. Now that the packing
+    # path calls this function twice in succession BEFORE slide_width is
+    # computed (cross-area then same-area), a naive second `+=` would
+    # double-count the growth. Snapshot the clean post-calculate_area_offset
+    # baseline on the normal call and restore it before the bump on the
+    # same-area re-call, so each call bumps from the clean baseline.
+    if hasattr(self, 'calculated_max_right_edge'):
+        if not same_area_only:
+            self._calc_max_right_edge_orig = self.calculated_max_right_edge
+        elif hasattr(self, '_calc_max_right_edge_orig'):
+            self.calculated_max_right_edge = self._calc_max_right_edge_orig
 
     self.device_extra_shift = {}
 
@@ -2207,6 +2325,22 @@ def compute_l3_device_shifts(self):
         devs = devs_per_area.get(area_name, {})
         if not rows or not lines or not devs:
             continue
+
+        # Per real-area top Y (min device top), used to group areas into
+        # horizontal Y-bands. same_area_only ignores a cross-area blocker
+        # ONLY when the two areas share a Y-band (side-by-side, separated in X
+        # by expansion propagation). Areas in a different Y-band (vertically
+        # stacked, e.g. Datacenter above NewYork) are NOT separated in X, so
+        # their devices remain real blockers (an inter-area connector must
+        # still avoid them).
+        _Y_BAND_TOL = 0.5  # inches
+        real_area_top = {}
+        for _dn, _b in devs.items():
+            _ra = shape_folder_tuple.get(_dn)
+            if _ra is None:
+                continue
+            if _ra not in real_area_top or _b['top'] < real_area_top[_ra]:
+                real_area_top[_ra] = _b['top']
 
         # Order devices in each row by their 1st-pass left position (this is
         # the order the draw loop will visit them and the order in which
@@ -2250,6 +2384,22 @@ def compute_l3_device_shifts(self):
                         for blocker_name, b in devs.items():
                             if blocker_name == d:
                                 continue
+                            # 4th pass: ignore blockers in a different real
+                            # area ONLY when that area shares a Y-band with the
+                            # device's area (side-by-side; expansion separates
+                            # them in X). Cross-area blockers in a different
+                            # Y-band (vertically stacked) are kept, since X
+                            # separation does not apply to them. This avoids
+                            # the over-shift where a row cascades into the next
+                            # side-by-side area's columns and jumps past it,
+                            # while still preventing inter-area connectors from
+                            # crossing a stacked area's devices.
+                            if same_area_only:
+                                _b_area = shape_folder_tuple.get(blocker_name)
+                                if (_b_area != d_area and abs(
+                                        real_area_top.get(_b_area, -1e9)
+                                        - real_area_top.get(d_area, 1e9)) <= _Y_BAND_TOL):
+                                    continue
                             b_left = b['left'] + base_cumul.get(blocker_name, 0.0) + iter_extra.get(blocker_name, 0.0)
                             b_right = b_left + b['width']
                             if not (b_left < effective_x < b_right):
@@ -2269,6 +2419,102 @@ def compute_l3_device_shifts(self):
                 self.device_extra_shift[d] = self.device_extra_shift.get(d, 0.0) + need
         else:
             print(f"[L3 collision] Warning: shift fixpoint did not converge after {MAX_ITER} iterations for area '{area_name}'")
+
+    # ===== Left-pack relaxation (4th pass / same_area_only) =====
+    # The fixpoint above only ever ADDS rightward shift (monotone), so a
+    # device can keep an early shift it no longer needs once the cascade has
+    # moved it past the block (e.g. PC_NewY_4 ends far right of PC_NewY_3 even
+    # though its connector would clear the upper rows just one pitch to the
+    # right). Pull each device LEFT to the leftmost position whose connector
+    # still clears all relevant blockers (same Y-band cross-area blockers are
+    # ignored, identical to the fixpoint rule) and that keeps >= pitch from
+    # its left neighbour. This is decrease-only, so constraint A (connector
+    # not over an upper device) is preserved, and the per-area expansion
+    # propagation below then runs on the smaller, packed shifts.
+    if same_area_only and self.device_extra_shift:
+        _Y_BAND_TOL_R = 0.5  # inches
+        _GAP = getattr(self, 'between_shape_column', 0.5)
+        for _aname in self._collision_lines_per_area:
+            _devs = devs_per_area.get(_aname, {})
+            _rows = rows_per_area.get(_aname, [])
+            _lns = self._collision_lines_per_area.get(_aname, [])
+            if not _devs or not _rows or not _lns:
+                continue
+            _rat = {}
+            for _dn, _b in _devs.items():
+                _ra = shape_folder_tuple.get(_dn)
+                if _ra is None:
+                    continue
+                if _ra not in _rat or _b['top'] < _rat[_ra]:
+                    _rat[_ra] = _b['top']
+            _conn = {}
+            for _l in _lns:
+                _dn = _l['device_name']
+                if _dn in _devs and _dn not in _conn:
+                    _conn[_dn] = (_l['natural_x'] - _devs[_dn]['left'], _l['y0'], _l['y1'])
+            # Current absolute X per device (post-fixpoint).
+            _cur = {}
+            for _row in _rows:
+                _cur.update(_per_area_cumul(
+                    [d for d in _row if isinstance(d, str) and d in _devs and d != '_AIR_'],
+                    self.device_extra_shift))
+            _cur_abs = {d: _devs[d]['left'] + c for d, c in _cur.items()}
+            _final_abs = {}
+            # Process rows top-to-bottom so upper-row final positions are used
+            # as blockers for lower rows.
+            _row_order = sorted(
+                range(len(_rows)),
+                key=lambda ri: min(
+                    [_devs[d]['top'] for d in _rows[ri]
+                     if isinstance(d, str) and d in _devs], default=1e9))
+            for _ri in _row_order:
+                _seg = [d for d in _rows[_ri]
+                        if isinstance(d, str) and d in _devs and d != '_AIR_']
+                _seg.sort(key=lambda d: _devs[d]['left'])
+                _prev_right = {}
+                _prev_cumt = {}
+                for d in _seg:
+                    a = shape_folder_tuple.get(d)
+                    natl = _devs[d]['left']
+                    w = _devs[d]['width']
+                    cabs = _cur_abs.get(d, natl)
+                    lo = _prev_right.get(a)
+                    cand = natl if lo is None else max(natl, lo + _GAP)
+                    if cand < cabs:
+                        co = _conn.get(d)
+                        if co is not None:
+                            off, y0, y1 = co
+                            for _it in range(400):
+                                cx = cand + off
+                                worst = None
+                                for bn, b in _devs.items():
+                                    if bn == d:
+                                        continue
+                                    barea = shape_folder_tuple.get(bn)
+                                    if (barea != a and abs(_rat.get(barea, -1e9)
+                                            - _rat.get(a, 1e9)) <= _Y_BAND_TOL_R):
+                                        continue
+                                    babs = _final_abs.get(bn, _cur_abs.get(bn, b['left']))
+                                    if not (babs < cx < babs + b['width']):
+                                        continue
+                                    if y0 < b['top'] + b['height'] and b['top'] < y1:
+                                        if worst is None or babs + b['width'] > worst:
+                                            worst = babs + b['width']
+                                if worst is None:
+                                    break
+                                cand = worst - off + BUFFER
+                                if cand >= cabs:
+                                    break
+                    target = min(cand, cabs)
+                    if lo is not None and target < lo + _GAP:
+                        target = lo + _GAP
+                    _final_abs[d] = target
+                    _prev_right[a] = target + w
+                    cumt = target - natl
+                    pc = _prev_cumt.get(a, 0.0)
+                    self.device_extra_shift[d] = cumt - pc
+                    _prev_cumt[a] = cumt
+    # ===== end left-pack relaxation =====
 
     # ===== Per-area expansion propagation =====
     # When devices inside an area shift right, the area's right edge expands.
@@ -2527,11 +2773,18 @@ def _compute_wp_x_snap_targets(self):
             d = all_devs.get(dev)
             if d:
                 shifted_left = d['left'] + extra_shift.get(dev, 0.0)
-                dev_info_list.append((shifted_left, d['width']))
+                dev_info_list.append((shifted_left, d['width'], dev))
         if not dev_info_list:
             continue
-        dev_info_list.sort(key=lambda x: x[0])
-        leftmost_left, leftmost_width = dev_info_list[0]
+        # `connected` is a set, so its iteration order is hash-seed dependent.
+        # When two connected devices share the same leftmost X but differ in
+        # width, sorting on x[0] alone leaves the tie to be broken by the
+        # (nondeterministic) insertion order, which made dev_center -- and
+        # thus the WayPoint snap target -- jitter by (width_diff / 2) between
+        # runs. Break exact-left ties by device name so the leftmost choice
+        # (and the whole diagram) is deterministic regardless of hash seed.
+        dev_info_list.sort(key=lambda x: (x[0], x[2]))
+        leftmost_left, leftmost_width = dev_info_list[0][0], dev_info_list[0][1]
         dev_center = leftmost_left + leftmost_width / 2.0
         target_left = dev_center - wp_info['width'] / 2.0
         if target_left < self.left_margin:

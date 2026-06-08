@@ -357,6 +357,25 @@ class nsm_l3_svg_create:
                                   title_text, attr_colors)
 
             if out and svg:
+                # Embed the render-quality provenance marker right after the
+                # XML declaration so the combined-export / download reuse paths
+                # can detect when an on-disk All Areas SVG was produced at a
+                # different l3_render_quality and force a re-render. The marker
+                # is constant per quality level, so per-level determinism is
+                # preserved.
+                try:
+                    _q = int(getattr(self, '_l3_render_quality', 3))
+                except (ValueError, TypeError):
+                    _q = 3
+                _marker = f'<!-- ns_l3_render_quality={_q} -->\n'
+                if svg.startswith('<?xml'):
+                    _nl = svg.find('\n')
+                    if _nl != -1:
+                        svg = svg[:_nl + 1] + _marker + svg[_nl + 1:]
+                    else:
+                        svg = svg + '\n' + _marker
+                else:
+                    svg = _marker + svg
                 with open(out, 'w', encoding='utf-8') as f:
                     f.write(svg)
                 try:
@@ -508,6 +527,14 @@ def _compute_content_extent(shapes, lines, margin=1.0, min_w=0.0, min_h=0.0):
 
 
 def _run_all_areas(ctx, ppt_meta_file, capture_list, cap_en, mod):
+    # Render quality level for the L3 All Areas diagram (2 or 3, default 3).
+    # The level gates the engine's 3rd pass; see nsm_l3_diagram_create.py.
+    # The full 2nd-pass render (incl. WayPoint X-snap) always runs so the
+    # diagram is complete at every level.
+    #   2 = skip the entire 3rd pass: devices stay left-aligned, connector
+    #       lines are not routed around devices, no lane-separation retry
+    #   3 = full quality (3rd pass device-shift + lane-separation retry)
+    #       -- current default
     iDir = os.path.dirname(ppt_meta_file) or os.getcwd()
     base = os.path.splitext(os.path.basename(ppt_meta_file))[0]
     ext = os.path.splitext(ppt_meta_file)[1] or '.xlsx'

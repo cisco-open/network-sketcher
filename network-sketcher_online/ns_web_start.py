@@ -62,6 +62,10 @@ from ns_engine.nsm_adapter import bootstrap as _engine_bootstrap
 _engine_bootstrap()
 from ns_engine.nsm_adapter import run_cli as _engine_run_cli
 from ns_engine.nsm_adapter import run_cli_isolated as _engine_run_cli_isolated
+from ns_engine.nsm_cli import (
+    _resolve_l3_render_quality as _resolve_l3_render_quality,
+    read_l3_render_quality_marker as _read_l3_render_quality_marker,
+)
 UPLOAD_DIR = BASE_DIR / 'uploads'
 STATIC_DIR = BASE_DIR / 'static'
 
@@ -1737,6 +1741,21 @@ def svg_grid_stream(job_id):
                 found = _find_svgs_for_cell(work_dir, cid)
             if not found:
                 return None  # This cell's SVG is not available yet
+            # The L3 All Areas SVG embeds the render-quality marker. If the
+            # cached/on-disk file was produced at a different l3_render_quality
+            # than is currently configured, treat this as a cache miss so the
+            # full generation path re-renders it at the right quality (the
+            # thumbnail / click-through view otherwise keeps showing the stale
+            # quality). Other cells are unaffected.
+            if cid == 'l3_all':
+                try:
+                    desired_q = _resolve_l3_render_quality([])
+                    existing_q = _read_l3_render_quality_marker(
+                        str(work_dir / found[0]))
+                    if existing_q != desired_q:
+                        return None
+                except Exception as exc:
+                    logger.warning('svg_grid: L3 quality check failed: %s', exc)
             per_cell[cid] = found
             fname = found[0]
             svg_bytes = job_cache.get(fname)
@@ -4519,7 +4538,22 @@ def download_all(job_id):
         """
         target = work_dir / expected_filename
         if target.is_file():
-            return target
+            # The L3 All Areas SVG embeds the render-quality marker. If the
+            # configured l3_render_quality no longer matches the on-disk file's
+            # marker (or the marker is absent on an older file), drop it so it
+            # is regenerated at the current quality. Other layers / per_area
+            # SVGs are reused unconditionally as before.
+            if expected_filename.startswith('[L3_DIAGRAM]AllAreas_'):
+                try:
+                    desired_q = _resolve_l3_render_quality([])
+                    existing_q = _read_l3_render_quality_marker(str(target))
+                    if existing_q != desired_q:
+                        target.unlink()
+                except Exception as exc:
+                    logger.warning('download_all: L3 quality check for %s failed: %s',
+                                   expected_filename, exc)
+            if target.is_file():
+                return target
         cli_args = list(cmd_args_extra) + [
             '--master', str(work_dir / master_filename),
             '--format', 'svg',

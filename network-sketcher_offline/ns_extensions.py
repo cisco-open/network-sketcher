@@ -124,14 +124,22 @@ class flow_report():
             #print(master_flow_array)
             target_flow_array = []
             for tmp_master_flow_array in master_flow_array:
+                # Route columns (index 6 = manual, 7 = automatic) are optional.
+                # Masters from sna_to_nsm leave them empty, so convert_excel_to_array
+                # drops the trailing empties and the row has only 6 elements. Default
+                # the missing columns to the direct-route sentinel ('' / ' ') so the
+                # device has no routing path instead of raising IndexError.
+                tmp_master_flow_row = tmp_master_flow_array[1]
+                manual_route = tmp_master_flow_row[6] if len(tmp_master_flow_row) > 6 else ''
+                auto_route = tmp_master_flow_row[7] if len(tmp_master_flow_row) > 7 else ' '
                 tmp_routing_path = ''
-                if tmp_master_flow_array[1][6] != '':
-                    tmp_routing_path = tmp_master_flow_array[1][6]
-                elif tmp_master_flow_array[1][6] == '' and tmp_master_flow_array[1][6] != ' ':
-                    tmp_routing_path = tmp_master_flow_array[1][7]
+                if manual_route != '':
+                    tmp_routing_path = manual_route
+                elif manual_route == '' and auto_route != ' ':
+                    tmp_routing_path = auto_route
 
-                if tmp_master_flow_array[1][1] == device_name or tmp_master_flow_array[1][2] == device_name or device_name in tmp_routing_path:
-                    target_flow_array.append([tmp_master_flow_array[1][0],tmp_master_flow_array[1][1],tmp_master_flow_array[1][2],tmp_master_flow_array[1][3],tmp_master_flow_array[1][4],tmp_master_flow_array[1][5],tmp_routing_path])
+                if tmp_master_flow_row[1] == device_name or tmp_master_flow_row[2] == device_name or device_name in tmp_routing_path:
+                    target_flow_array.append([tmp_master_flow_row[0],tmp_master_flow_row[1],tmp_master_flow_row[2],tmp_master_flow_row[3],tmp_master_flow_row[4],tmp_master_flow_row[5],tmp_routing_path])
             #print(target_flow_array)
 
 
@@ -190,8 +198,11 @@ class flow_report():
                 tmp_target_flow_array = list(map(str, tmp_target_flow_array))
                 tmp_target_flow_array.insert(0, '')
                 tmp_target_flow_array.append('<END>')
-                source_ip_array = device_ips[tmp_target_flow_array[2]]
-                destination_ip_array = device_ips[tmp_target_flow_array[3]]
+                # A flow can reference a device that has no L3 interface (and thus
+                # no entry in device_ips), e.g. masters from sna_to_nsm. Fall back
+                # to an empty IP list so the cell is blank instead of raising KeyError.
+                source_ip_array = device_ips.get(tmp_target_flow_array[2], [])
+                destination_ip_array = device_ips.get(tmp_target_flow_array[3], [])
                 str_source_ip = ', '.join(map(str, source_ip_array ))
                 str_destination_ip = ', '.join(map(str, destination_ip_array))
                 tmp_target_flow_array.insert(4, str_source_ip)
@@ -368,7 +379,7 @@ class flow():
             # Check if the criteria are met
             if (element[1] == variable3_7_y_1.get() or variable3_7_y_1.get() == 'Any') and \
                     (element[2] == variable3_7_y_2.get() or variable3_7_y_2.get() == 'Any') and \
-                    (element[4] == variable3_7_y_3.get() or variable3_7_y_3.get() == 'Any'):
+                    (str(element[4]) == variable3_7_y_3.get() or variable3_7_y_3.get() == 'Any'):
                 filtered_target_flow.append(element)
 
         #print(filtered_target_flow)
@@ -399,18 +410,25 @@ class flow():
 
         for tmp_filtered_target_flow in filtered_target_flow:
 
-            # select routing path is auto or static
+            # select routing path is auto or static.
+            # Route columns (index 6 = manual, 7 = automatic) are optional.
+            # Masters from sna_to_nsm leave them empty, so convert_excel_to_array
+            # drops the trailing empties and the row has only 6 elements. Default
+            # the missing columns to the direct-route sentinel ('' / ' ') so the
+            # flow draws a straight source->destination line instead of IndexError.
+            manual_route = tmp_filtered_target_flow[6] if len(tmp_filtered_target_flow) > 6 else ''
+            auto_route = tmp_filtered_target_flow[7] if len(tmp_filtered_target_flow) > 7 else ' '
             selected_route_path = []
-            if tmp_filtered_target_flow[6] == '' and tmp_filtered_target_flow[7] == ' ':
+            if manual_route == '' and auto_route == ' ':
                 selected_route_path = [tmp_filtered_target_flow[1], tmp_filtered_target_flow[2]]
 
-            elif tmp_filtered_target_flow[6] == '' and tmp_filtered_target_flow[7] != ' ':
-                selected_route_path = [element.strip().strip("'") for element in tmp_filtered_target_flow[7].split(',')]
+            elif manual_route == '' and auto_route != ' ':
+                selected_route_path = [element.strip().strip("'") for element in auto_route.split(',')]
                 selected_route_path.insert(0, tmp_filtered_target_flow[1])
                 selected_route_path.append(tmp_filtered_target_flow[2])
 
-            elif tmp_filtered_target_flow[6] != '':
-                selected_route_path = [element.strip().strip("'") for element in tmp_filtered_target_flow[6].split(',')]
+            elif manual_route != '':
+                selected_route_path = [element.strip().strip("'") for element in manual_route.split(',')]
                 selected_route_path.insert(0, tmp_filtered_target_flow[1])
                 selected_route_path.append(tmp_filtered_target_flow[2])
 
@@ -513,7 +531,7 @@ class flow():
                 data = entry[1]  # Extract the second element (list)
                 for i in range(4):  # Process the 2nd, 3rd, 4th, and 5th elements (index 1 to 4)
                     if len(data) >= 4:
-                        value = data[i + 1].strip()
+                        value = str(data[i + 1]).strip()
                         if value and value not in category_wise_data[i]:  # Add only non-empty, non-duplicate values
                             category_wise_data[i].append(value)
 

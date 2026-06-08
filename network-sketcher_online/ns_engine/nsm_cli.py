@@ -925,6 +925,11 @@ class ns_cli_run():
                             return ([f'[ERROR] Area "{target_area_arg}" not found. Available areas: {", ".join(area_list)}'])
                         self._target_area_filter = target_area_arg
 
+                    # Resolve L3 All Areas render quality (1/2/3, default 3).
+                    # Read once here so both in-process and subprocess paths
+                    # (and combined export) inherit the configured level.
+                    self._l3_render_quality = _resolve_l3_render_quality(argv_array)
+
                     import nsm_l3_svg_create
                     nsm_l3_svg_create.nsm_l3_svg_create.__init__(self)
 
@@ -1142,15 +1147,35 @@ class ns_cli_run():
                 layer_status = {layer: 'pending' for layer in ('l1', 'l2', 'l3')}
                 layer_msgs = {}
 
+                # L3 All Areas SVG carries an embedded render-quality marker.
+                # When the configured l3_render_quality differs from the marker
+                # of an existing file (or the marker is absent), the stale SVG
+                # must be regenerated rather than reused so the quality change
+                # takes effect. Other layers / per_area are unaffected.
+                desired_l3_quality = _resolve_l3_render_quality(argv_array)
+
                 for layer in ('l1', 'l2', 'l3'):
                     p = layer_paths[layer]
                     if os.path.isfile(p):
-                        layer_status[layer] = 'reused'
-                        layer_msgs[layer] = (
-                            f'reused existing {layer_filenames[layer]}'
-                        )
-                        continue
-                    if not regen_missing:
+                        quality_stale = False
+                        if layer == 'l3' and combined_type == 'all_areas':
+                            existing_q = read_l3_render_quality_marker(p)
+                            if existing_q != desired_l3_quality:
+                                quality_stale = True
+                        if not quality_stale:
+                            layer_status[layer] = 'reused'
+                            layer_msgs[layer] = (
+                                f'reused existing {layer_filenames[layer]}'
+                            )
+                            continue
+                        # Quality changed: drop the stale SVG and fall through
+                        # to regeneration below (ignore regen_missing here since
+                        # the file does exist, just at the wrong quality).
+                        try:
+                            os.remove(p)
+                        except OSError:
+                            pass
+                    elif not regen_missing:
                         layer_status[layer] = 'missing'
                         layer_msgs[layer] = (
                             f'{layer_filenames[layer]} not found '
@@ -10409,6 +10434,74 @@ def get_next_arg(argv_array, target):
         index = argv_array.index(target)
         return argv_array[index + 1]
     except (ValueError, IndexError):
+        return None
+
+
+def _resolve_l3_render_quality(argv_array):
+    """Resolve the L3 All Areas render quality level (2 or 3).
+
+    Precedence: an explicit ``--quality N`` CLI argument (override, mainly for
+    testing) > the ``l3_render_quality`` key in the Online edition's
+    ``ns_web_config.json`` > the default 3 (full quality). Only the values 2
+    and 3 are supported; any missing file / missing key / unsupported value
+    (including 1) falls back to 3, so the MCP and offline editions (which may
+    not ship that config file) keep the current behaviour.
+    """
+    # 1) Explicit CLI override.
+    raw = get_next_arg(argv_array, '--quality')
+    if raw is not None and not str(raw).startswith('--'):
+        try:
+            q = int(str(raw).strip())
+            if q in (2, 3):
+                return q
+        except (ValueError, TypeError):
+            pass
+
+    # 2) ns_web_config.json (located at the Online edition root, i.e. the
+    #    parent directory of this ns_engine package).
+    try:
+        import json
+        cfg_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'ns_web_config.json')
+        if os.path.isfile(cfg_path):
+            with open(cfg_path, 'r', encoding='utf-8') as f:
+                raw_cfg = json.load(f)
+            entry = raw_cfg.get('l3_render_quality')
+            if isinstance(entry, dict):
+                entry = entry.get('value')
+            q = int(entry)
+            if q in (2, 3):
+                return q
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+
+    # 3) Default: full quality.
+    return 3
+
+
+def read_l3_render_quality_marker(svg_path):
+    """Return the embedded ``ns_l3_render_quality`` level of an L3 SVG, or None.
+
+    The All Areas L3 SVG carries a ``<!-- ns_l3_render_quality=N -->`` marker
+    just after its XML declaration (written by nsm_l3_svg_create). The
+    combined-export / download reuse paths read it to decide whether an
+    on-disk SVG matches the currently configured quality; a missing marker
+    (older file) or any read error returns None so the caller treats it as a
+    mismatch and regenerates once.
+    """
+    try:
+        with open(svg_path, 'r', encoding='utf-8', errors='replace') as f:
+            head = f.read(512)
+    except OSError:
+        return None
+    import re as _re
+    m = _re.search(r'ns_l3_render_quality=(\d+)', head)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except (ValueError, TypeError):
         return None
 
 def print_type(self, argv_array,source):
