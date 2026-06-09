@@ -886,9 +886,16 @@ async def run_commands(master: str, commands: str) -> str:
 
     allowed = {'add', 'rename', 'delete', 'show'}
 
+    # Subcommands that support --skip_sync (defers the expensive L2/L3 layer
+    # sync so it only runs once after the last consecutive syncable command
+    # rather than after every individual command). Matches the Online edition's
+    # SYNCABLE_SUBCMDS set in ns_web_start.py.
+    _SYNCABLE_SUBCMDS = {'l1_link_bulk', 'device_location'}
+
     # --- Pre-validate all lines first, reject invalid ones early ---
-    valid_batches: List[List[str]] = []  # token lists for valid commands
-    valid_lines: List[str] = []          # original text for each valid command
+    # Two-pass build: collect (tokens, original_line) pairs first so we can
+    # look ahead to the next command when deciding whether to add --skip_sync.
+    _pending: List[tuple] = []           # (tokens, original_line) for valid cmds
     pre_errors: List[str] = []           # validation error messages
 
     for raw_line in commands.splitlines():
@@ -915,7 +922,28 @@ async def run_commands(master: str, commands: str) -> str:
                 f"added automatically. Offending line: {line}"
             )
             continue
-        valid_batches.append(tokens + ['--master', str(master_path)])
+        _pending.append((tokens, line))
+
+    # Build valid_batches with --skip_sync injected for consecutive syncable
+    # commands. A command receives --skip_sync when both the current and the
+    # next command are syncable; the last syncable in a consecutive run always
+    # runs the full sync so the master is consistent before any non-syncable
+    # command executes.
+    valid_batches: List[List[str]] = []
+    valid_lines: List[str] = []
+
+    for i, (tokens, line) in enumerate(_pending):
+        subcmd = tokens[1] if len(tokens) > 1 else ''
+        current_syncable = subcmd in _SYNCABLE_SUBCMDS
+        next_syncable = False
+        if i + 1 < len(_pending):
+            next_tokens = _pending[i + 1][0]
+            next_sub = next_tokens[1] if len(next_tokens) > 1 else ''
+            next_syncable = next_sub in _SYNCABLE_SUBCMDS
+        cmd_args = tokens + ['--master', str(master_path)]
+        if current_syncable and next_syncable:
+            cmd_args.append('--skip_sync')
+        valid_batches.append(cmd_args)
         valid_lines.append(line)
 
     # --- Run all valid commands in a single subprocess call ---

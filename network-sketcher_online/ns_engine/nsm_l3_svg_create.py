@@ -733,7 +733,7 @@ def _shapes_to_svg(shapes, lines, slide_w, slide_h, title, attr_colors):
                 anc = 'start'
                 tx = _in(x + 0.05)
             if st == 'FOLDER_NORMAL':
-                ty = _in(y + 0.15)
+                ty = _in(y + 0.055)
                 bl = 'hanging'
             p.append(
                 f'<text x="{tx}" y="{ty}" font-size="{fsp}px" '

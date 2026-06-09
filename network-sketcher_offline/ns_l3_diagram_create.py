@@ -766,10 +766,10 @@ class  ns_l3_diagram_create():
         between_shape_row = 0.25  # inches
         self.between_l3if = 0.25  #inches
 
-        l3_segment_up_down_offset = 0.15
+        l3_segment_up_down_offset = 0.25
 
         if self.click_value_l3 == 'L3-4-1': # inches  #changed at ver 2.3.3
-            l3_segment_up_down_offset = 0.35
+            l3_segment_up_down_offset = 0.40
 
         min_between_line = 0.075  # inches
         min_shape_width = 1.0 #inches
@@ -1028,7 +1028,9 @@ class  ns_l3_diagram_create():
                         if (shape_type == 'DEVICE_L3_INSTANCE' or shape_type == 'DEVICE_NORMAL') and flag_first_colmun == True:
                             self.area_position_array[1] = shape_top - between_shape_row
                             if new_wp_exist_array[0] == []:
-                                self.outline_position_array[1] = shape_top - between_shape_row * 2
+                                # 0.04 = area_margin_y_top (0.34) - base area_margin_y (0.30):
+                                # extend outline further up to preserve the gap with the area frame.
+                                self.outline_position_array[1] = shape_top - between_shape_row * 2 - 0.04
                             flag_first_colmun = False
 
                         # get folder width
@@ -1636,15 +1638,16 @@ class  ns_l3_diagram_create():
 
             # write the area outline
             area_margin_x = 0.5 #inchi
-            area_margin_y = 0.3 #inchi
+            area_margin_y = 0.15 #inchi (bottom)
+            area_margin_y_top = 0.34 #inchi (top; minimum that keeps Branch-2/IP gap >= 2px with label_offset=0.055)
 
             for tmp_area_outline_array in area_outline_array:
                 if '_wp_' not in tmp_area_outline_array[0]:
                     self.shape = self.slide.shapes
                     folder_shape_left = tmp_area_outline_array[1] - area_margin_x
-                    folder_shape_top = tmp_area_outline_array[2] - area_margin_y
+                    folder_shape_top = tmp_area_outline_array[2] - area_margin_y_top
                     folder_shape_width = tmp_area_outline_array[3] + (area_margin_x * 2)
-                    folder_shape_hight = tmp_area_outline_array[4] + (area_margin_y * 2)
+                    folder_shape_hight = tmp_area_outline_array[4] + (area_margin_y_top + area_margin_y)
                     folder_shape_text = tmp_area_outline_array[0]
 
                     ns_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top,folder_shape_width, folder_shape_hight, folder_shape_text)
@@ -2916,7 +2919,7 @@ def _pull_back_runaway_devices(self, gap_threshold=2.0):
     return changed
 
 
-def _separate_overlapping_areas(self, area_margin_x=0.5, area_margin_y=0.3, desired_gap=0.5):
+def _separate_overlapping_areas(self, area_margin_x=0.5, area_margin_y=0.34, desired_gap=0.5):
     # Detect drawn area frames that overlap horizontally (while also overlapping
     # vertically, i.e. they are genuinely side by side on the page) and push the
     # right-hand area - and every area further right - to the right so the
