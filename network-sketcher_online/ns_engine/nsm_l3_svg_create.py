@@ -192,9 +192,24 @@ class _MockPresentation:
 def _make_svg_add_shape(capture_list, enabled_flag):
     def wrapper(self, shape_type, shape_left, shape_top,
                 shape_width, shape_hight, shape_text):
+        # WayPoint rounded-corner fix for All Areas (L3-4-1) SVG.
+        # In the L3-4-1 2nd pass the engine clears wp_list_array before the
+        # WAY_POINT_NORMAL type check fires, so WayPoints reach add_shape still
+        # tagged as DEVICE_NORMAL. The PPTX output is corrected afterwards via
+        # global_wp_array (shape.adjustments[0] = 0.2002), but the SVG capture
+        # path had no equivalent step and rendered WayPoints square
+        # (DEVICE_NORMAL rx ~= 0). Reclassify the CAPTURED type only so the SVG
+        # matches the Per Area / PPTX rounded-corner spec; shape_type itself is
+        # left untouched so add_shape_write_array and the 3rd pass are unaffected.
+        cap_type = shape_type
+        if (shape_type == 'DEVICE_NORMAL'
+                and getattr(self, 'click_value_l3', '') == 'L3-4-1'
+                and str(shape_text) in getattr(self, 'global_wp_array', [])):
+            cap_type = 'WAY_POINT_NORMAL'
+
         if enabled_flag[0]:
             capture_list.append(
-                ('shape', shape_type, shape_left, shape_top,
+                ('shape', cap_type, shape_left, shape_top,
                  shape_width, shape_hight, str(shape_text)))
 
         if (getattr(self, 'click_value_l3', '') == 'L3-4-1'
