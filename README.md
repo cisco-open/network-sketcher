@@ -23,6 +23,53 @@ Common use cases:
 - Export a combined L1/L2/L3 HTML viewer and an interactive device table
 - Create an AI Context file so another LLM can review or extend the network design
 
+## Quick Start: Local MCP in 3 Steps
+
+The quickest way to try Network Sketcher with an AI agent is the Local MCP edition.
+
+### 1. Install
+
+```bash
+git clone https://github.com/cisco-open/network-sketcher/
+cd network-sketcher/network-sketcher_local_mcp
+python -m pip install -r requirements_mcp.txt
+```
+
+### 2. Add it to your MCP client
+
+For Cursor, add this to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "network-sketcher": {
+      "command": "python",
+      "args": [
+        "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+For Claude Code:
+
+```bash
+claude mcp add network-sketcher -- python "/path/to/network-sketcher/network-sketcher_local_mcp/ns_mcp_server.py"
+```
+
+Replace `/path/to/network-sketcher/` with your local clone path.
+
+### 3. Ask your agent to build a network
+
+Example prompt:
+
+```text
+Using Network Sketcher Local MCP, create a small 5-site WAN design with HQ, two data centers, two branches, Internet and WAN waypoints, edge routers, simple L2 segments, and representative IP addressing. Then build the default L1/L2/L3 diagrams and device table.
+```
+
+The generated files will be saved in your Network Sketcher workspace.
+
 <img width="1848" height="1028" alt="image" src="https://github.com/user-attachments/assets/26068524-6293-4f7f-ab0c-f6b7e2c8b842" />
 
 <img width="1852" height="1039" alt="image" src="https://github.com/user-attachments/assets/b3501923-195e-45bc-9120-f6b78396e300" />
