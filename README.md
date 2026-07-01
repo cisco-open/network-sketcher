@@ -10,7 +10,18 @@
 
 # Network Sketcher
 
-**Network Sketcher generates network configuration diagrams in PowerPoint and manages configuration information in Excel. With AI (LLM) integration, it supports network design creation and updates via an MCP server for LLM clients (Local MCP), a web browser (Online), or a desktop GUI/CLI (Offline).**
+**Network Sketcher is an AI-native network design and diagramming tool. It generates L1/L2/L3 topology diagrams, device tables, and AI-ready context files from structured network data and natural-language workflows.**
+
+For MCP users, **Network Sketcher Local MCP** lets LLM clients such as Cursor and Claude Code design Cisco-style networks directly through Model Context Protocol tool calls. It runs locally over stdio, keeps master files on your machine, and produces SVG / PowerPoint diagrams plus HTML device tables.
+
+**Discovery:** Network Sketcher Local MCP is listed on the [LobeHub MCP Plugins Marketplace](https://lobehub.com/mcp/cisco-open-network-sketcher) and ranked in the AI & ML MCP server category on Remote OpenClaw. If Network Sketcher helps your workflow, please consider starring the repository.
+
+Common use cases:
+
+- Build a 5-site WAN or campus LAN design from an AI conversation
+- Generate L1 physical, L2 VLAN/broadcast-domain, and L3 IP topology diagrams
+- Export a combined L1/L2/L3 HTML viewer and an interactive device table
+- Create an AI Context file so another LLM can review or extend the network design
 
 <img width="1848" height="1028" alt="image" src="https://github.com/user-attachments/assets/26068524-6293-4f7f-ab0c-f6b7e2c8b842" />
 
