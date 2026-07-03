@@ -7,6 +7,10 @@
     <img src="https://lobehub.com/badge/mcp/cisco-open-network-sketcher" alt="LobeHub MCP Badge" />
   </a>
 </p>
+<p align="center">
+<img width="426" height="240" alt="local_mcp_demo" src="https://github.com/user-attachments/assets/538b866e-fe43-467d-bcc2-3db9234a48e1" />
+</p>
+
 
 # Network Sketcher
 
