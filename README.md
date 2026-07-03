@@ -7,10 +7,6 @@
     <img src="https://lobehub.com/badge/mcp/cisco-open-network-sketcher" alt="LobeHub MCP Badge" />
   </a>
 </p>
-<p align="center">
-<img width="426" height="240" alt="local_mcp_demo" src="https://github.com/user-attachments/assets/538b866e-fe43-467d-bcc2-3db9234a48e1" />
-</p>
-
 
 # Network Sketcher
 
@@ -29,6 +25,8 @@ Common use cases:
 - **Import from live inventory:** Use [Network Sketcher Cisco Extension](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) converters to turn ACI, Catalyst Center, Meraki, Nexus Dashboard, CML, Cyber Vision, SNA, or NetBox exports into CLI commands for any Network Sketcher edition
 
 ## Quick Start: Local MCP in 3 Steps
+
+<img width="426" height="240" alt="local_mcp_demo" src="https://github.com/user-attachments/assets/538b866e-fe43-467d-bcc2-3db9234a48e1" />
 
 The quickest way to try Network Sketcher with an AI agent is the Local MCP edition.
 
