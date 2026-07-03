@@ -22,6 +22,7 @@ Common use cases:
 - Generate L1 physical, L2 VLAN/broadcast-domain, and L3 IP topology diagrams
 - Export a combined L1/L2/L3 HTML viewer and an interactive device table
 - Create an AI Context file so another LLM can review or extend the network design
+- **Import from live inventory:** Use [Network Sketcher Cisco Extension](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) converters to turn ACI, Catalyst Center, Meraki, Nexus Dashboard, CML, Cyber Vision, SNA, or NetBox exports into CLI commands for any Network Sketcher edition
 
 ## Quick Start: Local MCP in 3 Steps
 
@@ -107,6 +108,34 @@ network-sketcher/
 └── ...
 ```
 
+## Extensions: Cisco & Third-Party Converters
+
+The [Network Sketcher Cisco Extension](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) repository (Cisco DevNet) is a **separate monorepo** of converters that turn platform exports or read-only API snapshots into Network Sketcher CLI command scripts (`ns_commands.txt`). The output works with **all three editions** — Local MCP, Online, and Offline (GUI / CLI).
+
+| Source platform | Converter folder | Input |
+| --- | --- | --- |
+| Cisco ACI (APIC) | `aci_converter` | Read-only REST API snapshot (JSON) |
+| Catalyst Center (SD-Access) | `catc_converter` | Intent API snapshot (JSON) |
+| Cisco Modeling Labs | `cml_converter` | CML lab YAML (local file) |
+| Cyber Vision | `cv_converter` | networkNodes + activities CSV |
+| Meraki Dashboard | `meraki_converter` | Dashboard API v1 snapshot (JSON) |
+| Nexus Dashboard (NDFC) | `nd_converter` | REST API snapshot (JSON) |
+| Secure Network Analytics | `sna_converter` | Flow Search CSV |
+| NetBox | `3rd_party/netbox_converter` | REST API snapshot (JSON) |
+| Catalyst SD-WAN | — | *Planning* |
+| Build your own | `template_converter` | Developer template |
+
+### Typical workflow
+
+1. **Fetch or export** platform data (some converters include read-only API fetch helpers; others accept exported JSON / CSV / YAML files).
+2. **Run the converter** to produce `ns_commands.txt`.
+3. **Create a master file** and execute the command script (Local MCP: `run_commands`; Online / Offline: paste or run via CLI).
+4. **Export diagrams** — L1/L2/L3 topology, device table, and AI Context.
+
+With **Local MCP**, an AI agent can run the converter, feed the generated commands through `run_commands`, and finalize with `build_default_outputs` in one session.
+
+> **Important:** Converter output is a **starting draft**, not an authoritative inventory. Quality depends on what each platform exposes, and converters may infer topology that is not explicitly present. Always validate against your source systems before production use.
+
 <br>
 <br>
 
@@ -143,6 +172,7 @@ https://github.com/user-attachments/assets/274d5b66-5f4a-407a-bfb5-f71026971fc4
 - Reuses `network-sketcher_online/ns_engine/` **as a library** (no code duplication)
 - **No changes** are made to the existing `_online` / `_offline` folders
 - stdio transport (designed for local operation)
+- **Platform import workflow:** Pair with [Cisco Extension converters](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) — generated `ns_commands.txt` can be executed via `run_commands` in one shot
 
 ## Limitations (Local MCP)
 
@@ -370,6 +400,8 @@ https://github.com/user-attachments/assets/5874411a-0e6d-485d-9f85-4cdc85f3ca07
 <img alt="image" src="https://github.com/user-attachments/assets/436a1462-bdf7-49cf-bc4f-235be6cb7d42" />
 Although Network Sketcher now supports multiple formats, it is not intended to replace the main drawing tool, but rather aims for mutually beneficial development.
 
+For API-driven imports from ACI, Catalyst Center, Meraki, NDFC, and other Cisco platforms (plus NetBox), see the [Cisco Extension repository](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) — complementary to the Offline GUI import for Visio / draw.io / NetBox / CML files.
+
     
 - Ver 2.5.0
   - [Communication flow management functionality has been added.](https://github.com/cisco-open/network-sketcher/wiki/9%E2%80%901.Exporting-Flow-files)
@@ -473,7 +505,8 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Feature Item | **Local MCP (LLM-driven CLI)** | Online Edition | Offline Edition (GUI) | Offline Edition (CLI) |
 | --- | --- | --- | --- | --- |
 | Create master file from PowerPoint rough sketch | ❌ | ❌ | ✅ | ❌ |
-| Convert master files from Visio, Draw.io, NetBox, CML | ❌ | ❌ | ✅ | ❌ |
+| Convert from Visio / Draw.io / NetBox / CML files (built-in Offline GUI) | ❌ | ❌ | ✅ | ❌ |
+| Import via [Cisco Extension](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) converters (CLI commands) | ✅ | ✅ | ✅ | ✅ |
 | Place / create / delete / modify areas, devices, waypoints | ✅ | ✅ | ✅ (areas auto-placed in GUI) | ✅ |
 | Add / delete / modify Layer 1 connections (port names, duplex, etc.) | ✅ | ✅ | ⚠️ (port cannot be specified on delete) | ✅ |
 | Change Layer 2 segments (VLAN) / add / delete virtual ports (SVI, loopback, port-channel) | ✅ | ✅ | ✅ | ✅ |
@@ -487,6 +520,8 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Export device files | ✅ | ✅ | ✅ | ✅ |
 | Generate L1/L2/L3 topology diagrams | ✅ | ✅ | ✅ | ✅ |
 | Export diagrams as SVG (Visio-compatible) / draw.io (with Cisco stencils) | ❌ | ✅ | ❌ | ❌ |
+
+> Cisco Extension converters produce CLI command scripts; quality depends on source data and may include inferred topology — always validate before production use.
 
 ## SAMPLE
 ### - Supports various connections
