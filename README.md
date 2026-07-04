@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cisco-open-network-sketcher-badge.png)](https://mseep.ai/app/cisco-open-network-sketcher)
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/cc82082d-c4a5-4f13-90f5-adaf162202b2" alt="image" />
 </p>
