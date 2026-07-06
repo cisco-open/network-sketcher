@@ -19,7 +19,7 @@ release to be published.
 ## Release steps (Glama admin UI)
 
 1. Open https://glama.ai/mcp/servers/cisco-open/network-sketcher/score and **Claim** the server (if not already claimed).
-2. Click **Sync Server** so Glama mirrors the latest `main` commit.
+2. In **Admin → Repository**, refresh the GitHub mirror if a sync control is shown (optional if **Pinned commit SHA** is empty).
 3. Open `…/admin/dockerfile` and configure the build form (Glama clones the repo into `/app` and wraps CMD with `mcp-proxy --`).
 4. **Deploy** → wait for the build test to pass (server starts + introspection OK).
 5. **Make Release** → enter version (e.g. `3.1.2m`) → publish.
@@ -31,11 +31,13 @@ release to be published.
 | --- | --- |
 | Base image | `debian:trixie-slim` (default) or `python:3.12-slim` |
 | Python version | `3.12` (minimum 3.10) |
-| **Build steps** | `["python -m pip install -r network-sketcher_local_mcp/requirements_mcp.txt"]` |
+| **Build steps** | `["uv pip install --system -r network-sketcher_local_mcp/requirements_mcp.txt"]` |
 | **CMD arguments** | `["python", "network-sketcher_local_mcp/ns_mcp_server.py"]` |
 | Environment variables JSON schema | `{"properties":{},"required":[],"type":"object"}` |
 | Placeholder parameters | `{}` |
-| Pinned commit SHA | empty (after Sync Server) |
+| Pinned commit SHA | empty (use latest `main`) |
+
+> **Note:** Glama installs Python via `uv`. Plain `python -m pip install` fails with `externally-managed-environment` (PEP 668). Use `uv pip install --system` instead.
 
 The effective container command becomes:
 

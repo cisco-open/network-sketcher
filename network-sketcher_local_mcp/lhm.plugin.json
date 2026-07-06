@@ -1,0 +1,214 @@
+{
+  "identifier": "cisco-open-network-sketcher",
+  "name": "Network Sketcher (Local MCP)",
+  "version": "3.1.2m",
+  "description": "Local-first, AI-native MCP server for network design automation. LLM clients such as Cursor and Claude Code create Cisco-style network designs, manage .nsm master files, and generate L1/L2/L3 topology diagrams (SVG / PowerPoint), combined HTML viewers, device tables, and AI Context files from natural-language workflows.",
+  "author": "cisco-open",
+  "authorUrl": "https://github.com/cisco-open",
+  "homepage": "https://github.com/cisco-open/network-sketcher",
+  "category": "developer",
+  "icon": "🌐",
+  "tags": [
+    "mcp-server",
+    "model-context-protocol",
+    "network",
+    "networking",
+    "network-automation",
+    "network-diagram",
+    "cisco",
+    "diagram",
+    "svg",
+    "powerpoint",
+    "topology",
+    "l1-l2-l3",
+    "cursor",
+    "claude-code",
+    "design",
+    "automation",
+    "ai-agent"
+  ],
+  "localizations": [
+    {
+      "locale": "ja-JP",
+      "name": "Network Sketcher (Local MCP)",
+      "description": "ローカルファーストの AI ネイティブ MCP サーバー。Cursor / Claude Code から Cisco スタイルのネットワーク設計、.nsm マスター管理、L1/L2/L3 トポロジ図・統合 HTML ビューア・デバイステーブル・AI Context の生成が可能です。"
+    }
+  ],
+  "tools": [
+    {
+      "name": "get_workspace_info",
+      "description": "Return the active workspace path and the list of .nsm master files (and other NS-generated files) in it. Always safe to call.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "suggest_workspace",
+      "description": "Suggest OS-appropriate (Windows / macOS / Linux) workspace directory candidates under the user's home, with hints about which exist and are writable. Always safe to call.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "set_workspace",
+      "description": "Set the active workspace directory for this session. Validates that the path is under the user's home directory, creates it if missing, and confirms it is writable.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path (or '~/...') under the user's home directory."
+          }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "create_empty_master",
+      "description": "Create a new empty Network Sketcher master file (.nsm) in the active workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "Optional target name; must start with '[MASTER]' and end with '.nsm'. Defaults to '[MASTER]no_data.nsm'."
+          }
+        }
+      }
+    },
+    {
+      "name": "get_network_state",
+      "description": "Run the standard set of show commands and return aggregated results - a lightweight summary of the network state for the agent.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "string",
+            "description": "Master filename (e.g. '[MASTER]office.nsm') in the active workspace, or an absolute path under it."
+          }
+        },
+        "required": ["master"]
+      }
+    },
+    {
+      "name": "get_ai_context",
+      "description": "Generate the full AI Context file for a master and return its contents (network state plus the full CLI command reference). Recommended bootstrap call before issuing any edits.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "string",
+            "description": "Master filename in the active workspace."
+          }
+        },
+        "required": ["master"]
+      }
+    },
+    {
+      "name": "run_commands",
+      "description": "Execute one or more Network Sketcher CLI commands (add / rename / delete / show) against a .nsm master. Multiple lines are batched into a single subprocess. Requires get_ai_context to have been called at least once in this session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "string",
+            "description": "Master filename in the active workspace."
+          },
+          "commands": {
+            "type": "string",
+            "description": "Newline-separated CLI command lines (without --master)."
+          }
+        },
+        "required": ["master", "commands"]
+      }
+    },
+    {
+      "name": "import_master",
+      "description": "Convert an existing .xlsx master into a .nsm in the active workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "xlsx_path": {
+            "type": "string",
+            "description": "Absolute path to the source .xlsx file."
+          },
+          "target_name": {
+            "type": "string",
+            "description": "Optional output filename ('[MASTER]*.nsm'). Defaults to the source basename."
+          }
+        },
+        "required": ["xlsx_path"]
+      }
+    },
+    {
+      "name": "export_master_xlsx",
+      "description": "Convert a .nsm master back to .xlsx for use with Excel or the Network Sketcher Offline edition.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "string",
+            "description": "Master filename in the active workspace."
+          }
+        },
+        "required": ["master"]
+      }
+    },
+    {
+      "name": "export_diagram",
+      "description": "Export an L1, L2, or L3 network diagram for the given .nsm master (SVG or PPTX).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": { "type": "string", "description": "Master filename in the active workspace." },
+          "layer": { "type": "string", "description": "One of 'l1', 'l2', 'l3' (case-insensitive)." },
+          "format": { "type": "string", "description": "'svg' (default) or 'pptx'." },
+          "area": { "type": "string", "description": "Optional area name for single-area output." }
+        },
+        "required": ["master", "layer"]
+      }
+    },
+    {
+      "name": "export_device_table_html",
+      "description": "Export an interactive HTML Device Table preview from a .nsm master.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "string",
+            "description": "Master filename in the active workspace (e.g. '[MASTER]office.nsm')."
+          }
+        },
+        "required": ["master"]
+      }
+    },
+    {
+      "name": "build_default_outputs",
+      "description": "Generate the default deliverable bundle: combined L1/L2/L3 HTML viewer, per-layer SVGs, device table HTML, and AI Context for a .nsm master.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "string",
+            "description": "Master filename in the active workspace."
+          }
+        },
+        "required": ["master"]
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "name": "start_ns_session",
+      "description": "Bootstrap a Network Sketcher session: ensure a workspace is active and load AI context for the given master before any edits."
+    }
+  ],
+  "resources": [
+    {
+      "name": "Workspace overview",
+      "description": "JSON snapshot of the active workspace directory and its inventory of .nsm masters and generated files.",
+      "uri": "nsm://workspace"
+    },
+    {
+      "name": "CLI command reference",
+      "description": "Full Network Sketcher CLI command reference.",
+      "uri": "nsm://commands"
+    }
+  ]
+}
