@@ -26,7 +26,9 @@ Common use cases:
 
 ## Quick Start: Local MCP in 3 Steps
 
-<img width="426" height="240" alt="local_mcp_demo" src="https://github.com/user-attachments/assets/538b866e-fe43-467d-bcc2-3db9234a48e1" />
+<img width="1920" height="1080" alt="ns_demo_mcp" src="https://github.com/user-attachments/assets/1b9a85f9-0785-4dbb-b980-68ec0c1f31c9" />
+
+
 
 The quickest way to try Network Sketcher with an AI agent is the Local MCP edition.
 
