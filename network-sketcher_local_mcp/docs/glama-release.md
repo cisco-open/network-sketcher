@@ -12,9 +12,9 @@ release to be published.
 
 | File | Purpose |
 | --- | --- |
-| [`glama.json`](../glama.json) | Maintainer claim metadata (`yuhsukeogawa`). |
-| [`Dockerfile`](../Dockerfile) | Runnable stdio image for local/container use. Glama admin can also build from source via the form below. |
-| [`network-sketcher_local_mcp/server.json`](../network-sketcher_local_mcp/server.json) | MCP server manifest (tools, install hints). |
+| [`glama.json`](../../glama.json) | Maintainer claim metadata (`yuhsukeogawa`). |
+| [`Dockerfile`](../../Dockerfile) | Runnable stdio image for local/container use. Glama admin can also build from source via the form below. |
+| [`server.json`](../server.json) | MCP server manifest (tools, install hints). |
 
 ## Release steps (Glama admin UI)
 
