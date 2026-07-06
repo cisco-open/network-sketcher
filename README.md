@@ -3,8 +3,12 @@
 </p>
 
 <p align="center">
+  <a href="https://glama.ai/mcp/servers/cisco-open/network-sketcher">
+    <img src="https://glama.ai/mcp/servers/cisco-open/network-sketcher/badges/score.svg" alt="Glama MCP score" />
+  </a>
+  &nbsp;
   <a href="https://lobehub.com/mcp/cisco-open-network-sketcher">
-    <img src="https://lobehub.com/badge/mcp/cisco-open-network-sketcher" alt="LobeHub MCP Badge" />
+    <img src="https://lobehub.com/badge/mcp/cisco-open-network-sketcher" alt="LobeHub MCP" />
   </a>
 </p>
 
@@ -14,7 +18,9 @@
 
 For MCP users, **Network Sketcher Local MCP** lets LLM clients such as Cursor and Claude Code design Cisco-style networks directly through Model Context Protocol tool calls. It runs locally over stdio, keeps master files on your machine, and produces SVG / PowerPoint diagrams plus HTML device tables.
 
-**Discovery:** Network Sketcher Local MCP is listed on the [LobeHub MCP Plugins Marketplace](https://lobehub.com/mcp/cisco-open-network-sketcher) and ranked in the AI & ML MCP server category on Remote OpenClaw. If Network Sketcher helps your workflow, please consider starring the repository.
+**MCP listings:** [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [Remote OpenClaw](https://www.remoteopenclaw.com/mcp/cisco-open/network-sketcher) · [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher)
+
+If Network Sketcher helps your workflow, please consider starring the repository.
 
 Common use cases:
 
@@ -26,7 +32,7 @@ Common use cases:
 
 ## Quick Start: Local MCP in 3 Steps
 
-<img width="1920" height="1080" alt="ns_demo_mcp" src="https://github.com/user-attachments/assets/1b9a85f9-0785-4dbb-b980-68ec0c1f31c9" />
+<img  alt="ns_demo_mcp" src="https://github.com/user-attachments/assets/1b9a85f9-0785-4dbb-b980-68ec0c1f31c9" />
 
 
 
@@ -75,9 +81,9 @@ Using Network Sketcher Local MCP, create a small 5-site WAN design with HQ, two 
 
 The generated files will be saved in your Network Sketcher workspace.
 
-<img width="1848" height="1028" alt="image" src="https://github.com/user-attachments/assets/26068524-6293-4f7f-ab0c-f6b7e2c8b842" />
+<img  alt="image" src="https://github.com/user-attachments/assets/26068524-6293-4f7f-ab0c-f6b7e2c8b842" />
 
-<img width="1852" height="1039" alt="image" src="https://github.com/user-attachments/assets/b3501923-195e-45bc-9120-f6b78396e300" />
+<img  alt="image" src="https://github.com/user-attachments/assets/b3501923-195e-45bc-9120-f6b78396e300" />
 
 
 
@@ -151,7 +157,7 @@ With **Local MCP**, an AI agent can run the converter, feed the generated comman
 
 > **AI-native edition:** Network Sketcher Local MCP exposes the engine as a **Model Context Protocol (MCP) server**, enabling LLM clients such as Cursor and Claude Code to drive network design directly. This is the most direct AI integration of the three editions — no browser, no copy-paste.
 
-<img width="1456" height="782" alt="image" src="https://github.com/user-attachments/assets/6f3db3ba-4f92-401d-8f75-4c09cc0f185d" />
+<img  alt="image" src="https://github.com/user-attachments/assets/6f3db3ba-4f92-401d-8f75-4c09cc0f185d" />
 
 
 
@@ -259,7 +265,7 @@ Replace `/path/to/network-sketcher/` with the actual path where you cloned the r
 > **AI-native software:** Network Sketcher Online is designed around AI (LLM) interaction — generate AI context, send it to an LLM, and paste the resulting commands back to update your network design, all within the browser.
 
 
-<img width="1620" height="898" alt="image" src="https://github.com/user-attachments/assets/cd645a8b-9661-4f74-8bf3-cd12b3395c82" />
+<img  alt="image" src="https://github.com/user-attachments/assets/cd645a8b-9661-4f74-8bf3-cd12b3395c82" />
 
 
 ### Demo Video (Ver 3.0.1b)
@@ -383,7 +389,7 @@ https://github.com/user-attachments/assets/5874411a-0e6d-485d-9f85-4cdc85f3ca07
 - Ver 2.6.1<br>
 [Network Sketcher Ver 2.6.1 supported the creation of a network configuration with LLM from scratch](https://github.com/cisco-open/network-sketcher/wiki/1%E2%80%905.-Examples-of-General%E2%80%90Purpose-AI-(LLM)-usage-(config-creation,-config-reflection,-analysis,-etc.)_en)
 
-<img width="1423" height="806" alt="image" src="https://github.com/user-attachments/assets/761072de-d64b-4772-bdc7-6224f53fddd8" />
+<img  alt="image" src="https://github.com/user-attachments/assets/761072de-d64b-4772-bdc7-6224f53fddd8" />
 
 
 - Ver 2.6.0<br>
