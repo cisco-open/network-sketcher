@@ -28,7 +28,7 @@ Common use cases:
 - Generate L1 physical, L2 VLAN/broadcast-domain, and L3 IP topology diagrams
 - Export a combined L1/L2/L3 HTML viewer and an interactive device table
 - Create an AI Context file so another LLM can review or extend the network design
-- **Import from live inventory:** Use [Network Sketcher Cisco Extension](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) converters to turn ACI, Catalyst Center, Meraki, Nexus Dashboard, CML, Cyber Vision, SNA, or NetBox exports into CLI commands for any Network Sketcher edition
+- **Import from live inventory:** Use [Network Sketcher Cisco Extension](https://github.com/CiscoDevNet/network-sketcher-cisco-extension) converters to turn ACI, Catalyst Center, Meraki, Nexus Dashboard, CML, Cyber Vision, SNA, NetBox exports, or config files (IOS / IOS-XE / NX-OS / IOS-XR / ASA) into CLI commands for any Network Sketcher edition
 
 ## Quick Start: Local MCP in 3 Steps
 
