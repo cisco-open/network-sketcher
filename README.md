@@ -18,7 +18,7 @@
 
 For MCP users, **Network Sketcher Local MCP** lets LLM clients such as Cursor and Claude Code design Cisco-style networks directly through Model Context Protocol tool calls. It runs locally over stdio, keeps master files on your machine, and produces SVG / PowerPoint diagrams plus HTML device tables.
 
-**MCP listings:** [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [Remote OpenClaw](https://www.remoteopenclaw.com/mcp/cisco-open/network-sketcher) · [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher) · [MCP Market](https://mcpmarket.com/server/network-sketcher)
+**MCP listings:** [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [Remote OpenClaw](https://www.remoteopenclaw.com/mcp/cisco-open/network-sketcher) · [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher) · [MCP Market](https://mcpmarket.com/server/network-sketcher) · [PulseMCP](https://www.pulsemcp.com/servers/network-sketcher) · [MCP Toplist](https://mcptoplist.com/org/cisco-open) · [MCP Repository](https://mcprepository.com/cisco-open/network-sketcher)
 
 If Network Sketcher helps your workflow, please consider starring the repository.
 
