@@ -18,8 +18,6 @@
 
 For MCP users, **Network Sketcher Local MCP** lets LLM clients such as Cursor and Claude Code design Cisco-style networks directly through Model Context Protocol tool calls. It runs locally over stdio, keeps master files on your machine, and produces SVG / PowerPoint diagrams plus HTML device tables.
 
-**MCP listings:** [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [Remote OpenClaw](https://www.remoteopenclaw.com/mcp/cisco-open/network-sketcher) · [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher) · [MCP Market](https://mcpmarket.com/server/network-sketcher) · [PulseMCP](https://www.pulsemcp.com/servers/network-sketcher) · [MCP Toplist](https://mcptoplist.com/org/cisco-open) · [MCP Repository](https://mcprepository.com/cisco-open/network-sketcher)
-
 If Network Sketcher helps your workflow, please consider starring the repository.
 
 Common use cases:
@@ -86,6 +84,14 @@ The generated files will be saved in your Network Sketcher workspace.
 <img  alt="image" src="https://github.com/user-attachments/assets/b3501923-195e-45bc-9120-f6b78396e300" />
 
 
+
+## Ecosystem & Integrations
+
+Network Sketcher Local MCP is available on various Model Context Protocol (MCP) registries and platforms. You can find and deploy it via the following directories:
+
+- **Registries:** [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher) · [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [PulseMCP](https://www.pulsemcp.com/servers/network-sketcher)
+- **Hubs & Markets:** [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [mcp.so](https://mcp.so/server/network-sketcher) · [MCP Market](https://mcpmarket.com/server/network-sketcher) · [MCP Repository](https://mcprepository.com/cisco-open/network-sketcher)
+- **Discovery Platforms:** [Remote OpenClaw](https://www.remoteopenclaw.com/mcp/cisco-open/network-sketcher) · [MCP Toplist](https://mcptoplist.com/org/cisco-open)
 
 Network Sketcher provides three editions:
 
