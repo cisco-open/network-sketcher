@@ -87,11 +87,10 @@ The generated files will be saved in your Network Sketcher workspace.
 
 ## Ecosystem & Integrations
 
-Network Sketcher Local MCP is available on various Model Context Protocol (MCP) registries and platforms. You can find and deploy it via the following directories:
+Network Sketcher Local MCP is listed on the official MCP Registry and major MCP platforms:
 
 - **Registries:** [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher) · [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [PulseMCP](https://www.pulsemcp.com/servers/network-sketcher)
-- **Hubs & Markets:** [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [mcp.so](https://mcp.so/server/network-sketcher) · [MCP Market](https://mcpmarket.com/server/network-sketcher) · [MCP Repository](https://mcprepository.com/cisco-open/network-sketcher)
-- **Discovery Platforms:** [Remote OpenClaw](https://www.remoteopenclaw.com/mcp/cisco-open/network-sketcher) · [MCP Toplist](https://mcptoplist.com/org/cisco-open)
+- **Hubs:** [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [mcp.so](https://mcp.so/server/network-sketcher)
 
 Network Sketcher provides three editions:
 
