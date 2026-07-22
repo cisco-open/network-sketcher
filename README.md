@@ -90,7 +90,7 @@ The generated files will be saved in your Network Sketcher workspace.
 Network Sketcher Local MCP is listed on the official MCP Registry and major MCP platforms:
 
 - **Registries:** [MCP Registry](https://registry.modelcontextprotocol.io/?q=network-sketcher) · [Glama](https://glama.ai/mcp/servers/cisco-open/network-sketcher) · [PulseMCP](https://www.pulsemcp.com/servers/network-sketcher)
-- **Hubs:** [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher) · [mcp.so](https://mcp.so/server/network-sketcher)
+- **Hubs:** [LobeHub](https://lobehub.com/mcp/cisco-open-network-sketcher)
 
 Network Sketcher provides three editions:
 
