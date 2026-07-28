@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.cisco-open%2Fnetwork-sketcher.svg)](https://mcptoplist.com/server/io.github.cisco-open%2Fnetwork-sketcher)
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/cc82082d-c4a5-4f13-90f5-adaf162202b2" alt="image" />
 </p>
