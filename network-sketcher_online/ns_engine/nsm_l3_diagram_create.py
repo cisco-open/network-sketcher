@@ -715,7 +715,7 @@ class  nsm_l3_diagram_create():
                             self._l3_if_has_l3_segment_set.add(tuple(_m))
 
         ### GET L3 instance
-        self.defalut_l3_instance_name = 'Defalut'
+        self.default_l3_instance_name = 'Default'
         self.l3_instance_array = []
         self.update_l3_instance_array = []
         for tmp_update_l3_table_array in self.update_l3_table_array:
@@ -733,8 +733,8 @@ class  nsm_l3_diagram_create():
                         self.update_l3_instance_array.append([tmp_update_l3_table_array,tmp_update_l3_table_array[3]])
                         #print([tmp_update_l3_table_array,tmp_update_l3_table_array[3]])
                     else:
-                        self.update_l3_instance_array.append([tmp_update_l3_table_array, self.defalut_l3_instance_name])
-                        #print([tmp_update_l3_table_array, self.defalut_l3_instance_name])
+                        self.update_l3_instance_array.append([tmp_update_l3_table_array, self.default_l3_instance_name])
+                        #print([tmp_update_l3_table_array, self.default_l3_instance_name])
 
         #print('--- self.update_l3_instance_array ---')
         #print(self.update_l3_instance_array)
