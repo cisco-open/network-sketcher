@@ -550,6 +550,41 @@ def set_active_master(work_dir, filename):
         f.write(filename)
 
 
+def master_stem_from_filename(filename):
+    """Strip the '[MASTER]' prefix and the extension from a master filename."""
+    return os.path.splitext(filename)[0].replace('[MASTER]', '')
+
+
+def set_master_stem(work_dir, stem):
+    stem_file = os.path.join(work_dir, '.master_stem')
+    with open(stem_file, 'w', encoding='utf-8') as f:
+        f.write(stem)
+
+
+def get_master_stem(work_dir):
+    """Return the stem of the master as originally uploaded, or None.
+
+    Recorded once at upload so version numbering never has to guess it back
+    out of a filename. Guessing is lossy: '[MASTER]DC_2024.nsm' is
+    indistinguishable from a generated version by pattern alone.
+    """
+    stem_file = os.path.join(work_dir, '.master_stem')
+    try:
+        with open(stem_file, 'r', encoding='utf-8') as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+_MASTER_VERSION_RE = re.compile(r'_(\d+)$')
+
+
+def master_version_of(filename):
+    """Return the trailing version number of a generated master, or 0."""
+    m = _MASTER_VERSION_RE.search(master_stem_from_filename(filename))
+    return int(m.group(1)) if m else 0
+
+
 def run_ns_command(args):
     engine_dir = str(BASE_DIR / 'ns_engine')
     logger.debug('Running (in-process): %s', ' '.join(args))
@@ -709,10 +744,25 @@ def restore_session(job_id):
 
     basename = master_filename.replace('[MASTER]', '').replace('.xlsx', '').replace('.nsm', '')
 
-    masters = sorted([
+    # The client treats the last entry as the current master, so the active one
+    # has to be present and has to come last. Order by the trailing version
+    # number rather than by name so _10 sorts after _2.
+    stem = get_master_stem(str(work_dir))
+    all_masters = [
         f for f in os.listdir(str(work_dir))
-        if f.startswith('[MASTER]') and (f.endswith('.xlsx') or f.endswith('.nsm')) and f != master_filename
-    ])
+        if f.startswith('[MASTER]') and (f.endswith('.xlsx') or f.endswith('.nsm'))
+    ]
+    if stem:
+        original_name = f'[MASTER]{stem}{os.path.splitext(master_filename)[1]}'
+        masters = sorted(
+            [f for f in all_masters if f not in (master_filename, original_name)],
+            key=master_version_of,
+        )
+        if master_filename != original_name:
+            masters.append(master_filename)
+    else:
+        # Job predates the stem sidecar; keep the original behaviour.
+        masters = sorted([f for f in all_masters if f != master_filename])
 
     generated = collect_generated_files(str(work_dir), master_filename)
 
@@ -729,6 +779,7 @@ def restore_session(job_id):
         'valid': True,
         'master_filename': master_filename,
         'basename': basename,
+        'master_version': master_version_of(master_filename),
         'updated_masters': masters,
         'generated_files': generated,
         'areas': meta.get('areas', []),
@@ -769,6 +820,7 @@ def upload():
             return jsonify({'error': f'Failed to convert to .nsm: {e}'}), 500
 
     set_active_master(str(work_dir), filename)
+    set_master_stem(str(work_dir), master_stem_from_filename(filename))
 
     touch_heartbeat(job_id)
     request._ns_upload_filename = filename
@@ -1419,12 +1471,36 @@ def run_commands(job_id):
     )
 
     if has_mutation:
-        version = data.get('version', 1)
-        original_basename = find_master_file(str(work_dir)) or master_filename
-        base_no_ext = os.path.splitext(original_basename)[0].replace('[MASTER]', '')
-        base_no_ver = re.sub(r'_\d+$', '', base_no_ext)
+        try:
+            version = max(int(data.get('version', 1)), 1)
+        except (TypeError, ValueError):
+            version = 1
+
+        stem = get_master_stem(str(work_dir))
+        if not stem:
+            # Job created before the stem sidecar existed: fall back to the
+            # previous heuristic so older sessions keep working.
+            original_basename = find_master_file(str(work_dir)) or master_filename
+            stem = re.sub(r'_\d+$', '', master_stem_from_filename(original_basename))
         ext = os.path.splitext(master_filename)[1] or '.xlsx'
-        new_master_name = f'[MASTER]{base_no_ver}_{version}{ext}'
+
+        # The requested number can already be taken: the uploaded master may
+        # itself be a previously downloaded version, or the client counter may
+        # have drifted across a session restore. Advance until the name is free
+        # so we never copy onto the source nor clobber an earlier version.
+        new_master_name = None
+        new_version = None
+        for candidate in range(version, version + 1000):
+            name = f'[MASTER]{stem}_{candidate}{ext}'
+            if name != master_filename and not (work_dir / name).exists():
+                new_master_name = name
+                new_version = candidate
+                break
+        if new_master_name is None:
+            logger.warning('No free master version from %d for stem %s', version, stem)
+            return jsonify({'success': False,
+                            'message': 'Could not allocate a new master version'})
+
         new_master_path = str(work_dir / new_master_name)
         try:
             shutil.copy2(str(work_dir / master_filename), new_master_path)
@@ -1434,6 +1510,7 @@ def run_commands(job_id):
         target_master_path = new_master_path
     else:
         new_master_name = None
+        new_version = None
         target_master_path = str(work_dir / master_filename)
 
     SYNCABLE_SUBCMDS = {'l1_link_bulk', 'device_location'}
@@ -1503,6 +1580,7 @@ def run_commands(job_id):
         'results': results,
         'errors': errors,
         'updated_master': new_master_name,
+        'master_version': new_version,
     })
 
 
@@ -1538,7 +1616,33 @@ def _safe_area_for_filename(name):
     return safe or 'Area'
 
 
-def _find_svgs_for_cell(work_dir, cell_id, file_list=None):
+def _svg_name_parts(cell_id):
+    """Return the (prefix, suffix) bracketing the master basename in the SVG
+    filename for a grid cell, or None when the cell id is unknown.
+
+    The basename is a trailing token for the All-Areas cells but a *middle*
+    token for the per-area L1/L3 cells, so matching on the suffix alone cannot
+    identify which master generated a file.
+    """
+    if cell_id == 'l1_all':
+        return '[L1_DIAGRAM]AllAreasTag_', ''
+    if cell_id == 'l2_all':
+        return '[L2_DIAGRAM]AllAreas_', ''
+    if cell_id == 'l3_all':
+        return '[L3_DIAGRAM]AllAreas_', ''
+    if cell_id.startswith('l1_per_area_'):
+        area = cell_id[len('l1_per_area_'):]
+        return '[L1_DIAGRAM]PerAreaTag_', '_' + _safe_area_for_filename(area)
+    if cell_id.startswith('l3_per_area_'):
+        area = cell_id[len('l3_per_area_'):]
+        return '[L3_DIAGRAM]PerArea_', '_' + _safe_area_for_filename(area)
+    if cell_id.startswith('l2_area_'):
+        # L2 per-area keeps the raw area name (not the filename-safe form).
+        return '[L2_DIAGRAM]' + cell_id[len('l2_area_'):] + '_', ''
+    return None
+
+
+def _find_svgs_for_cell(work_dir, cell_id, file_list=None, basename=None):
     """Return sorted list of SVG filenames that belong to the given grid cell.
 
     If file_list is provided, match against that list instead of scanning work_dir.
@@ -1552,6 +1656,11 @@ def _find_svgs_for_cell(work_dir, cell_id, file_list=None):
       l3_per_area_<area>      → [L3_DIAGRAM]PerArea_*_<safe_area>.svg (per-area file)
       l2_area_<area>          → [L2_DIAGRAM]<area>_ (single file)
       l2_all                  → [L2_DIAGRAM]AllAreas_ (single file)
+
+    When ``basename`` is given and a candidate matches that master exactly,
+    only the exact matches are returned. A work_dir accumulates one SVG per
+    master version, so without this filter callers cannot tell the generations
+    apart and alphabetical order happens to favour the oldest one.
     """
     if file_list is not None:
         files = [f for f in file_list if f.lower().endswith('.svg')]
@@ -1561,31 +1670,37 @@ def _find_svgs_for_cell(work_dir, cell_id, file_list=None):
         except Exception:
             return []
 
-    if cell_id == 'l1_all':
-        return sorted([f for f in files if f.startswith('[L1_DIAGRAM]AllAreasTag_')])
-    if cell_id.startswith('l1_per_area_'):
-        area = cell_id[len('l1_per_area_'):]
-        safe = _safe_area_for_filename(area)
-        return sorted([f for f in files
-                        if f.startswith('[L1_DIAGRAM]PerAreaTag_') and
-                        os.path.splitext(f)[0].endswith('_' + safe)])
-    if cell_id == 'l3_all':
-        return sorted([f for f in files if f.startswith('[L3_DIAGRAM]AllAreas_')])
-    if cell_id.startswith('l3_per_area_'):
-        area = cell_id[len('l3_per_area_'):]
-        safe = _safe_area_for_filename(area)
-        return sorted([f for f in files
-                        if f.startswith('[L3_DIAGRAM]PerArea_') and
-                        os.path.splitext(f)[0].endswith('_' + safe)])
-    if cell_id == 'l2_all':
-        return sorted([f for f in files if f.startswith('[L2_DIAGRAM]AllAreas_')])
-    if cell_id.startswith('l2_area_'):
-        area = cell_id[len('l2_area_'):]
-        return sorted([f for f in files if f.startswith(f'[L2_DIAGRAM]{area}_')])
-    return []
+    parts = _svg_name_parts(cell_id)
+    if parts is None:
+        return []
+    prefix, suffix = parts
+
+    matches = sorted([
+        f for f in files
+        if f.startswith(prefix) and os.path.splitext(f)[0].endswith(suffix)
+    ])
+    if basename:
+        exact = [f for f in matches
+                 if os.path.splitext(f)[0] == prefix + basename + suffix]
+        if exact:
+            return exact
+    return matches
 
 
-def _resolve_layer_files(work_dir, scope, file_list=None):
+def _newest_file(work_dir, names):
+    """Pick the most recently written file among ``names``."""
+    if not names:
+        return None
+    if len(names) == 1:
+        return names[0]
+    try:
+        return max(names, key=lambda f: os.path.getmtime(
+            os.path.join(str(work_dir), f)))
+    except OSError:
+        return names[0]
+
+
+def _resolve_layer_files(work_dir, scope, file_list=None, basename=None):
     """Map a viewer scope to the L1/L2/L3 SVG filenames for that scope.
 
     Used by ``/diagram_preview/<job_id>`` (live tabbed viewer) and the CLI
@@ -1602,6 +1717,10 @@ def _resolve_layer_files(work_dir, scope, file_list=None):
         file_list: Optional iterable of filenames to resolve against. When
                    omitted the directory is scanned. Mirrors the
                    ``_find_svgs_for_cell`` semantics.
+        basename: Stem of the master the caller wants diagrams for. Required
+                  to disambiguate a work_dir that holds SVGs from several
+                  master versions; callers that omit it get the most recently
+                  written candidate.
 
     Returns:
         ``dict`` ``{'l1': filename or None, 'l2': ..., 'l3': ...}`` where
@@ -1632,11 +1751,12 @@ def _resolve_layer_files(work_dir, scope, file_list=None):
 
     resolved = {}
     for layer, cell_id in cell_ids.items():
-        matches = _find_svgs_for_cell(work_dir, cell_id, file_list=file_list)
-        # Multiple matches are theoretically possible (e.g. legacy + tag-less
-        # variants) but in practice only one per cell is produced; we pick
-        # the first deterministically so the live viewer is reproducible.
-        resolved[layer] = matches[0] if matches else None
+        matches = _find_svgs_for_cell(work_dir, cell_id, file_list=file_list,
+                                      basename=basename)
+        # Running a command versions the master, so each generation leaves its
+        # own SVG behind and several can match. Fall back to the newest rather
+        # than the alphabetically first, which is always the oldest generation.
+        resolved[layer] = _newest_file(work_dir, matches)
     return resolved
 
 
@@ -3452,7 +3572,8 @@ def diagram_preview(job_id):
     else:
         abort(400)
 
-    layer_filenames = _resolve_layer_files(str(work_dir), scope)
+    layer_filenames = _resolve_layer_files(str(work_dir), scope,
+                                           basename=master_basename)
 
     from ns_engine.nsm_l1l2l3_html import render_l1l2l3_html
     html = render_l1l2l3_html(
@@ -3521,7 +3642,8 @@ def diagram_preview_html(job_id):
     else:
         abort(400)
 
-    layer_filenames = _resolve_layer_files(str(work_dir), scope)
+    layer_filenames = _resolve_layer_files(str(work_dir), scope,
+                                           basename=basename)
     layer_svgs = {}
     for layer in ('l1', 'l2', 'l3'):
         fname = layer_filenames.get(layer)
@@ -4589,7 +4711,8 @@ def download_all(job_id):
         else:
             return None
 
-        layer_filenames = _resolve_layer_files(str(work_dir), scope)
+        layer_filenames = _resolve_layer_files(str(work_dir), scope,
+                                               basename=basename)
         layer_svgs = {'l1': None, 'l2': None, 'l3': None}
         have_any = False
         for layer in ('l1', 'l2', 'l3'):
@@ -7578,13 +7701,21 @@ function _cmdRefFeedback(msg) {
                 runStatus.innerHTML = '<span style="color:var(--success)">All commands executed successfully.</span>'
                     + '<span style="color:var(--text-secondary);margin-left:12px;font-size:0.93em">' + cmdElapsedStr + '</span>';
             } else {
-                runStatus.innerHTML = '<span style="color:#e94560">' + (data.errors ? data.errors.length : 0) + ' command(s) failed.</span>'
+                // A rejection raised before the command loop carries only
+                // `message`; without this it renders as "0 command(s) failed."
+                var failCount = data.errors ? data.errors.length : 0;
+                var failMsg = failCount > 0
+                    ? failCount + ' command(s) failed.'
+                    : (data.message || 'Command execution failed.');
+                runStatus.innerHTML = '<span style="color:#e94560">' + escapeHtml(failMsg) + '</span>'
                     + '<span style="color:var(--text-secondary);margin-left:12px;font-size:0.93em">' + cmdElapsedStr + '</span>';
             }
             runStatus.style.display = 'block';
 
             if (data.updated_master) {
-                masterVersion = nextVersion;
+                // The server skips ahead when the requested number is already
+                // taken, so adopt the version it actually allocated.
+                masterVersion = data.master_version || nextVersion;
                 updatedMasters.push(data.updated_master);
                 currentBasename = data.updated_master.replace('[MASTER]', '').replace('.xlsx', '');
                 isEmptyMaster = false;
@@ -7763,7 +7894,7 @@ function _cmdRefFeedback(msg) {
             currentJobId = sess.jobId;
             currentBasename = data.basename || sess.basename || '';
             currentMasterFilename = data.master_filename || '';
-            masterVersion = sess.masterVersion || 0;
+            masterVersion = data.master_version || sess.masterVersion || 0;
             updatedMasters = data.updated_masters || sess.updatedMasters || [];
             isEmptyMaster = sess.isEmptyMaster || false;
             currentAreas = (data.areas && data.areas.length > 0) ? data.areas : [];
