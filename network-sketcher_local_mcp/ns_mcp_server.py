@@ -32,13 +32,16 @@ MCP host. Logs go to stderr so they appear in the host's log panel.
 """
 
 import asyncio
+import atexit
 import json
 import logging
 import os
 import shlex
 import shutil
+import signal
 import sys
 import tempfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
 
@@ -271,14 +274,242 @@ def _classify_result(result: RunResult) -> tuple[bool, str]:
 
 _WORKER_PATH = _MCP_DIR / '_ns_cli_worker.py'
 
+_PERSISTENT_WORKER = bool(_CFG.get('persistent_worker', True))
 
-async def _run_batch(commands: List[List[str]]) -> List[RunResult]:
-    """Run one or more CLI commands in a subprocess worker.
+try:
+    _COMMAND_TIMEOUT = float(_CFG.get('command_timeout_seconds') or 300)
+except (TypeError, ValueError):
+    _COMMAND_TIMEOUT = 300.0
 
-    By executing in a separate process, the worker's sys.stdout redirect
-    (done internally by run_cli / nsm_adapter) is completely isolated from
-    the MCP server's stdio transport.  All commands are batched into a single
-    subprocess to amortise Python startup overhead.
+# Spawning the worker costs roughly a second (interpreter start, bootstrap,
+# and the engine's pandas / pyarrow / openpyxl / pptx imports). Allow ample
+# headroom on a cold filesystem cache.
+_WORKER_START_TIMEOUT = 120.0
+
+# Show commands can emit several hundred KB, so raise the stream buffer well
+# above asyncio's 64 KiB default.
+_WORKER_STREAM_LIMIT = 8 * 1024 * 1024
+
+# Upper bound on a single frame. readexactly() ignores the stream limit, so a
+# desynchronised stream could otherwise turn a garbage length into an
+# unbounded allocation. Well above any real response.
+_MAX_FRAME_BYTES = 64 * 1024 * 1024
+
+# PIDs of live workers, so an abrupt server exit cannot orphan them.
+_worker_pids: set = set()
+
+
+def _kill_orphan_workers() -> None:
+    for pid in list(_worker_pids):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+    _worker_pids.clear()
+
+
+atexit.register(_kill_orphan_workers)
+
+
+class _WorkerProtocolError(Exception):
+    """The worker's response stream is not intelligible."""
+
+
+class _PersistentCliWorker:
+    """A long-lived _ns_cli_worker.py subprocess.
+
+    The one-shot model paid the ~1.2 s startup on every MCP tool call.
+    Keeping one worker alive moves that cost to server startup while
+    preserving the reason the subprocess exists at all: run_cli redirects
+    sys.stdout (and the engine closes sys.stdin), which would corrupt
+    FastMCP's JSON-RPC-over-stdout transport if it happened in-process.
+
+    Requests are serialised: the engine is not reentrant, since run_cli
+    chdir's the whole process and holds its own thread lock.
+    """
+
+    def __init__(self) -> None:
+        self._proc: Optional[asyncio.subprocess.Process] = None
+        self._lock = asyncio.Lock()
+        self._next_id = 1
+
+    @property
+    def alive(self) -> bool:
+        return self._proc is not None and self._proc.returncode is None
+
+    # -- framing ---------------------------------------------------------
+
+    async def _write_frame(self, obj: dict) -> None:
+        raw = json.dumps(obj, ensure_ascii=False).encode('utf-8')
+        self._proc.stdin.write(str(len(raw)).encode('ascii') + b'\n')
+        self._proc.stdin.write(raw)
+        await self._proc.stdin.drain()
+
+    async def _read_frame(self) -> Optional[dict]:
+        stdout = self._proc.stdout
+        header = await stdout.readline()
+        if not header:
+            return None
+        try:
+            length = int(header.strip())
+        except ValueError:
+            raise _WorkerProtocolError(f'invalid frame header: {header!r}')
+        if not 0 <= length <= _MAX_FRAME_BYTES:
+            raise _WorkerProtocolError(
+                f'frame length {length} outside 0..{_MAX_FRAME_BYTES}')
+        try:
+            body = await stdout.readexactly(length)
+        except asyncio.IncompleteReadError:
+            return None
+        try:
+            return json.loads(body.decode('utf-8'))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            raise _WorkerProtocolError(f'undecodable frame: {e}')
+
+    # -- lifecycle -------------------------------------------------------
+
+    async def _spawn(self) -> bool:
+        """Launch a worker and wait for its ready frame. Caller holds the lock."""
+        await self._kill()
+        try:
+            # stderr is deliberately inherited rather than piped: nothing
+            # would drain a pipe between requests, and a full pipe buffer
+            # would wedge a long-lived worker. Inheriting also surfaces the
+            # worker's diagnostics in the MCP host's log panel.
+            self._proc = await asyncio.create_subprocess_exec(
+                sys.executable, str(_WORKER_PATH),
+                str(_ENGINE_DIR), str(_ONLINE_DIR),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                limit=_WORKER_STREAM_LIMIT,
+            )
+        except OSError as e:
+            logger.error('Persistent worker launch failed: %s', e)
+            self._proc = None
+            return False
+
+        _worker_pids.add(self._proc.pid)
+        try:
+            frame = await asyncio.wait_for(self._read_frame(),
+                                           _WORKER_START_TIMEOUT)
+        except (asyncio.TimeoutError, _WorkerProtocolError) as e:
+            logger.error('Persistent worker failed to become ready: %s', e)
+            await self._kill()
+            return False
+
+        if not frame or not frame.get('ready'):
+            detail = (frame or {}).get('error', 'no ready frame')
+            logger.error('Persistent worker startup error: %s', detail)
+            await self._kill()
+            return False
+
+        logger.info('Persistent CLI worker ready (pid %s)', frame.get('pid'))
+        return True
+
+    async def start(self) -> bool:
+        async with self._lock:
+            return await self._spawn()
+
+    async def _kill(self) -> None:
+        proc, self._proc = self._proc, None
+        if proc is None:
+            return
+        _worker_pids.discard(proc.pid)
+        if proc.returncode is not None:
+            return
+        try:
+            proc.kill()
+        except (ProcessLookupError, OSError):
+            pass          # already gone; still reap it below
+        try:
+            await asyncio.wait_for(proc.wait(), 5)
+        except (asyncio.TimeoutError, OSError):
+            pass
+
+    async def stop(self) -> None:
+        async with self._lock:
+            proc = self._proc
+            if proc is not None and proc.returncode is None:
+                try:
+                    await self._write_frame({'id': 0, 'type': 'shutdown'})
+                    await asyncio.wait_for(proc.wait(), 5)
+                except (asyncio.TimeoutError, OSError, AttributeError):
+                    pass
+            await self._kill()
+
+    # -- request ---------------------------------------------------------
+
+    async def run(self, commands: List[List[str]]) -> Optional[List[RunResult]]:
+        """Execute a batch.
+
+        Returns None when no worker could be started, so the caller can
+        fall back to the one-shot path. A dispatched request that fails
+        returns error results instead: it is never retried, because a
+        mutation may already have been applied.
+        """
+        async with self._lock:
+            if not self.alive and not await self._spawn():
+                return None
+
+            req_id = self._next_id
+            self._next_id += 1
+
+            try:
+                await self._write_frame({'id': req_id, 'type': 'cli',
+                                         'commands': commands})
+                frame = await asyncio.wait_for(self._read_frame(),
+                                               _COMMAND_TIMEOUT)
+            except asyncio.TimeoutError:
+                await self._kill()
+                return _error_results(
+                    commands,
+                    f'[WORKER TIMEOUT] No response within '
+                    f'{_COMMAND_TIMEOUT:g}s. The worker was restarted; the '
+                    f'master may be in a partially updated state.')
+            except (_WorkerProtocolError, OSError, ConnectionError) as e:
+                await self._kill()
+                return _error_results(commands, f'[WORKER ERROR] {e}')
+
+            if frame is None:
+                await self._kill()
+                return _error_results(
+                    commands,
+                    '[WORKER ERROR] The worker exited while running the '
+                    'batch. It will be restarted on the next call; the '
+                    'master may be in a partially updated state.')
+
+            if frame.get('id') != req_id:
+                await self._kill()
+                return _error_results(
+                    commands,
+                    f'[WORKER ERROR] Response id {frame.get("id")!r} does '
+                    f'not match request id {req_id}.')
+
+            if 'error' in frame:
+                logger.error('Worker reported an error: %s\n%s',
+                             frame.get('error'), frame.get('traceback', ''))
+                return _error_results(commands,
+                                      f'[WORKER ERROR] {frame["error"]}')
+
+            try:
+                return [RunResult(**r) for r in frame['results']]
+            except (KeyError, TypeError) as e:
+                await self._kill()
+                return _error_results(commands, f'[WORKER PARSE ERROR] {e}')
+
+
+def _error_results(commands: List[List[str]], message: str) -> List[RunResult]:
+    logger.error(message)
+    return [RunResult(returncode=1, stderr=message) for _ in commands]
+
+
+_cli_worker = _PersistentCliWorker()
+
+
+async def _run_batch_oneshot(commands: List[List[str]]) -> List[RunResult]:
+    """Run a batch in a throwaway worker process.
+
+    Fallback for when the persistent worker is disabled or cannot start.
     """
     payload = json.dumps({
         'engine_dir': str(_ENGINE_DIR),
@@ -286,8 +517,6 @@ async def _run_batch(commands: List[List[str]]) -> List[RunResult]:
         'commands': commands,
     }, ensure_ascii=False).encode('utf-8')
 
-    logger.debug('CLI batch (%d cmd(s)): %s', len(commands),
-                 '; '.join(' '.join(c) for c in commands))
     try:
         proc = await asyncio.create_subprocess_exec(
             sys.executable, str(_WORKER_PATH),
@@ -297,9 +526,7 @@ async def _run_batch(commands: List[List[str]]) -> List[RunResult]:
         )
         stdout_bytes, stderr_bytes = await proc.communicate(input=payload)
     except OSError as e:
-        err = f'[WORKER LAUNCH ERROR] {e}'
-        logger.error(err)
-        return [RunResult(returncode=1, stderr=err)] * len(commands)
+        return _error_results(commands, f'[WORKER LAUNCH ERROR] {e}')
 
     stderr_text = stderr_bytes.decode('utf-8', errors='replace').strip()
     if stderr_text:
@@ -307,13 +534,38 @@ async def _run_batch(commands: List[List[str]]) -> List[RunResult]:
 
     try:
         data = json.loads(stdout_bytes.decode('utf-8', errors='replace'))
-        results = [RunResult(**r) for r in data]
+        return [RunResult(**r) for r in data]
     except (json.JSONDecodeError, KeyError, TypeError) as e:
-        err = f'[WORKER PARSE ERROR] {e}\nstdout={stdout_bytes!r}\nstderr={stderr_text}'
-        logger.error(err)
-        return [RunResult(returncode=1, stderr=err)] * len(commands)
+        # The raw stdout can carry master contents and absolute paths, so it
+        # goes to the server log only, not into the MCP response.
+        logger.error('[WORKER PARSE ERROR] %s\nstdout=%r\nstderr=%s',
+                     e, stdout_bytes[:4096], stderr_text)
+        return _error_results(
+            commands,
+            f'[WORKER PARSE ERROR] {e} '
+            f'(the worker output was not valid JSON; '
+            f'see the MCP server log for details)')
 
-    return results
+
+async def _run_batch(commands: List[List[str]]) -> List[RunResult]:
+    """Run one or more CLI commands in a worker process.
+
+    By executing in a separate process, the worker's sys.stdout redirect
+    (done internally by run_cli / nsm_adapter) is completely isolated from
+    the MCP server's stdio transport.  All commands are batched into a
+    single request so the engine's warm state is reused across them.
+    """
+    logger.debug('CLI batch (%d cmd(s)): %s', len(commands),
+                 '; '.join(' '.join(c) for c in commands))
+
+    if _PERSISTENT_WORKER:
+        results = await _cli_worker.run(commands)
+        if results is not None:
+            return results
+        logger.warning('Persistent worker unavailable; '
+                       'falling back to a one-shot worker.')
+
+    return await _run_batch_oneshot(commands)
 
 
 async def _run(cli_args: List[str]) -> RunResult:
@@ -435,7 +687,25 @@ _SERVER_INSTRUCTIONS = (
     "external sources were applicable."
 )
 
-mcp = FastMCP('network-sketcher', instructions=_SERVER_INSTRUCTIONS)
+@asynccontextmanager
+async def _server_lifespan(_server):
+    """Pre-warm the CLI worker and shut it down cleanly.
+
+    Starting it here rather than on first use keeps the ~1.2 s engine
+    warm-up off the critical path of the first tool call.
+    """
+    if _PERSISTENT_WORKER and not await _cli_worker.start():
+        logger.warning(
+            'Persistent worker pre-warm failed. Tool calls will retry it '
+            'once each and otherwise fall back to one-shot workers.')
+    try:
+        yield {}
+    finally:
+        await _cli_worker.stop()
+
+
+mcp = FastMCP('network-sketcher', instructions=_SERVER_INSTRUCTIONS,
+              lifespan=_server_lifespan)
 
 # ---------------------------------------------------------------------------
 # Tools
@@ -868,8 +1138,8 @@ async def run_commands(master: str, commands: str) -> str:
     Args:
         master: Master filename inside the working directory.
         commands: Newline-separated CLI command lines. Example:
-                      add device 'SW-3' --area 'DC1'
-                      add l1_link 'SW-2' 'GE 0/0' 'SW-3' 'GE 0/1'
+                      add device 'SW-3' 'SW-2' RIGHT
+                      add l1_link_bulk "[['SW-2','SW-3','GE 0/1','GE 0/0']]"
 
     Returns:
         Per-line results: each command's exit summary and stdout, joined.
@@ -1254,12 +1524,16 @@ async def _build_device_table(master_path: Path) -> dict:
     try:
         data = json.loads(stdout_bytes.decode('utf-8', errors='replace'))
     except json.JSONDecodeError as e:
+        # The raw stdout can carry master contents and absolute paths, so it
+        # goes to the server log only, not into the MCP response.
+        logger.error('Device-table worker output parse failed: %s\n'
+                     'stdout=%r\nstderr=%s', e, stdout_bytes[:4096],
+                     stderr_text)
         return {
             'ok': False,
             'error': (
-                f"Device-table worker output parse failed: {e}\n"
-                f"stdout={stdout_bytes!r}\n"
-                f"stderr={stderr_text}"
+                f'Device-table worker output parse failed: {e} '
+                f'(see the MCP server log for details)'
             ),
         }
 

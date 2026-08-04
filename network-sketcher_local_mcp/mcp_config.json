@@ -32,8 +32,13 @@
         "description": "List of show commands executed in order by the get_network_state tool. Same set as the Online edition's AI context."
     },
 
+    "persistent_worker": {
+        "value": true,
+        "description": "Keep a single CLI worker process alive for the whole session instead of spawning one per tool call. The worker is pre-warmed at server startup, which removes roughly 1.2 seconds of interpreter start and engine import cost from every tool call. Set to false to go back to one-shot workers if you need to isolate a problem; the server also falls back automatically when the worker cannot be started."
+    },
+
     "command_timeout_seconds": {
         "value": 300,
-        "description": "(Reserved; not used in the current version) Intended as a per-CLI-call timeout in seconds. The value is currently ignored by the server. Tracked for a future release."
+        "description": "Maximum time in seconds to wait for a batch of CLI commands to come back from the worker. On timeout the worker is killed and restarted, and the tool reports an error. Commands are never retried automatically, because a mutating command may already have been partially applied."
     }
 }
