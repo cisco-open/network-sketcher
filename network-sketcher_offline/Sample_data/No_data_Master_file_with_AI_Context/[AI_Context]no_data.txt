@@ -1903,6 +1903,7 @@ FlexConnect AP with IP on physical port   | Remove IP from physical port, use SV
 SVI without L2 segment binding on itself  | Add L2 segment to SVI itself (Rule 15)
 L1 interfaces without port info           | Add rename port_info_bulk (Rule 16)
 Port info not matching interface type     | Correct Speed/Duplex/Port_Type values
+Port already used by an existing L1 link  | Use an unconnected port (Rule 7 Phase 2)
 
 CORRECTION WORKFLOW:
 1. Identify issue from red flags
@@ -1944,6 +1945,12 @@ PHASE 1: NETWORK STRUCTURE
 
 PHASE 2: PHYSICAL CONNECTIVITY
 3. add l1_link_bulk (MANDATORY - always use bulk for L1 links)
+   PORT UNIQUENESS (MANDATORY): run show l1_link first and treat every
+   port listed there as already occupied. A port carries exactly one L1
+   link, so each new link MUST use a port number that is not already
+   connected and that is not reused anywhere else in the same batch.
+   A duplicated port aborts the entire add l1_link_bulk command, so
+   allocate port numbers explicitly before generating the command.
 
 PHASE 2.5: PORT INFORMATION CONFIGURATION
 4. rename port_info_bulk (MANDATORY - set Speed/Duplex/Port_Type for all L1 interfaces)
