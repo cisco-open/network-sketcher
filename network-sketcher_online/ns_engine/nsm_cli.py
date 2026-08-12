@@ -1089,9 +1089,13 @@ class ns_cli_run():
                 basename_clean = basename_without_ext.replace('[MASTER]', '')
 
                 # Validate target_area against the master folder list.
+                # Read the folder list straight from master_file_path: the CLI
+                # entry point has no inFileTxt_L2_3_1 widget, and the GUI/web
+                # one may point at a different master than --master.
                 if target_area is not None:
-                    import nsm_extensions
-                    area_list = nsm_extensions.ip_report.get_folder_list(self) or []
+                    import nsm_def
+                    folder_wp_array = nsm_def.get_folder_wp_array_from_master('Master_Data', master_file_path)
+                    area_list = sorted(folder_wp_array[0]) if folder_wp_array else []
                     if not area_list:
                         return ([f'[ERROR] No areas found in the master file'])
                     if target_area not in area_list:
