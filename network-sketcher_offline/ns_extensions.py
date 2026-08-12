@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
-import ns_def, ns_egt_maker, ns_ddx_figure, ns_cli
+import ns_def, ns_egt_maker, ns_ddx_figure, ns_cli, ns_ai_context
 from collections import Counter
 import tkinter as tk ,tkinter.ttk , openpyxl
 import ipaddress, sys, os, re, shutil
@@ -52,37 +52,18 @@ class ai_context():
 
         content_to_append += '\'\'\'' + '\n' + 'All data in the master file'+ '\n' + '\'\'\'' + '\n'
 
-        export_num = 0
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_area' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_area_device' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_device'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_area_location' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'area_location'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_attribute' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'attribute'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_device' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_device_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_device_location' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'device_location'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_l1_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_l1_link' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l1_link'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_l2_broadcast_domain' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_broadcast_domain'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_l2_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l2_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_l3_broadcast_domain' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_broadcast_domain'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_l3_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'l3_interface'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_waypoint' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint'])) + '\n'
-        print('** Exporting ' + str(export_num := export_num + 1) + '/15')
-        content_to_append += '** show_waypoint_interface' + '\n' + str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', 'waypoint_interface'])) + '\n'+ '\n'
+        show_targets = ['area', 'area_device', 'area_location', 'attribute',
+                        'device', 'device_interface', 'device_location',
+                        'l1_interface', 'l1_link', 'l2_broadcast_domain',
+                        'l2_interface', 'l3_broadcast_domain', 'l3_interface',
+                        'waypoint', 'waypoint_interface']
+
+        for export_num, target in enumerate(show_targets, start=1):
+            print('** Exporting ' + str(export_num) + '/' + str(len(show_targets)))
+            body = str(ns_cli.ns_cli_run.cli_show(self, excel_maseter_file, ['show', target]))
+            body = ns_ai_context.compact_section('show ' + target, body)
+            content_to_append += '** show_' + target + '\n' + body + '\n'
+        content_to_append += '\n'
 
         # add commands's guide
         def resource_path(relative_path):
@@ -94,8 +75,7 @@ class ai_context():
             return os.path.join(base_path, relative_path)
 
         file_path = resource_path('ns_extensions_cmd_list.txt')
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content_to_append += f.read()
+        content_to_append += ns_ai_context.read_reference(file_path)
 
 
         try:

@@ -8,6 +8,32 @@ IMPORTANT: Quoting Rules for All Commands
 * For bulk commands that take a JSON-style array as the entire argument, enclose the whole array in double quotes: "[['DEV1','GE 0/0',...]]"
 
 '''
+Reading the network state dump
+'''
+The ** show_xxx blocks above are the live output of each show command, with
+redundancy removed. Two annotations may appear; both are losslessly reversible,
+so read the data exactly as if the omitted parts were spelled out. They affect
+the dump only - commands you generate still take the full syntax documented
+below.
+
+* A line starting with [omitted] means the section was dropped because it can be
+  rebuilt from another section, and the line names that section.
+* A line starting with [compact] describes how the rows beneath it were
+  shortened. Three forms are used:
+  * show_attribute - a cell written as a bare 'VALUE' uses its column's default
+    color; the [compact] line lists the default RGB per 1-based column. Cells
+    that differ keep the full "['VALUE', [R, G, B]]" form.
+  * show_l1_interface - a two-field row ['device', 'interface'] uses the default
+    (Speed, Duplex, Port_Type) given on the [compact] line; a five-field row
+    spells all three out. The abbreviated interface column is omitted when it is
+    derivable: split the interface name at the first digit, map GigabitEthernet /
+    Ethernet / FastEthernet / TenGigabitEthernet to GE / E / FE / TE (any other
+    name keeps its first two characters), then append the digits after a space,
+    so 'GigabitEthernet 1/0/11' becomes 'GE 1/0/11'.
+  * Any section - columns that were empty on every row are removed, and the
+    [compact] line names them by 1-based position.
+
+'''
 Show Commands reference
 '''
 ## show area

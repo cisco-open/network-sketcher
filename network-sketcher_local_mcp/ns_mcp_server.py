@@ -67,6 +67,7 @@ sys.path.insert(0, str(_ONLINE_DIR))
 
 try:
     from ns_engine.nsm_adapter import bootstrap, run_cli, RunResult  # noqa: E402
+    from ns_engine import nsm_ai_context as _ai_ctx  # noqa: E402
     bootstrap()
 except ImportError as e:
     sys.stderr.write(
@@ -990,6 +991,18 @@ async def create_empty_master(filename: Optional[str] = None) -> str:
     )
 
 
+# Prefixed to the show dump so the caller knows the redundancy-removal
+# annotations are lossless. The annotations themselves state what was removed
+# and how to rebuild it, so this header stays a pointer rather than a copy.
+_SHOW_DUMP_LEGEND = (
+    'Redundancy has been removed from the output below. A line beginning with '
+    '[compact] states how the rows under it were shortened (default values, '
+    'omitted columns, derivable columns); a line beginning with [omitted] names '
+    'the section the data can be rebuilt from. Read the data as if the omitted '
+    'parts were spelled out. Commands you generate still use the full syntax.\n\n'
+)
+
+
 @mcp.tool()
 async def get_network_state(master: str) -> str:
     """Run the standard set of `show` commands and return aggregated results.
@@ -1040,9 +1053,11 @@ async def get_network_state(master: str) -> str:
         body = (result.stdout or '').rstrip()
         if not body and result.stderr:
             body = '[ERROR] ' + result.stderr.rstrip()
+        else:
+            body = _ai_ctx.compact_section(cmd, body)
         sections.append(f'** {cmd.replace(" ", "_")}\n{body}')
 
-    return '\n\n'.join(sections) + '\n'
+    return _SHOW_DUMP_LEGEND + '\n'.join(sections) + '\n'
 
 
 def _ai_context_path(master_path: Path) -> Path:

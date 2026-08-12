@@ -66,6 +66,7 @@ from ns_engine.nsm_cli import (
     _resolve_l3_render_quality as _resolve_l3_render_quality,
     read_l3_render_quality_marker as _read_l3_render_quality_marker,
 )
+from ns_engine import nsm_ai_context as _ai_ctx
 UPLOAD_DIR = BASE_DIR / 'uploads'
 STATIC_DIR = BASE_DIR / 'static'
 
@@ -1014,7 +1015,7 @@ def _run_show_command(show_cmd, master_path):
 def generate_ai_context_parallel(work_dir, master_filename):
     """Generate AI Context file by running show commands in parallel."""
     master_path = str(work_dir / master_filename)
-    show_commands = _cfg.get('ai_context_show_commands', [])
+    show_commands = list(_cfg.get('ai_context_show_commands', []))
     limit = _cfg.get('parallel_limit', 5)
 
     task_dirs = []
@@ -1051,20 +1052,23 @@ def generate_ai_context_parallel(work_dir, master_filename):
     content += "'''\nAll data in the master file\n'''\n"
 
     for idx in range(len(show_commands)):
-        label = show_commands[idx].replace(' ', '_')
-        content += f'** {label}\n{results_by_idx.get(idx, "")}\n'
+        cmd = show_commands[idx]
+        label = cmd.replace(' ', '_')
+        body = results_by_idx.get(idx, '')
+        if not body.startswith('[ERROR]'):
+            body = _ai_ctx.compact_section(cmd, body)
+        content += f'** {label}\n{body}\n'
     content += '\n'
-
-    cmd_list_path = BASE_DIR / 'ns_engine' / 'nsm_extensions_cmd_list.txt'
-    if cmd_list_path.is_file():
-        with open(str(cmd_list_path), 'r', encoding='utf-8') as f:
-            content += f.read()
+    content += _ai_ctx.read_reference(CMD_REF_PATH)
 
     basename = master_filename.replace('[MASTER]', '').replace('.xlsx', '').replace('.nsm', '')
     out_path = work_dir / f'[AI_Context]{basename}.txt'
     with open(str(out_path), 'w', encoding='utf-8') as f:
         f.write(content + '\n')
 
+    logger.info('AI context generated (%d bytes): %s',
+                out_path.stat().st_size if out_path.is_file() else 0,
+                out_path.name)
     return out_path.is_file()
 
 
@@ -5620,6 +5624,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
                 <div class="llm-prompt-hint">This text will be appended to the AI Context when copied, requesting the LLM to output only executable commands.</div>
                 <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;" id="llmBtnRow">
                     <span style="font-size:11px;font-weight:700;color:#2563eb;flex:1;min-width:200px;">&#9888; All network configuration data will be uploaded to the LLM. Ensure you fully understand the risk of information disclosure before proceeding.</span>
+                    <span class="llm-prompt-hint" id="aiSizeHint" style="margin:0;"></span>
                     <span class="llm-gen-status" id="llmGenStatus" style="font-size:12px;color:#888;display:none;"></span>
                     <button type="button" class="output-llm" id="btnCopyOpenLlm" style="display:none;">{{AI_CONTEXT_BTN_LABEL}}</button>
                     <button type="button" class="output-copy-only" id="btnCopyOnly" style="display:none;">Copy</button>
@@ -6234,6 +6239,9 @@ function _cmdRefFeedback(msg) {
         btnDownloadAll.classList.add('disabled');
         btnDownloadAll.style.display = 'none';
 
+        // The stream also regenerates the AI Context; block copy/download
+        // until the 'done' event hands over the new filename.
+        markAiContextPending();
         svgGridEventSource = new EventSource(sseUrl);
 
         svgGridEventSource.onmessage = function(ev) {
@@ -6269,6 +6277,7 @@ function _cmdRefFeedback(msg) {
                     // area, the URL is upgraded to the area-scoped ZIP in
                     // requestAreaThumbnails().
                     setZipButtonLightweight();
+                    markAiContextReady();
                     return;
                 }
                 renderCellFromSseMessage(msg, svgGridCellMap, svgGridSelAttr);
@@ -6277,6 +6286,7 @@ function _cmdRefFeedback(msg) {
 
         svgGridEventSource.onerror = function() {
             if (svgGridEventSource) { svgGridEventSource.close(); svgGridEventSource = null; }
+            markAiContextReady();
         };
     }
 
@@ -7017,7 +7027,26 @@ function _cmdRefFeedback(msg) {
         btnDlAiContext.style.display = '';
     }
 
+    function setAiContextBusy(busy) {
+        llmGenStatus.textContent = 'Generating AI Context...';
+        llmGenStatus.style.color = '#0984e3';
+        llmGenStatus.style.display = busy ? 'inline' : 'none';
+        btnCopyOpenLlm.disabled = busy;
+        btnCopyOnly.disabled = busy;
+        btnDlAiContext.disabled = busy;
+    }
+
     async function ensureAiContextAndDo(actionFn) {
+        // A regeneration triggered by the last Run may still be in flight;
+        // waiting for it guarantees the post-run context is the one used.
+        if (_aiCtxInflight) {
+            setAiContextBusy(true);
+            try {
+                await _aiCtxInflight;
+            } finally {
+                setAiContextBusy(false);
+            }
+        }
         if (_currentAiDlUrl) {
             await actionFn();
             return;
@@ -7026,23 +7055,18 @@ function _cmdRefFeedback(msg) {
         var aiItem = document.querySelector('#fileActionsSection input[data-step="ai_context_file"]')
                   || outputList.querySelector('input[data-step="ai_context_file"]');
         if (!aiItem) return;
-        llmGenStatus.textContent = 'Generating AI Context...';
-        llmGenStatus.style.display = 'inline';
-        llmGenStatus.style.color = '#0984e3';
-        btnCopyOpenLlm.disabled = true;
-        btnCopyOnly.disabled = true;
-        btnDlAiContext.disabled = true;
+        setAiContextBusy(true);
         var selected = [{
             id: aiItem.getAttribute('data-id'),
             step: 'ai_context_file',
             area: '',
             subtype: ''
         }];
-        await generateItems(selected);
-        llmGenStatus.style.display = 'none';
-        btnCopyOpenLlm.disabled = false;
-        btnCopyOnly.disabled = false;
-        btnDlAiContext.disabled = false;
+        try {
+            await generateItems(selected);
+        } finally {
+            setAiContextBusy(false);
+        }
         if (_currentAiDlUrl) {
             await actionFn();
         }
@@ -7069,6 +7093,33 @@ function _cmdRefFeedback(msg) {
     var llmGenStatus = document.getElementById('llmGenStatus');
     var llmPromptArea = document.getElementById('llmPromptArea');
 
+    var aiSizeHint = document.getElementById('aiSizeHint');
+
+    // Running a command invalidates the AI Context, and the replacement is
+    // regenerated asynchronously (SSE in SVG mode, generateAiContextFixed in
+    // PPTX mode). Copy/Download wait on this promise so they never grab the
+    // pre-run file nor start a second, duplicate generation.
+    var _aiCtxInflight = null;
+    var _aiCtxInflightResolve = null;
+
+    function markAiContextPending() {
+        if (_aiCtxInflight) return;
+        _aiCtxInflight = new Promise(function(res) { _aiCtxInflightResolve = res; });
+    }
+
+    function markAiContextReady() {
+        if (_aiCtxInflightResolve) _aiCtxInflightResolve();
+        _aiCtxInflight = null;
+        _aiCtxInflightResolve = null;
+    }
+
+    function reportAiContextSize(text) {
+        if (!aiSizeHint) return;
+        var kb = (text.length / 1024).toFixed(1);
+        aiSizeHint.textContent = 'Copied ' + text.length.toLocaleString()
+            + ' characters (' + kb + ' KB)';
+    }
+
     function activateUpdateLlmButtons(dlUrl, fname) {
         _currentAiDlUrl = dlUrl;
         _currentAiFname = fname;
@@ -7086,10 +7137,11 @@ function _cmdRefFeedback(msg) {
         var btn = openUrl ? btnCopyOpenLlm : btnCopyOnly;
         var origText = btn.textContent;
         try {
-            var r = await fetch(_currentAiDlUrl);
+            var r = await fetch(_currentAiDlUrl, { cache: 'no-store' });
             var text = await r.text();
             var clipboard = buildLlmClipboard(text);
             await navigator.clipboard.writeText(clipboard);
+            reportAiContextSize(clipboard);
             btn.textContent = 'Copied!';
             setTimeout(function() { btn.textContent = origText; }, 2000);
             if (openUrl) window.open('{{AI_CONTEXT_BTN_URL}}', '_blank', 'noopener,noreferrer');
@@ -7110,9 +7162,10 @@ function _cmdRefFeedback(msg) {
     btnDlAiContext.addEventListener('click', async function(e) {
         e.preventDefault(); e.stopPropagation();
         await ensureAiContextAndDo(async function() {
-            var r = await fetch(_currentAiDlUrl);
+            var r = await fetch(_currentAiDlUrl, { cache: 'no-store' });
             var text = await r.text();
             var content = buildLlmClipboard(text);
+            reportAiContextSize(content);
             var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
@@ -7385,8 +7438,13 @@ function _cmdRefFeedback(msg) {
         var aiRow = document.getElementById('fileActionsAiRow');
         var aiLabelEl = aiRow ? aiRow.querySelector('.output-label') : null;
         if (aiLabelEl) aiLabelEl.textContent = updatedMasters.length > 0 ? 'AI Context File (v' + updatedMasters.length + ')' : 'AI Context File';
-        await runStep('ai_context_file', '/generate_step/' + currentJobId + '/ai_context_file');
-        await addDownloadButtons();
+        markAiContextPending();
+        try {
+            await runStep('ai_context_file', '/generate_step/' + currentJobId + '/ai_context_file');
+            await addDownloadButtons();
+        } finally {
+            markAiContextReady();
+        }
     }
 
     async function addDownloadButtons() {
@@ -7717,14 +7775,18 @@ function _cmdRefFeedback(msg) {
                 // taken, so adopt the version it actually allocated.
                 masterVersion = data.master_version || nextVersion;
                 updatedMasters.push(data.updated_master);
-                currentBasename = data.updated_master.replace('[MASTER]', '').replace('.xlsx', '');
+                currentBasename = data.updated_master.replace('[MASTER]', '').replace('.xlsx', '').replace('.nsm', '');
                 isEmptyMaster = false;
 
                 runProgressText.textContent = 'Re-analyzing master file...';
                 selectionSection.style.opacity = '0.4';
                 selectionSection.style.pointerEvents = 'none';
+                // The context that produced these commands is now stale; the
+                // regeneration below (SSE in SVG mode, generateAiContextFixed
+                // otherwise) publishes the replacement.
                 _currentAiDlUrl = '';
                 _currentAiFname = '';
+                markAiContextPending();
 
                 var res = await fetch('/generate_step/' + currentJobId + '/init', { method: 'POST' });
                 var initData = await res.json();
@@ -7768,6 +7830,11 @@ function _cmdRefFeedback(msg) {
                 generationTotal.style.display = 'none';
                 saveSession();
                 showLlmPromptArea();
+                // The executed commands fulfilled the previous request, so the
+                // next prompt starts empty against the regenerated context.
+                var runPromptInput = document.getElementById('llmPromptInput');
+                if (runPromptInput) runPromptInput.value = '';
+                if (aiSizeHint) aiSizeHint.textContent = '';
             } else {
                 runProgress.style.display = 'none';
             }
@@ -7829,6 +7896,8 @@ function _cmdRefFeedback(msg) {
         llmPromptArea.style.display = 'none';
         var promptInput = document.getElementById('llmPromptInput');
         if (promptInput) promptInput.value = '';
+        if (aiSizeHint) aiSizeHint.textContent = '';
+        markAiContextReady();
     }
 
     function showError(msg) { uploadError.textContent = msg; uploadError.style.display = 'block'; }
