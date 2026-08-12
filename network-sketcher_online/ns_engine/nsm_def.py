@@ -2945,10 +2945,14 @@ class  get_l2_broadcast_domains():
             device_name = tmp_device_l2_other_array[0]
             if_name = tmp_device_l2_other_array[2][2]
             tmp_opposite_if_array = get_l2_broadcast_domains.get_opposite_if(self, device_name, if_name)
-            if tmp_opposite_if_array is None or len(tmp_opposite_if_array) < 2:
-                continue
 
             if tmp_device_l2_other_array[1] == '__EDGE_L3__':
+                # Only this branch dereferences the opposite interface. __ALONE_L3__
+                # (Loopback etc.) and __ALONE_L2__ have no L1 link by definition, so
+                # skipping them here would drop them from every broadcast group and
+                # therefore from the L3 diagram.
+                if tmp_opposite_if_array is None or len(tmp_opposite_if_array) < 2:
+                    continue
                 for tmp_tmp_device_l2_other_array in device_l2_other_array:
                     if tmp_tmp_device_l2_other_array[0] == tmp_opposite_if_array[0] and tmp_tmp_device_l2_other_array[2][2] == tmp_opposite_if_array[1]:
                         l2_broadcast_group_array_3rd.append(sorted(list(set([tmp_device_l2_other_array[2][0], tmp_tmp_device_l2_other_array[2][0]]))))
