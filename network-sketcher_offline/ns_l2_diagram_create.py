@@ -776,6 +776,7 @@ class ns_l2_diagram_create():
         #print(f"Shapes in folder: {len(tmp_folder_array)}")
 
         connected_wp_folder_set = set()
+        connected_wp_name_set = set()
 
         for tmp_shpae_name in tmp_folder_array:
             for tmp_position_line_tuple in self.position_line_tuple:
@@ -784,10 +785,12 @@ class ns_l2_diagram_create():
                         for tmp_wp_with_folder_tuple in wp_with_folder_tuple:
                             if tmp_wp_with_folder_tuple == self.position_line_tuple[tmp_position_line_tuple[0], 2]:
                                 connected_wp_folder_set.add(wp_with_folder_tuple[tmp_wp_with_folder_tuple])
+                                connected_wp_name_set.add(str(tmp_wp_with_folder_tuple))
                     if tmp_shpae_name == self.position_line_tuple[tmp_position_line_tuple[0], 2]:
                         for tmp_wp_with_folder_tuple in wp_with_folder_tuple:
                             if tmp_wp_with_folder_tuple == self.position_line_tuple[tmp_position_line_tuple[0], 1]:
                                 connected_wp_folder_set.add(wp_with_folder_tuple[tmp_wp_with_folder_tuple])
+                                connected_wp_name_set.add(str(tmp_wp_with_folder_tuple))
 
         connected_wp_folder_array = list(connected_wp_folder_set)
         #print(f"Connected WP folders: {len(connected_wp_folder_array)}")
@@ -831,6 +834,18 @@ class ns_l2_diagram_create():
         if action_type == 'CREATE_L2_AREA':
             ns_def.write_excel_meta(convert_tuple, ppt_meta_file, tmp_ws_name, '<<POSITION_FOLDER>>', 0, 0)
 
+        # Keep only the WayPoints this area is connected to. The folder filter
+        # above works per _wp_ folder, so WayPoints sharing a folder with a
+        # connected one would be drawn too.
+        extract_shape_array = ns_def.filter_wp_shapes_by_area(
+            self.position_shape_array, wp_with_folder_tuple.keys(), connected_wp_name_set)
+        extract_shape_tuple = self.position_shape_tuple
+        if extract_shape_array != self.position_shape_array:
+            extract_shape_tuple = ns_def.convert_array_to_tuple(extract_shape_array)
+            if action_type == 'CREATE_L2_AREA':
+                ns_def.clear_section_sheet(tmp_ws_name, ppt_meta_file, self.position_shape_tuple)
+                ns_def.overwrite_excel_meta(extract_shape_tuple, ppt_meta_file, tmp_ws_name, '<<POSITION_SHAPE>>', 0, 0)
+
         if action_type == 'CREATE_L2_AREA':
             ns_def.clear_section_sheet(tmp_ws_name, ppt_meta_file, self.position_style_shape_tuple)
 
@@ -838,7 +853,7 @@ class ns_l2_diagram_create():
 
         print("Calculating folder size...")
         master_folder_size_array = ns_def.get_folder_width_size(
-            convert_tuple, l2_position_style_shape_tuple, self.position_shape_tuple, 0.8
+            convert_tuple, l2_position_style_shape_tuple, extract_shape_tuple, 0.8
         )
 
         master_root_folder_tuple = ns_def.get_root_folder_tuple(self, master_folder_size_array, tmp_folder_name)

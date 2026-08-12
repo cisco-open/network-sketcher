@@ -150,6 +150,7 @@ class  ns_l1_diagram_create():
 
                 # GET connected wp up down left right
                 connected_wp_folder_array =[]
+                connected_wp_name_array = []
 
                 for tmp_shpae_name in tmp_folder_array:
                     for tmp_position_line_tuple in self.position_line_tuple:
@@ -159,11 +160,15 @@ class  ns_l1_diagram_create():
                                     if tmp_wp_with_folder_tuple == self.position_line_tuple[tmp_position_line_tuple[0],2]:
                                         if str(wp_with_folder_tuple[tmp_wp_with_folder_tuple]) not in connected_wp_folder_array:
                                             connected_wp_folder_array.append(wp_with_folder_tuple[tmp_wp_with_folder_tuple])
+                                        if str(tmp_wp_with_folder_tuple) not in connected_wp_name_array:
+                                            connected_wp_name_array.append(str(tmp_wp_with_folder_tuple))
                             if tmp_shpae_name == self.position_line_tuple[tmp_position_line_tuple[0],2]:
                                 for tmp_wp_with_folder_tuple in wp_with_folder_tuple:
                                     if tmp_wp_with_folder_tuple == self.position_line_tuple[tmp_position_line_tuple[0],1]:
                                         if str(wp_with_folder_tuple[tmp_wp_with_folder_tuple]) not in connected_wp_folder_array:
                                             connected_wp_folder_array.append(wp_with_folder_tuple[tmp_wp_with_folder_tuple])
+                                        if str(tmp_wp_with_folder_tuple) not in connected_wp_name_array:
+                                            connected_wp_name_array.append(str(tmp_wp_with_folder_tuple))
                 #print('---- connected_wp_folder_array ----')
                 #print(tmp_folder_name,connected_wp_folder_array)
 
@@ -224,10 +229,21 @@ class  ns_l1_diagram_create():
                 offset_column = 0
                 ns_def.write_excel_meta(master_excel_meta, excel_file_path, worksheet_name, section_write_to, offset_row, offset_column)
 
+                #### keep only the WayPoints this area is connected to ####
+                # The folder filter above works per _wp_ folder, so WayPoints
+                # sharing a folder with a connected one would be drawn too.
+                extract_shape_array = ns_def.filter_wp_shapes_by_area(
+                    self.position_shape_array, wp_with_folder_tuple.keys(), connected_wp_name_array)
+                extract_shape_tuple = self.position_shape_tuple
+                if extract_shape_array != self.position_shape_array:
+                    extract_shape_tuple = ns_def.convert_array_to_tuple(extract_shape_array)
+                    ns_def.clear_section_sheet(tmp_ws_name, ppt_meta_file, self.position_shape_tuple)
+                    ns_def.overwrite_excel_meta(extract_shape_tuple, ppt_meta_file, tmp_ws_name, '<<POSITION_SHAPE>>', 0, 0)
+
                 'parameter'
                 master_folder_tuple = convert_tuple
                 master_style_shape_tuple = self.position_style_shape_tuple
-                master_shape_tuple = self.position_shape_tuple
+                master_shape_tuple = extract_shape_tuple
                 min_tag_inches = 0.3  # inches,  between side of folder and eghe shape. left and right.
 
                 #### GET best width size ####

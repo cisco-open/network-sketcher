@@ -179,6 +179,7 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
 
         # Find connected WP folders
         connected_wp_folder_array = []
+        connected_wp_name_set = set()
         for shape_name in tmp_folder_array:
             for k in ctx.position_line_tuple:
                 if k[0] == 1:
@@ -189,10 +190,12 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
                     wf = str(wp_with_folder_tuple[str(v2)])
                     if wf not in connected_wp_folder_array:
                         connected_wp_folder_array.append(wf)
+                    connected_wp_name_set.add(str(v2))
                 if shape_name == str(v2) and str(v1) in wp_with_folder_tuple:
                     wf = str(wp_with_folder_tuple[str(v1)])
                     if wf not in connected_wp_folder_array:
                         connected_wp_folder_array.append(wf)
+                    connected_wp_name_set.add(str(v1))
 
         # Build extract_folder_tuple for this area
         extract_folder_tuple = {}
@@ -218,9 +221,20 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
 
         convert_tuple = nsm_def.convert_array_to_tuple(current_y_grid_array)
 
+        # Keep only the WayPoints this area is connected to. The folder filter
+        # above works per _wp_ folder, so WayPoints sharing a folder with a
+        # connected one would be drawn too.
+        area_shape_array = nsm_def.filter_wp_shapes_by_area(
+            ctx.position_shape_array, wp_with_folder_tuple.keys(), connected_wp_name_set)
+        if area_shape_array == ctx.position_shape_array:
+            area_shape_array = None
+            area_shape_tuple = ctx.position_shape_tuple
+        else:
+            area_shape_tuple = nsm_def.convert_array_to_tuple(area_shape_array)
+
         master_folder_size_array = nsm_def.get_folder_width_size(
             convert_tuple, ctx.position_style_shape_tuple,
-            ctx.position_shape_tuple, min_tag_inches)
+            area_shape_tuple, min_tag_inches)
 
         master_root_folder_tuple = nsm_def.get_root_folder_tuple(
             ctx, master_folder_size_array, tmp_folder_name)
@@ -239,7 +253,7 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
         if rh + 1.0 > all_slide_max_hight:
             all_slide_max_hight = rh + 1.0
 
-        per_area_data.append((tmp_folder_name, current_y_grid_array, convert_tuple))
+        per_area_data.append((tmp_folder_name, current_y_grid_array, convert_tuple, area_shape_array))
 
     if not per_area_data:
         return
@@ -266,7 +280,7 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
         target_area = str(target_area).strip() or None
 
     saved_svg_paths = []
-    for tmp_folder_name, current_y_grid_array, convert_tuple in per_area_data:
+    for tmp_folder_name, current_y_grid_array, convert_tuple, area_shape_array in per_area_data:
         if target_area and str(tmp_folder_name) != target_area:
             continue
         ctx.tmp_folder_name = tmp_folder_name
@@ -275,6 +289,8 @@ def _render_l1_per_area_svg(ctx, ppt_meta_file, ws_name, orig_bulk, click):
 
         area_bulk = dict(orig_bulk_saved) if orig_bulk_saved is not None else {}
         area_bulk['<<POSITION_FOLDER>>'] = current_y_grid_array
+        if area_shape_array is not None:
+            area_bulk['<<POSITION_SHAPE>>'] = area_shape_array
         if click == '2-4-1':
             area_bulk['<<POSITION_TAG>>'] = []
         ctx._preloaded_bulk = area_bulk

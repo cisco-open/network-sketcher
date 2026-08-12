@@ -1162,6 +1162,73 @@ def _get_folder_wp_array_from_master_xlsx(ws_name, ppt_meta_file):
     input_ppt_mata_excel.close()
     return([folder_name_array, wp_name_array])
 
+
+### drop WayPoints that the rendered area does not connect to ###
+def filter_wp_shapes_by_area(position_shape_array, all_wp_names, connected_wp_names):
+    '''
+    Build a <<POSITION_SHAPE>> view for a per-area diagram.
+
+    The per-area L1 / L2 diagrams decide which WayPoints to draw at the
+    granularity of the ``_wp_`` folder, so every WayPoint sharing a folder with
+    a connected one used to be drawn as well. This removes the WayPoints the
+    area has no link to, leaving everything else (devices, _AIR_ spacers,
+    <SEGMENT> markers) untouched.
+
+    A folder that would lose all of its WayPoints is left as-is: the caller's
+    folder filter already drops such a folder from <<POSITION_FOLDER>>, so its
+    rows are never looked up.
+
+    Row count and row indexes are preserved, so callers may overwrite the
+    section in place.
+
+    :param position_shape_array: <<POSITION_SHAPE>> as [[row, [cells]], ...]
+    :param all_wp_names: every WayPoint shape name in the master
+    :param connected_wp_names: WayPoint names the target area links to
+    :return: a new array in the same shape as position_shape_array
+    '''
+    result = [[row_num, list(cells)] for row_num, cells in position_shape_array]
+
+    wp_names = {str(name) for name in (all_wp_names or [])}
+    if not wp_names:
+        return result
+    keep_names = {str(name) for name in (connected_wp_names or [])}
+
+    def _shape_base_name(cell):
+        # A cell may carry a TAG suffix, e.g. 'unknown_1<TAG>'.
+        text = str(cell)
+        return text.split('<')[0] if '<' in text else text
+
+    folder_rows = {}
+    current_folder = None
+    for entry in result:
+        cells = entry[1]
+        head = str(cells[0]) if cells else ''
+        if head.startswith('<<') or head == '<END>':
+            current_folder = None
+            continue
+        if head not in ('', 'None'):
+            current_folder = head
+        if current_folder is not None:
+            folder_rows.setdefault(current_folder, []).append(entry)
+
+    for entries in folder_rows.values():
+        folder_cells = [cell for entry in entries for cell in entry[1][1:]]
+        if not any(_shape_base_name(cell) in wp_names for cell in folder_cells):
+            continue  # not a WayPoint folder
+        if not any(_shape_base_name(cell) in keep_names for cell in folder_cells):
+            continue  # nothing connected: folder is not rendered for this area
+
+        for entry in entries:
+            cells = entry[1]
+            kept = [cell for cell in cells[1:]
+                    if str(cell) != '<END>'
+                    and not (_shape_base_name(cell) in wp_names
+                             and _shape_base_name(cell) not in keep_names)]
+            entry[1] = [cells[0]] + kept + ['<END>']
+
+    return result
+
+
 def _nsm_save_path(ppt_meta_file):
     """For .nsm files, return the cached xlsx path for openpyxl saves.
     

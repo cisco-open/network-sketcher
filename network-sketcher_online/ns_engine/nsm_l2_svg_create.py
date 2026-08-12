@@ -570,6 +570,7 @@ class nsm_l2_svg_create:
                     tmp_folder_array.append(str(val2))
                     col += 1
 
+            connected_wp_name_set = set()
             for shape_name in tmp_folder_array:
                 for plt_key in self.position_line_tuple:
                     if plt_key[0] == 1:
@@ -579,9 +580,11 @@ class nsm_l2_svg_create:
                     if shape_name == str(val1):
                         if str(val2) in wp_with_folder_tuple:
                             connected_wp_folder_set.add(wp_with_folder_tuple[str(val2)])
+                            connected_wp_name_set.add(str(val2))
                     if shape_name == str(val2):
                         if str(val1) in wp_with_folder_tuple:
                             connected_wp_folder_set.add(wp_with_folder_tuple[str(val1)])
+                            connected_wp_name_set.add(str(val1))
 
             extract_folder_tuple = {}
             for key in self.position_folder_tuple:
@@ -611,10 +614,21 @@ class nsm_l2_svg_create:
                 extract_folder_tuple_new = self.position_folder_tuple
                 extract_folder_array = self.position_folder_array
 
+            # Keep only the WayPoints this area is connected to. The folder
+            # filter above works per _wp_ folder, so WayPoints sharing a folder
+            # with a connected one would be drawn too.
+            area_shape_array = nsm_def.filter_wp_shapes_by_area(
+                self.position_shape_array, wp_with_folder_tuple.keys(), connected_wp_name_set)
+            if area_shape_array == self.position_shape_array:
+                area_shape_array = None
+                area_shape_tuple = self.position_shape_tuple
+            else:
+                area_shape_tuple = nsm_def.convert_array_to_tuple(area_shape_array)
+
             # ===== Recalculate root dimensions with L2 sizes =====
             master_folder_size_array = nsm_def.get_folder_width_size(
                 extract_folder_tuple_new, l2_style_shape_tuple,
-                self.position_shape_tuple, 0.8)
+                area_shape_tuple, 0.8)
 
             # ===== Update folder grid with measured sizes (PPT line 856-888) =====
             update_y_grid = copy.deepcopy(current_y_grid_array)
@@ -672,6 +686,8 @@ class nsm_l2_svg_create:
             l2_bulk_override = copy.deepcopy(bulk)
             l2_bulk_override['<<STYLE_SHAPE>>'] = l2_style_shape_array
             l2_bulk_override['<<POSITION_FOLDER>>'] = extract_folder_array
+            if area_shape_array is not None:
+                l2_bulk_override['<<POSITION_SHAPE>>'] = area_shape_array
             self._preloaded_bulk = l2_bulk_override
 
             nsm_ddx_svg_l2.ns_ddx_svg_l2_run.__init__(self)
