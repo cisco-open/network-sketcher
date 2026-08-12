@@ -7970,14 +7970,6 @@ class def_common():
             # Parameters
             min_tag_inches = 0.3
 
-            # Call get_folder_width_size
-            master_folder_size_array = nsm_def.get_folder_width_size(
-                position_folder_tuple,
-                style_shape_tuple,
-                position_shape_tuple,
-                min_tag_inches
-            )
-
             # Use make_position_folder_tuple
             update_position_folder_tuple = def_common.make_position_folder_tuple(
                 position_folder_tuple,
@@ -7993,6 +7985,19 @@ class def_common():
 
             # ★★★ POST-PROCESS: Array-based processing with proper empty cell detection ★★★
             position_folder_array_after = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_FOLDER>>')
+
+            # Widest row, decided with the very rule make_position_folder_tuple
+            # just used. Measuring the rows from the widths already written into
+            # the sheet made this post-process crown a different row and strip
+            # the padding the writer had only just added, so the two kept
+            # swapping the layout back and forth on every recalculation.
+            folder_size_array_after = nsm_def.get_folder_width_size(
+                nsm_def.convert_array_to_tuple(position_folder_array_after),
+                style_shape_tuple,
+                position_shape_tuple,
+                min_tag_inches
+            )
+            max_width_folder_num = nsm_def.get_max_width_folder_num(folder_size_array_after)[0]
 
             # Determine pattern
             has_widths_in_row_1 = False
@@ -8010,7 +8015,7 @@ class def_common():
             else:
                 width_row_indices = [i for i in range(1, len(position_folder_array_after), 2)]
 
-            # Collect row info WITH total width calculation (excluding empty cells)
+            # Collect row info
             row_info_list = []
             for width_idx in width_row_indices:
                 if width_idx >= len(position_folder_array_after):
@@ -8027,24 +8032,13 @@ class def_common():
                 while len(area_row_data) < len(width_row_data):
                     area_row_data.append(None)
 
-                # Count areas and calculate total width (EXCLUDING empty cells)
+                # Count areas
                 area_count = 0
                 first_area_idx = None
                 last_area_idx = 0
-                total_width = 0.0
 
                 for col_idx in range(1, len(width_row_data)):
-                    width_val = width_row_data[col_idx]
                     area_val = area_row_data[col_idx] if col_idx < len(area_row_data) else None
-
-                    # ★★★ Check if this is an empty cell ★★★
-                    is_empty_cell = (area_val is None or area_val == '')
-
-                    # ★★★ Only add to total_width if NOT an empty cell ★★★
-                    if isinstance(width_val, (int, float)) and width_val not in [10, 0.999, 1]:
-                        if not is_empty_cell:
-                            # This is an actual area or area separator (not empty cell)
-                            total_width += width_val
 
                     # Count actual areas (not empty cells, not empty strings between areas)
                     if area_val is not None and isinstance(area_val, str) and area_val != '' and area_val not in ['<<POSITION_FOLDER>>', '<SET_WIDTH>']:
@@ -8053,15 +8047,16 @@ class def_common():
                             first_area_idx = col_idx
                         last_area_idx = col_idx
 
-                row_info_list.append((width_idx, area_idx, area_count, first_area_idx, last_area_idx, total_width))
+                # The row number carried in the array is what get_folder_width_size
+                # keys its per-row widths by, so the widest row can be recognised
+                # here without relying on the position of the row in the array.
+                folder_num = position_folder_array_after[area_idx][0]
 
-            # Find max total width (excluding empty cells)
-            max_total_width = max([item[5] for item in row_info_list]) if row_info_list else 0
+                row_info_list.append((width_idx, area_idx, area_count, first_area_idx, last_area_idx, folder_num))
 
             # Process each row
-            for width_idx, area_idx, area_count, first_area_idx, last_area_idx, total_width in row_info_list:
-                # Compare by actual width
-                is_max_width_row = abs(total_width - max_total_width) < 0.01
+            for width_idx, area_idx, area_count, first_area_idx, last_area_idx, folder_num in row_info_list:
+                is_max_width_row = (max_width_folder_num is None or folder_num == max_width_folder_num)
 
                 width_row_data = position_folder_array_after[width_idx][1]
                 area_row_data = position_folder_array_after[area_idx][1]
@@ -9537,12 +9532,20 @@ class def_common():
             master_folder_tuple, master_style_shape_tuple, master_shape_tuple, min_tag_inches
         )
 
+        # Widest row, judged on the intrinsic widths so that the padding this
+        # function writes cannot influence which row wins next time round.
+        # recalculate_folder_sizes() picks its row the same way, so both stop
+        # undoing each other's padding.
+        max_width_folder_num, max_intrinsic_width = nsm_def.get_max_width_folder_num(
+            master_folder_size_array
+        )
+
         update_master_folder_tuple = {}
 
         for tmp_master_width_size_y_grid in master_folder_size_array[1]:
             for tmp_master_folder_size in master_folder_size_array[2]:
                 if tmp_master_width_size_y_grid[0] == tmp_master_folder_size[0]:
-                    if master_folder_size_array[0] == tmp_master_width_size_y_grid[1]:  # check max width in the slide
+                    if max_width_folder_num is None or tmp_master_width_size_y_grid[0] == max_width_folder_num:  # check max width in the slide
                         for tmp_master_folder_tuple in master_folder_tuple:
                             if (
                                     tmp_master_folder_tuple[0] == tmp_master_folder_size[0]
@@ -9563,7 +9566,12 @@ class def_common():
                         tmp_max_row = 0
                         tmp_max_column = 0
 
-                        tmp_bothside_empty = (master_folder_size_array[0] - tmp_master_width_size_y_grid[1]) * 0.25
+                        # Measured against the same intrinsic widths used to pick
+                        # the widest row, so the row that wins gets no padding and
+                        # every other row is padded relative to it.
+                        tmp_bothside_empty = max(
+                            (max_intrinsic_width - tmp_master_width_size_y_grid[3]) * 0.25, 0
+                        )
 
                         for tmp_master_folder_tuple in master_folder_tuple:
                             # set first column

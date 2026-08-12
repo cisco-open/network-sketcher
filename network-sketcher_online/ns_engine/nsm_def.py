@@ -666,6 +666,55 @@ def return_shape_tuple(current_shape_array ,start_row):
     return(tuple_grid_array)
 
 
+# Two rows whose widths differ by less than this are treated as equally wide.
+# The layout writer and the POSITION_FOLDER post-process must use the same
+# value, otherwise they can disagree about which row is the widest one.
+FOLDER_WIDTH_MATCH_TOLERANCE = 0.01
+
+
+def get_max_width_folder_num(master_folder_size_array):
+    """Pick the single widest row of POSITION_FOLDER.
+
+    Judged on the intrinsic width (element 3 of each master_width_size_y_grid
+    entry), which covers the areas and the gaps between them but not the
+    padding cells the layout puts on the outside. Rows without a real area,
+    such as the header row, cannot win. Neither can a row holding nothing but
+    way points, whose columns take their width from the neighbouring row rather
+    than from any measurement of their own. On a tie the topmost row wins, so
+    the result is a single row no matter how the entries are ordered.
+
+    Returns (folder_num, intrinsic_width) of the widest row. When no row
+    qualifies at all, such as a master built purely from way points, returns
+    (None, 0), which callers read as 'treat every row as full width' - the
+    behaviour those degenerate masters had before a single winner was picked.
+    """
+    candidate_folder_num = set()
+    for tmp_master_folder_size in master_folder_size_array[2]:
+        folder_name = tmp_master_folder_size[1][0][0]
+        if not isinstance(folder_name, str) or folder_name in ('', '_EMPTY_FOLDER_'):
+            continue
+        if '_wp_' in folder_name:
+            continue
+        candidate_folder_num.add(tmp_master_folder_size[0])
+
+    max_width_folder_num = None
+    max_intrinsic_width = None
+
+    for tmp_master_width_size_y_grid in sorted(master_folder_size_array[1], key=lambda row: row[0]):
+        if tmp_master_width_size_y_grid[0] not in candidate_folder_num:
+            continue
+
+        intrinsic_width = tmp_master_width_size_y_grid[3]
+        if max_intrinsic_width is None or intrinsic_width > (max_intrinsic_width + FOLDER_WIDTH_MATCH_TOLERANCE):
+            max_intrinsic_width = intrinsic_width
+            max_width_folder_num = tmp_master_width_size_y_grid[0]
+
+    if max_width_folder_num is None:
+        return (None, 0)
+
+    return (max_width_folder_num, max_intrinsic_width)
+
+
 def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_shape_tuple, min_tag_inches):
     # print(master_shape_tuple)
     # add parameter at ver2.1 for large size
@@ -814,6 +863,33 @@ def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_
             master_width_size_folder.append([folder_num, [['_EMPTY_FOLDER_', air_fixed_width, 0]]])
             master_folder_size.append([folder_num, [['_EMPTY_FOLDER_', air_fixed_width, 0]]])
 
+    # Empty cells sitting outside the first / last area of a row are padding
+    # that the layout itself added on an earlier pass, while the empty cells
+    # between two areas are part of the row's own shape. Counting them apart
+    # lets the intrinsic width below stay independent of that padding, which is
+    # what makes the widest-row decision stable across repeated recalculations.
+    outer_empty_count_by_folder = {}
+    for folder_num in folder_num_list:
+        area_columns = []
+        empty_columns = []
+        for tmp_master_folder_tuple in master_folder_tuple:
+            if tmp_master_folder_tuple[0] != folder_num or tmp_master_folder_tuple[1] == 1:
+                continue
+            if master_folder_tuple[tmp_master_folder_tuple] == '':
+                empty_columns.append(tmp_master_folder_tuple[1])
+            else:
+                area_columns.append(tmp_master_folder_tuple[1])
+
+        if area_columns:
+            first_area_column = min(area_columns)
+            last_area_column = max(area_columns)
+            outer_empty_count_by_folder[folder_num] = len([
+                column for column in empty_columns
+                if column < first_area_column or column > last_area_column
+            ])
+        else:
+            outer_empty_count_by_folder[folder_num] = 0
+
     # Modified: Calculate widths
     # _EMPTY_FOLDER_ (from master_folder_tuple '') uses average width
     # _AIR_ width is already included in calculations above
@@ -847,8 +923,14 @@ def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_
         air_width_each = average_width * 0.2 if non_empty_count > 0 else 0.1
         final_width = tmp_sum_width + (air_width_each * empty_folder_count)
 
+        # Width of the row as it would be without any outer padding. Used only
+        # to decide which row is the widest one; final_width stays as-is so the
+        # slide size and the stored per-column weights are unaffected.
+        outer_empty_count = min(outer_empty_count_by_folder.get(folder_num, 0), empty_folder_count)
+        intrinsic_width = tmp_sum_width + (air_width_each * (empty_folder_count - outer_empty_count))
+
         # Store actual widths (NO ratio applied yet)
-        master_width_size_y_grid.append([folder_num, final_width, air_width_each])
+        master_width_size_y_grid.append([folder_num, final_width, air_width_each, intrinsic_width])
 
     # GET best width of slide (inches) using ACTUAL width
     slide_max_width_inches = 0
@@ -894,7 +976,8 @@ def get_folder_width_size(master_folder_tuple, master_style_shape_tuple, master_
         output_master_width_size_y_grid.append([
             item[0],  # folder_num
             apply_ratio_and_round(item[1], folder_width_ratio),  # final_width with ratio
-            apply_ratio_and_round(item[2], folder_width_ratio)  # air_width_each with ratio
+            apply_ratio_and_round(item[2], folder_width_ratio),  # air_width_each with ratio
+            apply_ratio_and_round(item[3], folder_width_ratio)  # intrinsic_width with ratio
         ])
 
     # Apply ratio to master_folder_size
