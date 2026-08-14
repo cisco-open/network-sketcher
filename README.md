@@ -179,7 +179,7 @@ https://github.com/user-attachments/assets/274d5b66-5f4a-407a-bfb5-f71026971fc4
 - Only stdio transport is supported (HTTP/SSE not supported)
 - Diagram generation for large networks may take some time
 - LLM clients cannot directly view binary output (PPTX / SVG); if visual feedback is needed, the user should open the generated SVG directly
-- **Verification status:** End-to-end verified in Cursor (the primary tested host). Claude Code support follows the published MCP specification but is design-validated only at this release; please report any issues you encounter.
+- **Verification status:** End-to-end verified in both Cursor and Claude Code. The server follows the standard MCP specification, so any MCP-compatible AI agent/client is expected to work, not just these two.
 
 ## Requirement (Local MCP)
 
