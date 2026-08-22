@@ -388,7 +388,7 @@ https://github.com/user-attachments/assets/5874411a-0e6d-485d-9f85-4cdc85f3ca07
 <img alt="image" src="https://github.com/user-attachments/assets/436a1462-bdf7-49cf-bc4f-235be6cb7d42" />
 Although Network Sketcher now supports multiple formats, it is not intended to replace the main drawing tool, but rather aims for mutually beneficial development.
 
-For API-driven platform imports, see [Extensions: Cisco & Third-Party Converters](#extensions-cisco--third-party-converters) above (complements Offline GUI import for Visio / draw.io / NetBox / CML files).
+For API-driven platform imports, see [Extensions: Cisco & Third-Party Converters](#extensions-cisco--third-party-converters) above (complements Offline GUI import for Visio / draw.io / NetBox files).
 
     
 - Ver 2.5.0
@@ -436,8 +436,6 @@ python3 -m pip install "openpyxl>=3.1.3,<=3.1.5"
 python3 -m pip install python-pptx
 python3 -m pip install ipaddress
 python3 -m pip install numpy
-python3 -m pip install pyyaml
-python3 -m pip install ciscoconfparse
 python3 -m pip install networkx
 python3 -m pip install svg.path
 ```
@@ -493,7 +491,7 @@ Test environment: Intel Core Ultra 7 (1.70 GHz), 32.0 GB RAM, Windows 11 Enterpr
 | Feature Item | **Local MCP (LLM-driven CLI)** | Online Edition | Offline Edition (GUI) | Offline Edition (CLI) |
 | --- | --- | --- | --- | --- |
 | Create master file from PowerPoint rough sketch | ❌ | ❌ | ✅ | ❌ |
-| Convert from Visio / Draw.io / NetBox / CML files (built-in Offline GUI) | ❌ | ❌ | ✅ | ❌ |
+| Convert from Visio / Draw.io / NetBox files (built-in Offline GUI) | ❌ | ❌ | ✅ | ❌ |
 | Import via [Cisco Extension](#extensions-cisco--third-party-converters) converters (see above) | ✅ | ✅ | ✅ | ✅ |
 | Place / create / delete / modify areas, devices, waypoints | ✅ | ✅ | ✅ (areas auto-placed in GUI) | ✅ |
 | Add / delete / modify Layer 1 connections (port names, duplex, etc.) | ✅ | ✅ | ⚠️ (port cannot be specified on delete) | ✅ |

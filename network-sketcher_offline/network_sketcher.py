@@ -139,14 +139,14 @@ class ns_front_run():
         '''
         tab_x3  <<External Systems>>
         '''
-        self.external_systems1_1 = tk.LabelFrame(tab_x3, text="    Select a file from an external system. \n   CML(yaml), Visio(svg), draw.io(svg), NetBox(csv)     ", font=("", 14), height=1, background="#B8E7A7",labelanchor="n")
+        self.external_systems1_1 = tk.LabelFrame(tab_x3, text="    Select a file from an external system. \n   Visio(svg), draw.io(svg), NetBox(csv)     ", font=("", 14), height=1, background="#B8E7A7",labelanchor="n")
         self.external_systems1_1.grid(row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
         self.external_systems1_1_label_1 = tk.Label(self.external_systems1_1, text="", background="#B8E7A7", font=("", 6))
         self.external_systems1_1_label_1 .grid(row=1, column=0, sticky='W', padx=5, pady=0, ipadx=5, ipady=0)
 
         self.text2 = tk.StringVar()
-        self.text2.set("              drag and drop here (*.yaml; *.svg; *.csv)")
+        self.text2.set("              drag and drop here (*.svg; *.csv)")
         self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#B8E7A7")
         self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=3, sticky='W', padx=5, pady=2)
 
@@ -275,7 +275,7 @@ class ns_front_run():
     def drop_external_systems1_1(self, event):
         if event:
             event.data = event.data.replace('{', '').replace('}', '')
-            if event.data.endswith('.svg') or event.data.endswith('.yaml') or event.data.endswith('.csv'):
+            if event.data.endswith('.svg') or event.data.endswith('.csv'):
                 exec(self.entry_name_external_systems1_1 + '.delete(0, tkinter.END)')
                 exec(self.entry_name_external_systems1_1 + '.insert(tk.END, event.data)')
                 self.filename = os.path.basename(event.data)
@@ -289,7 +289,7 @@ class ns_front_run():
 
     def click_action_external_systems1_1(self,click_value):
         if click_value == 'self.external_systems1_1_button_1': # select browse
-            fTyp = [("", "*.yaml;*.svg;*.csv")]
+            fTyp = [("", "*.svg;*.csv")]
             iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
             self.full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
             self.filename = os.path.basename(self.full_filepath)
@@ -304,13 +304,6 @@ class ns_front_run():
                 self.text2.set('[ERROR] ' + file_type_array[1])
                 self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#FBE5D6")
                 self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
-
-            elif file_type_array[0] == 'YAML_CML':
-                #print(file_type_array)
-                self.external_systems1_1_label_4 = tk.Label(self.external_systems1_1, textvariable=self.text2, font=("", 10), background="#F2FDE3")
-                self.external_systems1_1_label_4.grid(row=4, column=1, columnspan=7, sticky='W', padx=5, pady=2)
-
-                ns_dev.ns_front_run.click_action(self,'1-4b')
 
             elif file_type_array[0] == 'SVG':
                 #print(file_type_array)

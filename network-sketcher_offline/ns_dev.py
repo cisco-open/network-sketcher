@@ -302,32 +302,6 @@ class ns_front_run():
         Create_ND_1a_1 = tk.Button(stepTwo, text="Convert to [Excel Master Data]", font=("", 12), command=(lambda: self.click_action('1-4a')))
         Create_ND_1a_1.grid(row=3, column=1, columnspan=7, sticky='WE', padx=5, pady=2)
 
-        ### YAML file from CML  convert to Master file
-        stepTwo = tk.LabelFrame(tabx, text="[INPUT] YAML file from CML    [OUTPUT] Excel Master Data", font=("", 14), height=1, background="#FFFFCC")
-        stepTwo.grid(row=1, columnspan=7, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-        inEncLbl_1b_1 = tk.Label(stepTwo, text="                                  ")
-        inEncLbl_1b_1.grid(row=0, column=1, sticky='E', padx=5, pady=2)
-        inEncLbl_1b_2 = tk.Label(stepTwo, text="                                  ")
-        inEncLbl_1b_2.grid(row=0, column=2, sticky='E', padx=5, pady=2)
-        inEncLbl_1b_3 = tk.Label(stepTwo, text="                                  ")
-        inEncLbl_1b_3.grid(row=0, column=3, sticky='E', padx=5, pady=2)
-        inEncLbl_1b_4 = tk.Label(stepTwo, text="                                  ")
-        inEncLbl_1b_4.grid(row=0, column=4, sticky='E', padx=5, pady=2)
-
-        inFileLbl_1b_1 = tk.Label(stepTwo, text="   1. Select the YAML file from CML", font=("", 10), background="#FFFFCC")
-        inFileLbl_1b_1.grid(row=0, column=0, sticky='W', padx=5, pady=2)
-        self.inFileTxt_1b_1 = tk.Entry(stepTwo)
-        self.inFileTxt_1b_1.grid(row=0, column=1, columnspan=7, sticky="WE", pady=3)
-        self.outFileTxt_1b_4_1 = tk.Entry(stepTwo)
-        inFileBtn_1b_1 = tk.Button(stepTwo, text="Browse ...", command=lambda: self.click_action('1-1b'))
-        inFileBtn_1b_1.grid(row=0, column=8, sticky='W', padx=5, pady=2)
-        self.outFileTxt_1b_1 = tk.Entry(stepTwo)
-        self.outFileTxt_1b_2 = tk.Entry(stepTwo)
-        inFileLbl_1b_x = tk.Label(stepTwo, text="   2.Click the Create button", font=("", 10), background="#FFFFCC")
-        inFileLbl_1b_x.grid(row=3, column=0, sticky='W', padx=5, pady=2)
-        Create_ND_1b_1 = tk.Button(stepTwo, text="Convert to [Excel Master Data]", font=("", 12), command=(lambda: self.click_action('1-4b')))
-        Create_ND_1b_1.grid(row=3, column=1, columnspan=7, sticky='WE', padx=5, pady=2)
-
         '''
         tab1  <<NW Diagram>>
         '''
@@ -528,29 +502,6 @@ class ns_front_run():
             #print(self.outFileTxt_1_4_1.get())
 
             self.output_ppt_file = self.outFileTxt_1a_1.get()  # default svg file path
-
-        if click_value == '1-1b': # select browse
-            fTyp = [("", ".yaml")]
-            iDir = os.path.abspath(os.path.dirname(sys.argv[0]))
-            full_filepath = tk.filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
-            self.inFileTxt_1b_1.delete(0, tkinter.END)
-            self.inFileTxt_1b_1.insert(tk.END, full_filepath)
-
-            basename_without_ext = os.path.splitext(os.path.basename(full_filepath))[0]
-            self.outFileTxt_1b_1.delete(0, tkinter.END)
-            self.outFileTxt_1b_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[L1_DIAGRAM]AllAreasTag_' + basename_without_ext  + '.pptx')
-            #print(self.outFileTxt_1_1.get())
-            self.outFileTxt_1b_2.delete(0, tkinter.END)
-            self.outFileTxt_1b_2.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext  + '.xlsx')
-            #print(self.outFileTxt_1_2.get())
-
-            # create device table
-            basename_without_ext = os.path.splitext(os.path.basename(self.outFileTxt_1a_1.get()))[0]
-            self.outFileTxt_1a_4_1.delete(0, tkinter.END)
-            self.outFileTxt_1a_4_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[DEVICE]' + basename_without_ext + '.xlsx')
-            #print(self.outFileTxt_1_4_1.get())
-
-            self.output_ppt_file = self.outFileTxt_1b_1.get()  # default yaml file path
 
         if click_value == '1-4':  # select create
             # check file open
@@ -793,76 +744,6 @@ class ns_front_run():
 
 
 
-
-        if click_value == '1-4b':  # select convert to master data file from YAML
-            # check file open
-            #print(self.full_filepath)
-            self.yaml_full_filepath = self.full_filepath
-            self.click_value = '1-4b'
-
-            # input master excel file path  , ver 2.1.0
-            iDir = os.path.abspath(os.path.dirname(self.full_filepath))
-            basename_without_ext = os.path.splitext(os.path.basename(self.full_filepath))[0]
-            self.excel_file_path = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext.replace('.yaml', '') + '.xlsx'
-            #print(self.excel_file_path )
-            self.tmp_pptx_file_path = iDir + "/_tmp_tmp_tmp_.pptx" #Bug fix #54 at ver 2.6.0b
-
-            # import module and create a tmp powerpoint figure
-            import ns_option_convert_to_master
-            ns_option_convert_to_master.ns_option_convert_to_master_yaml.__init__(self)
-
-            # import module and create a Master data excel file
-            import ns_l1_master_create
-            ns_l1_master_create.ns_l1_master_create.__init__(self)
-
-            # Update the Master data excel file. Overwrite lines values.
-            ns_option_convert_to_master.ns_overwrite_line_to_master_yaml.__init__(self)
-
-            # remove exist ppt file
-            if os.path.isfile(self.tmp_pptx_file_path) == True:
-                os.remove(self.tmp_pptx_file_path)
-
-            ### run L2-1-2 in ns_dev ,  add l2 master sheet
-            self.inFileTxt_L2_1_1 = tk.Entry(self.main1_1)
-            self.inFileTxt_L3_1_1 = tk.Entry(self.main1_1)
-            self.inFileTxt_L2_1_1.delete(0, tkinter.END)
-            self.inFileTxt_L2_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
-            self.inFileTxt_L3_1_1.delete(0, tkinter.END)
-            self.inFileTxt_L3_1_1.insert(tk.END, iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx')
-
-            self.click_value = 'L2-1-2'
-            ns_front_run.click_action(self,'L2-1-2')
-
-            # remove exist L2/ file
-            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]')) == True:
-                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L2_TABLE]'))
-
-            ### run L3-1-2 in ns_dev ,  add l3 master sheet
-            self.click_value = 'L3-1-2'
-            ns_front_run.click_action(self,'L3-1-2')
-
-            # remove exist L3/ file
-            if os.path.isfile(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]')) == True:
-                os.remove(self.inFileTxt_L2_1_1.get().replace('[MASTER]', '[L3_TABLE]'))
-
-            ##view complete
-            #tkinter.messagebox.showinfo('info', 'successfully completed')
-
-            ### open master panel
-            file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']
-            self.full_filepath = iDir + ns_def.return_os_slash() + '[MASTER]' + basename_without_ext + '.xlsx'
-            self.filename = os.path.basename(self.full_filepath)
-            import network_sketcher
-            network_sketcher.ns_front_run.sub_excel_master_1(self, file_type_array)
-
-            '''add L3 config in yaml to Master file'''
-            ns_option_convert_to_master.ns_l3_config_to_master_yaml.__init__(self)
-
-            '''export Device file'''
-            push_array = []
-            self.click_value_2nd = 'self.sub3_1_button_3'
-            self.click_action_sub('self.self.sub2_5_button_3', push_array)
-            self.click_value_2nd = ''
 
         if click_value == '2-1': # select browse
             fTyp = [("", ".xlsx")]

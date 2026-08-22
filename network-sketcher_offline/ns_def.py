@@ -19,7 +19,7 @@ limitations under the License.
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import sys, os, shutil , unicodedata,subprocess,datetime,random
 import openpyxl
-import math ,ipaddress ,yaml, ast
+import math ,ipaddress , ast
 from pptx import *
 import platform
 from openpyxl.styles import PatternFill
@@ -171,16 +171,6 @@ def check_file_type(full_filepath):
         # add ver 2.4.3
         if '[MASTER]' not in full_filepath and '[DEVICE]' not in full_filepath and '[FLOW]' not in full_filepath:
             return_type_array = ['ERROR', 'The Excel file name must start with [MASTER],[DEVICE],[FLOW]']
-
-    elif full_filepath.endswith('.yaml'):
-        return_type_array = ['ERROR', 'Please enter a backup file of CML']
-
-        with open(str(full_filepath), 'r') as yml:
-            config = yaml.safe_load(yml)
-
-        for tmp_config in config:
-            if tmp_config == 'lab':
-                return_type_array = ['YAML_CML', config]
 
     elif full_filepath.endswith('.svg'):
         return_type_array = ['SVG', 'dummy']
