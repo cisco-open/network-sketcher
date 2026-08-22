@@ -39,18 +39,60 @@ All data in the master file
 ** show_waypoint_interface
 []
 
-'''
-IMPORTANT: Quoting Rules for All Commands
-'''
+# Network Sketcher CLI Reference & Architecture Rules
+
+Format: GitHub-flavoured Markdown.
+AI-readable command reference followed by mandatory architecture rules.
+
+## Table of Contents
+
+Commands (read/mutate state):
+- Quoting rules - argument and quoting conventions
+- Show commands - read-only inspection
+- Add commands - create areas, devices, links, segments, ports, IPs
+- Delete commands - remove the same primitives (cascades on delete l1_link)
+- Rename commands - rename devices, ports, attributes, l3 instance
+- Export commands - master file backup/template, device file, AI context, L1/L2/L3 diagrams (PowerPoint)
+
+Architecture rules (sorted by rule number, all MANDATORY):
+- RULE 0   Layout hierarchy (TOP-TO-BOTTOM)
+- RULE 0.5 L1 link crossing avoidance
+- RULE 1   Physical vs logical segmentation
+- RULE 2   VRF and logical separation implementation
+- RULE 3   Area connection constraints and waypoint requirements
+- RULE 3.5 Multi-transport WAN waypoint design (preferred pattern)
+- RULE 4   Area vs waypoint decision matrix
+- RULE 5   Common scenarios (templates A-D)
+- RULE 6   Error detection and correction
+- RULE 7   Command execution sequence (phases)
+- RULE 7.1 Cascade deletion behaviour
+- RULE 8   Virtualised multi-chassis device naming
+- RULE 9   Port-channel VLAN symmetry
+- RULE 10  Valid IPv4 address range constraints
+- RULE 11  L2/L3 trunk port type compatibility
+- RULE 11.5 Endpoint device IP assignment (no SVI on servers/PCs/IoT)
+- RULE 12  Wireless AP configuration (FlexConnect default)
+- RULE 13  Office LAN mandatory wireless AP requirement
+- RULE 14  Mandatory device attribute configuration (Model and OS)
+- RULE 15  Mandatory SVI-to-L2 segment binding (Loopback excluded)
+- RULE 16  Mandatory port information configuration
+
+Convention notes for AI agents:
+- Examples in this document use `#` (or the full-width `＃`) to denote a CLI prompt.
+- All bulk commands take a JSON-style array as a single double-quoted argument.
+- All RULE numbers are stable identifiers; cross-references like "Rule 12" are valid.
+- Loopback interfaces are an explicit exception to RULE 15 (no L2 binding required).
+
+---
+
+## IMPORTANT: Quoting Rules for All Commands
 * All string arguments (device names, area names, port names, waypoint names, etc.) MUST be enclosed in single quotes ('') or double quotes ("").
 * This is especially critical for port names that contain spaces (e.g., 'GigabitEthernet 0/0', 'Vlan 100', 'Port-channel 1').
 * Without quotes, arguments containing spaces will be parsed as multiple separate tokens, causing the command to fail.
 * Both single quotes and double quotes are accepted: 'GigabitEthernet 0/0' or "GigabitEthernet 0/0"
 * For bulk commands that take a JSON-style array as the entire argument, enclose the whole array in double quotes: "[['DEV1','GE 0/0',...]]"
 
-'''
-Reading the network state dump
-'''
+## Reading the network state dump
 The ** show_xxx blocks above are the live output of each show command, with
 redundancy removed. Two annotations may appear; both are losslessly reversible,
 so read the data exactly as if the omitted parts were spelled out. They affect
@@ -74,9 +116,7 @@ below.
   * Any section - columns that were empty on every row are removed, and the
     [compact] line names them by 1-based position.
 
-'''
-Show Commands reference
-'''
+## Show Commands reference
 ## show area
 Displays all area names.
  ```bash
@@ -178,12 +218,12 @@ show l1_interface
 ['DEVICE1', 'GE 0/4', 'GigabitEthernet 0/4', 'Auto', 'Auto', '1000BASE-T']<br>
 ['DEVICE10', 'GE 0/5', 'GigabitEthernet 0/5', 'Auto', 'Auto', '1000BASE-T']<br>
 
-## show L1_link
+## show l1_link
 Displays Layer 1 (L1) physical wiring information per link.
 - Each output line represents one physical link.
 - Each line contains two endpoints: '[[Device-A, Interface-A], [Device-B, Interface-B]].
 - The left/right order in the output is not meaningful (either endpoint may appear on the left).
-- Therefore, when identifying or deleting a link, you can treat either endpoint (device + interface) as the “from” side.
+- Therefore, when identifying or deleting a link, you can treat either endpoint (device + interface) as the "from" side.
  ```bash
 show l1_link
  ```
@@ -202,7 +242,7 @@ show l1_link
 Displays the name of the Layer 2 segment included in each broadcast domain.
 
  ```bash
-show l2_boradcast_domain
+show l2_broadcast_domain
  ```
 * ex.<br>
 ＃show l2_broadcast_domain<br>
@@ -230,7 +270,7 @@ show l2_interface
 Displays the Layer 3 interface names included in each broadcast domain.
 
  ```bash
-show l3_boradcast_domain
+show l3_broadcast_domain
  ```
 * ex.<br>
 ＃show l3_broadcast_domain<br>
@@ -277,36 +317,34 @@ show waypoint_interface
 
 
 
-'''
-Add Commands reference
-'''
+## Add Commands reference
 ## add area_location
 
 Updates the overall area layout (placement map). By specifying area placement using a two-dimensional array, you can change the relative positions of areas in bulk. New areas can also be added simultaneously.
 
  ```bash
-add area_location “[[‘area_name1’,'area_name2'],[‘area_name3’,'area_name4']]”
+add area_location "[['area_name1','area_name2'],['area_name3','area_name4']]"
  ```
 * ex.<br>
 +BEFORE+ <br>
 #show area_location<br>
-[[‘DC1’, ‘DC2’]]<br>
+[['DC1', 'DC2']]<br>
 
 
 +area_location updated+ <br>
-#add area_location “[‘DC1’,'DC2'],[‘DC3’,'DC4']]"<br>
+#add area_location "['DC1','DC2'],['DC3','DC4']]"<br>
 --- Area layout updated ---<br>
-New areas added: [‘DC3’, ‘DC4’]<br>
+New areas added: ['DC3', 'DC4']<br>
   Device added for DC3: DC3_device_<br>
   Device added for DC4: DC4_device_<br>
 New area layout:<br>
-  [‘DC1’, ‘DC2’]<br>
-  [‘DC3’, ‘DC4’]<br>
+  ['DC1', 'DC2']<br>
+  ['DC3', 'DC4']<br>
 
 
 +AFTER+ <br>
 #show area_location<br>
-[[‘DC1’, ‘DC2’], [‘DC3’, ‘DC4’]]<br>
+[['DC1', 'DC2'], ['DC3', 'DC4']]<br>
 
 
 [Tips]* All existing areas must be included in the new layout
@@ -343,21 +381,20 @@ RIGHT_WITH_GRID : Place by adding columns to the right of the reference device<b
 * ex.<br>
 +BEFORE+ <br>
 #show device_location<br>
-[‘_tmp_’, [[‘sw1’, ‘sw2’]]]<br>
+['_tmp_', [['sw1', 'sw2']]]<br>
 
 
 +device added+ <br>
-#add device ‘sw4’ 'sw1' RIGHT<br>
+#add device 'sw4' 'sw1' RIGHT<br>
 --- Device added --- sw4 relative to sw1 with direction RIGHT<br>
 
 
 +AFTER+ <br>
 #show device<br>
-[‘_tmp_’, [[‘sw1’, ‘sw4’, ‘sw2’]]]<br>
+['_tmp_', [['sw1', 'sw4', 'sw2']]]<br>
 
 
 [Tips]
-* All string arguments (device names) must be enclosed in single or double quotes (e.g., 'sw4')
 * Device names added cannot duplicate existing device names
 * Devices placed within a waypoint area cannot be used as reference points
 
@@ -367,28 +404,28 @@ Updates device placement within a specific area. You can change device positions
 
 
  ```bash
-add device_location “[‘area_name’,[[‘device_name1’,'device2_name'],[‘device_name3’,'device_name4']]]”
+add device_location "['area_name',[['device_name1','device2_name'],['device_name3','device_name4']]]"
  ```
 
 ex.<br>
 
 +BEFORE+ <br>
 #show device_location<br>
-[‘DC1’, [[‘SW-1’, ‘SW-2’]]]<br>
+['DC1', [['SW-1', 'SW-2']]]<br>
 
 
 +device_location updated+ <br>
-#add device_location “[‘DC1’,[[‘SW-1’,'SW-2'],[‘SW-3’,'AIR']]]”<br>
---- Device location updated for area “DC1” ---<br>
-Added devices: [‘SW-3’]<br>
+#add device_location "['DC1',[['SW-1','SW-2'],['SW-3','AIR']]]"<br>
+--- Device location updated for area "DC1" ---<br>
+Added devices: ['SW-3']<br>
 New device layout (normalized):<br>
-  [‘SW-1’, ‘SW-2’]<br>
-  [‘SW-3’, ‘AIR’]<br>
+  ['SW-1', 'SW-2']<br>
+  ['SW-3', 'AIR']<br>
 
 
 +AFTER+ <br>
 #show device_location<br>
-[‘DC1’, [[‘SW-1’, ‘SW-2’], [‘SW-3’, ‘AIR’]]]<br>
+['DC1', [['SW-1', 'SW-2'], ['SW-3', 'AIR']]]<br>
 
 
 [Tips]
@@ -446,27 +483,27 @@ L3SW2(Vlan 100) <- 192.168.100.2/24<br>
 Creates multiple Layer 1 physical connections in bulk. Specify multiple link definitions in array format to efficiently add multiple links.
 
  ```bash
-add l1_link_bulk “[[‘from_device1’,'to_device1',‘from_port1’,'to_port1'],[‘from_device2’,'to_device2',‘from_port2’,'to_port2']]”
+add l1_link_bulk "[['from_device1','to_device1','from_port1','to_port1'],['from_device2','to_device2','from_port2','to_port2']]"
 ```
 
 * ex.<br>
 +BEFORE+ <br>
 #show l1_link<br>
-[[‘SW-1’, ‘GigabitEthernet 0/0’], [‘SW-3’, ‘GigabitEthernet 0/1’]]<br>
+[['SW-1', 'GigabitEthernet 0/0'], ['SW-3', 'GigabitEthernet 0/1']]<br>
 
 
 +l1_link_bulk added+<br>
-#add l1_link_bulk "[[‘SW-1’,'SW-2',‘GigabitEthernet 0/1’,'GigabitEthernet 0/0'], [‘SW-2’,'SW-3',‘GigabitEthernet 0/1’,'GigabitEthernet 0/2']]“<br>
+#add l1_link_bulk "[['SW-1','SW-2','GigabitEthernet 0/1','GigabitEthernet 0/0'], ['SW-2','SW-3','GigabitEthernet 0/1','GigabitEthernet 0/2']]"<br>
 --- Added 2 Layer 1 link(s) in bulk ---<br>
   SW-1(GigabitEthernet 0/1) ↔ SW-2(GigabitEthernet 0/0)<br>
   SW-2(GigabitEthernet 0/1) ↔ SW-3(GigabitEthernet 0/2)<br>
-Affected devices: [‘SW-1’, ‘SW-2’, ‘SW-3’]<br>
+Affected devices: ['SW-1', 'SW-2', 'SW-3']<br>
 
 +AFTER+ <br>
 #show l1_link<br>
-[[‘SW-1’, ‘GigabitEthernet 0/0’], [‘SW-3’, ‘GigabitEthernet 0/1’]]<br>
-[[‘SW-1’, ‘GigabitEthernet 0/1’], [‘SW-2’, ‘GigabitEthernet 0/0’]]<br>
-[[‘SW-2’, ‘GigabitEthernet 0/1’], [‘SW-3’, ‘GigabitEthernet 0/2’]]<br>
+[['SW-1', 'GigabitEthernet 0/0'], ['SW-3', 'GigabitEthernet 0/1']]<br>
+[['SW-1', 'GigabitEthernet 0/1'], ['SW-2', 'GigabitEthernet 0/0']]<br>
+[['SW-2', 'GigabitEthernet 0/1'], ['SW-3', 'GigabitEthernet 0/2']]<br>
 
 [Tips]
 * All elements (device names, port names) must be enclosed in single or double quotes
@@ -561,46 +598,21 @@ This feature allows you to create port channels (LAGs) on multiple Layer 1 inter
 add portchannel_bulk "[['device_name1',['port1','port2'],'portchannel_name1'],['device_name2',['port3','port4'],'portchannel_name2']]"
  ```
 
-* ex.<br>
+* ex. Starting from L3SW1 and L3SW2 each having GigabitEthernet 0/0 and 0/1 with<br>
+no port-channel:<br>
 
-+BEFORE+ <br>
-#show l2_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '', '']<br>
-['L3SW1', 'GigabitEthernet 0/1', '', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/1', '', '', '']<br>
-
-
-#show l3_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '']<br>
-['L3SW1', 'GigabitEthernet 0/1', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/1', '', '']<br>
-
-
-+portchannel_bulk added+ <br>
-<code>#add portchannel_bulk "[['L3SW1',['GigabitEthernet 0/0','GigabitEthernet 0/1'],'Port-channel 1'],['L3SW2',['GigabitEthernet 0/0','GigabitEthernet 0/1'],'Port-channel 1']]"</code><br>
+#add portchannel_bulk "[['L3SW1',['GigabitEthernet 0/0','GigabitEthernet 0/1'],'Port-channel 1'],['L3SW2',['GigabitEthernet 0/0','GigabitEthernet 0/1'],'Port-channel 1']]"<br>
 --- Added port-channel(s) in bulk ---<br>
 L3SW1: GigabitEthernet 0/0, GigabitEthernet 0/1 -> Port-channel 1<br>
 L3SW2: GigabitEthernet 0/0, GigabitEthernet 0/1 -> Port-channel 1<br>
-<br>
 
-
-+AFTER+ <br>
-#show l2_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', 'Port-channel 1', '', '']<br>
-['L3SW1', 'GigabitEthernet 0/1', 'Port-channel 1', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', 'Port-channel 1', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/1', 'Port-channel 1', '', '']<br>
-
-
-#show l3_interface<br>
-['L3SW1', 'Port-channel 1', '', '']<br>
-['L3SW2', 'Port-channel 1', '', '']<br>
-
+Changes:<br>
+  show l2_interface : column 3 of each member port becomes 'Port-channel 1',<br>
+                      e.g. ['L3SW1', 'GigabitEthernet 0/0', 'Port-channel 1', '', '']<br>
+  show l3_interface : the two member rows per device are replaced by a single<br>
+                      ['L3SW1', 'Port-channel 1', '', ''] row<br>
 
 **[Tips]**
-- All elements (device names, port names, port-channel names) must be enclosed in single or double quotes
 - Port-channel names must be valid interface names (e.g., 'Port-channel 1', 'PortChannel 1')
 - Multiple physical interfaces can be assigned to the same port-channel in a single entry
 - An error occurs if a physical interface is already assigned to a different port-channel
@@ -622,45 +634,18 @@ The first element of each entry (device name) also accepts a list of device name
 add virtual_port_bulk "[[['device1','device2'],['vport1','vport2']],['device3',['vport3']]]"
  ```
 
-* ex.<br>
+* ex. Starting from L3SW1 and L3SW2 each having only GigabitEthernet 0/0:<br>
 
-+BEFORE+ <br>
-#show l2_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', '', '']<br>
-
-
-#show l3_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', '']<br>
-
-
-+virtual_port_bulk added+ <br>
-<code>#add virtual_port_bulk "[['L3SW1',['Vlan 100','Vlan 200','Loopback 0']],['L3SW2',['Vlan 100','Vlan 200']]]"</code><br>
+#add virtual_port_bulk "[['L3SW1',['Vlan 100','Vlan 200','Loopback 0']],['L3SW2',['Vlan 100','Vlan 200']]]"<br>
 --- Added virtual port(s) in bulk ---<br>
 L3SW1 <- Vlan 100, Vlan 200, Loopback 0<br>
 L3SW2 <- Vlan 100, Vlan 200<br>
-<br>
 
-+AFTER+ <br>
-#show l2_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '', '']<br>
-['L3SW1', '', 'Loopback 0', '', '']<br>
-['L3SW1', '', 'Vlan 100', '', '']<br>
-['L3SW1', '', 'Vlan 200', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', '', '']<br>
-['L3SW2', '', 'Vlan 100', '', '']<br>
-['L3SW2', '', 'Vlan 200', '', '']<br>
-
-
-#show l3_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '']<br>
-['L3SW1', 'Loopback 0', '', '']<br>
-['L3SW1', 'Vlan 100', '', '']<br>
-['L3SW1', 'Vlan 200', '', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', '']<br>
-['L3SW2', 'Vlan 100', '', '']<br>
-['L3SW2', 'Vlan 200', '', '']<br>
+Changes: each new virtual port adds one row to BOTH show l2_interface and<br>
+show l3_interface. In show l2_interface the port name goes in column 3 with<br>
+column 2 (the L1 port) empty, e.g. ['L3SW1', '', 'Vlan 100', '', ''].<br>
+In show l3_interface it is a plain row, e.g. ['L3SW1', 'Vlan 100', '', ''].<br>
+Existing physical-port rows are untouched.<br>
 
 +Multi-device list example (device list shorthand)+ <br>
 The following two commands are equivalent:<br>
@@ -735,21 +720,20 @@ RIGHT : Add to the right of the reference waypoint<br>
 * ex.<br>
 +BEFORE+ <br>
 #show waypoint_location<br>
-[‘WAN-1_wp_’, [[‘WAN-1’]]]<br>
+['WAN-1_wp_', [['WAN-1']]]<br>
 
 
 +waypoint added+ <br>
-#add waypoint ‘WAN-2’ 'WAN-1' ‘RIGHT’<br>
+#add waypoint 'WAN-2' 'WAN-1' 'RIGHT'<br>
 --- Waypoint added --- WAN-2 relative to WAN-1 with direction RIGHT<br>
 
 
 +AFTER+ <br>
 #show waypoint_location<br>
-[‘WAN-1_wp_’, [[‘WAN-1’, ‘WAN-2’]]]<br>
+['WAN-1_wp_', [['WAN-1', 'WAN-2']]]<br>
 
 
 [Tips]
-* All string arguments (waypoint names) must be enclosed in single or double quotes (e.g., 'WAN-2')
 * Waypoints are always placed within dedicated waypoint areas (area names ending with _wp_)
 * An error occurs if the reference device is not present in a dedicated waypoint area
 * If a regular area exists adjacent to the X-axis, only UP/DOWN can be used
@@ -758,9 +742,7 @@ RIGHT : Add to the right of the reference waypoint<br>
 
 
 
-'''
-Delete Commands reference
-'''
+## Delete Commands reference
 ## delete area
 
 Deletes the entire area. All devices within the area, along with their interface settings and connections, will also be deleted.
@@ -773,22 +755,21 @@ delete area '[area_name]'
 +BEFORE+
 
 #show area_location<br>
-[[‘DC1’, ‘DC2’], [‘DC3’, ‘DC4’]]
+[['DC1', 'DC2'], ['DC3', 'DC4']]
 
 +area deleted+
 
-#delete area ‘DC3’<br>
+#delete area 'DC3'<br>
 --- Area deleted --- DC3<br>
-Devices removed: [‘DC3_device_’, ‘SW-3’]<br>
+Devices removed: ['DC3_device_', 'SW-3']<br>
 All associated links and configurations have been removed.
 
 +AFTER+
 
 #show area_location<br>
-[[‘DC1’, ‘DC2’], [‘DC4’]]
+[['DC1', 'DC2'], ['DC4']]
 <br><br>
 [Tips]
-* All string arguments (area names) must be enclosed in single or double quotes (e.g., 'DC3')
 * All devices within the area will be deleted
 * All Layer 1 links connected to the deleted devices will also be removed
 * The area layout will be automatically updated
@@ -852,7 +833,6 @@ ex.<br>
 <br><br>
 
 [Tips]
-* All string arguments (device names) must be enclosed in single or double quotes (e.g., 'SW-2')
 * All Layer 1 links connected to the deleted device will also be deleted.
 * If it is the last device in an area, it cannot be deleted (use the delete area command).
 * If it is a waypoint (a device in an area ending in _wp_), use the delete waypoint command.
@@ -872,19 +852,19 @@ delete l1_link '[from_device]' '[from_portname]'
 
 
 #show l1_link<br>
-[[‘SW-1’, ‘GigabitEthernet 0/0’], [‘SW-3’, ‘GigabitEthernet 0/1’]]
-[[‘SW-1’, ‘GigabitEthernet 0/1’], [‘SW-2’, ‘GigabitEthernet 0/0’]]
+[['SW-1', 'GigabitEthernet 0/0'], ['SW-3', 'GigabitEthernet 0/1']]
+[['SW-1', 'GigabitEthernet 0/1'], ['SW-2', 'GigabitEthernet 0/0']]
 
 +l1_link deleted+
 
-#delete l1_link ‘SW-1’ 'GigabitEthernet 0/1'<br>
+#delete l1_link 'SW-1' 'GigabitEthernet 0/1'<br>
 --- Layer 1 link deleted --- SW-1 GigabitEthernet 0/1 <-> SW-2 GigabitEthernet 0/0
 
 +AFTER+
 
 
 #show l1_link<br>
-[[‘SW-1’, ‘GigabitEthernet 0/0’], [‘SW-3’, ‘GigabitEthernet 0/1’]]
+[['SW-1', 'GigabitEthernet 0/0'], ['SW-3', 'GigabitEthernet 0/1']]
 <br><br>
 [Tips]
 
@@ -925,30 +905,18 @@ The port channel (LAG) configured on the Layer 1 interface will be deleted, alon
 delete portchannel '[device name]' '[layer1_portname]'
  ```
 
-* ex.<br>
-**+BEFORE+ <br>**
-#show l2_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', 'PortChannel 1', 'vlan1', '']<br>
-['L3SW1', 'GigabitEthernet 0/1', 'PortChannel 1', 'vlan1', '']<br>
+* ex. L3SW1 GigabitEthernet 0/0 and 0/1 are members of 'PortChannel 1' carrying<br>
+'vlan1'. The port-channel must be removed from each member port separately:<br>
 
-#show l3_interface<br>
-['L3SW1', 'PortChannel 1', '', '']<br>
-
-**+portchannel deleted+ <br>**
 ＃delete portchannel 'L3SW1' 'GigabitEthernet 0/0'<br>
 --- portchannel deleted ---  L3SW1,GigabitEthernet 0/0,PortChannel 1<br>
 
 ＃delete portchannel 'L3SW1' 'GigabitEthernet 0/1'<br>
 --- portchannel deleted ---  L3SW1,GigabitEthernet 0/1,PortChannel 1<br>
 
-**+AFTER+ <br>**
-#show l2_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '', '']<br>
-['L3SW1', 'GigabitEthernet 0/1', '', '', '']<br>
-
-#show l3_interface<br>
-['L3SW1', 'GigabitEthernet 0/0', '', '']<br>
-['L3SW1', 'GigabitEthernet 0/1', '', '']<br>
+Changes: in show l2_interface both the port-channel name (column 3) and its L2<br>
+segment (column 4) are cleared on each member port. In show l3_interface the<br>
+single 'PortChannel 1' row is replaced by one row per physical member port.<br>
 
 
 ## delete virtual_port
@@ -957,26 +925,13 @@ This will delete Layer 3 interfaces such as VLAN interfaces (SVIs).This command 
 delete virtual_port '[device name]' '[virtual_portname]'
  ```
 
-* ex.<br>
-**+BEFORE+ <br>**
-#show l2_interface<br>
-['L3SW2', '', 'addvlan 999', '', '']<br>
-['L3SW2', '', 'Vlan 300', 'Vlan300', '']<br>
+* ex. L3SW2 has the virtual ports 'addvlan 999' and 'Vlan 300':<br>
 
-#show l3_interface<br>
-['L3SW2', 'Vlan 300', '', '']<br>
-['L3SW2', 'addvlan 999', '', '']<br>
-
-**+virtual_port deleted+ <br>**
 ＃delete virtual_port 'L3SW2' 'addvlan 999'<br>
 --- Virtual Port deleted ---  L3SW2,addvlan 999<br>
 
-**+AFTER+ <br>**
-#show l2_interface<br>
-['L3SW2', '', 'Vlan 300', 'Vlan300', '']<br>
-
-#show l3_interface<br>
-['L3SW2', 'Vlan 300', '', '']<br>
+Changes: the 'addvlan 999' row disappears from both show l2_interface and<br>
+show l3_interface. The other virtual ports on the device are untouched.<br>
 
 ## delete vport_l1if_direct_binding
 This command deletes a virtual port connected to a layer 1 port. This command also deletes layer 2 elements such as VLANs connected to the virtual port.
@@ -1010,7 +965,7 @@ delete vport_l2_direct_binding '[device name]' '[virtual port]' '[l2_name_direct
 ['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', 'vlan100']<br>
 
 **+virtual_port deleted+ <br>**
-＃delete vport_l2_direct_binding "Catalyst 3560" "GigabitEthernet 0/0.100" “vlan100”<br>
+＃delete vport_l2_direct_binding "Catalyst 3560" "GigabitEthernet 0/0.100" "vlan100"<br>
 --- vport_l2_direct_binding deleted ---  Catalyst 3560,GigabitEthernet 0/0.100,vlan100<br>
 
 **+AFTER+ <br>**
@@ -1031,28 +986,27 @@ delete waypoint '[waypoint_name]'
 +BEFORE+
 
 #show waypoint_location<br>
-[‘WAN-1_wp_’, [[‘WAN-1’, ‘WAN-2’, ‘WAN-3’]]]
+['WAN-1_wp_', [['WAN-1', 'WAN-2', 'WAN-3']]]
 
 #show l1_link<br>
-[[‘SW-1’, ‘GigabitEthernet 0/0’], [‘WAN-2’, ‘port 0’]]
-[[‘WAN-2’, ‘port 1’], [‘SW-2’, ‘GigabitEthernet 0/0’]]
+[['SW-1', 'GigabitEthernet 0/0'], ['WAN-2', 'port 0']]
+[['WAN-2', 'port 1'], ['SW-2', 'GigabitEthernet 0/0']]
 
 +Waypoint deleted+
 
-#delete waypoint ‘WAN-2’<br>
+#delete waypoint 'WAN-2'<br>
 --- Waypoint deleted --- WAN-2<br>
 Associated links removed: 2<br>
 
 +AFTER+
 
 #show waypoint_location<br>
-[‘WAN-1_wp_’, [[‘WAN-1’, ‘WAN-3’]]]
+['WAN-1_wp_', [['WAN-1', 'WAN-3']]]
 
 #show l1_link<br>
 (Links connected to WAN-2 have been deleted)
 
 [Tips]
-* All string arguments (waypoint names) must be enclosed in single or double quotes (e.g., 'WAN-2')
 * Waypoints must be placed within dedicated waypoint areas (area names ending with _wp_)
 * All Layer 1 links connected to a deleted waypoint will also be deleted
 * Regular devices (non-waypoints) cannot be deleted (use the device delete command instead)
@@ -1061,9 +1015,7 @@ Associated links removed: 2<br>
 
 
 
-'''
-Rename Commands reference
-'''
+## Rename Commands reference
 ## rename area
 Change the area name.
  ```bash
@@ -1087,9 +1039,6 @@ Area1<br>
 Area2<br>
 Area99<br>
 
-[Tips]
-* All string arguments (area names) must be enclosed in single or double quotes (e.g., 'Area3')
-
 ## rename attribute_bulk
 Change device attributes (including header row) in bulk. This command allows you to update multiple devices and their attribute values in a single operation.
 
@@ -1099,46 +1048,28 @@ rename attribute_bulk "[['device_name', \"['attr_value',[R,G,B]]\", \"['attr_val
 ```
 
 **[CRITICAL] Quoting Structure**<br>
-This command uses a unique two-level quoting structure that differs from all other bulk commands:
+This is the ONLY bulk command that requires escaped double quotes for its inner
+values; every other bulk command uses plain unescaped strings.
 1. Wrap the entire array in **double quotes**: `"[['dev', ...]]"`
-2. Each attribute value cell must be wrapped in **escaped double quotes**: `\"['VALUE',[R,G,B]]\"`
-   - **Exception (text-only update mode)**: A bare quoted value such as `'DEVICE'` (no `\"['...,[R,G,B]]\"` wrapping) is also valid; it updates only the text and **preserves the existing cell color**. See Notes below for full semantics.
-3. Do NOT add a leading single quote `'` before `[[` — this is a common mistake that causes parse errors.
-
-Correct: `rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]" --master ...`
-Wrong:   `rename attribute_bulk "'[['L3SW1', \"['DEVICE',[235,241,222]]\", ...]]" --master ...` ← extra `'` breaks parsing
+2. Wrap each attribute value cell in **escaped double quotes**: `\"['VALUE',[R,G,B]]\"`
+   (a bare `'VALUE'` is also accepted -- see plain-string mode under Notes)
+3. Start with `[[`, never `'[[`, and end with exactly `]]"`.
+   - Correct ending: `...\"['',[]]\"]]"` -- final `\"` closes the attribute, `]]`
+     closes the entry and the array, `"` closes the shell quote.
+   - Wrong ending `...\"['',[]]\"]]\""` leaves a stray `"` after `]]` and produces
+     `[ERROR] Array must start with [[ and end with ]]`.
+   - A leading `'` (as in `"'[['DEV', ...]"`) also breaks parsing.
 
 **[CRITICAL] Device-name field MUST be a single string (device-list notation is NOT supported)**<br>
-Unlike many other bulk commands (e.g., `add l2_segment_bulk`, `add ip_address_bulk`, `add portchannel_bulk`, `add port_info_bulk`, `add vport_l1if_direct_binding_bulk`) which accept a **list of device names** as the first element to apply the same setting to multiple devices in one entry, `rename attribute_bulk` does **NOT** support the device-list notation. The first element of every entry MUST be a single device-name **string** (or the literal string `'Device Name'` for the header row).
+Many other bulk commands (`add l2_segment_bulk`, `add ip_address_bulk`, `add portchannel_bulk`, `add port_info_bulk`, `add vport_l1if_direct_binding_bulk`) accept a **list of device names** as the first element. `rename attribute_bulk` does **NOT**. The first element of every entry MUST be a single device-name **string** (or the literal `'Device Name'` for the header row); repeat one entry per device to apply the same attributes to several devices.
 
-If a list is supplied as the first element, the engine raises:
-`[ERROR] Invalid attribute_bulk array format: 'list' object has no attribute 'strip'`
-
-To apply the same attribute set to many devices, repeat one entry per device:
-
-Correct (per-device entries):
-`rename attribute_bulk "[['DC1-Edge-MPLS', \"['DEVICE',[235,241,222]]\", ...],['DC1-Edge-INET', \"['DEVICE',[235,241,222]]\", ...]]" --master ...`
-
-Wrong (device-list notation — NOT supported):
-`rename attribute_bulk "[[['DC1-Edge-MPLS','DC1-Edge-INET'], \"['DEVICE',[235,241,222]]\", ...]]" --master ...`
-
-**[IMPORTANT] Outer-quote closing pattern (common LLM mistake):**
-- Correct ending: `...\"['',[]]\"]]"`   — last `\"` (closes final attribute) + `]]` (closes entry+outer) + `"` (closes shell quote)
-- Wrong   ending: `...\"['',[]]\"]]\""`  — extra `\"` before the outer closing `"` leaves a stray `"` after `]]`
-  → produces error: `[ERROR] Array must start with [[ and end with ]]`
-  The command MUST end with exactly `]]"` (two `]` followed by one `"`), not `]]\""`.
+Wrong (device-list notation) -> `[ERROR] Invalid attribute_bulk array format: 'list' object has no attribute 'strip'`:
+`rename attribute_bulk "[[['DC1-Edge-MPLS','DC1-Edge-INET'], \"['DEVICE',[235,241,222]]\"]]" --master ...`
 
 **Array Format**<br>
-The attribute array uses the following format:
-
-For device attribute rows (with RGB color values):
-`[device_name, "['attribute_value',[R,G,B]]", "['attribute_value',[R,G,B]]", ...]`
-
-For header row (column names without RGB values):
-`['Device Name', 'Column1', 'Column2', 'Column3', ...]`
-
-Combined format for multiple entries:
-`[['device1_entry'], ['device2_entry'], ['Device Name', header_columns...]]`
+- Device row: `[device_name, "['value',[R,G,B]]", "['value',[R,G,B]]", ...]`
+- Header row: `['Device Name', 'Column1', 'Column2', ...]` (plain strings, no RGB)
+- Device rows and the header row may be mixed in one command.
 
 **Parameters**<br>
 | Parameter       | Description                                              |
@@ -1150,14 +1081,19 @@ Combined format for multiple entries:
 
 **Notes**<br>
 - RGB values must be integers between 0 and 255
-- Empty attributes should use "['', [255, 255, 255]]" (white background)
-- **Shorthand**: `[]` can be used instead of `[255, 255, 255]` to specify white background — e.g., `"['', []]"` is equivalent to `"['', [255, 255, 255]]"` (saves 12 characters per attribute)
-- **Trailing omission**: Trailing empty attributes can be omitted entirely — unspecified attributes are automatically filled with `"['', [255, 255, 255]]"`. E.g., `['Access-SW1', "['DEVICE', [235,241,222]]", "['Model', [255,183,219]]", "['IOS-XE', [200,230,255]]"]` is valid with 6 trailing attributes auto-completed (saves ~115 characters vs full 9-attribute form)
-- **Plain-string mode (text-only update)**: A bare quoted string such as `'DEVICE'` (instead of `\"['DEVICE',[R,G,B]]\"`) updates only the text value while **preserving the existing cell's background color**. For brand-new cells with no prior color, the default `[255, 255, 255]` (white) is used. Use this mode to change text without rewriting colors. To explicitly reset color to white, use `\"['VALUE', []]\"` (the `[]` shorthand). To set a non-white color, the full form `\"['VALUE',[R,G,B]]\"` is REQUIRED — plain-string mode cannot introduce a new color into a previously white cell.
-- The header row entry must start with 'Device Name'
-- Device entries and header row can be mixed in the same command
-- Each device/header entry must have up to 9 attribute columns (excluding the device name column)
-- The entire argument starts with `[[` (NOT `'[[`); a leading single quote is a documentation error that causes parse failure
+- Each device/header entry has up to 9 attribute columns (excluding device name)
+- **White shorthand**: `[]` replaces `[255, 255, 255]`, so `"['', []]"` is the short
+  form of an empty white cell (saves 12 characters per attribute)
+- **Trailing omission**: trailing empty attributes can be dropped entirely; the
+  engine auto-fills them with `"['', [255, 255, 255]]"` (saves ~115 characters
+  versus writing all 9 columns)
+- **Plain-string mode (text-only update)**: a bare `'DEVICE'` instead of
+  `\"['DEVICE',[R,G,B]]\"` updates the text and **preserves the existing cell
+  color** (white for a brand-new cell). It CANNOT introduce a color into a white
+  cell, so initial master creation and any color change MUST use the full
+  `\"['VAL',[R,G,B]]\"` form. Once colors are set, plain-string mode is the
+  recommended shorthand for text-only edits. To reset a cell to white use
+  `\"['VALUE', []]\"`.
 
 **[IMPORTANT] Default Attribute Rules for Device Type**<br>
 When generating rename attribute_bulk commands, the Default attribute (first attribute column after device name) MUST be set based on the area type where the device is located:
@@ -1173,56 +1109,35 @@ Example for Waypoint area device:
 Example for Normal area device:
 ['Core-SW1', "['DEVICE', [235, 241, 222]]", "['Catalyst 9300', [255, 183, 219]]", ...]
 
-**Examples**<br>
-
-Example 1: Update single device attributes
-rename attribute_bulk "[['L3SW1', \"['DEVICE',[235, 241, 222]]\", \"['Cisco', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
-
-Example 2: Update multiple devices
-rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"]]"
-
-Example 3: Update devices and header row together
-rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['TEST-Value', [235, 241, 22]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['LAST VALUE', [100, 100, 100]]\", \"['', [255, 255, 255]]\", \"['TEST333', [200, 200, 200]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
-
-**Full Example with Before/After**<br>
-
-+BEFORE+
-#show attribute
-['Device Name', 'Default', 'Model', 'OS', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G', 'Others']
-['ACCESS-SW1', "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]"]
-['WLC-9800', "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]"]
-
-+Attribute bulk renamed+
-#rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9200', [255,183,219]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['TEST-Value', [235, 241, 22]]\"],['WLC-9800', \"['DEVICE',[235, 241, 222]]\", \"['Catalyst9800', [255,183,219]]\", \"['LAST VALUE', [100, 100, 100]]\", \"['', [255, 255, 255]]\", \"['TEST333', [200, 200, 200]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\", \"['', [255, 255, 255]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
---- Attribute bulk rename completed ---
-Successfully updated: 3 entry(ies)
-Updated: ACCESS-SW1, WLC-9800, Device Name (Header)
-
-+AFTER+
-show attribute
-['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']
-['ACCESS-SW1', "['DEVICE', [235, 241, 222]]", "['Catalyst9200', [255, 183, 219]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['TEST-Value', [235, 241, 22]]"]
-['WLC-9800', "['DEVICE', [235, 241, 222]]", "['Catalyst9800', [255, 183, 219]]", "['LAST VALUE', [100, 100, 100]]", "['', [255, 255, 255]]", "['TEST333', [200, 200, 200]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]", "['', [255, 255, 255]]"]
-
 **Common RGB Color Examples**<br>
-| Color            | RGB Value         | Usage Example                          |
-|------------------|-------------------|----------------------------------------|
-| White (empty)    | [255, 255, 255]   | "['', [255, 255, 255]]"                |
-| Light Green      | [235, 241, 222]   | "['DEVICE', [235, 241, 222]]"          |
-| Light Pink       | [255, 183, 219]   | "['Catalyst9200', [255, 183, 219]]"    |
-| Light Gray       | [200, 200, 200]   | "['TEST', [200, 200, 200]]"            |
-| Light Yellow     | [235, 241, 22]    | "['WARNING', [235, 241, 22]]"          |
+| Color            | RGB Value         | Usage                     |
+|------------------|-------------------|---------------------------|
+| White (empty)    | [255, 255, 255]   | or the `[]` shorthand     |
+| Light Green      | [235, 241, 222]   | Default column, DEVICE    |
+| Light Blue       | [220, 230, 242]   | Default column, WayPoint  |
+| Light Pink       | [255, 183, 219]   | Model column              |
+| Light Gray       | [200, 200, 200]   | free use                  |
+| Light Yellow     | [235, 241, 22]    | free use                  |
 
-**[Tips]**<br>
-- The argument MUST start with `[[` and end with `]]` — do NOT add a leading single quote `'` before `[[`
-- Each attribute value cell uses escaped double quotes: `\"['VALUE',[R,G,B]]\"`
-- This is the ONLY bulk command that requires escaped double quotes for inner values; all other bulk commands use simple unescaped strings
-- Wrong (common mistake): `"'[['DEV', ...]"` — the extra `'` after `"` causes parse failure
-- Correct: `"[['DEV', \"['DEVICE',[235,241,222]]\", \"['', [255,255,255]]\"]]"`
-- **White shorthand**: `[]` can replace `[255, 255, 255]` to reduce command length. Example: `\"['', []]\"` instead of `\"['', [255, 255, 255]]\"`
-- **Trailing omission**: Trailing empty attributes can be omitted; they are auto-completed as `"['', [255, 255, 255]]"`. Example: `"[['Access-SW1', \"['DEVICE',[235,241,222]]\", \"['Model',[255,183,219]]\", \"['IOS-XE',[200,230,255]]\"]]"` is valid (6 trailing attrs omitted)
-- **Initial master creation / color changes MUST use the full form** `\"['VAL',[R,G,B]]\"`. The plain-string mode preserves existing colors only — using a bare `'DEVICE'` against a previously white cell will leave the cell white. After the colors are set once, plain-string mode is the recommended shorthand for subsequent text-only edits.
-- For the header row entry, all values are plain single-quoted strings without RGB: `['Device Name', 'Col1', 'Col2', ...]`
+**Examples**<br>
+All examples use the `[]` white shorthand and trailing omission described above.
+
+Single device (Default + Model only; the remaining 7 columns auto-fill):
+rename attribute_bulk "[['L3SW1', \"['DEVICE',[235,241,222]]\", \"['Cisco',[255,183,219]]\"]]"
+
+Several devices -- one entry each, never a device list:
+rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235,241,222]]\", \"['Catalyst9200',[255,183,219]]\"],['WLC-9800', \"['DEVICE',[235,241,222]]\", \"['Catalyst9800',[255,183,219]]\"]]"
+
+Devices plus the header row, and a value in a later column (earlier columns must
+then be written out, using `[]` for the empty ones):
+rename attribute_bulk "[['ACCESS-SW1', \"['DEVICE',[235,241,222]]\", \"['Catalyst9200',[255,183,219]]\", \"['',[]]\", \"['',[]]\", \"['',[]]\", \"['',[]]\", \"['',[]]\", \"['TEST-Value',[235,241,22]]\"],['Device Name', 'Model name', 'Model', 'Attribute-B', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'LAST CHECK', 'TEST-B-NAME']]"
+
+Effect of the last command on `show attribute` (only the changed cells shown):
+  header      : 'Default' -> 'Model name', 'Attribute-G' -> 'LAST CHECK', 'Others' -> 'TEST-B-NAME'
+  ACCESS-SW1  : col 1 -> "['DEVICE', [235, 241, 222]]", col 2 -> "['Catalyst9200', [255, 183, 219]]",
+                col 8 -> "['TEST-Value', [235, 241, 22]]"
+Output: `--- Attribute bulk rename completed ---` with one line per updated entry
+(the header row is reported as `Device Name (Header)`).
 
 ## rename device
 Change the device name.
@@ -1246,7 +1161,6 @@ L3SW100<br>
 L3SW2<br>
 
 [Tips]
-* All string arguments (device names) must be enclosed in single or double quotes (e.g., 'L3SW1')
 * Waypoints are also treated as devices internally -- use rename device to rename them.
   Example: rename device 'WAN' 'MPLS'   (rename auto-created waypoint 'WAN' to 'MPLS')
   Use show waypoint_location first to confirm the current waypoint name.
@@ -1261,18 +1175,15 @@ rename l3_instance '[device name]' '[layer3 port name]' '[Renamed l3_instance na
 * ex.<br>
 **+BEFORE+ <br>**
 #show l3_interface<br>
-['devcie1', 'GigabitEthernet 0/0', '', '']<br>
+['device1', 'GigabitEthernet 0/0', '', '']<br>
 
 **+l3_interface renamed+ <br>**
-＃rename l3_instance 'devcie1' 'GigabitEthernet 0/0' 'VRF-1'<br>
---- l3 instance renamed ---  devcie1,GigabitEthernet 0/0,VRF-10<br>
+＃rename l3_instance 'device1' 'GigabitEthernet 0/0' 'VRF-1'<br>
+--- l3 instance renamed ---  device1,GigabitEthernet 0/0,VRF-1<br>
 
 **+AFTER+ <br>**
 #show l3_interface<br>
-['devcie1', 'GigabitEthernet 0/0', 'VRF-1', '']<br>
-
-[Tips]
-* All string arguments (device names, port names, instance names) must be enclosed in single or double quotes (e.g., 'GigabitEthernet 0/0')
+['device1', 'GigabitEthernet 0/0', 'VRF-1', '']<br>
 
 ## rename port
 Change the port name and port number.
@@ -1280,67 +1191,22 @@ Change the port name and port number.
 rename port '[device name]' '[Original port name]' '[Updated port name]'
  ```
 
-* ex.<br>
-**+BEFORE+ <br>**
-#show l1_interface<br>
-['L3SW1', 'GE 0/0', 'GigabitEthernet 0/0', 'Auto', 'Auto', '1000BASE-T']<br>
-['L3SW2', 'GE 0/0', 'GigabitEthernet 0/0', 'Auto', 'Auto', '1000BASE-T']<br>
+* ex. Renaming a port rewrites every reference to it across all three layers.<br>
 
-#show l2_interface<br>
-['L3SW1', '', 'Vlan 201', 'Vlan100', '']<br>
-['L3SW1', '', 'Vlan 200', 'Vlan200', '']<br>
-['L3SW1', '', 'Vlan 300', 'Vlan300', '']<br>
-['L3SW1', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300', '']<br>
-['L3SW2', '', 'addvlan 999', '', '']<br>
-['L3SW2', '', 'Vlan 201', 'Vlan100', '']<br>
-['L3SW2', '', 'Vlan 200', 'Vlan200', '']<br>
-['L3SW2', '', 'Vlan 202', 'Vlan300', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300', '']<br>
-
-#show l3_interface<br>
-['L3SW1', 'Vlan 201', '', '']<br>
-['L3SW1', 'Vlan 200', '', '']<br>
-['L3SW1', 'Vlan 300', '', '']<br>
-['L3SW2', 'Vlan 201', '', '']<br>
-['L3SW2', 'Vlan 200', '', '']<br>
-['L3SW2', 'Vlan 202', '', '']<br>
-['L3SW2', 'addvlan 999', '', '']<br>
-
-**+Port renamed+ <br>**
 ＃rename port 'L3SW1' 'GigabitEthernet 0/0' 'FastEthernet 1/1'<br>
 --- Physical Port Name renamed --- L3SW1 GigabitEthernet 0/0 -> FastEthernet 1/1<br>
+  show l1_interface : ['L3SW1', 'GE 0/0', 'GigabitEthernet 0/0', ...]<br>
+                   -> ['L3SW1', 'FE 1/1', 'FastEthernet 1/1', ...]   (abbrev updated too)<br>
+  show l2_interface : the L3SW1 row carrying the VLAN list moves from<br>
+                      'GigabitEthernet 0/0' to 'FastEthernet 1/1'<br>
 
 ＃rename port 'L3SW2' 'Vlan 200' 'Vlan 999'<br>
 --- Virtual Port Name renamed --- L3SW2 Vlan 200 -> Vlan 999<br>
+  show l2_interface : ['L3SW2', '', 'Vlan 200', 'Vlan200', ''] -> ['L3SW2', '', 'Vlan 999', 'Vlan200', '']<br>
+  show l3_interface : ['L3SW2', 'Vlan 200', '', '']            -> ['L3SW2', 'Vlan 999', '', '']<br>
 
-
-**+AFTER+ <br>**
-#show l1_interface<br>
-['L3SW1', 'FE 1/1', 'FastEthernet 1/1', 'Auto', 'Auto', '1000BASE-T']<br>
-['L3SW2', 'GE 0/0', 'GigabitEthernet 0/0', 'Auto', 'Auto', '1000BASE-T']<br>
-
-#show l2_interface<br>
-['L3SW1', '', 'Vlan 201', 'Vlan100', '']<br>
-['L3SW1', '', 'Vlan 200', 'Vlan200', '']<br>
-['L3SW1', '', 'Vlan 300', 'Vlan300', '']<br>
-['L3SW1', 'FastEthernet 1/1', '', 'Vlan100,Vlan200,Vlan300', '']<br>
-['L3SW2', '', 'addvlan 999', '', '']<br>
-['L3SW2', '', 'Vlan 201', 'Vlan100', '']<br>
-['L3SW2', '', 'Vlan 999', 'Vlan200', '']<br>
-['L3SW2', '', 'Vlan 202', 'Vlan300', '']<br>
-['L3SW2', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300', '']<br>
-
-#show l3_interface<br>
-['L3SW1', 'Vlan 201', '', '']<br>
-['L3SW1', 'Vlan 200', '', '']<br>
-['L3SW1', 'Vlan 300', '', '']<br>
-['L3SW2', 'Vlan 201', '', '']<br>
-['L3SW2', 'Vlan 999', '', '']<br>
-['L3SW2', 'Vlan 202', '', '']<br>
-['L3SW2', 'addvlan 999', '', '']<br>
-
-[Tips]
-* All string arguments (device names, port names) must be enclosed in single or double quotes (e.g., 'GigabitEthernet 0/0')
+Every other row in the three show outputs is unchanged. Note that the L2 segment<br>
+name ('Vlan200') is independent of the port name and is NOT renamed.<br>
 
 ## rename port_info_bulk
 Change the port information (Speed, Duplex, Port_Type) for multiple ports in bulk.
@@ -1436,9 +1302,7 @@ Updated: DIST-CORE-SW1 TE 1/0/1, DIST-CORE-SW1 TE 1/0/2, DIST-CORE-SW2 TE 1/0/1,
 
 
 
-'''
-Export Commands reference
-'''
+## Export Commands reference
 ## export ai_context_file
 
 Generates a context file for uploading to large language models (LLMs). Outputs network configuration information in text format for use in AI analysis and document generation.
@@ -1479,7 +1343,7 @@ export device_file
 * ex.<br>
 +Export device_file+
 
-#export device_file ‘SW-1’<br>
+#export device_file 'SW-1'<br>
 --- Device file create ---<br>
 --- Device file created successfully ---<br>
 
@@ -1633,14 +1497,10 @@ File: C:\work\[L3_DIAGRAM]PerArea_test.pptx<br>
 
 
 
-================================================================================
-CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
-================================================================================
+# CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
 MANDATORY ARCHITECTURAL RULES - MUST BE FOLLOWED WITHOUT EXCEPTION
 
-================================================================================
-UNIVERSAL WARNINGS (APPLY TO ALL RULES)
-================================================================================
+# UNIVERSAL WARNINGS (APPLY TO ALL RULES)
 - ALWAYS backup before any modification or deletion
 - ALWAYS verify after each phase with show commands
 - CASCADE DELETION is IRREVERSIBLE without backup
@@ -1648,13 +1508,9 @@ UNIVERSAL WARNINGS (APPLY TO ALL RULES)
 - ALWAYS complete each phase before proceeding to next
 - ALWAYS configure port information (Speed/Duplex/Port_Type) after creating L1 links
 
-================================================================================
-SECTION 1: FUNDAMENTAL ARCHITECTURE RULES (RULES 0-6)
-================================================================================
+# SECTION 1: FUNDAMENTAL ARCHITECTURE RULES (RULES 0-6)
 
---------------------------------------------------------------------------------
-RULE 0: NETWORK DIAGRAM LAYOUT PRESERVATION POLICY
---------------------------------------------------------------------------------
+## RULE 0: NETWORK DIAGRAM LAYOUT PRESERVATION POLICY
 
 CRITICAL: Preserve visual device placement from diagrams as closely as possible.
 MANDATORY: Device placement MUST follow TOP-TO-BOTTOM hierarchical structure.
@@ -1730,9 +1586,7 @@ LAYOUT ALIGNMENT RULES:
 - Use _AIR_ to maintain column alignment when devices don't fill a row
 - Each row represents one hierarchical tier
 
---------------------------------------------------------------------------------
-RULE 1: PHYSICAL TOPOLOGY VS LOGICAL SEGMENTATION
---------------------------------------------------------------------------------
+## RULE 1: PHYSICAL TOPOLOGY VS LOGICAL SEGMENTATION
 
 PHYSICAL (Areas and Devices):
 - Areas = Physical locations or network segments
@@ -1745,9 +1599,7 @@ LOGICAL (VRFs, VLANs, L3 Instances):
 - VLANs = L2 segments (add l2_segment_bulk command)
 - Logical segmentation does NOT require separate physical areas
 
---------------------------------------------------------------------------------
-RULE 2: VRF AND LOGICAL SEPARATION IMPLEMENTATION
---------------------------------------------------------------------------------
+## RULE 2: VRF AND LOGICAL SEPARATION IMPLEMENTATION
 
 CORRECT APPROACH:
 1. Create ONE area containing ALL physical devices
@@ -1764,9 +1616,7 @@ KEY PRINCIPLE:
 - Areas = PHYSICAL separation (buildings, data centers)
 - VRFs = LOGICAL separation (routing tables, customer isolation)
 
---------------------------------------------------------------------------------
-RULE 3: AREA CONNECTION CONSTRAINTS AND WAYPOINT REQUIREMENTS
---------------------------------------------------------------------------------
+## RULE 3: AREA CONNECTION CONSTRAINTS AND WAYPOINT REQUIREMENTS
 
 CRITICAL: Devices in different areas CANNOT connect directly.
 ALL inter-area connections MUST use Waypoint area (name ending _wp_).
@@ -1790,9 +1640,7 @@ WAYPOINT REQUIRED WHEN:
 - Representing external networks or cloud services
 - Connecting geographically separated sites
 
---------------------------------------------------------------------------------
-RULE 3.5: MULTI-TRANSPORT WAN WAYPOINT DESIGN (PREFERRED PATTERN)
---------------------------------------------------------------------------------
+## RULE 3.5: MULTI-TRANSPORT WAN WAYPOINT DESIGN (PREFERRED PATTERN)
 
 When the design includes 2+ WAN transports (MPLS + Internet, dual-ISP, etc.),
 place ALL transports as multiple waypoints INSIDE a SINGLE waypoint area.
@@ -1823,9 +1671,7 @@ VERIFICATION:
 - After running add waypoint, run show area_device to confirm both
   transports appear in the same WAN_wp_ area.
 
---------------------------------------------------------------------------------
-RULE 4: AREA VS WAYPOINT DECISION MATRIX AND COMMAND GENERATION
---------------------------------------------------------------------------------
+## RULE 4: AREA VS WAYPOINT DECISION MATRIX AND COMMAND GENERATION
 
 DECISION FLOW:
 Q0: Analyze diagram visual layout
@@ -1860,9 +1706,7 @@ Multi-tenant with VRF        | 1     | No                | L3 instance
 Campus buildings fiber       | 2-3   | Campus_Backbone   | No
 Multi-floor MDF-IDF          | 3+    | Building_Backbone | Optional
 
---------------------------------------------------------------------------------
-RULE 5: COMMON SCENARIOS AND CORRECT IMPLEMENTATION
---------------------------------------------------------------------------------
+## RULE 5: COMMON SCENARIOS AND CORRECT IMPLEMENTATION
 
 SCENARIO A: SERVICE PROVIDER WITH VRF CUSTOMERS (SAME DATA CENTER)
 
@@ -1905,9 +1749,7 @@ rename port_info_bulk "[[['Core-Router','Tenant-A-Router','Tenant-B-Router'],'_A
 rename l3_instance "Core-Router" "GigabitEthernet 0/1" "Tenant-A"
 rename l3_instance "Core-Router" "GigabitEthernet 0/2" "Tenant-B"
 
---------------------------------------------------------------------------------
-RULE 6: ERROR DETECTION AND CORRECTION
---------------------------------------------------------------------------------
+## RULE 6: ERROR DETECTION AND CORRECTION
 
 RED FLAGS INDICATING INCORRECT ARCHITECTURE:
 Flag                                      | Correction
@@ -1941,27 +1783,15 @@ CORRECTION WORKFLOW:
 7. Verify with show commands
 
 FLEXCONNECT AP ERROR DETECTION:
-For each FlexConnect AP in the design:
-1. Verify L1 link exists between AP physical port and switch port
-2. Verify L2 segment (Management VLAN) is configured on SWITCH port connecting to AP
-3. Verify L2 segment (Management VLAN) is configured on AP PHYSICAL port (GigabitEthernet 0)
-4. Verify SVI (Vlan <ID>) exists on AP for Management VLAN
-5. Verify SVI on AP has L2 segment binding on itself
-6. Verify IP address is assigned to AP's SVI (NOT physical port)
-7. Verify AP's IP address is in same subnet as switch gateway SVI
-8. Verify port info (Speed/Duplex/Port_Type) is configured for all L1 interfaces
-
-If any verification fails -> ERROR: Apply correction per Rule 12 or Rule 16
+For each FlexConnect AP, verify every row of the FLEXCONNECT AP L2/L3
+CONFIGURATION SUMMARY table in RULE 12 is satisfied. Any unsatisfied row is an
+ERROR; correct it per RULE 12 (or RULE 16 for missing port info).
 
 
 
-================================================================================
-SECTION 2: EXECUTION AND CONFIGURATION RULES (RULES 7-16)
-================================================================================
+# SECTION 2: EXECUTION AND CONFIGURATION RULES (RULES 7-16)
 
---------------------------------------------------------------------------------
-RULE 7: COMMAND EXECUTION SEQUENCE
---------------------------------------------------------------------------------
+## RULE 7: COMMAND EXECUTION SEQUENCE
 
 MANDATORY EXECUTION SEQUENCE:
 
@@ -2027,9 +1857,7 @@ add l2_segment, add ip_address) are NOT available. Always use bulk commands.
 Port information (Speed, Duplex, Port_Type) MUST be configured using
 rename port_info_bulk immediately after L1 links are created.
 
---------------------------------------------------------------------------------
-RULE 7.1: CASCADE DELETION BEHAVIOR
---------------------------------------------------------------------------------
+## RULE 7.1: CASCADE DELETION BEHAVIOR
 
 CRITICAL: delete l1_link performs CASCADE DELETION of all associated L2/L3
 configurations automatically.
@@ -2062,9 +1890,7 @@ show l1_link
 show l2_interface
 show l3_interface
 
---------------------------------------------------------------------------------
-RULE 8: VIRTUALIZED MULTI-CHASSIS DEVICE NAMING
---------------------------------------------------------------------------------
+## RULE 8: VIRTUALIZED MULTI-CHASSIS DEVICE NAMING
 
 PURPOSE: Represent multiple physical units operating as single logical device.
 
@@ -2102,9 +1928,7 @@ KEY REQUIREMENTS:
 - VLANs/SVIs configured once on logical device (not per member)
 - Port info configured for all L1 interfaces immediately after link creation
 
---------------------------------------------------------------------------------
-RULE 9: PORT-CHANNEL VLAN SYMMETRY
---------------------------------------------------------------------------------
+## RULE 9: PORT-CHANNEL VLAN SYMMETRY
 
 CRITICAL: Port-channels connecting two devices MUST have identical VLAN
 configuration on BOTH ends.
@@ -2138,9 +1962,7 @@ SYMMETRY CHECKLIST:
 - Port info configured for all member interfaces
 - Verified with show l2_interface
 
---------------------------------------------------------------------------------
-RULE 10: VALID IPV4 ADDRESS RANGE CONSTRAINTS
---------------------------------------------------------------------------------
+## RULE 10: VALID IPV4 ADDRESS RANGE CONSTRAINTS
 
 CRITICAL: All IPv4 octets must be 0-255. VLAN IDs > 255 require mapping.
 
@@ -2191,9 +2013,7 @@ VALIDATION CHECKLIST:
 - Gateway uses .1 (recommended)
 - Integer division used (not floating-point)
 
---------------------------------------------------------------------------------
-RULE 11: LAYER 2/LAYER 3 TRUNK PORT TYPE COMPATIBILITY
---------------------------------------------------------------------------------
+## RULE 11: LAYER 2/LAYER 3 TRUNK PORT TYPE COMPATIBILITY
 
 CRITICAL: Multiple L2 segments (VLANs) on trunk CANNOT connect directly to
 L3 physical routed port.
@@ -2254,9 +2074,7 @@ KEY PRINCIPLE:
 "Single VLAN to L3 physical port = VALID exception."
 "Any SVI (Vlan <ID>) created MUST be bound to an L2 segment on the SVI itself (Loopback excluded)."
 
---------------------------------------------------------------------------------
-RULE 11.5: ENDPOINT DEVICE IP ASSIGNMENT (NO SVI ON SERVERS / PCs / IoT)
---------------------------------------------------------------------------------
+## RULE 11.5: ENDPOINT DEVICE IP ASSIGNMENT (NO SVI ON SERVERS / PCs / IoT)
 
 CRITICAL: For physical endpoint devices (servers, PCs, printers, IoT,
 storage arrays, hypervisor hosts), assign the IP DIRECTLY to the L1
@@ -2329,9 +2147,7 @@ INTERACTION WITH OTHER RULES:
 - RULE 16   : Port speed / duplex / media settings on the endpoint's
               L1 physical port are still mandatory.
 
---------------------------------------------------------------------------------
-RULE 12: WIRELESS ACCESS POINT CONFIGURATION (FLEXCONNECT MODE DEFAULT)
---------------------------------------------------------------------------------
+## RULE 12: WIRELESS ACCESS POINT CONFIGURATION (FLEXCONNECT MODE DEFAULT)
 
 CRITICAL: Wireless APs require SVI-based IP configuration for proper operation.
 NOTE: APs are the ONLY endpoint-class device that uses an SVI. Servers /
@@ -2480,77 +2296,33 @@ Central     | At WLC            | Optional                 | Optional           
 FLEXCONNECT AP L2/L3 CONFIGURATION SUMMARY (WITH CLIENT VLANs):
 Component                    | Configuration Required
 -----------------------------|--------------------------------------------------
+AP device placement          | Row directly BELOW its access switch - MANDATORY
 AP Physical Port (Gi0)       | Management VLAN - MANDATORY
 AP Physical Port (Gi0)       | Client VLANs (all SSIDs) - MANDATORY for FlexConnect
 AP Physical Port (Gi0)       | NO IP address - MANDATORY
 AP Physical Port (Gi0)       | Port info (Speed/Duplex/Port_Type) - MANDATORY
 AP SVI (Management Vlan)     | Created via add virtual_port_bulk - MANDATORY
 AP SVI (Management Vlan)     | L2 segment binding on itself - MANDATORY (Rule 15)
-AP SVI (Management Vlan)     | IP address assigned - MANDATORY
+AP SVI (Management Vlan)     | IP address assigned, same subnet as switch Management SVI - MANDATORY
 AP SVI (Client Vlans)        | NOT required (AP does pass-through only)
 Switch Port (to AP)          | Management VLAN - MANDATORY
 Switch Port (to AP)          | Client VLANs (all SSIDs) - MANDATORY (trunk)
 Switch Port (to AP)          | Port info (Speed/Duplex/Port_Type) - MANDATORY
 Switch SVI (Management Vlan) | Gateway IP for AP management - MANDATORY
 Switch SVI (Client Vlans)    | Gateway IP for each client network - MANDATORY
+All of the above             | Configure with bulk commands, never one at a time
 
-WIRELESS AP CONFIGURATION CHECKLIST (WITH CLIENT VLANs):
-- [ ] AP mode determined (FlexConnect if not specified - MANDATORY DEFAULT)
-- [ ] APs placed in row BELOW access switch (hierarchical layout)
-- [ ] L1 links created between APs and switch (add l1_link_bulk)
-- [ ] Port info configured for all L1 interfaces (rename port_info_bulk) - MANDATORY
-- [ ] Management VLAN assigned to switch ports connecting to APs (add l2_segment_bulk)
-- [ ] Client VLANs (all SSIDs) assigned to switch ports connecting to APs (add l2_segment_bulk)
-- [ ] CRITICAL (FLEXCONNECT): Management VLAN assigned to AP physical ports GigabitEthernet 0 (add l2_segment_bulk)
-- [ ] CRITICAL (FLEXCONNECT): Client VLANs assigned to AP physical ports GigabitEthernet 0 (add l2_segment_bulk)
-- [ ] SVI created on SWITCH for Management VLAN - gateway (add virtual_port_bulk)
-- [ ] SVIs created on SWITCH for ALL Client VLANs - gateways (add virtual_port_bulk)
-- [ ] SVI created on EACH AP for Management VLAN only (add virtual_port_bulk)
-- [ ] CRITICAL: Each created SVI is bound to the L2 segment on the SVI itself (add l2_segment_bulk)
-- [ ] Gateway IP assigned to switch SVIs for all VLANs (add ip_address_bulk)
-- [ ] IP address assigned to each AP's Management SVI (add ip_address_bulk)
-- [ ] All AP IPs within same subnet as switch Management gateway SVI
-- [ ] NO IP addresses on AP physical interfaces (GigabitEthernet 0)
-- [ ] NO SVIs on AP for Client VLANs (pass-through only)
+CONSEQUENCE OF EACH OMISSION (why the table rows are mandatory):
+- IP on AP physical interface instead of SVI -> AP unreachable
+- No L2 segment on AP Gi0 -> FlexConnect local switching cannot tag traffic
+- Client VLANs missing on AP Gi0 or on the switch port -> client traffic dropped
+- VLAN set differs between switch port and AP Gi0 -> VLAN mismatch, traffic dropped
+- No SVI on the switch -> APs have no gateway
+- No SVI-to-L2 binding on the SVI itself -> violates RULE 15, SVI has no segment
+- AP SVI and switch SVI in different subnets -> gateway unreachable
+- Central mode assumed when no mode was specified -> wrong default, use FlexConnect
 
-COMMON MISTAKES:
-- Assigning IP to AP's physical interface (GigabitEthernet 0) -> WRONG
-- Missing L2 segment on AP's physical interface (GigabitEthernet 0) -> WRONG (FlexConnect requires L2 binding on AP physical port)
-- Forgetting to extend Client VLANs to AP physical port -> Client traffic dropped
-- Creating SVIs on AP for Client VLANs -> Unnecessary, AP does pass-through only
-- Missing Client VLANs on switch port to AP -> SSID traffic cannot pass
-- Different VLANs on switch port vs AP physical port -> VLAN mismatch, traffic dropped
-- Missing SVI on AP -> AP cannot have IP address
-- Missing SVI on switch -> No gateway for APs
-- Missing SVI-to-L2 binding (no l2_segment on the SVI itself) -> WRONG under RULE 15
-- AP SVI and switch SVI in different subnets -> Gateway unreachable
-- Missing Management VLAN on switch port -> AP traffic untagged/dropped
-- Placing APs in same row as switch (horizontal) -> WRONG, use hierarchical layout
-- Using Central mode when no mode specified -> WRONG, use FlexConnect as default
-- Using individual commands instead of bulk commands -> WRONG, always use bulk
-- Missing port info configuration after L1 link creation -> WRONG, always configure port info
-
-KEY PRINCIPLES:
-- "FlexConnect AP = L2 segment on AP physical port + SVI on both AP and Switch required"
-- "FlexConnect AP physical port (GigabitEthernet 0) MUST have L2 segment (Management VLAN) configured"
-- "FlexConnect AP physical port (GigabitEthernet 0) MUST have L2 segments (ALL Client VLANs) configured"
-- "FlexConnect Client VLANs = SSIDs map to VLANs, locally switched at AP"
-- "ALL Client VLANs MUST be extended to AP physical port (GigabitEthernet 0)"
-- "AP physical port carries: Management VLAN + ALL Client VLANs (trunk mode)"
-- "AP needs SVI ONLY for Management VLAN (for AP IP), NOT for Client VLANs"
-- "Switch needs SVIs for ALL VLANs (Management + Client) as gateways"
-- "FlexConnect AP physical port (GigabitEthernet 0) MUST NOT have IP address"
-- "All L1 interfaces MUST have port info (Speed/Duplex/Port_Type) configured"
-- "SVI (Vlan <ID>) MUST be bound to an L2 segment on the SVI itself (Loopback excluded)"
-- "AP IP address MUST be on SVI, NOT on physical interface"
-- "Switch SVI = Gateway, AP SVI = AP's IP address"
-- "No mode specified = FlexConnect mode (MANDATORY DEFAULT)"
-- "APs placed BELOW switches in device grid (hierarchical layout)"
-- "Always use bulk commands for efficiency"
-
---------------------------------------------------------------------------------
-RULE 13: OFFICE LAN MANDATORY WIRELESS AP REQUIREMENT
---------------------------------------------------------------------------------
+## RULE 13: OFFICE LAN MANDATORY WIRELESS AP REQUIREMENT
 
 CRITICAL: Office LAN environments MUST include wireless access points.
 
@@ -2571,105 +2343,31 @@ WHEN WIRELESS APs MAY BE EXCLUDED:
 - Industrial control networks (explicit exclusion by user)
 - User explicitly states "no wireless" or "wired only"
 
-AP PLACEMENT GUIDELINES (HIERARCHICAL LAYOUT):
+AP PLACEMENT AND SIZING:
 - Place APs in row BELOW access layer switches (TOP-TO-BOTTOM hierarchy)
 - Use Management VLAN (typically VLAN 10) for AP connectivity
 - AP count should be determined by site survey and coverage requirements
 - Use _AIR_ for spacing and column alignment
+- Naming: AP-[Location]-[Number] or [Model]-[Location]
+  (e.g. AP-F1-01, AP-Floor2-A, CW9166I-Lobby)
 
-OFFICE LAN WITH WIRELESS - STANDARD PATTERN (HIERARCHICAL):
+CONFIGURATION:
+Once the APs exist, configure them exactly as RULE 12 specifies -- placement,
+L1 links, port info, L2 segments on both the switch port and the AP Gi0, SVIs,
+SVI-to-L2 binding, and IP assignment. RULE 13 adds no configuration steps of its
+own; it only makes the presence of the APs mandatory. Copy the canonical
+FlexConnect example in RULE 12 and scale it:
+- For a switch stack, rename Access-SW1 to e.g. Access-Stack1 and use member IDs
+  in the interface names (GigabitEthernet 1/0/x, 2/0/x).
+- Add one column per extra AP in the row directly below the stack.
+- For multi-stack designs, add a Core-SW row above and give each access stack its
+  own column with its APs underneath.
+- With a single Management VLAN and no client SSIDs, drop the Client VLANs from
+  the l2_segment_bulk arguments; everything else is unchanged.
 
-For each access switch or switch stack:
-- Include wireless APs based on coverage requirements
-- Place APs in row directly below their connected switch
-- Connect APs to access switch ports
-- Configure Management VLAN for AP traffic
-- Configure APs in FlexConnect mode (default)
-- Configure port info for all L1 interfaces
+Verification for this rule is in SECTION 3.
 
-EXAMPLE - Small Office with Access Switch (HIERARCHICAL, USING BULK COMMANDS):
-
-# Devices with hierarchical layout (switch on top, APs below)
-add device_location "['Office',[['Access-SW1'],['AP-01','AP-02']]]"
-
-# Connect APs to switch
-add l1_link_bulk "[['AP-01','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/47'],['AP-02','Access-SW1','GigabitEthernet 0','GigabitEthernet 1/0/48']]"
-
-# Configure port info (MANDATORY)
-rename port_info_bulk "[[['AP-01','AP-02','Access-SW1'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
-
-# Add VLAN to switch ports
-add l2_segment_bulk "[['Access-SW1','GigabitEthernet 1/0/47',['VLAN10']],['Access-SW1','GigabitEthernet 1/0/48',['VLAN10']]]"
-
-# Add VLAN to AP physical ports (FlexConnect)
-add l2_segment_bulk "[['AP-01','GigabitEthernet 0',['VLAN10']],['AP-02','GigabitEthernet 0',['VLAN10']]]"
-
-# Create SVIs
-add virtual_port_bulk "[['Access-SW1',['Vlan 10']],['AP-01',['Vlan 10']],['AP-02',['Vlan 10']]]"
-
-# CRITICAL (SVI-L2 BINDING): Bind SVIs themselves to the L2 segment (MANDATORY)
-add l2_segment_bulk "[['Access-SW1','Vlan 10',['Vlan10']],['AP-01','Vlan 10',['Vlan10']],['AP-02','Vlan 10',['Vlan10']]]"
-
-# Assign IPs
-add ip_address_bulk "[['Access-SW1','Vlan 10',['10.1.1.1/24']],['AP-01','Vlan 10',['10.1.1.11/24']],['AP-02','Vlan 10',['10.1.1.12/24']]]"
-
-EXAMPLE - Medium Office with Switch Stack (HIERARCHICAL, USING BULK COMMANDS):
-
-# Access stack with multiple APs (hierarchical: stack on top, APs below)
-add device_location "['Floor1',[['Access-Stack1'],['AP-F1-01','AP-F1-02','AP-F1-03','AP-F1-04']]]"
-
-# Connect APs across stack members for redundancy
-add l1_link_bulk "[['AP-F1-01','Access-Stack1','GigabitEthernet 0','GigabitEthernet 1/0/45'],['AP-F1-02','Access-Stack1','GigabitEthernet 0','GigabitEthernet 1/0/46'],['AP-F1-03','Access-Stack1','GigabitEthernet 0','GigabitEthernet 2/0/45'],['AP-F1-04','Access-Stack1','GigabitEthernet 0','GigabitEthernet 2/0/46']]"
-
-# Configure port info (MANDATORY)
-rename port_info_bulk "[[['AP-F1-01','AP-F1-02','AP-F1-03','AP-F1-04','Access-Stack1'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
-
-# Add VLAN to switch ports
-add l2_segment_bulk "[['Access-Stack1','GigabitEthernet 1/0/45',['VLAN10']],['Access-Stack1','GigabitEthernet 1/0/46',['VLAN10']],['Access-Stack1','GigabitEthernet 2/0/45',['VLAN10']],['Access-Stack1','GigabitEthernet 2/0/46',['VLAN10']]]"
-
-# Add VLAN to AP physical ports (FlexConnect)
-add l2_segment_bulk "[['AP-F1-01','GigabitEthernet 0',['VLAN10']],['AP-F1-02','GigabitEthernet 0',['VLAN10']],['AP-F1-03','GigabitEthernet 0',['VLAN10']],['AP-F1-04','GigabitEthernet 0',['VLAN10']]]"
-
-# Create SVIs
-add virtual_port_bulk "[['Access-Stack1',['Vlan 10']],['AP-F1-01',['Vlan 10']],['AP-F1-02',['Vlan 10']],['AP-F1-03',['Vlan 10']],['AP-F1-04',['Vlan 10']]]"
-
-# CRITICAL (SVI-L2 BINDING): Bind SVIs themselves to the L2 segment (MANDATORY)
-add l2_segment_bulk "[['Access-Stack1','Vlan 10',['Vlan10']],['AP-F1-01','Vlan 10',['Vlan10']],['AP-F1-02','Vlan 10',['Vlan10']],['AP-F1-03','Vlan 10',['Vlan10']],['AP-F1-04','Vlan 10',['Vlan10']]]"
-
-# Assign IPs
-add ip_address_bulk "[['Access-Stack1','Vlan 10',['10.1.1.1/24']],['AP-F1-01','Vlan 10',['10.1.1.11/24']],['AP-F1-02','Vlan 10',['10.1.1.12/24']],['AP-F1-03','Vlan 10',['10.1.1.13/24']],['AP-F1-04','Vlan 10',['10.1.1.14/24']]]"
-
-EXAMPLE - Large Office with Core and Multiple Access Stacks (HIERARCHICAL):
-
-# Three-tier layout: Core -> Access Stacks -> APs
-add device_location "['Office_LAN',[['_AIR_','_AIR_','Core-SW1-2(StackVirtual)','_AIR_','_AIR_'],['Access-Stack1','_AIR_','Access-Stack2','_AIR_','Access-Stack3'],['AP-01','AP-02','AP-03','AP-04','AP-05','AP-06']]]"
-
-# Connect access stacks to core, APs to access stacks
-# Configure per Rule 12 using bulk commands - FlexConnect mode default
-# Always include rename port_info_bulk after L1 link creation
-
-AP NAMING CONVENTION:
-- Format: AP-[Location]-[Number] or [Model]-[Location]
-- Examples: AP-F1-01, AP-Floor2-A, CW9166I-Lobby
-
-VERIFICATION CHECKLIST:
-- [ ] Office LAN design includes wireless APs
-- [ ] APs placed in row BELOW access switches (hierarchical layout)
-- [ ] APs connected to access switch ports (add l1_link_bulk)
-- [ ] Port info configured for all L1 interfaces (rename port_info_bulk) - MANDATORY
-- [ ] APs configured per Rule 12 (VLAN, SVI, IP using bulk commands)
-- [ ] APs using FlexConnect mode (default, per Rule 12)
-
-KEY PRINCIPLES:
-- "Office LAN = Wireless APs REQUIRED unless explicitly excluded by user"
-- "APs placed BELOW switches in hierarchical TOP-TO-BOTTOM layout"
-- "APs use FlexConnect mode by default (per Rule 12)"
-- "Always configure port info immediately after L1 link creation"
-- "Always use bulk commands for all configurations"
-
---------------------------------------------------------------------------------
-RULE 14: MANDATORY DEVICE ATTRIBUTE CONFIGURATION (MODEL AND OS)
---------------------------------------------------------------------------------
+## RULE 14: MANDATORY DEVICE ATTRIBUTE CONFIGURATION (MODEL AND OS)
 
 CRITICAL: When creating or modifying network configurations, device attributes
 for Model and OS MUST be configured as a standard practice.
@@ -2677,10 +2375,11 @@ for Model and OS MUST be configured as a standard practice.
 MANDATORY REQUIREMENTS:
 - Header row MUST include 'Model' and 'OS' columns
 - ALL devices MUST have Model and OS values populated
-- Model and OS values should be inferred based on:
-  - Device naming conventions
-  - Device role in topology (Core, Distribution, Access, AP, WLC, etc.)
-  - Common industry knowledge of Cisco product families
+- Infer Model and OS with best judgment from:
+  - Device naming conventions and prefixes
+  - Position in the hierarchy (Core / Distribution / Access / Edge)
+  - Device function (Switch, Router, AP, WLC, Firewall, ...)
+  - Modern Cisco product families and their associated operating systems
 
 STANDARD HEADER CONFIGURATION:
 ['Device Name', 'Default', 'Model', 'OS', 'Attribute-C', 'Attribute-D', 'Attribute-E', 'Attribute-F', 'Attribute-G', 'Attribute-H']
@@ -2690,38 +2389,19 @@ Column Assignments:
 - Column 3 (Model): Hardware model name
 - Column 4 (OS): Operating system type
 
-MODEL AND OS INFERENCE GUIDELINES:
-
-The LLM should infer appropriate Model and OS values based on:
-1. Device name patterns and prefixes
-2. Position in network hierarchy (Core/Distribution/Access/Edge)
-3. Device function (Switch, Router, AP, WLC, Firewall, etc.)
-4. Common Cisco product families and their associated operating systems
-
-Use reasonable assumptions based on:
-- Modern Cisco product portfolio
-- Typical enterprise deployment patterns
-- Device naming conventions in the configuration
-
 RGB COLOR GUIDELINES:
 
 Apply distinct background colors to visually differentiate device categories:
 - Use different colors for different device roles (switches, APs, WLCs, routers, etc.)
 - OS column should use a consistent color across all devices
 - Empty attributes should use white [255, 255, 255]
-
-COMMAND GENERATION WORKFLOW:
+- For initial master creation, ALWAYS use the full form \"['VAL',[R,G,B]]\" for
+  every attribute. Plain-string text-only mode preserves existing colors only --
+  it cannot introduce a new color into a previously white cell.
 
 After completing network topology configuration (Phases 1-4), ALWAYS generate
-rename attribute_bulk command to set Model and OS for all devices.
-
-Step 1: Analyze all devices in the configuration
-Step 2: Infer Model based on device name and role
-Step 3: Infer OS based on the Model family
-Step 4: Generate rename attribute_bulk command with:
-        - Updated header row (ensure 'Model' and 'OS' columns exist)
-        - All devices with Model and OS values populated
-        - Appropriate RGB colors for visual distinction
+one rename attribute_bulk command (header row + all devices) to set Model and
+OS for every device, using the requirements above.
 
 EXAMPLE:
 
@@ -2735,23 +2415,9 @@ In this example:
 - Wireless AP: Catalyst 9100 series AP, IOS-XE
 - WLC: Catalyst 9800 series controller, IOS-XE
 
-VERIFICATION CHECKLIST FOR RULE 14:
-- [ ] Header row includes 'Model' and 'OS' columns
-- [ ] ALL devices have Model value populated
-- [ ] ALL devices have OS value populated
-- [ ] Model and OS values are reasonable for device role
-- [ ] RGB colors applied for visual distinction
-- [ ] rename attribute_bulk command generated after topology setup
+Verification for this rule is in SECTION 3.
 
-KEY PRINCIPLES:
-- "Every device MUST have Model and OS attributes"
-- "Infer Model and OS using best judgment based on device name and role"
-- "Use consistent RGB colors for visual categorization"
-- "Generate attribute command as final step of configuration"
-
---------------------------------------------------------------------------------
-RULE 15: MANDATORY SVI-TO-L2 SEGMENT BINDING (STRICT) - LOOPBACK EXCLUDED
---------------------------------------------------------------------------------
+## RULE 15: MANDATORY SVI-TO-L2 SEGMENT BINDING (STRICT) - LOOPBACK EXCLUDED
 
 CRITICAL / MANDATORY:
 Any SVI created via add virtual_port_bulk (interfaces named "Vlan <ID>") MUST be
@@ -2802,9 +2468,7 @@ INTERACTION WITH OTHER RULES:
   MUST also follow this rule (SVI bound on AP's SVI row), while Loopback remains
   excluded.
 
---------------------------------------------------------------------------------
-RULE 16: MANDATORY PORT INFORMATION CONFIGURATION
---------------------------------------------------------------------------------
+## RULE 16: MANDATORY PORT INFORMATION CONFIGURATION
 
 CRITICAL: All L1 interfaces created via add l1_link_bulk MUST have their
 port information (Speed, Duplex, Port_Type) configured using rename port_info_bulk.
@@ -2815,12 +2479,8 @@ MANDATORY REQUIREMENTS:
 - Use rename port_info_bulk to configure multiple ports efficiently
 - This step is NON-OPTIONAL and must be included in every configuration
 
-PORT INFORMATION INFERENCE GUIDELINES:
-
-The LLM should infer appropriate port information based on:
-1. Interface naming conventions (GigabitEthernet, TenGigabitEthernet, etc.)
-2. Device role and typical deployment patterns
-3. Common industry standards for port types
+Infer the values from the interface naming convention first, then from the device
+role and typical deployment pattern.
 
 STANDARD PORT INFO BY INTERFACE TYPE:
 
@@ -2834,25 +2494,13 @@ STANDARD PORT INFO BY INTERFACE TYPE:
 | HundredGigE              | HU     | 100Gbps       | Full           | 100GBASE-SR4      |
 | Waypoint ports           | port   | N/A           | N/A            | N/A               |
 
-SPECIAL CASES:
-- Waypoint device interfaces (e.g., "port 0", "port 1"): Use N/A for all fields
-- Access ports to end devices (APs, servers): Typically 1000BASE-T
-- Uplink ports between switches: Typically 10GBASE-SR or higher
-- Port-channel member interfaces: Same port type as individual interface
-- Fiber optic connections: Use appropriate optic type (SR, LR, etc.)
-
-PORT TYPE SELECTION GUIDE:
-| Connection Type                    | Recommended Port_Type |
-|------------------------------------|-----------------------|
-| Copper (RJ-45) 100Mbps             | 100BASE-TX            |
-| Copper (RJ-45) 1Gbps               | 1000BASE-T            |
-| Short-range fiber 10Gbps           | 10GBASE-SR            |
-| Long-range fiber 10Gbps            | 10GBASE-LR            |
-| Short-range fiber 25Gbps           | 25GBASE-SR            |
-| Short-range fiber 40Gbps           | 40GBASE-SR4           |
-| Short-range fiber 100Gbps          | 100GBASE-SR4          |
-| Direct Attach Cable (DAC)          | 10GBASE-CU            |
-| Waypoint/Cloud representation      | N/A                   |
+SPECIAL CASES (override the table above):
+- Waypoint device interfaces (e.g., "port 0", "port 1"): N/A for all fields
+- Access ports to end devices (APs, servers): 1000BASE-T
+- Uplink ports between switches: 10GBASE-SR or higher
+- Port-channel member interfaces: same port type as the individual interface
+- Long-range fiber instead of short-range: use the LR variant (e.g. 10GBASE-LR)
+- Direct Attach Cable (DAC): 10GBASE-CU
 
 COMMAND GENERATION WORKFLOW:
 
@@ -2871,70 +2519,27 @@ Step 4: Generate rename port_info_bulk command using _ALL_ notation (PREFERRED F
 Step 5: Place command immediately after add l1_link_bulk (Phase 2.5)
 
 EXAMPLES:
+Every case is the same shape -- one entry per group of devices that share the
+same (Speed, Duplex, Port_Type), using '_ALL_' as the port name, followed by
+per-port entries only where a device deviates from its own group.
 
-EXAMPLE 1: Basic GigabitEthernet connections
-add l1_link_bulk "[['Switch-A','Switch-B','GigabitEthernet 0/1','GigabitEthernet 0/1']]"
-rename port_info_bulk "[[['Switch-A','Switch-B'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
-
-EXAMPLE 2: TenGigabitEthernet uplinks
-add l1_link_bulk "[['Access-SW1','Dist-SW1','TenGigabitEthernet 1/0/1','TenGigabitEthernet 1/0/11']]"
+# Devices that share one setting: group them
 rename port_info_bulk "[[['Access-SW1','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']]]"
 
-EXAMPLE 3: Mixed interface types (use _ALL_ per group, then override specific ports)
-add l1_link_bulk "[['Core-Router','Dist-SW1','TenGigabitEthernet 0/0','TenGigabitEthernet 1/0/1'],['Dist-SW1','Access-SW1','GigabitEthernet 1/0/24','GigabitEthernet 0/1'],['Access-SW1','AP-01','GigabitEthernet 0/48','GigabitEthernet 0']]"
+# Mixed speeds: one group per speed, then override the odd ports on Dist-SW1
 rename port_info_bulk "[[['Core-Router','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']],[['Access-SW1','AP-01'],'_ALL_',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/24',['1Gbps','Full','1000BASE-T']]]"
 
-EXAMPLE 4: Connection to Waypoint (WAN/Internet)
-add l1_link_bulk "[['Edge-Router','Internet_wp_','GigabitEthernet 0/0','port 0']]"
+# Waypoints always take N/A, so they form their own group
 rename port_info_bulk "[['Edge-Router','_ALL_',['1Gbps','Full','1000BASE-T']],['Internet_wp_','_ALL_',['N/A','N/A','N/A']]]"
 
-EXAMPLE 5: Multi-tier campus network
-add l1_link_bulk "[['Core-SW1-2(StackVirtual)','Dist-SW1','TenGigabitEthernet 1/0/1','TenGigabitEthernet 1/0/49'],['Core-SW1-2(StackVirtual)','Dist-SW1','TenGigabitEthernet 2/0/1','TenGigabitEthernet 1/0/50'],['Dist-SW1','Access-Stack1','GigabitEthernet 1/0/1','GigabitEthernet 1/0/49'],['Dist-SW1','Access-Stack1','GigabitEthernet 1/0/2','GigabitEthernet 2/0/49']]"
-rename port_info_bulk "[[['Core-SW1-2(StackVirtual)','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']],['Access-Stack1','_ALL_',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/1',['1Gbps','Full','1000BASE-T']],['Dist-SW1','GE 1/0/2',['1Gbps','Full','1000BASE-T']]]"
+The same three patterns cover access-to-distribution uplinks (10GBASE-SR),
+switch-to-AP and switch-to-server access ports (1000BASE-T), core-to-WAN-router
+long-range links (10GBASE-LR), stacks (member IDs in the interface names), and
+multi-tier campus designs -- only the device names and values change.
 
-PORT INFO FOR COMMON SCENARIOS:
+Verification for this rule is in SECTION 3.
 
-SCENARIO: Access Switch to Distribution Switch (10G Uplink)
-rename port_info_bulk "[[['Access-SW1','Dist-SW1'],'_ALL_',['10Gbps','Full','10GBASE-SR']]]"
-
-SCENARIO: Access Switch to Wireless AP (1G Access Port)
-rename port_info_bulk "[[['Access-SW1','AP-01'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
-
-SCENARIO: Core Switch to WAN Router (10G)
-rename port_info_bulk "[[['Core-SW1','WAN-Router'],'_ALL_',['10Gbps','Full','10GBASE-LR']]]"
-
-SCENARIO: Connection to Waypoint (WAN/Internet/MPLS)
-rename port_info_bulk "[['Router-01','_ALL_',['1Gbps','Full','1000BASE-T']],['Internet_wp_','_ALL_',['N/A','N/A','N/A']]]"
-
-SCENARIO: Server connection (1G copper)
-rename port_info_bulk "[[['Access-SW1','Server-01'],'_ALL_',['1Gbps','Full','1000BASE-T']]]"
-
-VERIFICATION CHECKLIST FOR RULE 16:
-- [ ] ALL L1 interfaces have Speed configured
-- [ ] ALL L1 interfaces have Duplex configured
-- [ ] ALL L1 interfaces have Port_Type configured
-- [ ] Port info values are appropriate for interface type
-- [ ] Waypoint interfaces use N/A for all fields
-- [ ] rename port_info_bulk command placed IMMEDIATELY after add l1_link_bulk
-- [ ] Both ends of each link have port info configured
-
-KEY PRINCIPLES:
-- "Every L1 interface MUST have Speed, Duplex, and Port_Type configured"
-- "Port info command MUST follow immediately after L1 link creation"
-- "Infer port info based on interface naming and common standards"
-- "Use N/A for waypoint device interfaces"
-- "Both ends of every L1 link must have port info"
-- "Always use bulk command for efficiency"
-- "This step is MANDATORY and non-optional"
-- "ALWAYS use _ALL_ notation instead of enumerating individual ports"
-- "ALWAYS group devices with identical port settings using device list notation"
-- "Only list individual ports when overriding specific ports within a device that already had _ALL_ applied"
-
-
-
-================================================================================
-SECTION 3: VERIFICATION CHECKLIST
-================================================================================
+# SECTION 3: VERIFICATION CHECKLIST
 
 COMPREHENSIVE VERIFICATION CHECKLIST:
 
@@ -3057,6 +2662,4 @@ COMMAND SEQUENCE VERIFICATION:
 - [ ] Phase 4: add ip_address_bulk -> rename l3_instance
 - [ ] Phase 6: rename attribute_bulk
 
-================================================================================
-END OF CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
-================================================================================
+# END OF CRITICAL NETWORK SKETCHER ARCHITECTURE CONSTRAINTS
