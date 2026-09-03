@@ -4,6 +4,7 @@ debug-*.log
 # Network Sketcher Online — runtime files
 network-sketcher_online/Certs/*.crt
 network-sketcher_online/Certs/*.key
+network-sketcher_online/Certs/*.cer
 network-sketcher_online/logs/*.log
 network-sketcher_online/uploads/
 network-sketcher_online/*.pid

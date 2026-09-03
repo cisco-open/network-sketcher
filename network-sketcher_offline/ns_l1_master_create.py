@@ -1160,17 +1160,48 @@ class  ns_l1_master_create():
         folder_name_of_wp = pre_folder_name_of_wp
 
         ### Check multiple WPs in a same folder
+        # Every WayPoint sharing an area and a direction belongs to one _wp_
+        # folder, which is named after whichever member reached
+        # folder_name_of_wp. Each remaining member is paired to that owner, so
+        # both the <<POSITION_SHAPE>> writer below and the <<POSITION_LINE>>
+        # lookup further down can resolve the whole group instead of one pair.
         multi_wp = []
+        wp_group_array = []
         for tmp_wp in wp_array:
-            if tmp_wp[1] not in folder_name_of_wp and tmp_wp[1] not in str(multi_wp):
-                for tmp_tmp_wp in wp_array:
-                    if tmp_wp[0] == tmp_tmp_wp[0] and tmp_wp[2] == tmp_tmp_wp[2] and tmp_wp[1] != tmp_tmp_wp[1]:
-                        multi_wp.append([tmp_wp[1], tmp_wp[2],tmp_tmp_wp[1]])
+            flag_found_group = False
+            for tmp_group in wp_group_array:
+                if tmp_group[0] == tmp_wp[0] and tmp_group[1] == tmp_wp[2]:
+                    flag_found_group = True
+                    if tmp_wp[1] not in tmp_group[2]:
+                        tmp_group[2].append(tmp_wp[1])
+            if flag_found_group == False:
+                wp_group_array.append([tmp_wp[0], tmp_wp[2], [tmp_wp[1]]])
+
+        for tmp_group in wp_group_array:
+            owner_name = ''
+            for member_name in tmp_group[2]:
+                if member_name in folder_name_of_wp:
+                    owner_name = member_name
+                    break
+            if owner_name == '':
+                continue
+            for member_name in tmp_group[2]:
+                if member_name != owner_name:
+                    multi_wp.append([member_name, tmp_group[1], owner_name])
 
         #print('---- multi_wp ----')
         #print(multi_wp)
 
         for tmp_folder_name_of_wp in folder_name_of_wp:
+            # Skip members that another WayPoint already owns, otherwise they
+            # would also be written out as a folder of their own.
+            flag_owned_by_other_wp = False
+            for tmp_multi_wp in multi_wp:
+                if tmp_folder_name_of_wp == tmp_multi_wp[0]:
+                    flag_owned_by_other_wp = True
+            if flag_owned_by_other_wp == True:
+                continue
+
             flag_multi_wp = False
             tmp_sort_hight = [tmp_folder_name_of_wp]
 
@@ -1188,10 +1219,14 @@ class  ns_l1_master_create():
                 master_shape_tuple[start_row, 1] = tmp_folder_name_of_wp + '_wp_'
                 #sort WPs with hight
                 tmp_hight_wp = []
+                tmp_hight_wp_names = []
                 tmp_sort_multi_wp = []
                 current_multi_wp_tuple = {}
                 for tmp_shape_array in master_shape_array:
-                    if tmp_shape_array[1] in tmp_sort_hight and tmp_shape_array[1] not in str(tmp_hight_wp):
+                    # Match on the name itself; a substring test would let a
+                    # name such as WAN1 be swallowed by WAN10.
+                    if tmp_shape_array[1] in tmp_sort_hight and tmp_shape_array[1] not in tmp_hight_wp_names:
+                        tmp_hight_wp_names.append(tmp_shape_array[1])
                         tmp_hight_wp.append([tmp_shape_array[1],tmp_shape_array[3]])
                         tmp_sort_multi_wp.append(tmp_shape_array)
 
