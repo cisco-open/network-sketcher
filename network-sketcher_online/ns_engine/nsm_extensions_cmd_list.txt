@@ -169,7 +169,15 @@ Device location:
 ['DEVICE8', 'DEVICE9', 'DEVICE10', 'DEVICE11', 'DEVICE12', '_AIR_', '_AIR_', '_AIR_']
 
 ## show l1_interface
-Displays detailed information on all L1 interfaces for each device.
+Displays detailed information on the L1 interfaces that are endpoints of
+existing physical links.
+
+IMPORTANT: This output is not a hardware inventory, port-capacity list, or
+list of every port that could exist on a device. Physical L1 interfaces are
+registered when add l1_link_bulk creates a link, so an unconnected prospective
+port does not appear here. Unless the user or a device-model constraint states
+otherwise, the absence of a port name means that it is not yet registered or
+connected; it does not mean that the device has no available ports.
  ```bash
 show l1_interface
  ```
@@ -474,6 +482,21 @@ $ show l1_link
 * All elements (device names, port names) must be enclosed in single or double quotes
 * Using the same port multiple times within a batch will cause an error
 * Ports already in use by existing links cannot be used
+* Physical ports do not need to be declared in advance. Each successful link
+  creates both endpoint interfaces if their port names are not already registered
+* show l1_interface and show l1_link list connected endpoints, not a device's
+  complete hardware inventory or port capacity
+* If no model-specific or user-supplied port limit applies, choose a reasonable
+  physical port name/number that is not used by an existing link or elsewhere
+  in the same batch. Do not reject a link merely because no unused port is listed
+  by a show command
+* Both endpoint devices must already be placed, and each port name must contain
+  an interface type and number separated by a space (for example,
+  'GigabitEthernet 0/1')
+* There is no standalone unused-physical-port declaration: a new physical
+  interface is registered as an endpoint when its L1 link is created
+* New endpoint interfaces initially have Speed, Duplex, and Port_Type set to
+  N/A. Configure them immediately afterward with rename port_info_bulk (RULE 17)
 
 
 ## add l2_segment_bulk
@@ -2041,6 +2064,13 @@ PHASE 2: PHYSICAL CONNECTIVITY
    port listed there as already occupied. A port carries exactly one L1
    link, so each new link MUST use a port number that is not already
    connected and that is not reused anywhere else in the same batch.
+   show l1_link and show l1_interface contain connected endpoints only;
+   they are NOT hardware inventories or port-capacity lists. When no
+   device-model or user-supplied port limit applies, allocate a reasonable
+   valid physical port name/number that is absent from the existing links.
+   add l1_link_bulk registers that new endpoint interface together with
+   the link; do not reject the request merely because an unused port is
+   not already present in a show command.
    A duplicated port aborts the entire add l1_link_bulk command, so
    allocate port numbers explicitly before generating the command.
 
