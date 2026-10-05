@@ -4334,10 +4334,16 @@ class ns_cli_run():
 
             # Keep header rows, filter data rows
             header_rows = position_line_array[:2]
-            data_rows = [item for item in position_line_array[2:]
-                         if not (len(item) >= 2 and isinstance(item[1], list)
-                                 and len(item[1]) >= 2
-                                 and (item[1][0] in all_elements_to_delete or item[1][1] in all_elements_to_delete))]
+            removed_line_rows = []
+            data_rows = []
+            for item in position_line_array[2:]:
+                touches_deleted = (len(item) >= 2 and isinstance(item[1], list)
+                                   and len(item[1]) >= 2
+                                   and (item[1][0] in all_elements_to_delete or item[1][1] in all_elements_to_delete))
+                if touches_deleted:
+                    removed_line_rows.append(item[1])
+                else:
+                    data_rows.append(item)
 
             position_line_array = header_rows + data_rows
 
@@ -4385,6 +4391,11 @@ class ns_cli_run():
             result = def_common.recalculate_folder_sizes(master_file_path)
             if result['status'] != 'success':
                 return ([f"[Error] Failed to recalculate folder sizes: {result['message']}"])
+
+            # Opposite devices stay in POSITION_SHAPE, so the L1 sync would
+            # write their unused physical-port rows back. Drop those first.
+            def_common.drop_unused_physical_ports_before_l1_sync(
+                master_file_path, removed_line_rows)
 
             # ========== Sync with L2/L3 ==========
             import tkinter as tk
@@ -4531,77 +4542,8 @@ class ns_cli_run():
 
             # The L1 sync writes original physical-port rows back while the
             # device still exists. Remove both ends first, then sync.
-            def _full_port_name(row, short_index, prefix_index):
-                if not isinstance(row, list) or len(row) <= short_index or row[short_index] in (None, ''):
-                    return ''
-                short = str(row[short_index])
-                prefix = ''
-                if len(row) > prefix_index and row[prefix_index] not in (None, ''):
-                    prefix = str(row[prefix_index])
-                if ' ' in short:
-                    return prefix + ' ' + short.split(' ')[-1]
-                return prefix
-
-            def _endpoint_still_linked(lines, hostname, full_name):
-                for item in lines:
-                    if not isinstance(item, list) or len(item) < 2 or not isinstance(item[1], list):
-                        continue
-                    row = item[1]
-                    if not row or row[0] in ('<<POSITION_LINE>>', 'From_Name'):
-                        continue
-                    if len(row) > 2 and row[0] == hostname and _full_port_name(row, 2, 12) == full_name:
-                        return True
-                    if len(row) > 3 and row[1] == hostname and _full_port_name(row, 3, 16) == full_name:
-                        return True
-                return False
-
-            def _drop_named_ports(table, name_index, targets):
-                kept = []
-                for item in table:
-                    values = item[1] if isinstance(item, list) and len(item) >= 2 and isinstance(item[1], list) else None
-                    if values is None or (values and values[0] in ('<<L2_TABLE>>', '<<L3_TABLE>>', 'Area')):
-                        kept.append(item)
-                        continue
-                    device = values[1] if len(values) > 1 else ''
-                    name = values[name_index] if len(values) > name_index else ''
-                    if name and (device, name) in targets:
-                        continue
-                    kept.append(item)
-                for index, entry in enumerate(kept):
-                    entry[0] = index + 1
-                return kept
-
-            def _write_table(sheet_name, table):
-                nsm_def.remove_excel_sheet(master_file_path, sheet_name)
-                nsm_def.create_excel_sheet(master_file_path, sheet_name)
-                nsm_def.write_excel_meta(
-                    nsm_def.convert_array_to_tuple(table), master_file_path, sheet_name, '_template_', 0, 0)
-
-            remaining_lines = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
-            deleted_row = deleted_connection[1]
-            drop_targets = set()
-            for host, short_index, prefix_index in (
-                (deleted_from_h, 2, 12),
-                (deleted_to_h, 3, 16),
-            ):
-                full_name = _full_port_name(deleted_row, short_index, prefix_index)
-                if full_name and not _endpoint_still_linked(remaining_lines, host, full_name):
-                    drop_targets.add((host, full_name))
-
-            if drop_targets:
-                for sheet_name, section_name, name_index in (
-                    ('Master_Data_L2', '<<L2_TABLE>>', 3),
-                    ('Master_Data_L3', '<<L3_TABLE>>', 2),
-                ):
-                    try:
-                        table = nsm_def.convert_master_to_array(sheet_name, master_file_path, section_name)
-                    except KeyError:
-                        table = []
-                    if not table or not isinstance(table[0], list) or len(table[0]) < 2 or table[0][1][0] != section_name:
-                        continue
-                    updated = _drop_named_ports(table, name_index, drop_targets)
-                    if len(updated) != len(table):
-                        _write_table(sheet_name, updated)
+            def_common.drop_unused_physical_ports_before_l1_sync(
+                master_file_path, [deleted_connection[1]])
 
             # ========== Sync with L2/L3 ==========
             import tkinter as tk
@@ -8292,6 +8234,95 @@ class def_common():
             return {'status': 'error', 'message': f'Error adding areas to STYLE_FOLDER: {str(e)}'}
 
     @staticmethod
+    def drop_unused_physical_ports_before_l1_sync(master_file_path, removed_line_rows):
+        """Drop L2/L3 physical-port rows for ends of removed L1 lines that no
+        remaining line still uses.
+
+        The L1 sync writes original physical-port rows back while the device
+        is still in POSITION_SHAPE. Removing them first keeps that write-back
+        from restoring a port that no longer has an L1 link. Rows with an
+        empty Port Name (virtual ports) are not matched, and L3 rows whose
+        interface name is not one of the removed physical ports stay.
+        """
+        import nsm_def
+
+        if not removed_line_rows:
+            return
+
+        def _full_port_name(row, short_index, prefix_index):
+            if not isinstance(row, list) or len(row) <= short_index or row[short_index] in (None, ''):
+                return ''
+            short = str(row[short_index])
+            prefix = ''
+            if len(row) > prefix_index and row[prefix_index] not in (None, ''):
+                prefix = str(row[prefix_index])
+            if ' ' in short:
+                return prefix + ' ' + short.split(' ')[-1]
+            return prefix
+
+        def _endpoint_still_linked(lines, hostname, full_name):
+            for item in lines:
+                if not isinstance(item, list) or len(item) < 2 or not isinstance(item[1], list):
+                    continue
+                row = item[1]
+                if not row or row[0] in ('<<POSITION_LINE>>', 'From_Name'):
+                    continue
+                if len(row) > 2 and row[0] == hostname and _full_port_name(row, 2, 12) == full_name:
+                    return True
+                if len(row) > 3 and row[1] == hostname and _full_port_name(row, 3, 16) == full_name:
+                    return True
+            return False
+
+        def _drop_named_ports(table, name_index, targets):
+            kept = []
+            for item in table:
+                values = item[1] if isinstance(item, list) and len(item) >= 2 and isinstance(item[1], list) else None
+                if values is None or (values and values[0] in ('<<L2_TABLE>>', '<<L3_TABLE>>', 'Area')):
+                    kept.append(item)
+                    continue
+                device = values[1] if len(values) > 1 else ''
+                name = values[name_index] if len(values) > name_index else ''
+                if name and (device, name) in targets:
+                    continue
+                kept.append(item)
+            for index, entry in enumerate(kept):
+                entry[0] = index + 1
+            return kept
+
+        remaining_lines = nsm_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
+        drop_targets = set()
+        for row in removed_line_rows:
+            if not isinstance(row, list) or len(row) < 2:
+                continue
+            for host, short_index, prefix_index in (
+                (row[0], 2, 12),
+                (row[1], 3, 16),
+            ):
+                full_name = _full_port_name(row, short_index, prefix_index)
+                if full_name and not _endpoint_still_linked(remaining_lines, host, full_name):
+                    drop_targets.add((host, full_name))
+
+        if not drop_targets:
+            return
+
+        for sheet_name, section_name, name_index in (
+            ('Master_Data_L2', '<<L2_TABLE>>', 3),
+            ('Master_Data_L3', '<<L3_TABLE>>', 2),
+        ):
+            try:
+                table = nsm_def.convert_master_to_array(sheet_name, master_file_path, section_name)
+            except KeyError:
+                table = []
+            if not table or not isinstance(table[0], list) or len(table[0]) < 2 or table[0][1][0] != section_name:
+                continue
+            updated = _drop_named_ports(table, name_index, drop_targets)
+            if len(updated) != len(table):
+                nsm_def.remove_excel_sheet(master_file_path, sheet_name)
+                nsm_def.create_excel_sheet(master_file_path, sheet_name)
+                nsm_def.write_excel_meta(
+                    nsm_def.convert_array_to_tuple(updated), master_file_path, sheet_name, '_template_', 0, 0)
+
+    @staticmethod
     def delete_device_or_waypoint_common(self, name, master_file_path, element_type='device'):
         """
         Common function to delete device or waypoint
@@ -8412,10 +8443,16 @@ class def_common():
 
         # 3. Delete from POSITION_LINE
         header_rows = position_line_array[:2]
-        data_rows = [item for item in position_line_array[2:]
-                     if not (len(item) >= 2 and isinstance(item[1], list)
-                             and len(item[1]) >= 2
-                             and (item[1][0] == name or item[1][1] == name))]
+        removed_line_rows = []
+        data_rows = []
+        for item in position_line_array[2:]:
+            touches_deleted = (len(item) >= 2 and isinstance(item[1], list)
+                               and len(item[1]) >= 2
+                               and (item[1][0] == name or item[1][1] == name))
+            if touches_deleted:
+                removed_line_rows.append(item[1])
+            else:
+                data_rows.append(item)
 
         position_line_array = header_rows + data_rows
 
@@ -8493,6 +8530,12 @@ class def_common():
         if result['status'] != 'success':
             return ([f"[ERROR] Failed to recalculate folder sizes: {result['message']}"])
         # ★★★ End of addition ★★★
+
+        # The deleted device leaves POSITION_SHAPE, but the opposite device
+        # does not. Drop the opposite physical ports before the L1 sync
+        # writes them back.
+        def_common.drop_unused_physical_ports_before_l1_sync(
+            master_file_path, removed_line_rows)
 
         # Sync with L2/L3 layers
         import tkinter as tk
