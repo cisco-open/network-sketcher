@@ -4071,6 +4071,107 @@ class ns_cli_run():
             deleted_from_port = deleted_connection[1][2]
             deleted_to_port = deleted_connection[1][3]
 
+            # The L1 sync writes original physical-port rows back while the
+            # device still exists. Remove both ends first, then sync.
+            def _full_port_name(row, short_index, prefix_index):
+                if not isinstance(row, list) or len(row) <= short_index or row[short_index] in (None, ''):
+                    return ''
+                short = str(row[short_index])
+                prefix = ''
+                if len(row) > prefix_index and row[prefix_index] not in (None, ''):
+                    prefix = str(row[prefix_index])
+                if ' ' in short:
+                    return prefix + ' ' + short.split(' ')[-1]
+                return prefix
+
+            def _endpoint_still_linked(lines, hostname, full_name):
+                for item in lines:
+                    if not isinstance(item, list) or len(item) < 2 or not isinstance(item[1], list):
+                        continue
+                    row = item[1]
+                    if not row or row[0] in ('<<POSITION_LINE>>', 'From_Name'):
+                        continue
+                    if len(row) > 2 and row[0] == hostname and _full_port_name(row, 2, 12) == full_name:
+                        return True
+                    if len(row) > 3 and row[1] == hostname and _full_port_name(row, 3, 16) == full_name:
+                        return True
+                return False
+
+            def _drop_named_ports(table, name_index, targets):
+                kept = []
+                for item in table:
+                    values = item[1] if isinstance(item, list) and len(item) >= 2 and isinstance(item[1], list) else None
+                    if values is None or (values and values[0] in ('<<L2_TABLE>>', '<<L3_TABLE>>', 'Area')):
+                        kept.append(item)
+                        continue
+                    device = values[1] if len(values) > 1 else ''
+                    name = values[name_index] if len(values) > name_index else ''
+                    if name and (device, name) in targets:
+                        continue
+                    kept.append(item)
+                for index, entry in enumerate(kept):
+                    entry[0] = index + 1
+                return kept
+
+            def _write_table(sheet_name, table):
+                ns_def.remove_excel_sheet(master_file_path, sheet_name)
+                ns_def.create_excel_sheet(master_file_path, sheet_name)
+                ns_def.write_excel_meta(
+                    ns_def.convert_array_to_tuple(table), master_file_path, sheet_name, '_template_', 0, 0)
+
+            remaining_lines = ns_def.convert_master_to_array('Master_Data', master_file_path, '<<POSITION_LINE>>')
+            deleted_row = deleted_connection[1]
+            drop_targets = set()
+            for host, short_index, prefix_index in (
+                (deleted_from_h, 2, 12),
+                (deleted_to_h, 3, 16),
+            ):
+                full_name = _full_port_name(deleted_row, short_index, prefix_index)
+                if full_name and not _endpoint_still_linked(remaining_lines, host, full_name):
+                    drop_targets.add((host, full_name))
+
+            if drop_targets:
+                for sheet_name, section_name, name_index in (
+                    ('Master_Data_L2', '<<L2_TABLE>>', 3),
+                    ('Master_Data_L3', '<<L3_TABLE>>', 2),
+                ):
+                    try:
+                        table = ns_def.convert_master_to_array(sheet_name, master_file_path, section_name)
+                    except KeyError:
+                        table = []
+                    if not table or not isinstance(table[0], list) or len(table[0]) < 2 or table[0][1][0] != section_name:
+                        continue
+                    updated = _drop_named_ports(table, name_index, drop_targets)
+                    if len(updated) != len(table):
+                        _write_table(sheet_name, updated)
+
+            # ========== Sync with L2/L3 ==========
+            import tkinter as tk
+            dummy_tk = tk.Toplevel()
+            dummy_tk.withdraw()
+
+            self.full_filepath = master_file_path
+            self.main1_1_entry_1 = tk.Entry(dummy_tk)
+            self.main1_1_entry_1.insert(tk.END, master_file_path)
+
+            self.inFileTxt_L3_1_1 = tk.Entry(dummy_tk)
+            self.inFileTxt_L3_1_1.insert(tk.END, master_file_path)
+
+            self.outFileTxt_11_2 = tk.Entry(dummy_tk)
+            self.outFileTxt_11_2.insert(tk.END, master_file_path)
+
+            self.inFileTxt_L2_1_1 = tk.Entry(dummy_tk)
+            self.inFileTxt_L2_1_1.insert(tk.END, master_file_path)
+
+            import ns_sync_between_layers
+            ns_sync_between_layers.l1_master_device_and_line_sync_with_l2l3_master(self)
+
+            tmp_delete_excel_name = master_file_path.replace('[MASTER]', '[L2_TABLE]')
+            if os.path.isfile(tmp_delete_excel_name):
+                os.remove(tmp_delete_excel_name)
+
+            dummy_tk.destroy()
+
             return_text = f'--- Deleted Layer 1 link --- {deleted_from_h}({deleted_from_port}) <-> {deleted_to_h}({deleted_to_port})'
             return ([return_text])
 
