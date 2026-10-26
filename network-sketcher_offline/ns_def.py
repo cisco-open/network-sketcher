@@ -127,12 +127,21 @@ def get_backup_filename(full_filepath):
 
     return (backup_full_filepath)
 
+def open_file_with_associated_app(full_filepath):
+    """Open a file in its associated application without a shell."""
+    if platform.system() == 'Windows':
+        os.startfile(full_filepath)
+    elif platform.system() == 'Darwin':
+        subprocess.run(['open', full_filepath], check=False)
+    else:
+        subprocess.run(['xdg-open', full_filepath], check=False)
+
 def messagebox_file_open(full_filepath):
     if return_os_slash() == '\\\\': # add ver 2.1.1 for bug fix on Mac OS
         filename = os.path.basename(full_filepath)
         ret = tkinter.messagebox.askyesno('Complete', 'Do you want to open the created file?\n\n' + filename)
         if ret == True:
-            subprocess.Popen(full_filepath, shell=True)
+            open_file_with_associated_app(full_filepath)
 
 def check_file_type(full_filepath):
     count_check_tag = 0

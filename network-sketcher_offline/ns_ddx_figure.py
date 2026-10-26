@@ -24,6 +24,7 @@ from pptx.dml.color import RGBColor,MSO_THEME_COLOR
 from pptx.dml.line import LineFormat
 from pptx.shapes.connector import Connector
 from pptx.util import Inches,Cm,Pt
+import ast
 import sys, os
 import openpyxl
 import math
@@ -130,7 +131,7 @@ class  ns_ddx_figure_run():
 
     def add_root_folder(self):
         ### input page title text and input root holder values
-        self.root_folder = [0.28, 1.42, 9.45, 5.75]  # Defalut setting.  left , top , width , hight(Inches)  / EMU is 914400‬
+        self.root_folder = [0.28, 1.42, 9.45, 5.75]  # Defalut setting.  left , top , width , hight(Inches)  / EMU is 914400
         self.shape = self.slide.shapes
 
         #Modified at ver 2.6.1
@@ -202,7 +203,7 @@ class  ns_ddx_figure_run():
             temp_row += 1
 
         #### Set initial value
-        self.sub_folder = [self.root_folder[0],self.root_folder[1],self.root_folder[2],self.root_folder[3]]  # left , top , width , hight(Inches)  / EMU is 914400‬
+        self.sub_folder = [self.root_folder[0],self.root_folder[1],self.root_folder[2],self.root_folder[3]]  # left , top , width , hight(Inches)  / EMU is 914400
 
         '''write sub folders'''
         for temp_row_folder in range(temp_subfolder_row, temp_row):
@@ -1029,7 +1030,10 @@ class  ns_ddx_figure_run():
         ###input line list to list type
         temp_cell_value = str(self.input_ppt_mata_excel.active.cell(temp_row_subfolder, temp_sub_col_count).value)
         temp_cell_value = '["' + temp_cell_value.split('["')[-1].split('"]')[0] + '"]'
-        segment_line_list = eval(temp_cell_value)
+        try:
+            segment_line_list = ast.literal_eval(temp_cell_value)
+        except (ValueError, SyntaxError):
+            segment_line_list = []
 
         ### get total hight for multi segment lines
         margin_segment_hight = (temp_hight_margin + shape_hight) / (len(segment_line_list)+1)

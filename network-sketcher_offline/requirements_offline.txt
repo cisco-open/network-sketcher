@@ -5,6 +5,7 @@ python-pptx >= 0.6.21
 tkinterdnd2 >= 0.4.3
 networkx >= 3.4.2
 svg.path
+defusedxml >= 0.7.1
 
 
 

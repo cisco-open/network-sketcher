@@ -18,7 +18,7 @@ limitations under the License.
 
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 from tkinterdnd2 import *
-import sys, os, subprocess ,webbrowser ,openpyxl
+import sys, os, webbrowser ,openpyxl
 import ns_def,ns_dev,ns_sync_between_layers,ns_attribute_table_sync_master, ns_cli
 import ns_extensions
 import ns_vpn_diagram_create
@@ -1466,7 +1466,7 @@ class ns_front_run():
                     self.click_value_2nd = ''
                     if ns_def.return_os_slash() == '\\\\':  # add ver 2.1.1 for bug fix on Mac OS
                         #print(' # add ver 2.1.1 for bug fix on Mac OS', ns_def.return_os_slash())
-                        subprocess.Popen(full_filepath_device, shell=True)
+                        ns_def.open_file_with_associated_app(full_filepath_device)
 
                 ### open master panel
                 file_type_array = ['EXCEL_MASTER', 'EXCEL_MASTER']

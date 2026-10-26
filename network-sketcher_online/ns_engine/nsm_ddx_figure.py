@@ -131,7 +131,7 @@ class  ns_ddx_figure_run():
 
     def add_root_folder(self):
         ### input page title text and input root holder values
-        self.root_folder = [0.28, 1.42, 9.45, 5.75]  # Defalut setting.  left , top , width , hight(Inches)  / EMU is 914400‬
+        self.root_folder = [0.28, 1.42, 9.45, 5.75]  # Defalut setting.  left , top , width , hight(Inches)  / EMU is 914400
         self.shape = self.slide.shapes
 
         #Modified at ver 2.6.1
@@ -203,7 +203,7 @@ class  ns_ddx_figure_run():
             temp_row += 1
 
         #### Set initial value
-        self.sub_folder = [self.root_folder[0],self.root_folder[1],self.root_folder[2],self.root_folder[3]]  # left , top , width , hight(Inches)  / EMU is 914400‬
+        self.sub_folder = [self.root_folder[0],self.root_folder[1],self.root_folder[2],self.root_folder[3]]  # left , top , width , hight(Inches)  / EMU is 914400
 
         '''write sub folders'''
         for temp_row_folder in range(temp_subfolder_row, temp_row):

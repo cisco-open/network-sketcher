@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+import ast
 import copy
 
 from pptx import *
@@ -1106,7 +1107,10 @@ class  ns_l3_diagram_create():
                                     key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                     remake_array = self._l3_ipset_cache.get(key_if)
                                     if remake_array is None:
-                                        remake_array = eval(tmp_update_l3_table_array[6])
+                                        try:
+                                            remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                        except (ValueError, SyntaxError):
+                                            remake_array = []
                                         self._l3_ipset_cache[key_if] = remake_array
 
                                     if remake_array:
@@ -1158,7 +1162,10 @@ class  ns_l3_diagram_create():
                                     key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                     remake_array = self._l3_ipset_cache.get(key_if)
                                     if remake_array is None:
-                                        remake_array = eval(tmp_update_l3_table_array[6])
+                                        try:
+                                            remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                        except (ValueError, SyntaxError):
+                                            remake_array = []
                                         self._l3_ipset_cache[key_if] = remake_array
 
                                     if remake_array:
@@ -1345,7 +1352,10 @@ class  ns_l3_diagram_create():
                                 key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                 remake_array = self._l3_ipset_cache.get(key_if)
                                 if remake_array is None:
-                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    try:
+                                        remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                    except (ValueError, SyntaxError):
+                                        remake_array = []
                                     self._l3_ipset_cache[key_if] = remake_array
 
                                 if remake_array:
@@ -1397,7 +1407,10 @@ class  ns_l3_diagram_create():
                                 key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                 remake_array = self._l3_ipset_cache.get(key_if)
                                 if remake_array is None:
-                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    try:
+                                        remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                    except (ValueError, SyntaxError):
+                                        remake_array = []
                                     self._l3_ipset_cache[key_if] = remake_array
 
                                 if remake_array:
@@ -1492,7 +1505,10 @@ class  ns_l3_diagram_create():
                                 key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                 remake_array = self._l3_ipset_cache.get(key_if)
                                 if remake_array is None:
-                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    try:
+                                        remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                    except (ValueError, SyntaxError):
+                                        remake_array = []
                                     self._l3_ipset_cache[key_if] = remake_array
 
                                 if remake_array:
@@ -1547,7 +1563,10 @@ class  ns_l3_diagram_create():
                                 key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                 remake_array = self._l3_ipset_cache.get(key_if)
                                 if remake_array is None:
-                                    remake_array = eval(tmp_update_l3_table_array[6])
+                                    try:
+                                        remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                    except (ValueError, SyntaxError):
+                                        remake_array = []
                                     self._l3_ipset_cache[key_if] = remake_array
 
                                 if remake_array:
@@ -1850,7 +1869,10 @@ class  ns_l3_diagram_create():
                                         key_if = (tmp_update_l3_table_array[1], tmp_update_l3_table_array[2])
                                         remake_array = self._l3_ipset_cache.get(key_if)
                                         if remake_array is None:
-                                            remake_array = eval(tmp_update_l3_table_array[6])
+                                            try:
+                                                remake_array = ast.literal_eval(tmp_update_l3_table_array[6])
+                                            except (ValueError, SyntaxError):
+                                                remake_array = []
                                             self._l3_ipset_cache[key_if] = remake_array
 
                                         for tmp_remake_array in remake_array:

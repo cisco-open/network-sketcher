@@ -122,7 +122,7 @@ class ns_cli_run():
 
                     # Get user confirmation
                     try:
-                        user_response = input().strip().upper()
+                        user_response = input().strip().upper()  # nosec B322  # Python 3 input() returns a string and does not eval it.
                     except (EOFError, KeyboardInterrupt):
                         return (['\n[Info] Export cancelled by user'])
 

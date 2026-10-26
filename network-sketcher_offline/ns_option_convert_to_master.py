@@ -372,8 +372,6 @@ class ns_option_convert_to_master_csv():
             # Generate arguments string for output
             args_str = ', '.join([f"'{arg}'" for arg in processed_args])
 
-            # Generate final output
-            output = f"ns_cli.ns_cli_run.cli_rename(self, self.full_filepath, [{args_str}])"
             parts_with_quotes = args_str.split(', ')
             stripped_parts = [part.strip("'") for part in parts_with_quotes]
             desired_parts = stripped_parts[2:]
@@ -385,7 +383,7 @@ class ns_option_convert_to_master_csv():
 
                 # run the command
                 import ns_cli
-                exec(output)
+                ns_cli.ns_cli_run.cli_rename(self, self.full_filepath, list(processed_args))
             else:
                 print('[ERROR]   ' + str(count_interfaces) + '.   ' + desired_parts[0] + '    ' + desired_parts[
                     1] + ' --> ' + desired_parts[2])
@@ -1881,7 +1879,6 @@ class  ns_option_convert_to_master_svg():
         #convert svg to rough sketch with pptx
         import re
         import math
-        from xml.etree import ElementTree as ET
         from pptx import Presentation
         from pptx.util import Inches, Pt
         from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE, MSO_CONNECTOR
@@ -1897,7 +1894,10 @@ class  ns_option_convert_to_master_svg():
         full_filepath = self.full_filepath
 
         '''other types support'''
+        # Parse with defusedxml so a user-supplied SVG cannot expand entities.
+        # indent and tostring stay on the stdlib tree API.
         import xml.etree.ElementTree as ET
+        import defusedxml.ElementTree as DefusedET
         import os
 
         if not os.path.exists(full_filepath):
@@ -1906,7 +1906,7 @@ class  ns_option_convert_to_master_svg():
 
         # Parse the SVG file
         try:
-            tree = ET.parse(full_filepath)
+            tree = DefusedET.parse(full_filepath)
             root = tree.getroot()
         except Exception as e:
             print(f"ERROR: Failed to parse SVG: {e}")

@@ -21,7 +21,6 @@ import openpyxl
 from openpyxl.styles import Font, Border, Side, PatternFill
 import tkinter as tk ,tkinter.ttk as ttk, tkinter.filedialog, tkinter.messagebox
 from tkinter import *
-import subprocess
 import ns_def
 
 '''
@@ -1360,7 +1359,7 @@ class qui_tree_run():
                 self.listbox2_1.insert(END, temp_item )
 
         elif click_value == '2-1-open':
-            subprocess.Popen(self.entry2_1.get(), shell=True)
+            ns_def.open_file_with_associated_app(self.entry2_1.get())
 
         elif click_value == '2-1-2': # Reload file
             #input sheets name to listbox
