@@ -1369,14 +1369,17 @@ class  ns_ddx_figure_run():
 
         # ===== Prepare modify_position arrays =====
         #print("  Phase 6: Processing position arrays...")
+        # Fill folder names on copies only: callers later measure folder heights
+        # from self.position_shape_array, which needs blank continuation rows.
         self.shared_modify_position_shape_array = []
         for tmp_position_shape_array in self.position_shape_array:
             if tmp_position_shape_array[0] != 1 and tmp_position_shape_array[1][0] != '<END>':
-                if tmp_position_shape_array[1][0] != '':
-                    tmp_folder_name = tmp_position_shape_array[1][0]
+                row_copy = [tmp_position_shape_array[0], list(tmp_position_shape_array[1])]
+                if row_copy[1][0] != '':
+                    tmp_folder_name = row_copy[1][0]
                 else:
-                    tmp_position_shape_array[1][0] = tmp_folder_name
-                self.shared_modify_position_shape_array.append(tmp_position_shape_array)
+                    row_copy[1][0] = tmp_folder_name
+                self.shared_modify_position_shape_array.append(row_copy)
 
         self.shared_modify_position_folder_array = []
         for tmp_position_folder_array in self.position_folder_array:
@@ -3347,12 +3350,12 @@ class extended():
             for tmp_position_shape_array in self.position_shape_array:
 
                 if tmp_position_shape_array[0] != 1 and tmp_position_shape_array[1][0] != '<END>':
-                    if tmp_position_shape_array[1][0] != '':
-                        tmp_folder_name = tmp_position_shape_array[1][0]
+                    row_copy = [tmp_position_shape_array[0], list(tmp_position_shape_array[1])]
+                    if row_copy[1][0] != '':
+                        tmp_folder_name = row_copy[1][0]
                     else:
-                        tmp_position_shape_array[1][0] = tmp_folder_name
-                    #print(tmp_position_shape_array)
-                    modify_position_shape_array.append(tmp_position_shape_array)
+                        row_copy[1][0] = tmp_folder_name
+                    modify_position_shape_array.append(row_copy)
             #print('--- modify_position_shape_array ---')
             #print(modify_position_shape_array)
 

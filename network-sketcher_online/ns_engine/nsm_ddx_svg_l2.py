@@ -270,15 +270,18 @@ def _prepare_l2_data(ctx):
                 ifs.append(tmp[1][3])
         shape_if_array.append([shape_name, ifs])
 
+    # Fill folder names on copies only: callers later measure folder heights
+    # from ctx.position_shape_array, which needs blank continuation rows.
     modify_position_shape_array = []
     tmp_folder_name = ''
     for tmp in ctx.position_shape_array:
         if tmp[0] != 1 and tmp[1][0] != '<END>':
-            if tmp[1][0] != '':
-                tmp_folder_name = tmp[1][0]
+            row_copy = [tmp[0], list(tmp[1])]
+            if row_copy[1][0] != '':
+                tmp_folder_name = row_copy[1][0]
             else:
-                tmp[1][0] = tmp_folder_name
-            modify_position_shape_array.append(tmp)
+                row_copy[1][0] = tmp_folder_name
+            modify_position_shape_array.append(row_copy)
 
     modify_position_folder_array = []
     for tmp in ctx.position_folder_array:
