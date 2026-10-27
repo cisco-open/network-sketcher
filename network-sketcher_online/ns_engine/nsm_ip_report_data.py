@@ -26,6 +26,11 @@ import ipaddress
 import logging
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+try:
+    import nsm_ip_util
+except ImportError:  # imported as ns_engine.nsm_ip_report_data
+    from ns_engine import nsm_ip_util
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,12 +65,14 @@ def _safe_cell(value) -> str:
 def _extract_l3_rows(l3_raw: Sequence) -> List[L3Record]:
     """Normalise the raw L3_TABLE section into a flat list of records.
 
-    Performs three operations:
+    Performs four operations:
       1. Forward-fills the Area / Device / L3 IF columns within contiguous
          visual groups (the L3_TABLE writer blanks repeated values).
       2. Splits comma-separated IP values into one record per IP.
       3. Drops rows whose IP column is empty (no IP -> not interesting for
          either tab).
+      4. Drops IPv6 values that are not drawn either (link-local, multicast,
+         loopback, unspecified, IPv4-mapped, site-local, zone index).
 
     Args:
         l3_raw: result of ``convert_master_to_array('Master_Data_L3',
@@ -122,6 +129,8 @@ def _extract_l3_rows(l3_raw: Sequence) -> List[L3Record]:
             ip_norm = raw_ip.strip()
             if not ip_norm:
                 continue
+            if nsm_ip_util.check_ip_format(ip_norm) == nsm_ip_util.IPV6_EXCLUDED:
+                continue
             records.append((area, device, l3if, l3inst, ip_norm))
 
     return records
@@ -137,18 +146,22 @@ IP_LIST_HEADERS = [
 ]
 
 
-def _decompose_ip(ip_with_subnet: str) -> Tuple[str, str, str, str]:
+_INVALID_SORT_KEY = (99, 0, '')
+
+
+def _decompose_ip(ip_with_subnet: str) -> Tuple[str, str, str, tuple]:
     """Decompose an IP/subnet string into (ip, mask, network, sort_key).
 
-    Matches the behaviour of nsm_extensions.ip_report.export_ip_report
-    (L740-757): malformed values (no '/' or ipaddress raises) get the
-    placeholder '[None]' and sort to the very end via the sentinel key
-    '255255255255'.
+    Matches the behaviour of nsm_extensions.ip_report.export_ip_report:
+    malformed values (no '/' or ipaddress raises) get the placeholder
+    '[None]' and sort to the very end. Valid values sort IPv4 first and then
+    IPv6, each in numeric order. The Mask column is the dotted netmask for
+    IPv4 (255.255.255.0) and the prefix length for IPv6 (/64).
     """
     ip = '[None]'
     mask = '[None]'
     network = '[None]'
-    sort_key = '255255255255'
+    sort_key = _INVALID_SORT_KEY
 
     if '/' not in ip_with_subnet:
         return ip, mask, network, sort_key
@@ -156,17 +169,10 @@ def _decompose_ip(ip_with_subnet: str) -> Tuple[str, str, str, str]:
         net = ipaddress.ip_network(ip_with_subnet, strict=False)
         iface = ipaddress.ip_interface(ip_with_subnet)
         ip = str(iface.ip)
-        mask = str(iface.netmask)
+        mask = str(iface.netmask) if iface.version == 4 else f'/{iface.network.prefixlen}'
         _ip_part, prefix = ip_with_subnet.split('/', 1)
         network = f'{net.network_address}/{prefix.strip()}'
-        # IPv4-only: zero-pad each octet to 3 digits for lexical ordering
-        # that matches numeric ordering.
-        try:
-            sort_key = ''.join(f'{int(o):03}' for o in ip.split('.'))
-        except ValueError:
-            # IPv6 -- ipaddress will have raised before we reach here, but be
-            # defensive: fall back to lexical IP comparison.
-            sort_key = ip
+        sort_key = nsm_ip_util.get_ip_sort_key(ip_with_subnet)
     except (ValueError, ipaddress.AddressValueError,
             ipaddress.NetmaskValueError) as exc:
         logger.debug('IP decompose failed for %r: %s', ip_with_subnet, exc)
@@ -186,7 +192,7 @@ def _build_ip_address_list_rows(l3_records: Iterable[L3Record]
     byte-aligned.
     """
     seen: set = set()
-    unsorted: List[Tuple[str, List[str]]] = []
+    unsorted: List[Tuple[tuple, List[str]]] = []
 
     for area, device, l3if, l3inst, ip_with_subnet in l3_records:
         ip, mask, network, sort_key = _decompose_ip(ip_with_subnet)
@@ -226,19 +232,13 @@ def _collapse_for_area(cidrs: Iterable[str]) -> List[str]:
             continue
     if not networks:
         return []
-    try:
-        collapsed = ipaddress.collapse_addresses(networks)
-    except TypeError:
-        # Mixing IPv4 and IPv6 -- bucket and collapse separately to mirror
-        # the user's expectation of seeing both summarised.
-        v4 = [n for n in networks if n.version == 4]
-        v6 = [n for n in networks if n.version == 6]
-        collapsed_list: List = []
-        if v4:
-            collapsed_list.extend(ipaddress.collapse_addresses(v4))
-        if v6:
-            collapsed_list.extend(ipaddress.collapse_addresses(v6))
-        collapsed = collapsed_list
+    # collapse_addresses cannot mix versions (it may only raise TypeError
+    # while iterating), so always collapse IPv4 and IPv6 separately and list
+    # IPv4 first.
+    v4 = [n for n in networks if n.version == 4]
+    v6 = [n for n in networks if n.version == 6]
+    collapsed = list(ipaddress.collapse_addresses(v4))
+    collapsed.extend(ipaddress.collapse_addresses(v6))
     return [str(n) for n in collapsed]
 
 

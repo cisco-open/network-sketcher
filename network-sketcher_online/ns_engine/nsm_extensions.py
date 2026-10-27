@@ -732,9 +732,12 @@ class  ip_report():
             #print(tmp_l3_segment_group_array)
 
             for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
-                tmp_seg_array.append([tmp_tmp_l3_segment_group_array[0],tmp_tmp_l3_segment_group_array[4]])
+                ip_with_subnet = str(tmp_tmp_l3_segment_group_array[4]).strip()
+                # link-local, multicast and the other excluded IPv6 kinds are not listed
+                if nsm_def.check_ip_format(ip_with_subnet) == 'IPv6_EXCLUDED':
+                    continue
+                tmp_seg_array.append([tmp_tmp_l3_segment_group_array[0],ip_with_subnet])
 
-                ip_with_subnet = tmp_tmp_l3_segment_group_array[4]
                 ip_address = '[None]'
                 subnet_mask = '[None]'
                 network_address = '[None]'
@@ -743,23 +746,34 @@ class  ip_report():
                 if tmp_tmp_l3_segment_group_array[3] != '':
                     L3_instance = tmp_tmp_l3_segment_group_array[3]
 
-                if '/' in str(ip_with_subnet):
-                    network = ipaddress.ip_network(ip_with_subnet, strict=False)
-                    ip_interface = ipaddress.ip_interface(ip_with_subnet)
-                    ip_address = str(ip_interface.ip)
-                    subnet_mask = str(ip_interface.netmask)
-                    ip_address_dummy, prefix_length = ip_with_subnet.split('/')
-                    network_address = str(network.network_address) + str('/') + str(prefix_length)
-                    numeric_sequence = ''.join(f'{int(octet):03}' for octet in ip_address.split('.'))
+                if '/' in ip_with_subnet:
+                    try:
+                        network = ipaddress.ip_network(ip_with_subnet, strict=False)
+                        ip_interface = ipaddress.ip_interface(ip_with_subnet)
+                        ip_address = str(ip_interface.ip)
+                        # IPv4: 255.255.255.0 / IPv6: /64
+                        subnet_mask = str(ip_interface.netmask) if ip_interface.version == 4 else '/' + str(ip_interface.network.prefixlen)
+                        ip_address_dummy, prefix_length = ip_with_subnet.split('/')
+                        network_address = str(network.network_address) + str('/') + str(prefix_length)
+                    except ValueError:
+                        ip_address = '[None]'
+                        subnet_mask = '[None]'
+                        network_address = '[None]'
+                # IPv4 first, then IPv6, each in numeric order; invalid values last
+                numeric_sequence = nsm_def.get_ip_sort_key(ip_with_subnet)
                 if ip_address == '[None]':
-                    numeric_sequence = str(255255255255)
+                    numeric_sequence = (99, 0, '')
                 kari_ip_address_list_array.append([numeric_sequence,ip_address,subnet_mask,network_address,tmp_tmp_l3_segment_group_array[1],tmp_tmp_l3_segment_group_array[2],L3_instance,tmp_tmp_l3_segment_group_array[0], '<END>'])
-        
+
         # Remove completely duplicate columns at ver 2.2.1(c)
         unique_tuples_set = set(tuple(item) for item in kari_ip_address_list_array)
         unique_list = [list(item) for item in unique_tuples_set]
-        unique_array = np.array(unique_list)
-        sorted_lists = sorted(unique_array, key=lambda x: x[0], reverse=False)
+        # rows with the same key (e.g. '[None]') are ordered by their contents so the report is reproducible
+        sorted_lists = sorted(unique_list, key=lambda x: (x[0], [str(value) for value in x[1:]]), reverse=False)
+
+        if any(item[0][0] == 6 for item in sorted_lists):
+            # IP Address / Network Address columns wide enough for IPv6
+            egt_maker_width_array[0:3] = ['40', '20', '44']
         
         #print(sorted_lists)
 
@@ -796,11 +810,21 @@ class  ip_report():
                     kari_sum_array.append(tmp_tmp_seg_array[1])
 
             #print(kari_sum_array)
-            networks = [ipaddress.ip_network(cidr, strict=False) for cidr in kari_sum_array]
+            networks_v4 = []
+            networks_v6 = []
+            for cidr in kari_sum_array:
+                try:
+                    network = ipaddress.ip_network(cidr, strict=False)
+                except ValueError:
+                    continue
+                if network.version == 4:
+                    networks_v4.append(network)
+                else:
+                    networks_v6.append(network)
 
-            # clac summary
-            summary_address = ipaddress.collapse_addresses(networks)
-            summary_address_list = [str(network) for network in summary_address]
+            # clac summary: collapse_addresses cannot mix versions, so IPv4 first, then IPv6
+            summary_address_list = [str(network) for network in ipaddress.collapse_addresses(networks_v4)]
+            summary_address_list += [str(network) for network in ipaddress.collapse_addresses(networks_v6)]
             #print(tmp_get_folder,str(summary_address_list))
 
             first_area_flag = True
@@ -993,7 +1017,7 @@ class  auto_ip_addressing():
             if index >= 2:
                 if tmp_l3_table_array[1][0] == target_area_name:
                     #print(tmp_l3_table_array[1])
-                    if len(tmp_l3_table_array[1]) == 5:
+                    if len(tmp_l3_table_array[1]) == 5 and ':' not in str(tmp_l3_table_array[1][4]):
                         flag_no_ipaddress = False
 
                 if len(tmp_l3_table_array[1]) == 5:
@@ -1013,6 +1037,9 @@ class  auto_ip_addressing():
         full_ip_address_list = []
         for index, tmp_l3_table_array in enumerate(self.l3_table_array):
             if index >= 2:
+                # Auto IP Addressing assigns IPv4 only; IPv6 values (they contain ':') are skipped
+                if len(tmp_l3_table_array[1]) == 5 and ':' in str(tmp_l3_table_array[1][4]):
+                    continue
                 if len(tmp_l3_table_array[1]) == 5 and ',' not in str(tmp_l3_table_array[1][4]):
                     full_ip_address_list.append(str(tmp_l3_table_array[1][4]).replace(' ', ''))
 
@@ -1125,6 +1152,34 @@ class  auto_ip_addressing():
         #print('--- run_auto_ip ---')
         l3_segment_group_array = nsm_def.get_l3_segments(self)
         #print(l3_segment_group_array)
+
+        # Auto IP Addressing assigns IPv4 only. get_l3_segments returns one entry
+        # per IP, so IPv6 entries are taken out here and their values are written
+        # back after the new IPv4 address. An interface that only has IPv6 keeps
+        # one entry without an address so that it still receives an IPv4 address.
+        ipv6_values_by_if = {}
+        ipv4_if_keys = set()
+        for tmp_l3_segment_group_array in l3_segment_group_array:
+            for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
+                if_key = (tmp_tmp_l3_segment_group_array[1], tmp_tmp_l3_segment_group_array[2])
+                if ':' in str(tmp_tmp_l3_segment_group_array[4]):
+                    ipv6_values_by_if.setdefault(if_key, []).append(str(tmp_tmp_l3_segment_group_array[4]).strip())
+                else:
+                    ipv4_if_keys.add(if_key)
+        ipv4_only_segment_group_array = []
+        for tmp_l3_segment_group_array in l3_segment_group_array:
+            ipv4_only_group = []
+            ipv6_only_if_keys = set()
+            for tmp_tmp_l3_segment_group_array in tmp_l3_segment_group_array:
+                if_key = (tmp_tmp_l3_segment_group_array[1], tmp_tmp_l3_segment_group_array[2])
+                if ':' in str(tmp_tmp_l3_segment_group_array[4]):
+                    if if_key in ipv4_if_keys or if_key in ipv6_only_if_keys:
+                        continue
+                    ipv6_only_if_keys.add(if_key)
+                    tmp_tmp_l3_segment_group_array = list(tmp_tmp_l3_segment_group_array[:4]) + ['']
+                ipv4_only_group.append(tmp_tmp_l3_segment_group_array)
+            ipv4_only_segment_group_array.append(ipv4_only_group)
+        l3_segment_group_array = ipv4_only_segment_group_array
 
         '''Create existing IP address list'''
         exist_ip_list = []
@@ -1267,6 +1322,7 @@ class  auto_ip_addressing():
         self.l3_table_array = nsm_def.convert_master_to_array(ws_l3_name, excel_maseter_file, '<<L3_TABLE>>')
 
         updated_l3_table_array = []
+        ipv6_written_if_keys = set()
         for tmp_l3_table_array in self.l3_table_array:
             #print(tmp_l3_table_array)
             if tmp_l3_table_array[1][0] != target_area_name and (tmp_l3_table_array[0] == 1 or tmp_l3_table_array[0] == 2):
@@ -1279,7 +1335,13 @@ class  auto_ip_addressing():
                         if tmp_tmp_tmp_ip_assigned_l3_segment_group_array[1] == tmp_l3_table_array[1][1]  and tmp_tmp_tmp_ip_assigned_l3_segment_group_array[2] == tmp_l3_table_array[1][2]:
                             flag_l3_if_match = True
                             if len(tmp_l3_table_array) != 5:
-                                updated_l3_table_array.append([tmp_l3_table_array[0],tmp_tmp_tmp_ip_assigned_l3_segment_group_array])
+                                assigned_row = list(tmp_tmp_tmp_ip_assigned_l3_segment_group_array)
+                                if_key = (assigned_row[1], assigned_row[2])
+                                if if_key in ipv6_values_by_if and if_key not in ipv6_written_if_keys:
+                                    # new IPv4 first, then the IPv6 values the interface already had
+                                    assigned_row[4] = ','.join([value for value in [assigned_row[4]] if value] + ipv6_values_by_if[if_key])
+                                    ipv6_written_if_keys.add(if_key)
+                                updated_l3_table_array.append([tmp_l3_table_array[0],assigned_row])
                             else:
                                 updated_l3_table_array.append(tmp_l3_table_array)
                 if flag_l3_if_match == False:

@@ -36,6 +36,7 @@ import atexit
 import json
 import logging
 import os
+import re
 import shlex
 import shutil
 import signal
@@ -180,6 +181,11 @@ _ERROR_PATTERNS = (
     'Input must start with',
 )
 
+# Some add/delete commands answer 'Error: ...' at the start of a line. Matching
+# only at line start keeps exception names such as 'TypeError:' in warnings
+# from turning a successful run into a failure.
+_ERROR_LINE_RE = re.compile(r'(?m)^\s*Error:')
+
 # Mutating verbs for which we resolve the master path inside the working dir
 _MUTATING_VERBS = ('add', 'rename', 'delete')
 
@@ -270,6 +276,8 @@ def _classify_result(result: RunResult) -> tuple[bool, str]:
     for pat in _ERROR_PATTERNS:
         if pat in combined:
             return False, combined
+    if _ERROR_LINE_RE.search(combined):
+        return False, combined
     return True, combined
 
 

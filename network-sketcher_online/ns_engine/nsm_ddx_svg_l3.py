@@ -63,12 +63,14 @@ L3_STYLES = {
     'L3_INSTANCE':        {'fill': (230, 224, 236), 'stroke': (0, 0, 0),       'sw': 1.0,  'rx': 0.2007,  'tc': (0, 0, 0), 'fs': 6},
     # TAG_NORMAL: white pill with black border (adjustments=0.50445)
     'TAG_NORMAL':         {'fill': (255, 255, 255), 'stroke': (0, 0, 0),       'sw': 0.5,  'rx': 0.50,    'tc': (0, 0, 0), 'fs': 4},
-    # IP_ADDRESS_TAG: no fill, no visible border
-    'IP_ADDRESS_TAG':     {'fill': None,            'stroke': None,            'sw': 0.75, 'rx': 0.0,     'tc': (0, 0, 0), 'fs': 6, 'align': 'left'},
-    # L3_SEGMENT_GRAY: light gray rounded segment bar
-    'L3_SEGMENT_GRAY':    {'fill': (249, 249, 249), 'stroke': (0, 0, 0),       'sw': 0.75, 'rx': 0.30,    'tc': (0, 0, 0), 'fs': 4},
-    # L3_SEGMENT_VPN: purple-tinted segment bar
-    'L3_SEGMENT_VPN':     {'fill': (248, 243, 251), 'stroke': (112, 48, 160),  'sw': 0.75, 'rx': 0.30,    'tc': (0, 0, 0), 'fs': 4},
+    # IP_ADDRESS_TAG: no fill, no visible border. 'fs_full' applies to IPv6 tags
+    # that show the whole 'address/prefix' (loopback-style interfaces without an
+    # L3 segment), matching the PPTX font size in extended.add_shape.
+    'IP_ADDRESS_TAG':     {'fill': None,            'stroke': None,            'sw': 0.75, 'rx': 0.0,     'tc': (0, 0, 0), 'fs': 6, 'fs_full': 5, 'align': 'left'},
+    # L3_SEGMENT_GRAY: light gray rounded segment bar (label 6pt, same as the PPTX default)
+    'L3_SEGMENT_GRAY':    {'fill': (249, 249, 249), 'stroke': (0, 0, 0),       'sw': 0.75, 'rx': 0.30,    'tc': (0, 0, 0), 'fs': 6},
+    # L3_SEGMENT_VPN: purple-tinted segment bar (label 6pt, same as the PPTX default)
+    'L3_SEGMENT_VPN':     {'fill': (248, 243, 251), 'stroke': (112, 48, 160),  'sw': 0.75, 'rx': 0.30,    'tc': (0, 0, 0), 'fs': 6},
     # FOLDER_NORMAL: transparent fill, gray dashed border
     'FOLDER_NORMAL':      {'fill': None,            'stroke': (205, 205, 205), 'sw': 1.0,  'rx': 0.015,   'tc': (0, 0, 0), 'fs': 10},
     # OUTLINE_NORMAL: white fill, black border (outermost box)

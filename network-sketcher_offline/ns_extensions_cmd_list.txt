@@ -27,7 +27,7 @@ Architecture rules (sorted by rule number, all MANDATORY):
 - RULE 7.1 Cascade deletion behaviour
 - RULE 8   Virtualised multi-chassis device naming
 - RULE 9   Port-channel VLAN symmetry
-- RULE 10  Valid IPv4 address range constraints
+- RULE 10  Valid IPv4 / IPv6 address constraints
 - RULE 11  L2/L3 trunk port type compatibility
 - RULE 11.5 Endpoint device IP assignment (no SVI on servers/PCs/IoT)
 - RULE 12  Wireless AP configuration (FlexConnect default)
@@ -429,10 +429,11 @@ L3SW2(Vlan 100) <- 192.168.100.2/24<br>
 
 **[Tips]**<br>
 - All elements (device names, port names, IP addresses) must be enclosed in single or double quotes
-- IP addresses must include subnet mask in CIDR notation (e.g., /24)
+- IP addresses must include subnet mask in CIDR notation (e.g., /24 for IPv4, /64 for IPv6)
+- IPv6 is supported (e.g., '2001:db8:1000:10::1/64'); see RULE 10 for IPv6 kinds that are rejected
 - Spaces in IP addresses are automatically removed (e.g., ' 192.168.1.1 / 24 ' becomes '192.168.1.1/24')
 - Duplicate IP addresses on the same interface are automatically skipped
-- IP addresses are automatically sorted numerically on each interface
+- IP addresses are automatically sorted numerically on each interface (IPv4 first, then IPv6)
 - Existing IP addresses are preserved and merged with new addresses
 - Invalid IP address format will generate an error for that entry only
 
@@ -739,6 +740,7 @@ This function deletes the IP address of a Layer 3 interface. You can delete one 
  ```bash
 delete ip_address '[device name]' '[layer3_portname]' '[ip_address/subnetmask]'
  ```
+* IPv4 and IPv6 are accepted. IPv6 is compared in compressed form, so '2001:DB8:0::1/64' deletes '2001:db8::1/64'.
 
 * ex.<br>
 **+BEFORE+ <br>**
@@ -1921,7 +1923,7 @@ SYMMETRY CHECKLIST:
 - Port info configured for all member interfaces
 - Verified with show l2_interface
 
-## RULE 10: VALID IPV4 ADDRESS RANGE CONSTRAINTS
+## RULE 10: VALID IPV4 / IPV6 ADDRESS CONSTRAINTS
 
 CRITICAL: All IPv4 octets must be 0-255. VLAN IDs > 255 require mapping.
 
@@ -1971,6 +1973,23 @@ VALIDATION CHECKLIST:
 - No conflicts with existing subnets
 - Gateway uses .1 (recommended)
 - Integer division used (not floating-point)
+
+IPV6 ADDRESSES (dual stack is allowed on the same interface):
+- Write the prefix length: '2001:db8:1000:10::1/64'
+- Typical prefixes: /64 for LAN segments, /127 for point-to-point links,
+  /128 for loopbacks
+- Use global unicast (e.g. 2001:db8::/32 for documentation) or unique local
+  (fd00::/8) addresses
+- NOT accepted, and not drawn in diagrams or IP reports:
+  link-local fe80::/10, multicast ff00::/8, loopback ::1/128,
+  unspecified ::/128, IPv4-mapped ::ffff:0:0/96, site-local fec0::/10,
+  and zone index notation such as 'fe80::1%eth0'
+- Stored in lower-case compressed form ('2001:DB8:0::1/64' -> '2001:db8::1/64')
+- On each interface, IPv4 addresses come first, then IPv6
+- L3 diagram labels follow the IPv4 style: the segment shows the network
+  (2001:db8:1000:10::/64) and the interface shows the host part (::1)
+- Example scheme mirroring Option 3: VLAN 100 -> 2001:db8:1:100::1/64
+  (VLAN ID written as the 4th hextet)
 
 ## RULE 11: LAYER 2/LAYER 3 TRUNK PORT TYPE COMPATIBILITY
 

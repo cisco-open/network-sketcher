@@ -86,9 +86,9 @@ class  ns_l3_table_sync_master():
             work_new_l3_table_array = tmp_new_l3_table_array[1][4].split(',')
             for tmp_tmp_new_l3_table_array in work_new_l3_table_array:
                 #check IP Addresses
-                if ns_def.check_ip_format(tmp_tmp_new_l3_table_array) == 'IPv4':
-                    tmp_ip_address_array.append([tmp_tmp_new_l3_table_array,ns_def.get_ipv4_value(tmp_tmp_new_l3_table_array)])
-                    tmp_ip_address_array = sorted(tmp_ip_address_array , reverse=False, key=lambda x: (x[1]))  # sort ipv4 value
+                if ns_def.check_ip_format(tmp_tmp_new_l3_table_array) in ('IPv4', 'IPv6'):
+                    tmp_ip_address_array.append([ns_def.normalize_ip(tmp_tmp_new_l3_table_array),ns_def.get_ip_sort_key(tmp_tmp_new_l3_table_array)])
+                    tmp_ip_address_array = sorted(tmp_ip_address_array , reverse=False, key=lambda x: (x[1]))  # IPv4 first, then IPv6
 
             #sort IP Addresses array
             #print('--- tmp_ip_address_array ---')

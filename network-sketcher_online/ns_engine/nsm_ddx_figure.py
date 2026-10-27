@@ -2813,6 +2813,10 @@ class extended():
             self.shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
             #self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 112, 192)
             self.shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 0, 0)
+            # Loopback-style tags show the whole 'address/prefix' (no L3 segment);
+            # a smaller font keeps a long IPv6 address off the next interface's address.
+            if '/' in str(shape_text) and ':' in str(shape_text):
+                self.shape.text_frame.paragraphs[0].font.size = Pt(5)
 
         elif shape_type == 'L2_SEGMENT_GRAY':
             #fill paramter

@@ -1873,7 +1873,8 @@ class ns_cli_run():
                 """
                 Normalize IP address:
                 - Remove spaces
-                - Validate format (x.x.x.x/mask)
+                - Validate format (IPv4 x.x.x.x/mask or IPv6 address/prefix)
+                - Reject IPv6 kinds that are not drawn (link-local, multicast, ...)
                 Returns: (normalized_ip, is_valid, error_message)
                 """
                 if not isinstance(ip_str, str):
@@ -1889,6 +1890,10 @@ class ns_cli_run():
                 if '/' not in ip_str:
                     return (None, False, f'Missing subnet mask: {ip_str}')
 
+                if ns_def.check_ip_format(ip_str) == 'IPv6_EXCLUDED':
+                    reason = ns_def.ipv6_exclusion_reason(ip_str)
+                    return (None, False, f'Excluded IPv6 address: {ip_str} ({reason})')
+
                 try:
                     # Validate using ipaddress module
                     network = ipaddress.ip_interface(ip_str)
@@ -1899,17 +1904,9 @@ class ns_cli_run():
 
             def sort_ip_addresses(ip_list):
                 """
-                Sort IP addresses numerically
+                Sort IP addresses numerically, IPv4 first and then IPv6
                 """
-
-                def ip_sort_key(ip_str):
-                    try:
-                        iface = ipaddress.ip_interface(ip_str)
-                        return (0, int(iface.ip))
-                    except:
-                        return (1, ip_str)
-
-                return sorted(ip_list, key=ip_sort_key)
+                return sorted(ip_list, key=ns_def.get_ip_sort_key)
 
             # Get the array argument from command line
             idx = argv_array.index('ip_address_bulk')
@@ -1989,15 +1986,18 @@ class ns_cli_run():
                 # Add IP addresses to the row (index 4)
                 current_value = target_row[1][4] if len(target_row[1]) > 4 else ''
 
-                # Parse existing IPs and normalize them
+                # Parse existing IPs and normalize them. Values that do not
+                # validate (e.g. an excluded IPv6 imported from xlsx) are kept
+                # as they are so that a bulk add never deletes them.
+                existing_ips = []
+                unparsed_existing_ips = []
                 if current_value and current_value.strip():
-                    existing_ips = []
                     for ip in current_value.split(','):
                         normalized_ip, is_valid, _ = normalize_ip_address(ip)
                         if is_valid:
                             existing_ips.append(normalized_ip)
-                else:
-                    existing_ips = []
+                        elif ip.strip():
+                            unparsed_existing_ips.append(ip.strip())
 
                 ips_added_this_entry = []
                 ips_skipped_this_entry = []
@@ -2011,7 +2011,7 @@ class ns_cli_run():
 
                 if ips_added_this_entry:
                     # Sort IP addresses
-                    sorted_ips = sort_ip_addresses(existing_ips)
+                    sorted_ips = sort_ip_addresses(existing_ips) + unparsed_existing_ips
                     target_row[1][4] = ','.join(sorted_ips)
 
                     added_ips.append({
@@ -3266,8 +3266,13 @@ class ns_cli_run():
                 return ([f"[ERROR] hostname or portname or ip address is missing"])
 
             # check IP Addresses
-            if ns_def.check_ip_format(add_ipaddress_name) != 'IPv4':
+            add_ipaddress_name = add_ipaddress_name.replace(' ', '').replace('　', '').strip()
+            add_ip_format = ns_def.check_ip_format(add_ipaddress_name)
+            if add_ip_format == 'IPv6_EXCLUDED':
+                return ([f"Error: IP Address format is invalid: {add_ipaddress_name} (excluded IPv6 address: {ns_def.ipv6_exclusion_reason(add_ipaddress_name)})"])
+            if add_ip_format not in ('IPv4', 'IPv6'):
                 return ([f"Error: IP Address format is invalid: {add_ipaddress_name}"])
+            add_ipaddress_name = ns_def.normalize_ip(add_ipaddress_name)
 
             match_found = False
             for row in l3_attribute_array[2:]:
@@ -3279,8 +3284,6 @@ class ns_cli_run():
             if not match_found:
                 return ([f"Error: No matching entry found for hostname: {hostname} and portname: {portname}"])
 
-            add_ipaddress_name = add_ipaddress_name.replace(' ', '')
-
             for entry in l3_attribute_array:
                 if entry == row:
                     # Get the 5th element (index 4)
@@ -3288,11 +3291,16 @@ class ns_cli_run():
                     # Split by comma, remove extra spaces
                     ips = [seg.strip() for seg in current_value.split(',')] if current_value else []
                     # Only add if not already present
-                    if add_ipaddress_name not in ips:
+                    if add_ipaddress_name not in [ns_def.normalize_ip(ip) for ip in ips]:
                         if current_value.strip() == '':
                             entry[1][4] = add_ipaddress_name
                         else:
-                            entry[1][4] = current_value + ',' + add_ipaddress_name
+                            new_ips = [ip for ip in ips if ip] + [add_ipaddress_name]
+                            if any(ns_def.get_ip_version_key(ip) for ip in new_ips):
+                                # IPv4 first, then IPv6; the order within each stays as entered
+                                entry[1][4] = ','.join(sorted(new_ips, key=ns_def.get_ip_version_key))
+                            else:
+                                entry[1][4] = current_value + ',' + add_ipaddress_name
                     else:
                         return ([add_ipaddress_name + ' already exists in the ipaddress. No change made'])
                     break
@@ -4141,8 +4149,9 @@ class ns_cli_run():
                 # If there are not enough elements after 'ip address', print an error
                 return ([f"[ERROR] hostname or portname or ip address is missing"])
 
-            # check IP Addresses
-            if ns_def.check_ip_format(delete_ipaddress_name) != 'IPv4':
+            # check IP Addresses (excluded IPv6 values can still be deleted)
+            delete_ipaddress_name = delete_ipaddress_name.replace(' ', '').replace('　', '').strip()
+            if ns_def.check_ip_format(delete_ipaddress_name) not in ('IPv4', 'IPv6', 'IPv6_EXCLUDED'):
                 return ([f"Error: IP Address format is invalid: {delete_ipaddress_name}"])
 
             match_found = False
@@ -4157,14 +4166,15 @@ class ns_cli_run():
             if not match_found:
                 return ([f"Error: No matching entry found for hostname: {hostname} and portname: {portname}"])
 
-            delete_ipaddress_name = delete_ipaddress_name.replace(' ', '')
+            delete_ipaddress_key = ns_def.normalize_ip(delete_ipaddress_name)
 
             for entry in l3_attribute_array:
                 if entry == target_row:
                     current_value = entry[1][4]
                     segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
-                    if delete_ipaddress_name in segs:
-                        segs.remove(delete_ipaddress_name)
+                    match_index = next((i for i, seg in enumerate(segs) if ns_def.normalize_ip(seg) == delete_ipaddress_key), None)
+                    if match_index is not None:
+                        del segs[match_index]
                         entry[1][4] = ','.join(segs)
                     else:
                         return ([f"{delete_ipaddress_name} does not exist in the ip address. No change made"])

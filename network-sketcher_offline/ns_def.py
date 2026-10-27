@@ -24,6 +24,7 @@ from pptx import *
 import platform
 from openpyxl.styles import PatternFill
 from collections import defaultdict
+import ns_ip_util
 
 
 def check_data_exists(excel_master_file):
@@ -212,6 +213,8 @@ def num2alpha(num):  #input number output alphabet
 
 def get_ip_address_set(change_tmp_ip_address_array):
     host = ipaddress.ip_interface(change_tmp_ip_address_array)
+    if host.version == 6:
+        return ([str(host), str(host.network), ns_ip_util.ipv6_host_label(host)])
     tmp_network =  str(host.network)
     tmp_ip = str(host.ip)
     tmp_mask = host.network.prefixlen
@@ -1697,23 +1700,13 @@ def get_full_name_from_tag_name(target_device_name,tag_if_name,position_line_tup
     return ('_NO_MATCH_')
 
 def check_ip_format(char_ip_address):
-    ### IPv4 check ###
-    flag_ipv4 = False
-    if char_ip_address.count('.') == 3 and char_ip_address.count('/') == 1:
-        target = '/'
-        idx = char_ip_address.find(target)
-        if char_ip_address[idx + 1:].isalnum() == True:
-            if 1 <= int(char_ip_address[idx + 1:]) <= 32:
-                flag_ipv4_array = []
-                for tmp_num in char_ip_address[:idx].split('.'):
-                    if tmp_num.isalnum() == True:
-                        if 0 <= int(tmp_num) <= 255:
-                            flag_ipv4_array.append('True')
+    # 'IPv4', 'IPv6', 'IPv6_EXCLUDED' (link-local, multicast, ...) or 'NOT_MATCH'
+    return ns_ip_util.check_ip_format(char_ip_address)
 
-                if flag_ipv4_array.count('True') == 4:
-                    return ('IPv4')
-
-    return ('NOT_MATCH')
+normalize_ip = ns_ip_util.normalize_ip
+get_ip_sort_key = ns_ip_util.get_ip_sort_key
+get_ip_version_key = ns_ip_util.get_ip_version_key
+ipv6_exclusion_reason = ns_ip_util.ipv6_exclusion_reason
 
 def get_ipv4_value(ipv4_address):
     return_ipv4_value = ''

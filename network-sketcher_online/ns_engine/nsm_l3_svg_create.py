@@ -715,6 +715,8 @@ def _shapes_to_svg(shapes, lines, slide_w, slide_h, title, attr_colors):
         sw_ = sty.get('sw', 1.0)
         rxr = sty.get('rx', 0.0)
         fs = sty.get('fs', 6)
+        if 'fs_full' in sty and '/' in str(txt) and ':' in str(txt):
+            fs = sty['fs_full']
         tc = sty.get('tc', (0, 0, 0))
         align = sty.get('align')
 
