@@ -28,6 +28,10 @@ try:
     import nsm_ip_util
 except ImportError:
     from ns_engine import nsm_ip_util
+try:
+    import nsm_l2seg_util as l2seg
+except ImportError:
+    from ns_engine import nsm_l2seg_util as l2seg
 
 
 def check_data_exists(excel_master_file):
@@ -2736,6 +2740,22 @@ class  get_l2_broadcast_domains():
         #print('--- self.all_shape_list_array ---')
         #print(self.all_shape_list_array)
 
+        # '_UNTAG_': each physical port keeps its own names (B or B_UNTAG_) for matching across
+        # L1 links, while column 6 gets one name per VLAN inside a device.
+        self._port_l2seg_index = {}
+        self._port_l3vport_untag = set()
+        for tmp_new_l2_table_array in self.new_l2_table_array:
+            _row = tmp_new_l2_table_array[1]
+            if _row[3] == '':
+                continue
+            if _row[6] != '':
+                self._port_l2seg_index.setdefault((_row[1], _row[3]), []).extend(l2seg.split_names(_row[6]))
+            if any(l2seg.is_untag(_name) for _name in l2seg.split_names(_row[7])):
+                self._port_l3vport_untag.add((_row[1], _row[3]))
+        for _key in self._port_l2seg_index:
+            self._port_l2seg_index[_key] = l2seg.normalize_port_segments(self._port_l2seg_index[_key])[0]
+        l2seg.canonicalize_l2_cells([tmp_new_l2_table_array[1] for tmp_new_l2_table_array in self.new_l2_table_array])
+
         # GET L2 Segment name of each device — indexed by device
         _l2_by_device = {}
         for tmp_new_l2_table_array in self.new_l2_table_array:
@@ -2865,7 +2885,7 @@ class  get_l2_broadcast_domains():
                                     if now_device_l2_boradcast_domain_array[1] == tmp_opposite_if_array[0]:
                                         for now_now_device_l2_boradcast_domain_array in now_device_l2_boradcast_domain_array[3]:
                                             #print(now_now_device_l2_boradcast_domain_array[1] , tmp_opposite_if_array[1] , now_device_l2_boradcast_domain_array[2] , kyuusai_device_l2_boradcast_domain_array[2])
-                                            if now_now_device_l2_boradcast_domain_array[1] == tmp_opposite_if_array[1] and now_device_l2_boradcast_domain_array[2] == kyuusai_device_l2_boradcast_domain_array[2]:
+                                            if now_now_device_l2_boradcast_domain_array[1] == tmp_opposite_if_array[1] and l2seg.segments_connect(get_l2_broadcast_domains.get_port_l2seg_name(self, device_name, if_name, kyuusai_device_l2_boradcast_domain_array[2]), get_l2_broadcast_domains.get_port_l2seg_name(self, tmp_opposite_if_array[0], tmp_opposite_if_array[1], now_device_l2_boradcast_domain_array[2])):
                                                 #print('               *MATCH OPPO L2***',now_device_l2_boradcast_domain_array[2],now_device_l2_boradcast_domain_array[0])
                                                 tmp_l2_broadcast_group_array.append(now_device_l2_boradcast_domain_array[0])
                                                 break
@@ -2882,14 +2902,17 @@ class  get_l2_broadcast_domains():
                             for tmp_device_l2_directly_l3vport_array in device_l2_directly_l3vport_array:
                                 #print(kyuusai_device_l2_boradcast_domain_array[1] , tmp_device_l2_directly_l3vport_array[0], tmp_device_l2_directly_l3vport_array[2][2],tmp_opposite_if_array[1] )
                                 if tmp_device_l2_directly_l3vport_array[2][2] == tmp_opposite_if_array[1] and tmp_device_l2_directly_l3vport_array[0] == tmp_opposite_if_array[0]:
-                                    if tmp_device_l2_directly_l3vport_array[1] == kyuusai_device_l2_boradcast_domain_array[2]:
+                                    if l2seg.segments_connect(get_l2_broadcast_domains.get_port_l2seg_name(self, device_name, if_name, kyuusai_device_l2_boradcast_domain_array[2]), tmp_device_l2_directly_l3vport_array[1]):
                                         #print('   *MATCH OPPO l2_directly_l3vport***', kyuusai_device_l2_boradcast_domain_array[2])
                                         tmp_l2_broadcast_group_array.append(tmp_device_l2_directly_l3vport_array[2][0])
                                         break
 
                                     '''Kyuusai a one-L2_SEG if connect to a one-L2_oneL3 if'''
-                                    tmp_num_1 = get_l2_broadcast_domains.get_l2seg_count_on_if(self, device_name, if_name)
-                                    if tmp_num_1  == 1 and tmp_device_l2_directly_l3vport_array[1] == '__NO_L2SEG__':
+                                    if get_l2_broadcast_domains.port_has_untag(self, device_name, if_name):
+                                        tmp_no_l2seg_match = l2seg.is_untag(get_l2_broadcast_domains.get_port_l2seg_name(self, device_name, if_name, kyuusai_device_l2_boradcast_domain_array[2]))
+                                    else:
+                                        tmp_no_l2seg_match = get_l2_broadcast_domains.get_l2seg_count_on_if(self, device_name, if_name) == 1
+                                    if tmp_no_l2seg_match and tmp_device_l2_directly_l3vport_array[1] == '__NO_L2SEG__':
                                         #print('               *MATCH a one-L2_SEG if connect to a one-L2_oneL3 if***', tmp_device_l2_directly_l3vport_array[0],tmp_device_l2_directly_l3vport_array[2][3])
                                         tmp_l2_broadcast_group_array.append(tmp_device_l2_directly_l3vport_array[2][0])
                                         break
@@ -2898,6 +2921,8 @@ class  get_l2_broadcast_domains():
                             for tmp_device_l2_other_array in device_l2_other_array:
                                 if tmp_device_l2_other_array[2][2] == tmp_opposite_if_array[1] and tmp_device_l2_other_array[0] == tmp_opposite_if_array[0]:
                                     #print('               *MATCH device_l2_boradcast_domain_array  -> device_l2_other_array', tmp_opposite_if_array,tmp_device_l2_other_array[2][0])
+                                    if tmp_device_l2_other_array[1] == '__EDGE_L3__' and get_l2_broadcast_domains.port_has_untag(self, device_name, if_name) and not l2seg.is_untag(get_l2_broadcast_domains.get_port_l2seg_name(self, device_name, if_name, kyuusai_device_l2_boradcast_domain_array[2])):
+                                        break
                                     tmp_l2_broadcast_group_array.append(tmp_device_l2_other_array[2][0] )
                                     break
 
@@ -2973,10 +2998,13 @@ class  get_l2_broadcast_domains():
                     for tmp_device_l2_other_array in device_l2_other_array:
                         if tmp_device_l2_other_array[0] == tmp_opposite_if_array[0] and tmp_device_l2_other_array[2][2] == tmp_opposite_if_array[1]:
                             #print('### device_l2_directly_l3vport_array -> device_l2_other_array', tmp_opposite_if_array,tmp_device_l2_directly_l3vport_array[2][0], tmp_device_l2_other_array [2][0])
+                            if (device_name, if_name) in self._port_l3vport_untag and not l2seg.is_untag(tmp_device_l2_directly_l3vport_array[1]):
+                                l2_broadcast_group_array_2nd.append([tmp_device_l2_directly_l3vport_array[2][0]])
+                                continue
                             l2_broadcast_group_array_2nd.append(sorted(list(set([tmp_device_l2_directly_l3vport_array[2][0], tmp_device_l2_other_array[2][0]]))))
 
                 if tmp_source_count != 1 and tmp_target_count == 1:
-                    if tmp_device_l2_directly_l3vport_array[1] == opposite_l2seg_name:
+                    if l2seg.segments_connect(tmp_device_l2_directly_l3vport_array[1], opposite_l2seg_name) or (opposite_l2seg_name == '__NO_L2SEG__' and l2seg.is_untag(tmp_device_l2_directly_l3vport_array[1])):
                         #print('          + device_name,if_name -> ', device_name, if_name, tmp_source_count, tmp_device_l2_directly_l3vport_array[2][0], tmp_device_l2_directly_l3vport_array[1], '    +++tmp_oppsite_if_array -> ', tmp_opposite_if_array, tmp_target_count, opposite_l2seg_num,opposite_l2seg_name)
                         l2_broadcast_group_array_2nd.append(sorted(list(set([tmp_device_l2_directly_l3vport_array[2][0], opposite_l2seg_num]))))
 
@@ -3121,6 +3149,14 @@ class  get_l2_broadcast_domains():
 
     def get_l2name_count_on_if(self,device_name,if_name):
         return self._l2seg_count_index.get((device_name, if_name), 0)
+
+    def get_port_l2seg_name(self, device_name, if_name, l2seg_name):
+        '''The name the physical port itself carries for the device-level segment l2seg_name.'''
+        _found = l2seg.find_by_base(self._port_l2seg_index.get((device_name, if_name), []), l2seg_name)
+        return l2seg_name if _found is None else _found
+
+    def port_has_untag(self, device_name, if_name):
+        return any(l2seg.is_untag(_name) for _name in self._port_l2seg_index.get((device_name, if_name), []))
 
     def get_unique_list(seq):
         seen = []

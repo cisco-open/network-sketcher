@@ -17,6 +17,7 @@ limitations under the License.
 '''
 
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
+import ns_l2seg_util as l2seg
 import sys, os, subprocess ,webbrowser ,openpyxl
 
 class ns_cli_run():
@@ -2703,12 +2704,19 @@ class ns_cli_run():
                             segments_added = []
                             segments_skipped_local = []
 
-                            for seg in segment_list:
-                                if seg not in existing_segs:
-                                    existing_segs.append(seg)
-                                    segments_added.append(seg)
-                                else:
-                                    segments_skipped_local.append(seg)
+                            if any(l2seg.is_untag(seg) for seg in segment_list + existing_segs):
+                                merged_segs, segments_added, segments_skipped_local, untag_error = l2seg.merge_port_segments(existing_segs, segment_list)
+                                if untag_error:
+                                    error_entries.append({'idx': entry_idx, 'err': f'{untag_error} ({hostname}:{current_port})'})
+                                    continue
+                                existing_segs = merged_segs
+                            else:
+                                for seg in segment_list:
+                                    if seg not in existing_segs:
+                                        existing_segs.append(seg)
+                                        segments_added.append(seg)
+                                    else:
+                                        segments_skipped_local.append(seg)
 
                             if segments_added:
                                 sorted_segs = sort_segments(existing_segs)
@@ -2776,6 +2784,11 @@ class ns_cli_run():
                 return_msg += f"  ... +{len(added_segments) - 5} more\n"
 
             return_msg += f'\nSummary: {total_added} added, {total_skipped} skipped, {affected_interfaces} interfaces'
+
+            if error_entries:
+                return_msg += f'\n\nWarnings: {len(error_entries)} entry(ies) with errors\n'
+                for err in error_entries[:5]:
+                    return_msg += f"  Entry {err['idx'] + 1}: {err['err']}\n"
 
             return ([return_msg.strip()])
 
@@ -3495,18 +3508,12 @@ class ns_cli_run():
                         # Get the 7th element (index 6)
                         current_value = entry[1][6]
                         # Split by comma, remove extra spaces
-                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
-                        # Only add if not already present
-                        if add_l2seg_name not in segs:
-                            if current_value.strip() == '':
-                                entry[1][6] = add_l2seg_name
-                                entry[1][6] = ','.join(sorted(s.strip() for s in entry[1][6].split(',')))
-                            else:
-                                entry[1][6] = current_value + ',' + add_l2seg_name
-                                entry[1][6] = ','.join(sorted(s.strip() for s in entry[1][6].split(',')))
-                        else:
-                            #print(f"'{add_l2seg_name}' already exists in the l2 segments. No change made.")
+                        new_l2seg_value, l2seg_status = l2seg.add_l2_segment_to_cell(current_value, add_l2seg_name)
+                        if l2seg_status == 'exists':
                             return ([add_l2seg_name + ' already exists in the l2 segments. No change made'])
+                        if l2seg_status != 'added':
+                            return ([f"[ERROR] {l2seg_status} ({hostname}:{portname})"])
+                        entry[1][6] = new_l2seg_value
                         break
 
                     #for virtual port
@@ -3514,18 +3521,12 @@ class ns_cli_run():
                         # Get the 7th element (index 6)
                         current_value = entry[1][6]
                         # Split by comma, remove extra spaces
-                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
-                        # Only add if not already present
-                        if add_l2seg_name not in segs:
-                            if current_value.strip() == '':
-                                entry[1][6] = add_l2seg_name
-                                entry[1][6] = ','.join(sorted(s.strip() for s in entry[1][6].split(',')))
-                            else:
-                                entry[1][6] = current_value + ',' + add_l2seg_name
-                                entry[1][6] = ','.join(sorted(s.strip() for s in entry[1][6].split(',')))
-                        else:
-                            #print(f"'{add_l2seg_name}' already exists in the l2 segments. No change made.")
+                        new_l2seg_value, l2seg_status = l2seg.add_l2_segment_to_cell(current_value, add_l2seg_name)
+                        if l2seg_status == 'exists':
                             return ([add_l2seg_name + ' already exists in the l2 segments. No change made'])
+                        if l2seg_status != 'added':
+                            return ([f"[ERROR] {l2seg_status} ({hostname}:{portname})"])
+                        entry[1][6] = new_l2seg_value
 
             elif 'virtual_port' in argv_array:
                 if ns_def.get_if_value(add_vport_name) == -1:
@@ -3583,18 +3584,12 @@ class ns_cli_run():
                         # Get the 8th element (index 7)
                         current_value = entry[1][7]
                         # Split by comma, remove extra spaces
-                        segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
-                        # Only add if not already present
-                        if add_l2seg_name not in segs:
-                            if current_value.strip() == '':
-                                entry[1][7] = add_l2seg_name
-                                entry[1][7] = ','.join(sorted(s.strip() for s in entry[1][7].split(',')))
-                            else:
-                                entry[1][7] = current_value + ',' + add_l2seg_name
-                                entry[1][7] = ','.join(sorted(s.strip() for s in entry[1][7].split(',')))
-                        else:
-                            #print(f"'{add_l2seg_name}' already exists in the l2 segments. No change made.")
+                        new_l2seg_value, l2seg_status = l2seg.add_l2_segment_to_cell(current_value, add_l2seg_name)
+                        if l2seg_status == 'exists':
                             return ([add_l2seg_name + ' already exists in the vport_l2_direct_binding. No change made'])
+                        if l2seg_status != 'added':
+                            return ([f"[ERROR] {l2seg_status} ({hostname}:{portname})"])
+                        entry[1][7] = new_l2seg_value
 
             elif 'vport_l1if_direct_binding' in argv_array:
                 if ns_def.get_if_value(add_vport_name) == -1:
@@ -4340,8 +4335,8 @@ class ns_cli_run():
                     if entry == target_row:
                         current_value = entry[1][6]
                         segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
-                        if del_l2seg_name in segs:
-                            segs.remove(del_l2seg_name)
+                        if l2seg.find_segment_to_delete(segs, del_l2seg_name) is not None:
+                            segs.remove(l2seg.find_segment_to_delete(segs, del_l2seg_name))
                             entry[1][6] = ','.join(segs)
                         else:
                             return ([f"{del_l2seg_name} does not exist in the l2 segments. No change made"])
@@ -4354,8 +4349,8 @@ class ns_cli_run():
                         # Split by comma, remove extra spaces
                         segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
                         # Only add if not already present
-                        if del_l2seg_name in segs:
-                            segs.remove(del_l2seg_name)
+                        if l2seg.find_segment_to_delete(segs, del_l2seg_name) is not None:
+                            segs.remove(l2seg.find_segment_to_delete(segs, del_l2seg_name))
                             entry[1][6] = ','.join(segs)
                         else:
                             return ([del_l2seg_name + ' does not exist in the l2 segments. No change made'])
@@ -4389,8 +4384,8 @@ class ns_cli_run():
                         segs = [seg.strip() for seg in current_value.split(',')] if current_value else []
                         # Only add if not already present
                         #print(del_l2seg_name,segs)
-                        if del_l2seg_name in segs:
-                            segs.remove(del_l2seg_name)
+                        if l2seg.find_segment_to_delete(segs, del_l2seg_name) is not None:
+                            segs.remove(l2seg.find_segment_to_delete(segs, del_l2seg_name))
                             entry[1][7] = ','.join(segs)
                         else:
                             return ([del_l2seg_name + ' does not exist in the vport_l2_direct_binding. No change made'])

@@ -31,6 +31,7 @@ to nsm_ddx_svg_l2.  Mirrors the PPT flow in nsm_l2_diagram_create:
 import copy
 import os
 import nsm_def
+import nsm_l2seg_util
 
 
 _L2_SECTIONS = [
@@ -296,6 +297,7 @@ class nsm_l2_svg_create:
         self.position_tag_array = bulk['<<POSITION_TAG>>']
         self.root_folder_array = bulk['<<ROOT_FOLDER>>']
         self.l2_table_array = l2_bulk['<<L2_TABLE>>']
+        nsm_l2seg_util.canonicalize_l2_cells([row[1] for row in self.l2_table_array if isinstance(row, list) and row[0] != 1 and row[0] != 2])
 
         self.position_folder_tuple = nsm_def.convert_array_to_tuple(self.position_folder_array)
         self.position_shape_tuple = nsm_def.convert_array_to_tuple(self.position_shape_array)

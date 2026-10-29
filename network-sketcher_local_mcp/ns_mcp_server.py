@@ -179,6 +179,7 @@ _ERROR_PATTERNS = (
     '[ERROR]',
     '[WARNING] No ',
     'Input must start with',
+    'entry(ies) with errors',
 )
 
 # Some add/delete commands answer 'Error: ...' at the start of a line. Matching

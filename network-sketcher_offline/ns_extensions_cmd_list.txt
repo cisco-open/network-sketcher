@@ -27,6 +27,7 @@ Architecture rules (sorted by rule number, all MANDATORY):
 - RULE 7.1 Cascade deletion behaviour
 - RULE 8   Virtualised multi-chassis device naming
 - RULE 9   Port-channel VLAN symmetry
+- RULE 9.5 Untagged (native) VLAN notation (_UNTAG_)
 - RULE 10  Valid IPv4 / IPv6 address constraints
 - RULE 11  L2/L3 trunk port type compatibility
 - RULE 11.5 Endpoint device IP assignment (no SVI on servers/PCs/IoT)
@@ -547,6 +548,9 @@ The following two commands are equivalent:<br>
 - Device list and port list forms can be combined freely for maximum compactness (Cartesian product: every device x every port in the entry)
 - IMPORTANT: Device list format can only be used when ALL listed devices have the EXACT same port name(s). If devices have different port names (e.g., Core-SW uses 'Port-channel 11' but Access-SW uses 'Port-channel 1'), they MUST be written as separate entries — do NOT group them in a device list
 - IMPORTANT: Port list format can only be used when ALL listed ports exist on EVERY listed device. If some ports exist on only a subset of devices, split them into separate entries — do NOT group them in a port list. Missing device:port combinations are reported as `Not found: <device>:<port>` and may cause the entry to fail
+- Untagged (native) VLAN: add the suffix '_UNTAG_' to the segment name (e.g., 'Vlan1_UNTAG_'). See RULE 9.5
+- On one port, 'Vlan1' and 'Vlan1_UNTAG_' are the same VLAN and '_UNTAG_' wins: adding 'Vlan1_UNTAG_' replaces 'Vlan1', and adding 'Vlan1' to a port that has 'Vlan1_UNTAG_' changes nothing
+- A port can carry only ONE '_UNTAG_' segment. An entry that would add a second one (different base name) fails, the other entries are still applied, and the output ends with `Warnings: N entry(ies) with errors`
 
 
 
@@ -661,6 +665,9 @@ add vport_l2_direct_binding '[device name]' '[virtual port]' '[l2_name_direct_bi
 #show l2_interface<br>
 ['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', 'vlan100']<br>
 
+
+[Tips]
+* '_UNTAG_' can be used here too (e.g., 'vlan100_UNTAG_' for a subinterface that receives VLAN vlan100 untagged / native). The same per-port rules as add l2_segment_bulk apply: 'vlan100_UNTAG_' replaces 'vlan100', and a second '_UNTAG_' name is an [ERROR]. See RULE 9.5
 
 ## add waypoint
 
@@ -860,6 +867,9 @@ delete l2_segment '[device name]' '[layer2_portname]' '[l2segment_name]'
 #show l3_interface<br>
 ['L3SW2', 'GigabitEthernet 0/0', '', 'Vlan100,Vlan200,Vlan300', '']<br>
 
+[Tips]
+* Segments are matched by VLAN: deleting 'Vlan1' also removes 'Vlan1_UNTAG_' from the port, and deleting 'Vlan1_UNTAG_' removes 'Vlan1'
+
 ## delete portchannel
 The port channel (LAG) configured on the Layer 1 interface will be deleted, along with the Layer 2 segment configured on the port channel.
  ```bash
@@ -934,6 +944,9 @@ delete vport_l2_direct_binding '[device name]' '[virtual port]' '[l2_name_direct
 ['Catalyst 3560', 'GigabitEthernet 0/0', 'GigabitEthernet 0/0.100', '', '']<br>
 
 
+
+[Tips]
+* Names are matched by VLAN in the same way as delete l2_segment ('vlan100' also removes 'vlan100_UNTAG_')
 
 ## delete waypoint
 
@@ -1923,6 +1936,53 @@ SYMMETRY CHECKLIST:
 - Port info configured for all member interfaces
 - Verified with show l2_interface
 
+UNTAGGED (NATIVE) VLAN:
+- An untagged VLAN must be written with '_UNTAG_' on BOTH ends of the link
+  (e.g., 'Vlan1_UNTAG_' on both Port-channels). One side only does NOT connect:
+  'Vlan1_UNTAG_' never connects to 'Vlan1'. See RULE 9.5
+
+## RULE 9.5: UNTAGGED (NATIVE) VLAN NOTATION (_UNTAG_)
+
+Add the suffix '_UNTAG_' (upper case) to an L2 segment name to mark it as the
+untagged (native) VLAN of that port: 'Vlan1_UNTAG_' = VLAN 'Vlan1' carried
+untagged. Names without '_UNTAG_' are tagged VLANs (unchanged behaviour).
+
+ON ONE PORT:
+- 'Vlan1' and 'Vlan1_UNTAG_' are the same VLAN; the '_UNTAG_' form wins
+  (adding 'Vlan1_UNTAG_' replaces 'Vlan1'; adding 'Vlan1' afterwards changes nothing)
+- At most ONE '_UNTAG_' segment per port. A second one is an [ERROR]
+- A name that is only '_UNTAG_' is an [ERROR]. Lower case '_untag_' is an ordinary name
+- The same rules apply to vport_l2_direct_binding names
+
+ON ONE DEVICE:
+- 'Vlan1_UNTAG_' on one port and 'Vlan1' on another port are the same VLAN
+  (one broadcast domain; the L2 diagram draws one box named 'Vlan1_UNTAG_')
+- An SVI bound to 'Vlan1' joins that same domain
+
+ACROSS AN L1 LINK:
+Local port           | Opposite port                      | Connects
+---------------------|------------------------------------|------------------------------
+'_UNTAG_' segment    | '_UNTAG_' segment                  | Yes, even with different names
+tagged segment       | tagged segment                     | Only with the same name
+'_UNTAG_' segment    | tagged segment                     | NO ('Vlan1_UNTAG_' vs 'Vlan1')
+trunk with '_UNTAG_' | L3 physical port                   | Only the '_UNTAG_' segment
+trunk with '_UNTAG_' | L3 virtual port without L2 binding | Only the '_UNTAG_' segment
+any segment          | subinterface (vport_l2_direct_binding) | Binding names follow the rows above
+
+EXAMPLE (trunk with native VLAN 1 and tagged VLANs 10/20, router on a routed port):
+add l2_segment_bulk "[['SW1','GigabitEthernet 0/1',['Vlan1_UNTAG_','Vlan10','Vlan20']]]"
+-> the router's GigabitEthernet 0/0 (IP on the physical port) joins Vlan1 only
+
+EXAMPLE (router-on-a-stick with a native subinterface):
+add vport_l2_direct_binding 'R1' 'GigabitEthernet 0/0.1' 'Vlan1_UNTAG_'
+add vport_l2_direct_binding 'R1' 'GigabitEthernet 0/0.10' 'Vlan10'
+add l2_segment_bulk "[['SW1','GigabitEthernet 0/1',['Vlan1_UNTAG_','Vlan10']]]"
+
+NOTES:
+- Names are displayed as stored (show l2_interface, Device Table, diagrams)
+- delete l2_segment and delete vport_l2_direct_binding match by VLAN
+  ('Vlan1' removes 'Vlan1_UNTAG_')
+
 ## RULE 10: VALID IPV4 / IPV6 ADDRESS CONSTRAINTS
 
 CRITICAL: All IPv4 octets must be 0-255. VLAN IDs > 255 require mapping.
@@ -2009,6 +2069,7 @@ L2 Port (2+ VLANs) <-> L2 Port (2+ VLANs)  | Yes   | None
 L2 Port (1 VLAN) <-> L3 Physical Port      | Yes   | Exception allowed (see RULE 11.5 for endpoint side)
 L3 Physical Port <-> L3 Physical Port      | Yes   | None
 L2 Port (2+ VLANs) <-> L3 Physical Port    | NO    | Convert to L2+SVI
+L2 Port with one '_UNTAG_' <-> L3 Physical Port | Yes | Only the '_UNTAG_' VLAN connects (RULE 9.5)
 
 ERROR DETECTION:
 Check show l3_broadcast_domain for:
@@ -2050,6 +2111,7 @@ For each L1 link:
 KEY PRINCIPLE:
 "Multiple VLANs to L3 physical port = ERROR. Convert to L2 port + SVI."
 "Single VLAN to L3 physical port = VALID exception."
+"Trunk with one '_UNTAG_' VLAN to L3 physical port = VALID: only the '_UNTAG_' VLAN reaches the L3 port (RULE 9.5)."
 "Any SVI (Vlan <ID>) created MUST be bound to an L2 segment on the SVI itself (Loopback excluded)."
 
 ## RULE 11.5: ENDPOINT DEVICE IP ASSIGNMENT (NO SVI ON SERVERS / PCs / IoT)

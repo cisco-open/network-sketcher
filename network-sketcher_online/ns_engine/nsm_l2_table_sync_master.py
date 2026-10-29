@@ -23,6 +23,7 @@ import math
 import openpyxl
 import tkinter as tk ,tkinter.ttk as ttk,tkinter.filedialog, tkinter.messagebox
 import nsm_def ,nsm_ddx_figure
+import nsm_l2seg_util
 import shutil
 
 class  nsm_l2_table_sync_master():
@@ -73,6 +74,7 @@ class  nsm_l2_table_sync_master():
             new_l2_table_array.append(tmp_l2_table_array)
 
         sorted_new_l2_table_array = []
+        untag_errors = []
 
         for tmp_new_l2_table_array in new_l2_table_array:
             tmp_new_l2_table_array[1].extend(['','','','','','','',''])
@@ -104,6 +106,10 @@ class  nsm_l2_table_sync_master():
                 if tmp_tmp_array != '':
                     tmp_last_array.append(tmp_tmp_array)
             tmp_array = tmp_last_array
+            if any(nsm_l2seg_util.is_untag(tmp_name) for tmp_name in tmp_array):
+                tmp_array, untag_error = nsm_l2seg_util.normalize_input_segments(tmp_array)
+                if untag_error:
+                    untag_errors.append(f'{tmp_new_l2_table_array[1][1]} {tmp_new_l2_table_array[1][3]} {tmp_new_l2_table_array[1][5]}: {untag_error}')
             tmp_array.sort()
             tmp_str = str(tmp_array).replace('\'','').replace('[','').replace(']','').replace(' ','')
             tmp_new_l2_table_array[1][6] = tmp_str
@@ -118,11 +124,20 @@ class  nsm_l2_table_sync_master():
                 if tmp_tmp_array != '':
                     tmp_last_array.append(tmp_tmp_array)
             tmp_array = tmp_last_array
+            if any(nsm_l2seg_util.is_untag(tmp_name) for tmp_name in tmp_array):
+                tmp_array, untag_error = nsm_l2seg_util.normalize_input_segments(tmp_array)
+                if untag_error:
+                    untag_errors.append(f'{tmp_new_l2_table_array[1][1]} {tmp_new_l2_table_array[1][3]} {tmp_new_l2_table_array[1][5]}: {untag_error}')
             tmp_array.sort()
-            tmp_str = str(tmp_array).replace('\'','').replace('[','').replace(']','')
+            tmp_str = str(tmp_array).replace('\'','').replace('[','').replace(']','').replace(' ','')
             tmp_new_l2_table_array[1][7] = tmp_str
 
             sorted_new_l2_table_array.append(tmp_new_l2_table_array[1])
+
+        if untag_errors:
+            input_excel_l2_table.close()
+            tkinter.messagebox.showerror(title="_UNTAG_ error in [L2_TABLE] file", message="The master file was not updated.\n\n" + "\n".join(untag_errors[:10]))
+            return
 
         #sort sorted_new_l2_table_array
         sorted_new_l2_table_array = sorted(sorted_new_l2_table_array , reverse=False, key=lambda x: (x[0],x[1],x[9],x[8],x[5],x[7],x[6]))  # sort l2 table

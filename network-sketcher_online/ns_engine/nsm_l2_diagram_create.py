@@ -14,6 +14,7 @@ import numpy as np
 import math
 import nsm_def
 import nsm_ddx_figure
+import nsm_l2seg_util
 import openpyxl
 from pptx import Presentation
 from pptx.enum.dml import MSO_LINE
@@ -415,6 +416,7 @@ class nsm_l2_diagram_create():
 
             self.folder_wp_name_array = nsm_def.get_folder_wp_array_from_master(ws_name, excel_maseter_file)
             self.l2_table_array = nsm_def.convert_master_to_array(ws_l2_name, excel_maseter_file, '<<L2_TABLE>>')
+            nsm_l2seg_util.canonicalize_l2_cells([row[1] for row in self.l2_table_array if isinstance(row, list) and row[0] != 1 and row[0] != 2])
 
             total_data = (len(self.position_folder_array) + len(self.position_shape_array) +
                          len(self.position_line_array) + len(self.l2_table_array))
