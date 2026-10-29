@@ -60,6 +60,45 @@ def get_text_wh_cached(ctx, font_size, text):
         ctx._text_size_cache[key] = v
     return v
 
+
+def _folder_top_clear_of_labels(ctx, frame_left, frame_width, frame_top, folder_text, devices=None, limit_top=None, segment_bottoms=()):
+    """Top of an area frame whose centered name clears the IP address and
+    interface tags stacked above the first row of devices.
+
+    Only tags that reach into the frame and overlap the name count; the frame
+    then leaves `gap` between name and tags, and all rows of an interface's IP
+    stack move together. Returns frame_top unchanged when nothing overlaps, and
+    never goes above limit_top or the L3 segment bars drawn above the frame.
+    """
+    name_w, name_h = get_text_wh_cached(ctx, ctx.folder_font_size, folder_text)
+    gap = 0.05
+    name_left = frame_left + (frame_width - name_w) * 0.5
+    name_right = name_left + name_w
+    name_bottom = frame_top + name_h
+
+    tags = []
+    for m in getattr(ctx, 'mark_multi_ip_array', []) or []:
+        if len(m) > 10 and (devices is None or m[7] in devices):
+            left = min(m[1], m[10])
+            tags.append((tuple(m[9]), left, m[2], max(m[1], m[10]) + m[3] - left, m[4]))
+    for t in getattr(ctx, 'all_l3if_tag_array', []) or []:
+        if len(t) > 7 and (devices is None or t[7] in devices):
+            tags.append(((t[7], t[6]), t[1], t[2], t[3], t[4]))
+
+    under_name = [tag for tag in tags if tag[1] < name_right and tag[1] + tag[3] > name_left]
+    keys = {tag[0] for tag in under_name if tag[2] + tag[4] > frame_top and tag[2] < name_bottom}
+    new_top = frame_top
+    for key, _left, top, _width, _hight in under_name:
+        if key in keys:
+            new_top = min(new_top, top - name_h - gap)
+    ceilings = [bottom + gap for bottom in segment_bottoms if bottom <= frame_top + 1e-6]
+    if limit_top is not None:
+        ceilings.append(limit_top)
+    limit_top = max(ceilings) if ceilings else None
+    if limit_top is not None and new_top < limit_top:
+        new_top = min(frame_top, limit_top)
+    return new_top
+
 class  nsm_l3_diagram_create():
     def __init__(self):
         import time
@@ -1661,8 +1700,14 @@ class  nsm_l3_diagram_create():
         folder_shape_hight = self.area_position_array[3]
         folder_shape_text = self.area_position_array[4]
         max_folder_left_width = 0.0
+        l3_segment_hight = get_text_wh_cached(self, self.tag_font_large_size, 'xxx.xxx.xxx.xxx/xx')[1] * l3_segment_hight_ratio
+        segment_bottoms = [y + l3_segment_hight * 0.5 for seg in l3segment_line_array for y in seg[1]]
 
         if action_type == 'CREATE' and self.click_value_l3 != 'L3-4-1':
+            folder_top_clear = _folder_top_clear_of_labels(self, folder_shape_left, folder_shape_width, folder_shape_top, folder_shape_text,
+                                                           limit_top=self.outline_position_array[1] + 0.05, segment_bottoms=segment_bottoms)
+            folder_shape_hight += folder_shape_top - folder_top_clear
+            folder_shape_top = folder_top_clear
             self.shape = self.slide.shapes
             nsm_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top, folder_shape_width, folder_shape_hight, folder_shape_text)
             self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
@@ -1729,6 +1774,12 @@ class  nsm_l3_diagram_create():
                     folder_shape_width = tmp_area_outline_array[3] + (area_margin_x * 2)
                     folder_shape_hight = tmp_area_outline_array[4] + (area_margin_y_top + area_margin_y)
                     folder_shape_text = tmp_area_outline_array[0]
+                    area_devices = {d[1] for d in self.unique_area_device_array if d[0] == folder_shape_text}
+                    folder_top_clear = _folder_top_clear_of_labels(self, folder_shape_left, folder_shape_width, folder_shape_top, folder_shape_text,
+                                                                   devices=area_devices, limit_top=self.outline_position_array[1] + 0.05,
+                                                                   segment_bottoms=segment_bottoms)
+                    folder_shape_hight += folder_shape_top - folder_top_clear
+                    folder_shape_top = folder_top_clear
 
                     nsm_ddx_figure.extended.add_shape(self, folder_shape_type, folder_shape_left, folder_shape_top,folder_shape_width, folder_shape_hight, folder_shape_text)
                     self.slide.shapes._spTree.remove(self.shape._element)  # move shape to back layer
