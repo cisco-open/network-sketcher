@@ -2647,20 +2647,37 @@ def compute_l3_device_shifts(self):
 
     update_start_area_array = getattr(self, 'update_start_area_array', [])
 
-    # 1. Per-real-area max expansion (max sub-row cumulative shift)
+    # 1. Per-real-area expansion
+    # area_expansion is the largest cumulative shift in any sub-row. Real areas
+    # keep moving by it: the line-over-device check above placed lines at those
+    # positions. area_growth is how far the shifted sub-rows reach past the
+    # widest unshifted sub-row (the width calculate_area_offset used); a
+    # waypoint area with no real area to its right only has to clear that
+    # right edge.
     area_expansion = {}
+    area_width = {}
+    area_shifted_width = {}
     for area_name, rows in rows_per_area.items():
         devs = devs_per_area.get(area_name, {})
         for row in rows:
             row_devs = [d for d in row if isinstance(d, str) and d in devs and d != '_AIR_']
             row_devs.sort(key=lambda d: devs[d]['left'])
             cumul_in_area = _per_area_cumul(row_devs, self.device_extra_shift)
-            for d, c in cumul_in_area.items():
+            sub_row_left = {}
+            for d in row_devs:
                 d_area = shape_folder_tuple.get(d)
                 if d_area is None:
                     continue
-                if c > area_expansion.get(d_area, 0.0):
-                    area_expansion[d_area] = c
+                if cumul_in_area[d] > area_expansion.get(d_area, 0.0):
+                    area_expansion[d_area] = cumul_in_area[d]
+                sub_row_left.setdefault(d_area, devs[d]['left'])
+                right = devs[d]['left'] + devs[d]['width'] - sub_row_left[d_area]
+                area_width[d_area] = max(area_width.get(d_area, 0.0), right)
+                area_shifted_width[d_area] = max(area_shifted_width.get(d_area, 0.0), right + cumul_in_area[d])
+    area_growth = {}
+    for d_area, width in area_width.items():
+        if area_shifted_width[d_area] - width > 0:
+            area_growth[d_area] = area_shifted_width[d_area] - width
 
     if not area_expansion:
         return
@@ -2710,11 +2727,20 @@ def compute_l3_device_shifts(self):
             key=lambda a: area_orig_start[a],
         )
         cumul_exp = 0.0
-        for area_name in band_areas_sorted:
-            area_offset_addition[area_name] = cumul_exp
+        band_growth = 0.0
+        prev_offset = prev_growth = 0.0
+        for index, area_name in enumerate(band_areas_sorted):
+            if all('_wp_' in a for a in band_areas_sorted[index:]):
+                offset = prev_offset + prev_growth
+                band_growth = max(band_growth, offset + area_growth.get(area_name, 0.0))
+            else:
+                offset = cumul_exp
+                band_growth = max(band_growth, offset + area_expansion.get(area_name, 0.0))
+            area_offset_addition[area_name] = offset
             cumul_exp += area_expansion.get(area_name, 0.0)
-        if cumul_exp > max_total_growth:
-            max_total_growth = cumul_exp
+            prev_offset, prev_growth = offset, area_growth.get(area_name, 0.0)
+        if band_growth > max_total_growth:
+            max_total_growth = band_growth
 
     # 6. Update update_start_area_array entries in-place.
     for entry in update_start_area_array:
