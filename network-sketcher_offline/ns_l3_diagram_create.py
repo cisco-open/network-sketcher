@@ -852,13 +852,17 @@ class  ns_l3_diagram_create():
 
         self.target_offset_shape_array = []
 
+        # Area Position layout: the reset must happen at a device that is drawn,
+        # so a row led by a device without L3 interfaces still moves with its area.
+        drawn_only = getattr(self, '_l3_area_x_layout', 'location') == 'location'
+
         def process_elements(array):
             target_array = []
             for element in array:
                 if element[0] >= 2:
                     items = element[1]
                     for item in items[1:]:
-                        if '_AIR_' not in item and '<END>' not in item:
+                        if '_AIR_' not in item and '<END>' not in item and (not drawn_only or item in l3_device_array):
                             target_array.append(item)
                             break  # Stop after appending the first valid item
             return target_array
@@ -2281,7 +2285,82 @@ def _detect_l3_overspread(self, threshold=3.0):
     return False
 
 
+def _area_starts_by_location(start_area_array, row_layouts, area_widths, left_margin, between):
+    """Move areas in Area Position rows that contain blank cells to where L1 puts them.
+
+    L1 stretches every row to the page width and blank cells act as spacers, so
+    an area's place is the center of its cell as a fraction of the row. Here the
+    page width is the widest left-packed row; each area is centered at that
+    fraction, then pushed right to keep `between` from its left neighbour and
+    pulled left to stay within the page. Rows without blank cells, rows that
+    already fill the page and rows without drawn areas stay left-packed.
+    """
+    page = 0.0
+    for row in start_area_array:
+        if row:
+            page = max(page, row[-1][1] + area_widths[row[-1][0]] - left_margin)
+    result = []
+    for row, (widths, cells) in zip(start_area_array, row_layouts):
+        total = sum(widths)
+        has_spacer = len(cells) < len(widths) or any(c == '' for c in cells)
+        if not row or total <= 0 or not has_spacer:
+            result.append(row)
+            continue
+        if row[-1][1] + area_widths[row[-1][0]] - left_margin >= page - 1e-9:
+            result.append(row)
+            continue
+        center = {}
+        for j, name in enumerate(cells):
+            if isinstance(name, str) and name != '' and j < len(widths):
+                center[name] = (sum(widths[:j]) + widths[j] * 0.5) / total
+        if any(name not in center for name, _start in row):
+            result.append(row)
+            continue
+        starts = [left_margin + center[name] * page - area_widths[name] * 0.5 for name, _start in row]
+        for i in range(len(row)):
+            low = left_margin if i == 0 else starts[i - 1] + area_widths[row[i - 1][0]] + between
+            starts[i] = max(starts[i], low)
+        for i in reversed(range(len(row))):
+            high = (left_margin + page if i == len(row) - 1 else starts[i + 1] - between) - area_widths[row[i][0]]
+            starts[i] = min(starts[i], high)
+        result.append([[name, start] for (name, _old), start in zip(row, starts)])
+    return result
+
+
+def _l3_location_moved(self):
+    return (getattr(self, '_l3_area_x_layout', 'location') == 'location'
+            and getattr(self, '_l3_area_moved', False))
+
+
 def compute_l3_device_shifts(self):
+    # Area Position layout: the expansion propagation pushes areas after the
+    # collision check, which could move a connector back over a device. Check
+    # the shifts at the pushed area positions and repeat until the pushes stop
+    # changing. Diagrams whose areas did not move keep the single pass.
+    if not _l3_location_moved(self):
+        self._l3_area_push = {}
+        _compute_l3_device_shifts_once(self)
+        return
+    usa = getattr(self, 'update_start_area_array', None) or []
+    starts = [e[1] if isinstance(e, list) and len(e) >= 2 else None for e in usa]
+    edge = getattr(self, 'calculated_max_right_edge', None)
+    push = {}
+    for _round in range(8):
+        for e, s in zip(usa, starts):
+            if s is not None:
+                e[1] = s
+        if edge is not None:
+            self.calculated_max_right_edge = edge
+        self._l3_area_push = push
+        _compute_l3_device_shifts_once(self)
+        new_push = getattr(self, '_l3_area_offset_addition', {}) or {}
+        if all(abs(new_push.get(a, 0.0) - push.get(a, 0.0)) < 1e-6 for a in set(new_push) | set(push)):
+            return
+        push = dict(new_push)
+    print("[L3 collision] Warning: area pushes did not settle after 8 rounds")
+
+
+def _compute_l3_device_shifts_once(self):
     # Detect L3 segment connector lines that vertically pass over other devices
     # and compute per-device rightward shifts that resolve every collision.
     # Cascade within a row is automatic via the existing
@@ -2348,6 +2427,8 @@ def compute_l3_device_shifts(self):
             self.calculated_max_right_edge = self._calc_max_right_edge_orig
 
     self.device_extra_shift = {}
+    self._l3_area_offset_addition = {}
+    push = getattr(self, '_l3_area_push', {}) or {}
 
     def _per_area_cumul(row, shifts_self, shifts_iter=None):
         # Per-device cumulative shift, resetting at each area boundary so it
@@ -2415,7 +2496,7 @@ def compute_l3_device_shifts(self):
                         continue
                     max_need = 0.0
                     for line in d_lines:
-                        effective_x = line['natural_x'] + cumul_d
+                        effective_x = line['natural_x'] + cumul_d + push.get(d_area, 0.0)
                         for blocker_name, b in devs.items():
                             if blocker_name == d:
                                 continue
@@ -2429,7 +2510,8 @@ def compute_l3_device_shifts(self):
                                         real_area_top.get(_b_area, -1e9)
                                         - real_area_top.get(d_area, 1e9)) <= _Y_BAND_TOL):
                                     continue
-                            b_left = b['left'] + base_cumul.get(blocker_name, 0.0) + iter_extra.get(blocker_name, 0.0)
+                            b_left = (b['left'] + base_cumul.get(blocker_name, 0.0) + iter_extra.get(blocker_name, 0.0)
+                                      + push.get(shape_folder_tuple.get(blocker_name), 0.0))
                             b_right = b_left + b['width']
                             if not (b_left < effective_x < b_right):
                                 continue
@@ -2477,12 +2559,18 @@ def compute_l3_device_shifts(self):
                 _dn = _l['device_name']
                 if _dn in _devs and _dn not in _conn:
                     _conn[_dn] = (_l['natural_x'] - _devs[_dn]['left'], _l['y0'], _l['y1'])
+            # Area Position layout: a device pulled left must also stay off the
+            # connectors of other devices, e.g. one rising from a lower row.
+            _guard = []
+            if _l3_location_moved(self):
+                _guard = [(_l['device_name'], _l['natural_x'] - _devs[_l['device_name']]['left'], _l['y0'], _l['y1'])
+                          for _l in _lns if _l['device_name'] in _devs]
             _cur = {}
             for _row in _rows:
                 _cur.update(_per_area_cumul(
                     [d for d in _row if isinstance(d, str) and d in _devs and d != '_AIR_'],
                     self.device_extra_shift))
-            _cur_abs = {d: _devs[d]['left'] + c for d, c in _cur.items()}
+            _cur_abs = {d: _devs[d]['left'] + push.get(shape_folder_tuple.get(d), 0.0) + c for d, c in _cur.items()}
             _final_abs = {}
             _row_order = sorted(
                 range(len(_rows)),
@@ -2497,34 +2585,47 @@ def compute_l3_device_shifts(self):
                 _prev_cumt = {}
                 for d in _seg:
                     a = shape_folder_tuple.get(d)
-                    natl = _devs[d]['left']
+                    natl = _devs[d]['left'] + push.get(a, 0.0)
                     w = _devs[d]['width']
                     cabs = _cur_abs.get(d, natl)
                     lo = _prev_right.get(a)
                     cand = natl if lo is None else max(natl, lo + _GAP)
                     if cand < cabs:
                         co = _conn.get(d)
-                        if co is not None:
-                            off, y0, y1 = co
+                        if co is not None or _guard:
+                            dtop, dbot = _devs[d]['top'], _devs[d]['top'] + _devs[d]['height']
                             for _it in range(400):
-                                cx = cand + off
-                                worst = None
-                                for bn, b in _devs.items():
-                                    if bn == d:
+                                nxt = None
+                                if co is not None:
+                                    off, y0, y1 = co
+                                    cx = cand + off
+                                    worst = None
+                                    for bn, b in _devs.items():
+                                        if bn == d:
+                                            continue
+                                        barea = shape_folder_tuple.get(bn)
+                                        if (barea != a and abs(_rat.get(barea, -1e9)
+                                                - _rat.get(a, 1e9)) <= _Y_BAND_TOL_R):
+                                            continue
+                                        babs = _final_abs.get(bn, _cur_abs.get(bn, b['left'] + push.get(barea, 0.0)))
+                                        if not (babs < cx < babs + b['width']):
+                                            continue
+                                        if y0 < b['top'] + b['height'] and b['top'] < y1:
+                                            if worst is None or babs + b['width'] > worst:
+                                                worst = babs + b['width']
+                                    if worst is not None:
+                                        nxt = worst - off + BUFFER
+                                for gn, goff, gy0, gy1 in _guard:
+                                    gabs = _final_abs.get(gn, _cur_abs.get(gn))
+                                    if gn == d or gabs is None:
                                         continue
-                                    barea = shape_folder_tuple.get(bn)
-                                    if (barea != a and abs(_rat.get(barea, -1e9)
-                                            - _rat.get(a, 1e9)) <= _Y_BAND_TOL_R):
-                                        continue
-                                    babs = _final_abs.get(bn, _cur_abs.get(bn, b['left']))
-                                    if not (babs < cx < babs + b['width']):
-                                        continue
-                                    if y0 < b['top'] + b['height'] and b['top'] < y1:
-                                        if worst is None or babs + b['width'] > worst:
-                                            worst = babs + b['width']
-                                if worst is None:
+                                    gx = gabs + goff
+                                    if cand - BUFFER < gx < cand + w + BUFFER and gy0 < dbot and dtop < gy1:
+                                        if nxt is None or gx + BUFFER > nxt:
+                                            nxt = gx + BUFFER
+                                if nxt is None:
                                     break
-                                cand = worst - off + BUFFER
+                                cand = nxt
                                 if cand >= cabs:
                                     break
                     target = min(cand, cabs)
@@ -2612,6 +2713,39 @@ def compute_l3_device_shifts(self):
 
     area_offset_addition = {}
     max_total_growth = 0.0
+    if _l3_location_moved(self):
+        # Areas moved to the Area Position grid have blank cells between them.
+        # In a band with such areas, push an area only by what its left
+        # neighbour's right edge (with that neighbour's own push and expansion)
+        # needs beyond the 1.5 in gap, and pull the band back into its blank
+        # cells when it would reach past the page. Other bands keep the
+        # cumulative push below.
+        packed = getattr(self, '_l3_area_packed_start', {})
+        page = max((s + area_width.get(a, 0.0) for a, s in area_orig_start.items()), default=0.0)
+        left = min(area_orig_start.values(), default=0.0)
+        packed_bands = []
+        for band_top, band_areas in y_bands:
+            names = sorted((a for a in band_areas if a in area_orig_start), key=lambda a: area_orig_start[a])
+            if not any(abs(area_orig_start[a] - packed.get(a, area_orig_start[a])) > 1e-6 for a in names):
+                packed_bands.append((band_top, band_areas))
+                continue
+            size = {a: area_width.get(a, 0.0) + (area_growth if '_wp_' in a else area_expansion).get(a, 0.0)
+                    for a in names}
+            pos = [area_orig_start[a] for a in names]
+            for i in range(1, len(names)):
+                pos[i] = max(pos[i], pos[i - 1] + size[names[i - 1]] + 1.5)
+            if pos[-1] + size[names[-1]] > page:
+                high = page
+                for i in reversed(range(len(names))):
+                    pos[i] = min(pos[i], high - size[names[i]])
+                    high = pos[i] - 1.5
+                pos[0] = max(pos[0], left)
+                for i in range(1, len(names)):
+                    pos[i] = max(pos[i], pos[i - 1] + size[names[i - 1]] + 1.5)
+            for area_name, p in zip(names, pos):
+                area_offset_addition[area_name] = p - area_orig_start[area_name]
+                max_total_growth = max(max_total_growth, p + size[area_name] - page)
+        y_bands = packed_bands
     for band_top, band_areas in y_bands:
         band_areas_sorted = sorted(
             (a for a in band_areas if a in area_orig_start),
@@ -2633,11 +2767,12 @@ def compute_l3_device_shifts(self):
         if band_growth > max_total_growth:
             max_total_growth = band_growth
 
+    self._l3_area_offset_addition = dict(area_offset_addition)
     for entry in update_start_area_array:
         if isinstance(entry, (list, tuple)) and len(entry) >= 2:
             a = entry[0]
             add = area_offset_addition.get(a, 0.0)
-            if add > 0:
+            if add != 0.0:
                 entry[1] += add
 
     if hasattr(self, 'calculated_max_right_edge') and max_total_growth > 0:
@@ -2760,6 +2895,8 @@ def _compute_wp_x_snap_targets(self):
             wp_to_devices.setdefault(to_name, set()).add(from_name)
 
     extra_shift = getattr(self, 'device_extra_shift', {}) or {}
+    area_push = getattr(self, '_l3_area_push', {}) or {}
+    folder_of = getattr(self, 'shape_folder_tuple', {}) or {}
     provisional = {}
     for wp_name in target_wps:
         wp_info = all_devs.get(wp_name)
@@ -2772,7 +2909,7 @@ def _compute_wp_x_snap_targets(self):
         for dev in connected:
             d = all_devs.get(dev)
             if d:
-                shifted_left = d['left'] + extra_shift.get(dev, 0.0)
+                shifted_left = d['left'] + extra_shift.get(dev, 0.0) + area_push.get(folder_of.get(dev), 0.0)
                 dev_info_list.append((shifted_left, d['width'], dev))
         if not dev_info_list:
             continue
@@ -2805,7 +2942,7 @@ def _compute_wp_x_snap_targets(self):
         wp_info = all_devs.get(wp_name)
         if not wp_info:
             continue
-        delta = target_left - wp_info['left']
+        delta = target_left - (wp_info['left'] + area_push.get(folder_of.get(wp_name), 0.0))
         wp_lines = lines_by_dev.get(wp_name, [])
         collision = False
         for ln in wp_lines:
@@ -2814,7 +2951,7 @@ def _compute_wp_x_snap_targets(self):
             for other_name, other_info in all_devs.items():
                 if other_name == wp_name:
                     continue
-                other_left = other_info['left'] + extra_shift.get(other_name, 0.0)
+                other_left = other_info['left'] + extra_shift.get(other_name, 0.0) + area_push.get(folder_of.get(other_name), 0.0)
                 other_right = other_left + other_info['width']
                 other_top = other_info['top']
                 other_bot = other_top + other_info['height']
@@ -3763,11 +3900,15 @@ class  create_master_file_one_area():
 
         # Initialize an empty list to store the processed results
         processed_array = []
+        row_layouts = []  # (column widths, cells) of each row in processed_array
+        column_widths = []
 
         # Iterate through all elements in ori_position_folder_array
         for element in ori_position_folder_array:
             # Extract the second element (the list) of the current element
             second_element = element[1]
+            if second_element and second_element[0] in exclude_strings:
+                column_widths = [v for v in second_element[1:] if isinstance(v, (int, float))]
 
             # Remove numbers and exclude the strings specified in exclude_strings
             cleaned = [item for item in second_element if
@@ -3776,6 +3917,7 @@ class  create_master_file_one_area():
             # Only add non-empty lists to processed_array
             if cleaned:
                 processed_array.append(cleaned)
+                row_layouts.append((column_widths, second_element[1:]))
 
         # Print the processed results
         #print(processed_array)
@@ -3805,6 +3947,17 @@ class  create_master_file_one_area():
                         start_value += between_area_inchi * index
                     sublist_result.append([item, start_value])
             start_area_array.append(sublist_result)
+
+        self._l3_area_packed_start = {}
+        for row in start_area_array:
+            for name, start in row:
+                self._l3_area_packed_start.setdefault(name, start)
+        self._l3_area_moved = False
+        if getattr(self, '_l3_area_x_layout', 'location') == 'location':
+            start_area_array = _area_starts_by_location(start_area_array, row_layouts, result_dict,
+                                                        start_left_inchi, between_area_inchi)
+            self._l3_area_moved = any(abs(start - self._l3_area_packed_start[name]) > 1e-9
+                                      for row in start_area_array for name, start in row)
 
         # Output the start_area_array
         #self.update_start_area_array = []
