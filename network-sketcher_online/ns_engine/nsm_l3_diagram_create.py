@@ -940,6 +940,7 @@ class  nsm_l3_diagram_create():
                     if action_type == 'CREATE' and tmp_tmp_target_position_shape_array not in '_AIR_' and self.flag_second_page == False:
                         shape_name = tmp_tmp_target_position_shape_array
                         left_offset += create_master_file_one_area.get_l3_shape_offset(self,shape_name ,left_offset)
+                        left_offset += getattr(self, '_l3_device_layout_delta', {}).get(shape_name, 0.0)
                         # Add the per-device collision-avoidance shift computed
                         # by compute_l3_device_shifts(). The cumulative cascade
                         # within a row is handled automatically by the existing
@@ -1125,6 +1126,13 @@ class  nsm_l3_diagram_create():
                         '''GET Folder and Outline position'''
                         # get folder left
                         if (shape_type == 'DEVICE_L3_INSTANCE' or shape_type == 'DEVICE_NORMAL' or shape_type == 'WAY_POINT_NORMAL') and self.area_position_array[0] + self.between_shape_column  > shape_left:
+                            if _l3_device_x_layout(self) != 'packed':
+                                # The first device drawn is no longer the leftmost one,
+                                # so keep the right edges when the left edge moves.
+                                if self.area_position_array[0] < 9999.0:
+                                    self.area_position_array[2] += self.area_position_array[0] - (shape_left - self.between_shape_column)
+                                if self.outline_position_array[0] < 9999.0:
+                                    self.outline_position_array[2] += self.outline_position_array[0] - (shape_left - self.between_shape_column * 2)
                             self.area_position_array[0] = shape_left - self.between_shape_column
                             self.outline_position_array[0] = shape_left - self.between_shape_column * 2
 
@@ -2394,6 +2402,121 @@ def _area_starts_by_location(start_area_array, row_layouts, area_widths, left_ma
     return result
 
 
+# Device layout inside each area of the All Areas diagram: 'even' spreads
+# each row of an area over the area as L1 does; 'packed' keeps the rows left
+# aligned as before.
+L3_DEVICE_X_LAYOUT = 'even'
+
+
+def _l3_device_x_layout(self):
+    return getattr(self, '_l3_device_x_layout', L3_DEVICE_X_LAYOUT)
+
+
+def _l3_area_push_by_growth(self):
+    # Spread devices that shift may stay inside their area, so a real area
+    # pushes the areas to its right by how far its right edge grows, not by
+    # its largest collision shift.
+    return _l3_device_x_layout(self) != 'packed'
+
+
+def _device_row_starts(cells, widths, width, gap):
+    """Left of each drawn device in one row of an area, measured from the area start.
+
+    `cells` lists the row in POSITION_SHAPE order ('_AIR_' for an empty cell).
+    The row is spread as L1 does: equal gaps at both ends and between the
+    cells, '_AIR_' counting as a 0.5 in cell. Devices keep `gap` between them
+    and stay within `width`; an '_AIR_' cell keeps its room only where the row
+    has room for it.
+    """
+    names = [c for c in cells if c != '_AIR_']
+    sizes = [0.5 if c == '_AIR_' else widths[c] for c in cells]
+    g = (width - sum(sizes)) / (len(cells) + 1)
+    pos, airs, air, x = [], [], 0, 0.0
+    for c, size in zip(cells, sizes):
+        x += g
+        if c == '_AIR_':
+            air += 1
+        else:
+            pos.append(x)
+            airs.append(air)
+            air = 0
+        x += size
+    air_room = 0.5 + gap
+    for i in range(len(names)):
+        low = airs[i] * air_room if i == 0 else pos[i - 1] + widths[names[i - 1]] + gap + airs[i] * air_room
+        pos[i] = max(pos[i], low)
+    for i in reversed(range(len(names))):
+        high = width if i == len(names) - 1 else pos[i + 1] - gap - airs[i + 1] * air_room
+        pos[i] = min(pos[i], high - widths[names[i]])
+    for i in range(len(names)):
+        pos[i] = max(pos[i], 0.0 if i == 0 else pos[i - 1] + widths[names[i - 1]] + gap)
+    return pos
+
+
+def _area_layout_rows(self, positions):
+    """Rows of each real area in POSITION_SHAPE order as (area, cells): the
+    devices drawn in `positions` (name -> [top, left, right]) and the '_AIR_'
+    cells. Waypoint areas keep their own placement and are left out."""
+    rows = []
+    area = None
+    for _row_no, cells in getattr(self, 'ori_position_shape_array', None) or []:
+        if not cells or cells[0] == '<<POSITION_SHAPE>>':
+            continue
+        if cells[0] == '<END>':
+            area = None
+            continue
+        if cells[0] not in ('', None):
+            area = cells[0]
+        if area is None or '_wp_' in str(area):
+            continue
+        row = []
+        for c in cells[1:]:
+            if c == '<END>':
+                break
+            if c == '_AIR_' or c in positions:
+                row.append(c)
+        if any(c != '_AIR_' for c in row):
+            rows.append((area, row))
+    return rows
+
+
+def _area_widths_with_air(self, positions, area_widths, gap):
+    """Area widths widened, as in L1, so that every '_AIR_' cell of a row keeps
+    a 0.5 in cell plus `gap` next to the left-packed devices."""
+    if _l3_device_x_layout(self) == 'packed':
+        return area_widths
+    widths = dict(area_widths)
+    for area, row in _area_layout_rows(self, positions):
+        if area not in widths:
+            continue
+        names = [c for c in row if c != '_AIR_']
+        need = (sum(positions[n][2] - positions[n][1] for n in names) + gap * (len(names) - 1)
+                + (len(row) - len(names)) * (0.5 + gap))
+        widths[area] = max(widths[area], need)
+    return widths
+
+
+def _device_layout_delta(self, positions, area_widths, gap):
+    """Per-device X delta, relative to the left neighbour in its row, that moves
+    the left-packed rows (GET_SIZE `positions`: name -> [top, left, right]) to
+    the device layout."""
+    if _l3_device_x_layout(self) == 'packed':
+        return {}
+    delta = {}
+    for area, row in _area_layout_rows(self, positions):
+        if area not in area_widths:
+            continue
+        names = [c for c in row if c != '_AIR_']
+        widths = {n: positions[n][2] - positions[n][1] for n in names}
+        first = positions[names[0]][1]
+        prev = 0.0
+        for name, start in zip(names, _device_row_starts(row, widths, area_widths[area], gap)):
+            offset = start - (positions[name][1] - first)
+            delta[name] = offset - prev
+            prev = offset
+    return delta
+
+
 def _l3_location_moved(self):
     return (getattr(self, '_l3_area_x_layout', 'location') == 'location'
             and getattr(self, '_l3_area_moved', False))
@@ -2403,8 +2526,9 @@ def compute_l3_device_shifts(self):
     # Area Position layout: the expansion propagation pushes areas after the
     # collision check, which could move a connector back over a device. Check
     # the shifts at the pushed area positions and repeat until the pushes stop
-    # changing. Diagrams whose areas did not move keep the single pass.
-    if not _l3_location_moved(self):
+    # changing. The spread device layout pushes by area growth, so it repeats
+    # too; left-packed diagrams whose areas did not move keep the single pass.
+    if not (_l3_location_moved(self) or _l3_area_push_by_growth(self)):
         self._l3_area_push = {}
         _compute_l3_device_shifts_once(self)
         return
@@ -2760,11 +2884,19 @@ def _compute_l3_device_shifts_once(self):
     area_shifted_width = {}
     for area_name, rows in rows_per_area.items():
         devs = devs_per_area.get(area_name, {})
+        # With a device layout, rows no longer start at the area's left edge,
+        # so measure every row from that edge.
+        area_left = {}
+        if _l3_device_x_layout(self) != 'packed':
+            for d, info in devs.items():
+                d_area = shape_folder_tuple.get(d)
+                if d_area is not None and d != '_AIR_':
+                    area_left[d_area] = min(area_left.get(d_area, info['left']), info['left'])
         for row in rows:
             row_devs = [d for d in row if isinstance(d, str) and d in devs and d != '_AIR_']
             row_devs.sort(key=lambda d: devs[d]['left'])
             cumul_in_area = _per_area_cumul(row_devs, self.device_extra_shift)
-            sub_row_left = {}
+            sub_row_left = dict(area_left)
             for d in row_devs:
                 d_area = shape_folder_tuple.get(d)
                 if d_area is None:
@@ -2822,6 +2954,8 @@ def _compute_l3_device_shifts_once(self):
     # expansion to subsequent areas.
     area_offset_addition = {}
     max_total_growth = 0.0
+    by_growth = _l3_area_push_by_growth(self)
+    real_reach = area_growth if by_growth else area_expansion
     if _l3_location_moved(self):
         # Areas moved to the Area Position grid have blank cells between them.
         # In a band with such areas, push an area only by what its left
@@ -2838,7 +2972,8 @@ def _compute_l3_device_shifts_once(self):
             if not any(abs(area_orig_start[a] - packed.get(a, area_orig_start[a])) > 1e-6 for a in names):
                 packed_bands.append((band_top, band_areas))
                 continue
-            size = {a: area_width.get(a, 0.0) + (area_growth if '_wp_' in a else area_expansion).get(a, 0.0)
+            size = {a: area_width.get(a, 0.0)
+                       + (area_growth if '_wp_' in a or by_growth else area_expansion).get(a, 0.0)
                     for a in names}
             pos = [area_orig_start[a] for a in names]
             for i in range(1, len(names)):
@@ -2869,9 +3004,9 @@ def _compute_l3_device_shifts_once(self):
                 band_growth = max(band_growth, offset + area_growth.get(area_name, 0.0))
             else:
                 offset = cumul_exp
-                band_growth = max(band_growth, offset + area_expansion.get(area_name, 0.0))
+                band_growth = max(band_growth, offset + real_reach.get(area_name, 0.0))
             area_offset_addition[area_name] = offset
-            cumul_exp += area_expansion.get(area_name, 0.0)
+            cumul_exp += real_reach.get(area_name, 0.0)
             prev_offset, prev_growth = offset, area_growth.get(area_name, 0.0)
         if band_growth > max_total_growth:
             max_total_growth = band_growth
@@ -3213,6 +3348,25 @@ def _detect_and_fix_2nd_pass_overlaps(self):
     return True
 
 
+def _row_cumulative_shift(self):
+    """Collision shift each device carries in its row (sum of the deltas of the
+    devices of its area up to it)."""
+    shifts = getattr(self, 'device_extra_shift', {}) or {}
+    folder = getattr(self, 'shape_folder_tuple', {}) or {}
+    devs_per_area = getattr(self, '_collision_devs_per_area', {}) or {}
+    cumulative = {}
+    for area_name, rows in (getattr(self, '_collision_rows_per_area', {}) or {}).items():
+        devs = devs_per_area.get(area_name, {})
+        for row in rows:
+            run, last = 0.0, None
+            for d in sorted((d for d in row if isinstance(d, str) and d in devs), key=lambda d: devs[d]['left']):
+                if folder.get(d) != last:
+                    run, last = 0.0, folder.get(d)
+                run += shifts.get(d, 0.0)
+                cumulative[d] = run
+    return cumulative
+
+
 def _pull_back_runaway_devices(self, gap_threshold=2.0):
     # Compact each real area horizontally by closing oversized empty bands.
     # Connectivity-driven placement can drag a device - or a whole sub-cluster
@@ -3280,6 +3434,10 @@ def _pull_back_runaway_devices(self, gap_threshold=2.0):
     # gap_threshold by accruing a cumulative leftward `pull`. Devices at/after a
     # band inherit the accrued pull, so their target shift is -pull; devices
     # before the first band keep target 0.
+    # 'even' device layout: the room between devices is intended, so a device
+    # is pulled back by no more than the collision shift it carries.
+    caps = _row_cumulative_shift(self) if _l3_device_x_layout(self) != 'packed' else None
+
     target = {}
     for a, devs in area_devs.items():
         if len(devs) < 2:
@@ -3288,15 +3446,45 @@ def _pull_back_runaway_devices(self, gap_threshold=2.0):
         pull = 0.0
         prev_max_right = None
         for name, (dleft, dright, _dtop) in order:
-            eff_left = dleft - pull
-            if prev_max_right is not None and (eff_left - prev_max_right) > gap_threshold:
-                pull += (eff_left - prev_max_right) - spacing
+            if caps is None:
                 eff_left = dleft - pull
-            if pull > 1e-6:
-                target[name] = -pull
-            eff_right = dright - pull
+                if prev_max_right is not None and (eff_left - prev_max_right) > gap_threshold:
+                    pull += (eff_left - prev_max_right) - spacing
+                    eff_left = dleft - pull
+                if pull > 1e-6:
+                    target[name] = -pull
+                eff_right = dright - pull
+            else:
+                own = min(pull, max(0.0, caps.get(name, 0.0)))
+                if prev_max_right is not None and (dleft - own - prev_max_right) > gap_threshold:
+                    pull += (dleft - own - prev_max_right) - spacing
+                    own = min(pull, max(0.0, caps.get(name, 0.0)))
+                if own > 1e-6:
+                    target[name] = -own
+                eff_right = dright - own
             if prev_max_right is None or eff_right > prev_max_right:
                 prev_max_right = eff_right
+
+    if caps is not None:
+        # Devices pulled by different amounts must still keep `spacing` from
+        # their left neighbour in the row.
+        by_row = {}
+        for a, devs in area_devs.items():
+            for name, (dleft, dright, dtop) in devs.items():
+                by_row.setdefault(round(dtop, 2), []).append((dleft, dright, name))
+        for lst in by_row.values():
+            lst.sort()
+            prev_right = None
+            for dleft, dright, name in lst:
+                own = -target.get(name, 0.0)
+                if prev_right is not None:
+                    own = min(own, max(0.0, dleft - prev_right - spacing))
+                if own > 1e-6:
+                    target[name] = -own
+                else:
+                    target.pop(name, None)
+                    own = 0.0
+                prev_right = dright - own
 
     if not target:
         return False
@@ -4072,6 +4260,8 @@ class  create_master_file_one_area():
 
         # Create a dictionary for quick lookup of result_area_width
         result_dict = {item[0]: item[1] for item in result_area_width}
+        result_dict = _area_widths_with_air(self, transformed_data_dict, result_dict,
+                                            getattr(self, 'between_shape_column', 0.5))
 
         # Initialize start_area_array
         start_area_array = []
@@ -4122,6 +4312,8 @@ class  create_master_file_one_area():
                     max_right_edge = area_right_edge
 
         self.calculated_max_right_edge = max_right_edge
+        self._l3_device_layout_delta = _device_layout_delta(self, transformed_data_dict, result_dict,
+                                                            getattr(self, 'between_shape_column', 0.5))
         #print(f"[calculate_area_offset] max_right_edge = {max_right_edge}")
 
         #print(start_area_array)
