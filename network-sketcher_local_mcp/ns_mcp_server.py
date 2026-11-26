@@ -1210,7 +1210,7 @@ async def run_commands(master: str, commands: str) -> str:
                 f"Allowed: {sorted(allowed)}. Use a dedicated tool for export."
             )
             continue
-        if '--master' in tokens:
+        if any(tok == '--master' or tok.startswith('--master=') for tok in tokens):
             pre_errors.append(
                 f"[ERROR] Do not include --master in the command line; it is "
                 f"added automatically. Offending line: {line}"

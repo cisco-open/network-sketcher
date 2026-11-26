@@ -1445,6 +1445,13 @@ def _command_failed(result, stdout):
     return any(p in stdout for p in _FAILURE_PHRASES)
 
 
+MASTER_OPTION_ERROR = 'Error: --master is not allowed in commands'
+
+
+def _has_master_option(parts):
+    return any(tok == '--master' or tok.startswith('--master=') for tok in parts)
+
+
 @app.route('/run_commands/<job_id>', methods=['POST'])
 def run_commands(job_id):
     job_id = sanitize_job_id(job_id)
@@ -1466,13 +1473,32 @@ def run_commands(job_id):
 
     lines = [l.strip() for l in commands_text.splitlines() if l.strip() and not l.strip().startswith('#')]
 
+    parsed_lines = []
+    for line in lines:
+        try:
+            parts = shlex.split(line)
+        except ValueError:
+            parts = line.split()
+        parsed_lines.append((line, parts))
+
+    # The job's own master is appended to every command line, and the CLI uses
+    # the first --master it finds, so a --master in a line would point the
+    # command at a file outside work_dir. Reject the whole request up front,
+    # before a new master version is created.
+    rejected = [line for line, parts in parsed_lines if _has_master_option(parts)]
+    if rejected:
+        return jsonify({
+            'success': False,
+            'results': [{'command': line, 'success': False, 'output': MASTER_OPTION_ERROR}
+                        for line in rejected],
+            'errors': rejected,
+            'updated_master': None,
+            'master_version': None,
+        })
+
     ALLOWED_VERBS = RUNNABLE_VERBS
     MUTATING_VERBS = {'add', 'delete', 'rename'}
-    has_mutation = any(
-        (shlex.split(l)[0] if l else '') in MUTATING_VERBS
-        for l in lines
-        if l and l.split()[0] in ALLOWED_VERBS
-    )
+    has_mutation = any(parts and parts[0] in MUTATING_VERBS for _line, parts in parsed_lines)
 
     if has_mutation:
         try:
@@ -1519,14 +1545,6 @@ def run_commands(job_id):
 
     SYNCABLE_SUBCMDS = {'l1_link_bulk', 'device_location'}
 
-    parsed_lines = []
-    for line in lines:
-        try:
-            parts = shlex.split(line)
-        except ValueError:
-            parts = line.split()
-        parsed_lines.append((line, parts))
-
     def _subcmd(parts):
         if len(parts) >= 2:
             return parts[1]
@@ -1544,6 +1562,10 @@ def run_commands(job_id):
             continue
         if parts[0] not in ALLOWED_VERBS:
             results.append({'command': line, 'success': True, 'skipped': True, 'output': f'Skipped (only add/delete/rename/show are supported)'})
+            continue
+        if _has_master_option(parts):
+            results.append({'command': line, 'success': False, 'output': MASTER_OPTION_ERROR})
+            errors.append(line)
             continue
 
         is_last = (idx == len(parsed_lines) - 1)
